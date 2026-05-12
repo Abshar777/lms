@@ -5,8 +5,9 @@ import axios from 'axios'
  * Base URL: /api/v1  (proxied to backend via next.config.ts rewrites)
  * Credentials: 'include' so session cookies are sent automatically.
  */
+const api_base_url = process.env.NEXT_PUBLIC_API_BASE_URL  || "http://localhost:8000"
 export const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: api_base_url +  '/api/v1',
   withCredentials: true,
   timeout: 15_000,
   headers: { 'Content-Type': 'application/json' },
