@@ -1,0 +1,309 @@
+/* ============================================================
+   LMS Design System — CSS Custom Properties (Design Tokens)
+   Source of truth for all visual decisions.
+   Import this in globals.css BEFORE Tailwind directives.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..400&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* ─────────────────────────────────────────
+     COLORS — Backgrounds
+  ───────────────────────────────────────── */
+  --color-bg-page:     #F4F5F8;
+  --color-bg-surface:  #FFFFFF;
+  --color-bg-elevated: #FFFFFF;
+  --color-bg-muted:    #F0F1F5;
+  --color-bg-overlay:  rgba(13, 15, 26, 0.48);
+
+  /* ─────────────────────────────────────────
+     COLORS — Borders
+  ───────────────────────────────────────── */
+  --color-border:       #E4E7ED;
+  --color-border-strong: #CDD0DA;
+
+  /* ─────────────────────────────────────────
+     COLORS — Brand Primary (Orange)
+  ───────────────────────────────────────── */
+  --color-primary:        #FF6B1A;
+  --color-primary-hover:  #E55A0E;
+  --color-primary-light:  #FFF0E8;
+  --color-primary-muted:  rgba(255, 107, 26, 0.12);
+
+  /* ─────────────────────────────────────────
+     COLORS — Brand Secondary (Blue)
+  ───────────────────────────────────────── */
+  --color-secondary:       #2F6BFF;
+  --color-secondary-hover: #1A53E0;
+  --color-secondary-light: #EEF3FF;
+  --color-secondary-muted: rgba(47, 107, 255, 0.12);
+
+  /* ─────────────────────────────────────────
+     COLORS — Semantic
+  ───────────────────────────────────────── */
+  --color-success:       #0ECC8E;
+  --color-success-light: #E6FAF4;
+  --color-success-muted: rgba(14, 204, 142, 0.12);
+
+  --color-warning:       #F59E0B;
+  --color-warning-light: #FEF3C7;
+  --color-warning-muted: rgba(245, 158, 11, 0.12);
+
+  --color-danger:       #EF4444;
+  --color-danger-light: #FEE2E2;
+  --color-danger-muted: rgba(239, 68, 68, 0.12);
+
+  --color-info:       #06B6D4;
+  --color-info-light: #ECFEFF;
+
+  /* ─────────────────────────────────────────
+     COLORS — Text
+  ───────────────────────────────────────── */
+  --color-text-primary:   #0D0F1A;
+  --color-text-secondary: #4B5563;
+  --color-text-muted:     #9CA3AF;
+  --color-text-disabled:  #D1D5DB;
+  --color-text-inverse:   #FFFFFF;
+  --color-text-link:      #2F6BFF;
+
+  /* ─────────────────────────────────────────
+     COLORS — Chart / Data Viz
+  ───────────────────────────────────────── */
+  --chart-primary:   #FF6B1A;
+  --chart-secondary: #93B4FF;
+  --chart-success:   #0ECC8E;
+  --chart-neutral:   #E4E7ED;
+  --chart-warning:   #F59E0B;
+  --chart-purple:    #A78BFA;
+
+  /* ─────────────────────────────────────────
+     TYPOGRAPHY — Font Families
+  ───────────────────────────────────────── */
+  --font-display: 'Bricolage Grotesque', sans-serif;
+  --font-body:    'DM Sans', sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+
+  /* ─────────────────────────────────────────
+     TYPOGRAPHY — Scale
+  ───────────────────────────────────────── */
+  --text-display-xl: clamp(36px, 4vw, 56px);
+  --text-display-lg: clamp(28px, 3vw, 40px);
+  --text-display-md: clamp(22px, 2.5vw, 30px);
+  --text-heading-lg: 22px;
+  --text-heading-md: 18px;
+  --text-heading-sm: 16px;
+  --text-body-lg:    15px;
+  --text-body-md:    14px;
+  --text-body-sm:    13px;
+  --text-label:      12px;
+  --text-mono:       13px;
+
+  /* ─────────────────────────────────────────
+     TYPOGRAPHY — Line Heights
+  ───────────────────────────────────────── */
+  --lh-display: 1.1;
+  --lh-heading: 1.3;
+  --lh-body:    1.6;
+  --lh-label:   1.4;
+
+  /* ─────────────────────────────────────────
+     TYPOGRAPHY — Letter Spacing
+  ───────────────────────────────────────── */
+  --ls-tight:   -0.03em;
+  --ls-snug:    -0.02em;
+  --ls-normal:   0;
+  --ls-wide:     0.02em;
+  --ls-wider:    0.04em;
+  --ls-widest:   0.08em;
+
+  /* ─────────────────────────────────────────
+     SPACING — 4px base grid
+  ───────────────────────────────────────── */
+  --space-0:  0px;
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-7:  28px;
+  --space-8:  32px;
+  --space-9:  36px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* ─────────────────────────────────────────
+     BORDER RADIUS
+  ───────────────────────────────────────── */
+  --radius-xs:   4px;
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --radius-xl:   20px;
+  --radius-2xl:  28px;
+  --radius-full: 9999px;
+
+  /* ─────────────────────────────────────────
+     SHADOWS
+  ───────────────────────────────────────── */
+  --shadow-xs: 0 1px 2px rgba(13, 15, 26, 0.04);
+  --shadow-sm: 0 2px 8px rgba(13, 15, 26, 0.06);
+  --shadow-md: 0 4px 16px rgba(13, 15, 26, 0.08), 0 1px 4px rgba(13, 15, 26, 0.04);
+  --shadow-lg: 0 8px 32px rgba(13, 15, 26, 0.10), 0 2px 8px rgba(13, 15, 26, 0.06);
+  --shadow-xl: 0 16px 48px rgba(13, 15, 26, 0.14), 0 4px 16px rgba(13, 15, 26, 0.08);
+
+  --shadow-primary:   0 4px 20px rgba(255, 107, 26, 0.30);
+  --shadow-secondary: 0 4px 20px rgba(47, 107, 255, 0.26);
+  --shadow-success:   0 4px 16px rgba(14, 204, 142, 0.24);
+
+  --shadow-focus-primary:   0 0 0 3px rgba(255, 107, 26, 0.20);
+  --shadow-focus-secondary: 0 0 0 3px rgba(47, 107, 255, 0.20);
+
+  /* ─────────────────────────────────────────
+     LAYOUT
+  ───────────────────────────────────────── */
+  --sidebar-width:         240px;
+  --sidebar-collapsed-width: 72px;
+  --right-panel-width:     280px;
+  --topbar-height:         64px;
+  --content-max-width:     1280px;
+
+  /* ─────────────────────────────────────────
+     TRANSITIONS
+  ───────────────────────────────────────── */
+  --transition-micro:  80ms ease;
+  --transition-fast:   150ms ease;
+  --transition-base:   250ms ease;
+  --transition-slow:   400ms ease;
+  --transition-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ─────────────────────────────────────────
+     Z-INDEX SCALE
+  ───────────────────────────────────────── */
+  --z-base:    0;
+  --z-raised:  10;
+  --z-sticky:  20;
+  --z-overlay: 30;
+  --z-modal:   40;
+  --z-toast:   50;
+  --z-tooltip: 60;
+}
+
+/* ─────────────────────────────────────────
+   DARK MODE OVERRIDES
+   Apply when [data-theme="dark"] or prefers-color-scheme: dark
+───────────────────────────────────────── */
+[data-theme="dark"],
+.dark {
+  --color-bg-page:     #0D0F1A;
+  --color-bg-surface:  #151826;
+  --color-bg-elevated: #1C2033;
+  --color-bg-muted:    #1E2235;
+  --color-bg-overlay:  rgba(0, 0, 0, 0.64);
+
+  --color-border:        #252840;
+  --color-border-strong: #2E3250;
+
+  --color-primary-light:  rgba(255, 107, 26, 0.15);
+  --color-secondary-light: rgba(47, 107, 255, 0.15);
+  --color-success-light:  rgba(14, 204, 142, 0.15);
+  --color-warning-light:  rgba(245, 158, 11, 0.15);
+  --color-danger-light:   rgba(239, 68, 68, 0.15);
+
+  --color-text-primary:   #F1F3F9;
+  --color-text-secondary: #9BA3C0;
+  --color-text-muted:     #5C6480;
+  --color-text-disabled:  #3A3F5C;
+
+  --chart-neutral: #252840;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.20);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.32);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.40);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.48);
+}
+
+/* ─────────────────────────────────────────
+   GLOBAL BASE STYLES
+───────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-body-md);
+  line-height: var(--lh-body);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-page);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  line-height: var(--lh-heading);
+  letter-spacing: var(--ls-snug);
+  color: var(--color-text-primary);
+}
+
+code, pre, kbd {
+  font-family: var(--font-mono);
+}
+
+/* Focus visible ring */
+:focus-visible {
+  outline: 2px solid var(--color-secondary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─────────────────────────────────────────
+   UTILITY CLASSES
+───────────────────────────────────────── */
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* Selection */
+::selection {
+  background: var(--color-primary-muted);
+  color: var(--color-primary-hover);
+}

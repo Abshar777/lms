@@ -1,0 +1,9 @@
+[run]
+bun = true
+
+[install]
+exact = false
+production = false
+
+[test]
+preload = []

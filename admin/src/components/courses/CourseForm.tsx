@@ -1,0 +1,441 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useForm, Controller } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useRouter } from 'next/navigation'
+import {
+  BookOpen, DollarSign, Settings, Tag, Image, Link as LinkIcon,
+  Loader2, ArrowLeft, Check, AlertCircle, ChevronDown,
+} from 'lucide-react'
+import { useCreateCourse, useUpdateCourse } from '@/lib/api/courses'
+import type { Course, CourseFormValues } from '@/types/index'
+
+/* ── Zod schema ─────────────────────────────────────────────── */
+const schema = z.object({
+  title:        z.string().min(3, 'Title must be at least 3 characters'),
+  slug:         z.string().min(2, 'Slug required').regex(/^[a-z0-9-]+$/, 'Lowercase letters, numbers and hyphens only'),
+  description:  z.string().min(20, 'Description must be at least 20 characters'),
+  thumbnailUrl: z.string().url('Enter a valid URL').or(z.literal('')),
+  previewUrl:   z.string().url('Enter a valid URL').or(z.literal('')),
+  price:        z.coerce.number().min(0, 'Price must be ≥ 0'),
+  isFree:       z.boolean(),
+  status:       z.enum(['draft', 'published', 'archived']),
+  level:        z.enum(['beginner', 'intermediate', 'advanced', '']),
+  language:     z.string().min(1, 'Language required'),
+  tags:         z.string(),
+  categoryId:   z.string(),
+})
+
+type Values = z.infer<typeof schema>
+
+/* ── Tab config ─────────────────────────────────────────────── */
+const TABS = [
+  { id: 'basics',  label: 'Basics',   icon: BookOpen },
+  { id: 'media',   label: 'Media',    icon: Image },
+  { id: 'pricing', label: 'Pricing',  icon: DollarSign },
+  { id: 'meta',    label: 'Meta',     icon: Tag },
+  { id: 'publish', label: 'Publish',  icon: Settings },
+] as const
+
+type TabId = typeof TABS[number]['id']
+
+/* ── Field wrapper ───────────────────────────────────────────── */
+function Field({ label, error, children, hint }: { label: string; error?: string; children: React.ReactNode; hint?: string }) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.7)' }}>
+        {label}
+      </label>
+      {children}
+      <AnimatePresence>
+        {error && (
+          <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className="mt-1.5 flex items-center gap-1 text-xs" style={{ color: '#F87171' }}>
+            <AlertCircle size={11} />{error}
+          </motion.p>
+        )}
+      </AnimatePresence>
+      {hint && !error && <p className="mt-1 text-[11px]" style={{ color: 'rgba(255,255,255,0.25)' }}>{hint}</p>}
+    </div>
+  )
+}
+
+/* ── Input styles ────────────────────────────────────────────── */
+const inputBase = "w-full rounded-xl px-4 py-2.5 text-sm text-white outline-none transition-all placeholder:text-white/25"
+const inputStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }
+const inputFocus = (el: HTMLElement) => {
+  el.style.border = '1px solid rgba(255,107,26,0.55)'
+  el.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.10)'
+}
+const inputBlur = (el: HTMLElement) => {
+  el.style.border = '1px solid rgba(255,255,255,0.09)'
+  el.style.boxShadow = 'none'
+}
+
+/* ── Select component ────────────────────────────────────────── */
+function Select({ value, onChange, options, placeholder }: {
+  value: string; onChange: (v: string) => void
+  options: { value: string; label: string }[]; placeholder?: string
+}) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className={`${inputBase} cursor-pointer appearance-none pr-10`}
+        style={inputStyle}
+        onFocus={e => inputFocus(e.currentTarget)}
+        onBlur={e => inputBlur(e.currentTarget)}>
+        {placeholder && <option value="">{placeholder}</option>}
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+      <ChevronDown size={13} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2"
+        style={{ color: 'rgba(255,255,255,0.3)' }} />
+    </div>
+  )
+}
+
+/* ── Main component ──────────────────────────────────────────── */
+interface CourseFormProps { course?: Course }
+
+export function CourseForm({ course }: CourseFormProps) {
+  const router = useRouter()
+  const [activeTab, setActiveTab] = useState<TabId>('basics')
+  const [savedSuccess, setSavedSuccess] = useState(false)
+
+  const createMutation = useCreateCourse()
+  const updateMutation = useUpdateCourse()
+  const isEditing = !!course
+
+  const { register, handleSubmit, control, watch, setValue, formState: { errors, isSubmitting } } = useForm<Values>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      title:        course?.title        ?? '',
+      slug:         course?.slug         ?? '',
+      description:  course?.description  ?? '',
+      thumbnailUrl: course?.thumbnailUrl ?? '',
+      previewUrl:   course?.previewUrl   ?? '',
+      price:        course?.price        ?? 0,
+      isFree:       course?.isFree       ?? false,
+      status:       course?.status       ?? 'draft',
+      level:        course?.level        ?? '',
+      language:     course?.language     ?? 'English',
+      tags:         course?.tags?.join(', ') ?? '',
+      categoryId:   course?.categoryId   ?? '',
+    },
+  })
+
+  const isFree = watch('isFree')
+  const titleVal = watch('title')
+
+  // Auto-generate slug from title
+  useEffect(() => {
+    if (!isEditing) {
+      const slug = titleVal.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-')
+      setValue('slug', slug)
+    }
+  }, [titleVal, isEditing, setValue])
+
+  const onSubmit = async (data: Values) => {
+    if (isEditing && course) {
+      await updateMutation.mutateAsync({ id: course.id, data })
+    } else {
+      await createMutation.mutateAsync(data as CourseFormValues)
+    }
+    setSavedSuccess(true)
+    setTimeout(() => {
+      router.push('/courses')
+    }, 800)
+  }
+
+  const tabErrors: Partial<Record<TabId, boolean>> = {
+    basics:  !!(errors.title || errors.slug || errors.description),
+    media:   !!(errors.thumbnailUrl || errors.previewUrl),
+    pricing: !!(errors.price),
+    meta:    !!(errors.language),
+    publish: !!(errors.status),
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      {/* ── Tab nav ──────────────────────────────────── */}
+      <div className="mb-6 flex items-center gap-1 overflow-x-auto rounded-2xl p-1"
+        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        {TABS.map(tab => {
+          const Icon    = tab.icon
+          const active  = activeTab === tab.id
+          const hasErr  = tabErrors[tab.id]
+          return (
+            <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
+              className="relative flex flex-shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all"
+              style={active
+                ? { background: 'rgba(255,107,26,0.16)', color: '#FF6B1A' }
+                : { color: 'rgba(255,255,255,0.45)' }}>
+              <Icon size={14} />
+              {tab.label}
+              {hasErr && (
+                <span className="ml-0.5 h-1.5 w-1.5 rounded-full" style={{ background: '#EF4444' }} />
+              )}
+              {active && (
+                <motion.div layoutId="tab-indicator" className="absolute inset-0 rounded-xl"
+                  style={{ background: 'rgba(255,107,26,0.14)' }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }} />
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* ── Tab panels ───────────────────────────────── */}
+      <div className="rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <AnimatePresence mode="wait">
+          {/* BASICS */}
+          {activeTab === 'basics' && (
+            <motion.div key="basics" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.18 }} className="space-y-5">
+              <Field label="Course title *" error={errors.title?.message}>
+                <input {...register('title')} placeholder="e.g. Complete Web Development Bootcamp"
+                  className={inputBase} style={inputStyle}
+                  onFocus={e => inputFocus(e.currentTarget)} onBlur={e => inputBlur(e.currentTarget)} />
+              </Field>
+
+              <Field label="Slug *" error={errors.slug?.message} hint="Auto-generated from title. Only lowercase letters, numbers, hyphens.">
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-mono select-none"
+                    style={{ color: 'rgba(255,255,255,0.25)' }}>learnos.com/</span>
+                  <input {...register('slug')} placeholder="course-slug"
+                    className={`${inputBase} pl-24`} style={inputStyle}
+                    onFocus={e => inputFocus(e.currentTarget)} onBlur={e => inputBlur(e.currentTarget)} />
+                </div>
+              </Field>
+
+              <Field label="Description *" error={errors.description?.message} hint="Min 20 characters. Shown to students on the course page.">
+                <textarea {...register('description')} rows={5} placeholder="Describe what students will learn…"
+                  className={`${inputBase} resize-none`} style={inputStyle}
+                  onFocus={e => inputFocus(e.currentTarget)} onBlur={e => inputBlur(e.currentTarget)} />
+              </Field>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Level">
+                  <Controller name="level" control={control} render={({ field }) => (
+                    <Select value={field.value} onChange={field.onChange} placeholder="Select level"
+                      options={[
+                        { value: 'beginner', label: 'Beginner' },
+                        { value: 'intermediate', label: 'Intermediate' },
+                        { value: 'advanced', label: 'Advanced' },
+                      ]} />
+                  )} />
+                </Field>
+                <Field label="Language *" error={errors.language?.message}>
+                  <Controller name="language" control={control} render={({ field }) => (
+                    <Select value={field.value} onChange={field.onChange}
+                      options={[
+                        { value: 'English', label: 'English' },
+                        { value: 'Spanish', label: 'Spanish' },
+                        { value: 'French', label: 'French' },
+                        { value: 'German', label: 'German' },
+                        { value: 'Arabic', label: 'Arabic' },
+                        { value: 'Japanese', label: 'Japanese' },
+                      ]} />
+                  )} />
+                </Field>
+              </div>
+            </motion.div>
+          )}
+
+          {/* MEDIA */}
+          {activeTab === 'media' && (
+            <motion.div key="media" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.18 }} className="space-y-5">
+              <Field label="Thumbnail URL" error={errors.thumbnailUrl?.message} hint="Recommended: 1280×720px (16:9)">
+                <div className="relative">
+                  <Image size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                  <input {...register('thumbnailUrl')} placeholder="https://…"
+                    className={`${inputBase} pl-10`} style={inputStyle}
+                    onFocus={e => inputFocus(e.currentTarget)} onBlur={e => inputBlur(e.currentTarget)} />
+                </div>
+              </Field>
+
+              {/* Preview */}
+              {watch('thumbnailUrl') && !errors.thumbnailUrl && (
+                <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
+                  className="overflow-hidden rounded-xl" style={{ maxWidth: 320, border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <img src={watch('thumbnailUrl')} alt="Thumbnail preview" className="w-full object-cover" />
+                </motion.div>
+              )}
+
+              <Field label="Preview video URL" error={errors.previewUrl?.message} hint="Optional free preview video (YouTube, Vimeo, or direct link)">
+                <div className="relative">
+                  <LinkIcon size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                  <input {...register('previewUrl')} placeholder="https://youtube.com/watch?v=…"
+                    className={`${inputBase} pl-10`} style={inputStyle}
+                    onFocus={e => inputFocus(e.currentTarget)} onBlur={e => inputBlur(e.currentTarget)} />
+                </div>
+              </Field>
+            </motion.div>
+          )}
+
+          {/* PRICING */}
+          {activeTab === 'pricing' && (
+            <motion.div key="pricing" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.18 }} className="space-y-5">
+              {/* Free toggle */}
+              <div className="flex items-center justify-between rounded-2xl p-4"
+                style={{ background: isFree ? 'rgba(74,222,128,0.07)' : 'rgba(255,255,255,0.03)', border: `1px solid ${isFree ? 'rgba(74,222,128,0.2)' : 'rgba(255,255,255,0.08)'}`, transition: 'all 0.3s' }}>
+                <div>
+                  <p className="text-sm font-semibold text-white">Free course</p>
+                  <p className="mt-0.5 text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Make this course available at no cost</p>
+                </div>
+                <Controller name="isFree" control={control} render={({ field }) => (
+                  <button type="button" onClick={() => field.onChange(!field.value)}
+                    className="relative h-6 w-11 rounded-full transition-all"
+                    style={{ background: field.value ? '#4ADE80' : 'rgba(255,255,255,0.12)' }}>
+                    <motion.div animate={{ x: field.value ? 22 : 2 }} transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                      className="absolute top-0.5 h-5 w-5 rounded-full bg-white" />
+                  </button>
+                )} />
+              </div>
+
+              <AnimatePresence>
+                {!isFree && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }}>
+                    <Field label="Price (USD) *" error={errors.price?.message}>
+                      <div className="relative">
+                        <DollarSign size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                        <input {...register('price')} type="number" step="0.01" min="0" placeholder="49.99"
+                          className={`${inputBase} pl-10`} style={inputStyle}
+                          onFocus={e => inputFocus(e.currentTarget)} onBlur={e => inputBlur(e.currentTarget)} />
+                      </div>
+                    </Field>
+
+                    {/* Quick price presets */}
+                    <div className="mt-3 flex gap-2 flex-wrap">
+                      {[9.99, 19.99, 29.99, 49.99, 79.99, 99.99].map(p => (
+                        <button key={p} type="button" onClick={() => setValue('price', p)}
+                          className="rounded-lg px-3 py-1 text-xs font-semibold transition-colors hover:bg-white/10"
+                          style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                          ${p}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
+
+          {/* META */}
+          {activeTab === 'meta' && (
+            <motion.div key="meta" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.18 }} className="space-y-5">
+              <Field label="Tags" hint="Comma-separated: react, typescript, advanced">
+                <div className="relative">
+                  <Tag size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                  <input {...register('tags')} placeholder="react, hooks, typescript"
+                    className={`${inputBase} pl-10`} style={inputStyle}
+                    onFocus={e => inputFocus(e.currentTarget)} onBlur={e => inputBlur(e.currentTarget)} />
+                </div>
+                {/* Tag pills preview */}
+                {watch('tags') && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {watch('tags').split(',').map(t => t.trim()).filter(Boolean).map(t => (
+                      <span key={t} className="rounded-lg px-2.5 py-1 text-[11px] font-medium"
+                        style={{ background: 'rgba(255,107,26,0.12)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.2)' }}>
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </Field>
+
+              <Field label="Category">
+                <Controller name="categoryId" control={control} render={({ field }) => (
+                  <Select value={field.value} onChange={field.onChange} placeholder="Select category"
+                    options={[
+                      { value: 'design', label: 'Design' },
+                      { value: 'development', label: 'Development' },
+                      { value: 'marketing', label: 'Marketing' },
+                      { value: 'business', label: 'Business' },
+                      { value: 'data-science', label: 'Data Science' },
+                    ]} />
+                )} />
+              </Field>
+            </motion.div>
+          )}
+
+          {/* PUBLISH */}
+          {activeTab === 'publish' && (
+            <motion.div key="publish" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.18 }} className="space-y-4">
+              <p className="text-sm font-semibold text-white mb-3">Publication status</p>
+              {(['draft', 'published', 'archived'] as const).map(s => {
+                const configs = {
+                  draft:     { label: 'Draft',     desc: 'Only visible to you. Students cannot enroll.',        color: '#FACC15', bg: 'rgba(234,179,8,0.10)' },
+                  published: { label: 'Published', desc: 'Live and visible to all students. Enrollment open.',   color: '#4ADE80', bg: 'rgba(34,197,94,0.10)' },
+                  archived:  { label: 'Archived',  desc: 'Hidden from students. No new enrollments accepted.',  color: 'rgba(255,255,255,0.35)', bg: 'rgba(255,255,255,0.05)' },
+                }
+                const c = configs[s]
+                const isSelected = watch('status') === s
+                return (
+                  <Controller key={s} name="status" control={control} render={({ field }) => (
+                    <motion.button type="button" onClick={() => field.onChange(s)} whileTap={{ scale: 0.99 }}
+                      className="flex w-full items-start gap-4 rounded-2xl p-4 transition-all text-left"
+                      style={{
+                        background: isSelected ? c.bg : 'rgba(255,255,255,0.02)',
+                        border: `1.5px solid ${isSelected ? c.color + '50' : 'rgba(255,255,255,0.07)'}`,
+                      }}>
+                      <div className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border-2"
+                        style={{ borderColor: isSelected ? c.color : 'rgba(255,255,255,0.2)', background: isSelected ? c.color : 'transparent' }}>
+                        {isSelected && <Check size={9} color="#000" strokeWidth={3} />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold" style={{ color: isSelected ? c.color : 'rgba(255,255,255,0.7)' }}>{c.label}</p>
+                        <p className="mt-0.5 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>{c.desc}</p>
+                      </div>
+                    </motion.button>
+                  )} />
+                )
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* ── Footer actions ───────────────────────────── */}
+      <div className="mt-5 flex items-center justify-between">
+        <button type="button" onClick={() => router.push('/courses')}
+          className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-white/06"
+          style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.09)' }}>
+          <ArrowLeft size={14} />Discard
+        </button>
+
+        <div className="flex items-center gap-3">
+          {/* Tab nav shortcuts */}
+          <div className="hidden items-center gap-1 sm:flex">
+            {TABS.map((tab, i) => (
+              <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
+                className="flex h-1.5 rounded-full transition-all"
+                style={{ width: activeTab === tab.id ? 16 : 6, background: activeTab === tab.id ? '#FF6B1A' : 'rgba(255,255,255,0.15)' }} />
+            ))}
+          </div>
+
+          <motion.button type="submit" disabled={isSubmitting || savedSuccess}
+            whileHover={{ y: -1, boxShadow: '0 10px 28px rgba(255,107,26,0.4)' }}
+            whileTap={{ scale: 0.97 }}
+            className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-70"
+            style={{ background: savedSuccess ? 'linear-gradient(135deg, #22C55E, #16A34A)' : 'linear-gradient(135deg, #FF6B1A, #FF8C42)', boxShadow: '0 4px 20px rgba(255,107,26,0.28)' }}>
+            {isSubmitting
+              ? <><Loader2 size={14} className="animate-spin" />{isEditing ? 'Saving…' : 'Creating…'}</>
+              : savedSuccess
+              ? <><Check size={14} />Saved!</>
+              : isEditing ? 'Save changes' : 'Create course'}
+          </motion.button>
+        </div>
+      </div>
+    </form>
+  )
+}

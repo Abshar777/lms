@@ -1,0 +1,171 @@
+'use client'
+
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Search, Bell, Plus, ChevronDown, X, BookOpen, Users, GraduationCap } from 'lucide-react'
+import Link from 'next/link'
+import { useUIStore } from '@/store/ui.store'
+
+const notifications = [
+  { id: 1, type: 'enroll',     text: 'New enrollment: UI/UX Design Mastery', time: '2m ago',  unread: true },
+  { id: 2, type: 'review',     text: 'New 5★ review on TypeScript course',   time: '14m ago', unread: true },
+  { id: 3, type: 'instructor', text: 'Alex Kim submitted new course draft',   time: '1h ago',  unread: false },
+  { id: 4, type: 'enroll',     text: '25 new students this hour',             time: '2h ago',  unread: false },
+]
+
+const quickActions = [
+  { label: 'New Course',     href: '/courses/new',  icon: BookOpen },
+  { label: 'Add Student',    href: '/students/new', icon: Users },
+  { label: 'Add Instructor', href: '/instructors/new', icon: GraduationCap },
+]
+
+export function AdminTopbar() {
+  const { sidebarCollapsed } = useUIStore()
+  const [searchOpen,  setSearchOpen]  = useState(false)
+  const [notifOpen,   setNotifOpen]   = useState(false)
+  const [quickOpen,   setQuickOpen]   = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const unreadCount = notifications.filter(n => n.unread).length
+  const left = sidebarCollapsed ? 68 : 240
+
+  return (
+    <motion.header
+      animate={{ left }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      className="fixed top-0 right-0 z-30 flex h-[60px] items-center gap-3 px-5"
+      style={{ background: 'rgba(8,10,18,0.85)', borderBottom: '1px solid rgba(255,255,255,0.06)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
+    >
+      {/* ── Search ──────────────────────────────────── */}
+      <div className="relative flex-1 max-w-[480px]">
+        <AnimatePresence mode="wait">
+          {searchOpen ? (
+            <motion.div key="open" initial={{ opacity: 0, scaleX: 0.9 }} animate={{ opacity: 1, scaleX: 1 }}
+              exit={{ opacity: 0, scaleX: 0.9 }} transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className="flex items-center gap-2 rounded-xl px-3 py-1.5"
+              style={{ background: 'rgba(255,255,255,0.07)', border: '1.5px solid rgba(255,107,26,0.5)', boxShadow: '0 0 0 3px rgba(255,107,26,0.10)' }}>
+              <Search size={14} style={{ color: '#FF6B1A' }} />
+              <input autoFocus value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search courses, students, instructors…"
+                className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/30"
+                style={{ minWidth: 0 }}
+              />
+              <button onClick={() => { setSearchOpen(false); setSearchQuery('') }}
+                className="transition-opacity hover:opacity-70" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                <X size={13} />
+              </button>
+            </motion.div>
+          ) : (
+            <motion.button key="closed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setSearchOpen(true)}
+              className="flex items-center gap-2 rounded-xl px-3 py-1.5 transition-colors hover:bg-white/05"
+              style={{ color: 'rgba(255,255,255,0.35)' }}>
+              <Search size={14} />
+              <span className="text-sm">Search…</span>
+              <span className="ml-1 rounded px-1.5 py-0.5 text-[10px] font-mono"
+                style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.08)' }}>⌘K</span>
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <div className="ml-auto flex items-center gap-2">
+        {/* ── Quick create ─────────────────────────── */}
+        <div className="relative">
+          <motion.button
+            onClick={() => { setQuickOpen(v => !v); setNotifOpen(false) }}
+            whileHover={{ y: -1 }} whileTap={{ scale: 0.96 }}
+            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold text-white transition-all"
+            style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)', boxShadow: '0 4px 16px rgba(255,107,26,0.30)' }}>
+            <Plus size={14} />
+            <span>Create</span>
+            <ChevronDown size={12} style={{ transform: quickOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+          </motion.button>
+
+          <AnimatePresence>
+            {quickOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.96 }} transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="absolute right-0 top-full mt-2 w-48 rounded-2xl p-1.5 z-50"
+                style={{ background: '#13162A', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+                {quickActions.map(a => {
+                  const Icon = a.icon
+                  return (
+                    <Link key={a.href} href={a.href} onClick={() => setQuickOpen(false)}>
+                      <div className="flex items-center gap-2.5 rounded-xl px-3 py-2 transition-colors hover:bg-white/05 cursor-pointer">
+                        <Icon size={14} style={{ color: '#FF6B1A' }} />
+                        <span className="text-sm font-medium text-white">{a.label}</span>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* ── Notifications ────────────────────────── */}
+        <div className="relative">
+          <motion.button
+            onClick={() => { setNotifOpen(v => !v); setQuickOpen(false) }}
+            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+            className="relative flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-white/08"
+            style={{ color: 'rgba(255,255,255,0.55)' }}>
+            <Bell size={16} />
+            {unreadCount > 0 && (
+              <motion.span
+                initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 400 }}
+                className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                style={{ background: '#FF6B1A' }}>
+                {unreadCount}
+              </motion.span>
+            )}
+          </motion.button>
+
+          <AnimatePresence>
+            {notifOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.96 }} transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="absolute right-0 top-full mt-2 w-80 rounded-2xl z-50 overflow-hidden"
+                style={{ background: '#13162A', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+                <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <span className="text-sm font-semibold text-white">Notifications</span>
+                  <button className="text-[11px] font-medium" style={{ color: '#FF6B1A' }}>Mark all read</button>
+                </div>
+                {notifications.map((n, i) => (
+                  <motion.div key={n.id}
+                    initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-white/04 cursor-pointer"
+                    style={{ borderBottom: i < notifications.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                    <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg"
+                      style={{ background: n.unread ? 'rgba(255,107,26,0.15)' : 'rgba(255,255,255,0.05)' }}>
+                      <Bell size={12} style={{ color: n.unread ? '#FF6B1A' : 'rgba(255,255,255,0.3)' }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs leading-relaxed" style={{ color: n.unread ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.45)' }}>{n.text}</p>
+                      <p className="mt-0.5 text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>{n.time}</p>
+                    </div>
+                    {n.unread && <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: '#FF6B1A' }} />}
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* ── Avatar ───────────────────────────────── */}
+        <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white cursor-pointer ring-2 ring-transparent hover:ring-orange-500/40 transition-all"
+          style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+          A
+        </div>
+      </div>
+
+      {/* Backdrop for dropdowns */}
+      {(notifOpen || quickOpen) && (
+        <div className="fixed inset-0 z-40" onClick={() => { setNotifOpen(false); setQuickOpen(false) }} />
+      )}
+    </motion.header>
+  )
+}

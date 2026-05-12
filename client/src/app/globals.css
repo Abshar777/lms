@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Design tokens ──────────────────────────────── */
+:root {
+  --color-primary:        #FF6B1A;
+  --color-primary-hover:  #E55A0E;
+  --color-primary-light:  #FFF0E8;
+  --color-secondary:      #2F6BFF;
+  --color-secondary-hover:#1A53E0;
+  --color-secondary-light:#EEF3FF;
+  --color-success:        #0ECC8E;
+  --color-warning:        #F59E0B;
+  --color-danger:         #EF4444;
+  --color-bg-page:        #F4F5F8;
+  --color-bg-surface:     #FFFFFF;
+  --color-bg-muted:       #F0F1F5;
+  --color-border:         #E4E7ED;
+  --color-text-primary:   #0D0F1A;
+  --color-text-secondary: #4B5563;
+  --color-text-muted:     #9CA3AF;
+  --font-display:         'Bricolage Grotesque', sans-serif;
+  --font-body:            'DM Sans', sans-serif;
+  --font-mono:            'JetBrains Mono', monospace;
+}
+
+/* ── Base ───────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-page);
+}
+
+/* ── Scrollbar ──────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+
+/* ── Focus visible ──────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-secondary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Selection ──────────────────────────────────── */
+::selection {
+  background: rgba(255, 107, 26, 0.15);
+  color: #E55A0E;
+}
+
+/* ── Reduced motion ─────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
