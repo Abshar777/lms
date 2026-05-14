@@ -2,17 +2,23 @@
 
 import { motion, AnimatePresence } from 'framer-motion'
 import { AlertTriangle, Loader2, X } from 'lucide-react'
-import { useUIStore } from '@/store/ui.store'
+import { useUIStore, useToast } from '@/store/ui.store'
 import { useDeleteCourse } from '@/lib/api/courses'
 
 export function DeleteModal() {
   const { deleteModalOpen, deleteTargetId, deleteTargetName, closeDeleteModal } = useUIStore()
   const deleteMutation = useDeleteCourse()
+  const toast          = useToast()
 
   const handleConfirm = async () => {
     if (!deleteTargetId) return
-    await deleteMutation.mutateAsync(deleteTargetId)
-    closeDeleteModal()
+    try {
+      await deleteMutation.mutateAsync(deleteTargetId)
+      closeDeleteModal()
+      toast.success('Course deleted', deleteTargetName ? `"${deleteTargetName}" was removed.` : undefined)
+    } catch (err: any) {
+      toast.error('Could not delete course', err?.response?.data?.error?.message)
+    }
   }
 
   return (

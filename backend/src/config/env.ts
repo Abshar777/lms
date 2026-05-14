@@ -1,5 +1,10 @@
 import { z } from 'zod'
 
+/* Treat empty strings in .env the same as "not set".
+   Without this, STRIPE_SECRET_KEY= (blank) fails min(1). */
+const opt = (schema: z.ZodString) =>
+  z.preprocess(v => (v === '' ? undefined : v), schema.optional())
+
 const envSchema = z.object({
   /* Server */
   NODE_ENV:  z.enum(['development', 'production', 'test']).default('development'),
@@ -20,6 +25,18 @@ const envSchema = z.object({
 
   /* Bcrypt */
   BCRYPT_ROUNDS: z.coerce.number().min(10).max(14).default(12),
+
+  /* Stripe — all optional; blank lines in .env are treated as unset */
+  STRIPE_SECRET_KEY:     opt(z.string().min(1)),
+  STRIPE_WEBHOOK_SECRET: opt(z.string().min(1)),
+  STRIPE_CURRENCY:       z.string().length(3).default('usd'),
+
+  /* Public URL — used to build absolute file URLs for uploaded media */
+  BACKEND_PUBLIC_URL: z.string().url().default('http://localhost:4000'),
+
+  /* AI — Ollama (local LLM) */
+  OLLAMA_BASE_URL: z.preprocess(v => (v === '' ? undefined : v), z.string().url().default('http://localhost:11434')),
+  OLLAMA_MODEL:    z.preprocess(v => (v === '' ? undefined : v), z.string().default('llama3.2:3b')),
 })
 
 const parsed = envSchema.safeParse(process.env)

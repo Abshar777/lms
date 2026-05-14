@@ -3,33 +3,36 @@
 import { motion } from 'framer-motion'
 import {
   BookOpen, Users, GraduationCap, DollarSign,
-  TrendingUp, Star, Clock, ArrowUpRight,
+  TrendingUp, Star, Loader2, ArrowUpRight,
 } from 'lucide-react'
 import { StatCard } from '@/components/ui/StatCard'
+import { EnrollmentsChart } from '@/components/analytics/EnrollmentsChart'
+import { RevenueChart } from '@/components/analytics/RevenueChart'
+import { TopCoursesWidget } from '@/components/analytics/TopCoursesWidget'
+import { CompletionWidget } from '@/components/analytics/CompletionWidget'
 import { useCourses } from '@/lib/api/courses'
+import { useAdminStats } from '@/lib/api/stats'
 import Link from 'next/link'
 
-const stats = [
-  { label: 'Total Courses',   value: 24,       change: 12,  changeLabel: '+3 this month',    icon: BookOpen,     color: '#FF6B1A', prefix: '',  suffix: '',   delay: 0 },
-  { label: 'Total Students',  value: 8420,      change: 18,  changeLabel: '+320 this week',   icon: Users,        color: '#2F6BFF', prefix: '',  suffix: '',   delay: 0.05 },
-  { label: 'Instructors',     value: 12,        change: 0,   changeLabel: '2 pending review', icon: GraduationCap,color: '#A78BFA', prefix: '',  suffix: '',   delay: 0.1 },
-  { label: 'Revenue (MRR)',   value: 14280,     change: 23,  changeLabel: '+$2.6k vs last mo', icon: DollarSign,   color: '#4ADE80', prefix: '$', suffix: '',   delay: 0.15 },
-]
-
-const recentActivity = [
-  { text: 'New enrollment in UI/UX Design Mastery',     time: '2 min ago',  type: 'enroll' },
-  { text: 'Alex Kim submitted course for review',       time: '18 min ago', type: 'course' },
-  { text: '5★ review on TypeScript from Zero to Hero',  time: '1 hr ago',   type: 'review' },
-  { text: '50 students joined this week',               time: '3 hr ago',   type: 'milestone' },
-  { text: 'Maya Patel published Python course update',  time: '5 hr ago',   type: 'publish' },
-]
-
-const typeColor: Record<string, string> = {
-  enroll: '#4ADE80', course: '#FF6B1A', review: '#FACC15', milestone: '#2F6BFF', publish: '#A78BFA',
-}
-
 export default function DashboardPage() {
-  const { data: coursesData } = useCourses({ per_page: 5, status: 'published' })
+  const { data: coursesData } = useCourses({ per_page: 5, status: 'published', sort: 'createdAt:desc' })
+  const { data: stats, isLoading: statsLoading } = useAdminStats()
+
+  /* Split a money value into a display number + suffix so StatCard's
+     prefix/suffix props work (it expects `value: number`). */
+  function splitCompact(n: number): { value: number; suffix: string } {
+    if (n >= 1_000_000) return { value: Math.round((n / 1_000_000) * 10) / 10, suffix: 'M' }
+    if (n >= 1_000)     return { value: Math.round((n / 1_000) * 10) / 10,     suffix: 'k' }
+    return { value: Math.round(n), suffix: '' }
+  }
+  const rev = splitCompact(stats?.revenueEstimate ?? 0)
+
+  const statCards = [
+    { label: 'Total Courses',    value: stats?.totalCourses     ?? 0, change: 0, changeLabel: `${stats?.publishedCourses ?? 0} published · ${stats?.draftCourses ?? 0} drafts`, icon: BookOpen,      color: '#FF6B1A', prefix: '',  suffix: '',         delay: 0     },
+    { label: 'Total Students',   value: stats?.totalStudents    ?? 0, change: 0, changeLabel: `${stats?.totalEnrollments ?? 0} active enrollments`,                            icon: Users,         color: '#2F6BFF', prefix: '',  suffix: '',         delay: 0.05  },
+    { label: 'Instructors',      value: stats?.totalInstructors ?? 0, change: 0, changeLabel: 'Course authors',                                                                 icon: GraduationCap, color: '#A78BFA', prefix: '',  suffix: '',         delay: 0.1   },
+    { label: 'Revenue (est.)',   value: rev.value,                     change: 0, changeLabel: 'Sum of paid course earnings',                                                   icon: DollarSign,    color: '#4ADE80', prefix: '$', suffix: rev.suffix, delay: 0.15  },
+  ]
 
   return (
     <div className="space-y-8">
@@ -42,15 +45,32 @@ export default function DashboardPage() {
           Good morning, Admin 👋
         </h1>
         <p className="mt-1 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
-          Here's what's happening with LearnOS today.
+          Here&apos;s what&apos;s happening with LearnOS today.
         </p>
       </motion.div>
 
       {/* ── Stat cards ──────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {stats.map(s => (
-          <StatCard key={s.label} {...s} />
-        ))}
+        {statsLoading
+          ? Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-[110px] rounded-2xl animate-pulse"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }} />
+            ))
+          : statCards.map(s => <StatCard key={s.label} {...s} />)
+        }
+      </div>
+
+      {/* ── Analytics row ──────────────────────────── */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2"><EnrollmentsChart /></div>
+        <CompletionWidget />
+      </div>
+
+      {/* ── Revenue chart ──────────────────────────── */}
+      <RevenueChart />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-3"><TopCoursesWidget /></div>
       </div>
 
       {/* ── Bottom grid ─────────────────────────────── */}
@@ -59,7 +79,7 @@ export default function DashboardPage() {
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, type: 'spring', stiffness: 240, damping: 24 }}
-          className="col-span-3 rounded-2xl overflow-hidden"
+          className="col-span-5 lg:col-span-3 rounded-2xl overflow-hidden"
           style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
           <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
             <h2 className="text-sm font-semibold text-white">Recent Courses</h2>
@@ -68,6 +88,16 @@ export default function DashboardPage() {
             </Link>
           </div>
           <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+            {!coursesData && (
+              <div className="flex items-center justify-center gap-2 px-5 py-10 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                <Loader2 size={14} className="animate-spin" />Loading…
+              </div>
+            )}
+            {coursesData?.docs.length === 0 && (
+              <p className="px-5 py-8 text-center text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                No published courses yet.
+              </p>
+            )}
             {coursesData?.docs.map((c, i) => (
               <motion.div key={c.id}
                 initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}
@@ -104,30 +134,35 @@ export default function DashboardPage() {
           </div>
         </motion.div>
 
-        {/* Activity feed ─ 2/5 */}
+        {/* Platform snapshot ─ 2/5 */}
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25, type: 'spring', stiffness: 240, damping: 24 }}
-          className="col-span-2 rounded-2xl overflow-hidden"
+          className="col-span-5 lg:col-span-2 rounded-2xl overflow-hidden"
           style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
           <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <h2 className="text-sm font-semibold text-white">Recent Activity</h2>
+            <h2 className="text-sm font-semibold text-white">Platform Snapshot</h2>
           </div>
           <div className="px-5 py-3 space-y-0">
-            {recentActivity.map((a, i) => (
-              <motion.div key={i}
+            {[
+              { label: 'Total enrollments', value: stats?.totalEnrollments,  color: '#4ADE80' },
+              { label: 'Reviews submitted', value: stats?.totalReviews,      color: '#FACC15' },
+              { label: 'Published courses', value: stats?.publishedCourses,  color: '#2F6BFF' },
+              { label: 'Draft courses',     value: stats?.draftCourses,      color: '#FF6B1A' },
+              { label: 'Instructors',       value: stats?.totalInstructors,  color: '#A78BFA' },
+            ].map((row, i) => (
+              <motion.div key={row.label}
                 initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.3 + i * 0.05 }}
-                className="flex items-start gap-3 py-3"
-                style={{ borderBottom: i < recentActivity.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
-                <div className="mt-0.5 h-2 w-2 flex-shrink-0 rounded-full"
-                  style={{ background: typeColor[a.type] ?? '#FF6B1A', marginTop: 6 }} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.7)' }}>{a.text}</p>
-                  <p className="mt-0.5 text-[10px] flex items-center gap-1" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                    <Clock size={9} />{a.time}
-                  </p>
+                className="flex items-center justify-between py-3"
+                style={{ borderBottom: i < 4 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                <div className="flex items-center gap-2.5">
+                  <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: row.color }} />
+                  <p className="text-xs" style={{ color: 'rgba(255,255,255,0.65)' }}>{row.label}</p>
                 </div>
+                <p className="text-sm font-bold text-white tabular-nums">
+                  {statsLoading || row.value === undefined ? '—' : row.value.toLocaleString()}
+                </p>
               </motion.div>
             ))}
           </div>
@@ -140,10 +175,10 @@ export default function DashboardPage() {
         transition={{ delay: 0.35, type: 'spring', stiffness: 240, damping: 24 }}
         className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
-          { label: 'Add Course',      href: '/courses/new',       icon: BookOpen,     color: '#FF6B1A' },
-          { label: 'View Students',   href: '/students',          icon: Users,        color: '#2F6BFF' },
-          { label: 'Revenue Report',  href: '/settings',          icon: TrendingUp,   color: '#4ADE80' },
-          { label: 'Reviews Queue',   href: '/reviews',           icon: Star,         color: '#FACC15' },
+          { label: 'Add Course',      href: '/courses/new',  icon: BookOpen,   color: '#FF6B1A' },
+          { label: 'View Students',   href: '/students',     icon: Users,      color: '#2F6BFF' },
+          { label: 'Categories',      href: '/categories',   icon: TrendingUp, color: '#4ADE80' },
+          { label: 'Reviews Queue',   href: '/reviews',      icon: Star,       color: '#FACC15' },
         ].map((a, i) => {
           const Icon = a.icon
           return (

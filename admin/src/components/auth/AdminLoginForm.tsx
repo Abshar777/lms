@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useSearchParams } from 'next/navigation'
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, AlertCircle, Shield } from 'lucide-react'
 import { api } from '@/lib/axios'
 
@@ -22,6 +23,14 @@ const fieldVariant = {
 export function AdminLoginForm() {
   const [showPw, setShowPw]   = useState(false)
   const [error, setError]     = useState<string | null>(null)
+  const searchParams          = useSearchParams()
+
+  /* Picked up from /login?reason=not-admin (AdminGuard redirect) */
+  useEffect(() => {
+    if (searchParams.get('reason') === 'not-admin') {
+      setError('That account does not have admin access. Sign in with an admin account.')
+    }
+  }, [searchParams])
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<Values>({
     resolver: zodResolver(schema),
@@ -30,23 +39,22 @@ export function AdminLoginForm() {
   const onSubmit = async (data: Values) => {
     setError(null)
     try {
-      await api.post('/auth/login', { email: data.email, password: data.password })
-      document.cookie = `learnos_admin_auth=demo; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`
+      const res = await api.post<{ success: true; data: { user: { role: string } } }>(
+        '/auth/login',
+        { email: data.email, password: data.password },
+      )
+      const role = res.data.data.user.role
+      if (role !== 'admin') {
+        // Non-admin signed in — revoke the session and refuse access
+        await api.post('/auth/logout').catch(() => { /* best-effort */ })
+        setError('This account does not have admin access.')
+        return
+      }
+      // Backend has set httpOnly lms_at + lms_rt cookies
       window.location.href = '/'
     } catch (err: any) {
-      const status = err?.response?.status
-      const msg    = err?.response?.data?.error?.message
-      if (status === 401 || status === 400) {
-        setError(msg ?? 'Invalid credentials.')
-        return
-      }
-      // Backend not running — demo mode
-      if (data.email !== 'admin@learnos.com') {
-        setError('Demo mode: use admin@learnos.com with any password.')
-        return
-      }
-      document.cookie = `learnos_admin_auth=demo; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`
-      window.location.href = '/'
+      const msg = err?.response?.data?.error?.message
+      setError(msg ?? 'Unable to sign in. Please try again.')
     }
   }
 
@@ -171,10 +179,6 @@ export function AdminLoginForm() {
         </motion.div>
       </form>
 
-      <motion.p custom={3} variants={fieldVariant} initial="hidden" animate="visible"
-        className="mt-6 text-center text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>
-        Demo: admin@learnos.com · any password
-      </motion.p>
     </div>
   )
 }

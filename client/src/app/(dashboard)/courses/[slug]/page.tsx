@@ -1,13 +1,24 @@
 'use client'
 
-import { use } from 'react'
-import { motion } from 'framer-motion'
+import { use, useMemo, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   ArrowLeft, Star, Users, Clock, Globe, BookOpen,
   CheckCircle2, Play, Tag, Loader2, AlertCircle, Zap,
+  ShoppingCart, Tag as TagIcon, X, ChevronDown,
 } from 'lucide-react'
 import { useCourse } from '@/lib/api/courses'
+import { useCourseProgress, useEnroll } from '@/lib/api/enrollments'
+import { useCheckout, useValidateCoupon } from '@/lib/api/checkout'
+import { formatPrice } from '@/lib/formatPrice'
+import { CertificateButton } from '@/components/learn/CertificateButton'
+import { CourseReviews } from '@/components/courses/CourseReviews'
+import { AINotesPanel } from '@/components/courses/AINotesPanel'
+import { LiveClassesPanel } from '@/components/courses/LiveClassesPanel'
+import { FavoriteButton } from '@/components/courses/FavoriteButton'
+import { CourseRecommendations } from '@/components/courses/CourseRecommendations'
 
 function fmt(mins: number) {
   const h = Math.floor(mins / 60)
@@ -30,17 +41,36 @@ const whatYouLearn = [
   'Access lifetime updates and new content',
 ]
 
-const curriculum = [
-  { section: 'Getting Started', lessons: 5,  duration: '45m' },
-  { section: 'Core Concepts',   lessons: 12, duration: '2h 10m' },
-  { section: 'Advanced Topics', lessons: 8,  duration: '1h 30m' },
-  { section: 'Real Projects',   lessons: 6,  duration: '1h 45m' },
-  { section: 'Final Capstone',  lessons: 3,  duration: '50m' },
-]
-
 export default function CourseDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
-  const { data: course, isLoading, isError } = useCourse(slug)
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const checkoutStatus = searchParams.get('checkout') // 'success' | 'cancel' | null
+
+  const { data, isLoading, isError } = useCourse(slug)
+  const { data: progress } = useCourseProgress(slug)
+  const enroll   = useEnroll()
+  const checkout = useCheckout()
+
+  const [enrollError,   setEnrollError]   = useState<string | null>(null)
+  const [couponOpen,    setCouponOpen]     = useState(false)
+  const [couponCode,    setCouponCode]     = useState('')
+  const [appliedCoupon, setAppliedCoupon] = useState('')  // code that was confirmed
+
+  /* Coupon validation — must be called unconditionally (Rules of Hooks).
+     `data?.course.id ?? ''` ensures the hook is enabled only when id is known
+     and the user has typed ≥2 chars. */
+  const { data: couponInfo, isError: couponInvalid, isFetching: couponChecking } =
+    useValidateCoupon(couponCode, data?.course.id ?? '')
+
+  /* Group lessons under their section */
+  const curriculum = useMemo(() => {
+    if (!data) return []
+    return data.sections.map(s => ({
+      section: s.title,
+      lessons: data.lessons.filter(l => l.sectionId === s.id),
+    }))
+  }, [data])
 
   if (isLoading) {
     return (
@@ -51,7 +81,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
     )
   }
 
-  if (isError || !course) {
+  if (isError || !data) {
     return (
       <div className="flex h-[70vh] flex-col items-center justify-center gap-4">
         <div className="flex h-14 w-14 items-center justify-center rounded-3xl"
@@ -66,7 +96,44 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
     )
   }
 
+  const { course, lessons } = data
   const level = course.level ? LEVEL_COLOR[course.level] : null
+  const totalLessons = lessons.length
+  const isEnrolled   = progress?.isEnrolled ?? false
+  const isPaid       = !course.isFree && course.price > 0
+
+  const discountedPrice = (() => {
+    if (!couponInfo || !isPaid) return course.price
+    if (couponInfo.discountType === 'percent') {
+      return Math.max(0, course.price * (1 - couponInfo.discountValue / 100))
+    }
+    return Math.max(0, course.price - couponInfo.discountValue)
+  })()
+
+  const onEnroll = async () => {
+    setEnrollError(null)
+    try {
+      await enroll.mutateAsync(course.id)
+      const startLessonId = progress?.lastLessonId ?? lessons[0]?.id
+      if (startLessonId) router.push(`/learn/${course.slug}/${startLessonId}`)
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message
+      setEnrollError(msg ?? 'Unable to enroll. Please try again.')
+    }
+  }
+
+  const onCheckout = async () => {
+    setEnrollError(null)
+    try {
+      await checkout.mutateAsync({ courseId: course.id, couponCode: couponCode || undefined })
+      /* onSuccess in useCheckout redirects to Stripe — no further action here */
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message
+      setEnrollError(msg ?? 'Unable to start checkout. Please try again.')
+    }
+  }
+
+  const continueLessonId = progress?.lastLessonId ?? lessons[0]?.id
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -85,7 +152,6 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
           {/* Hero */}
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
             transition={{ type: 'spring', stiffness: 260, damping: 26 }}>
-            {/* Category + level */}
             <div className="mb-3 flex items-center gap-2">
               {course.category && (
                 <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#FF6B1A' }}>
@@ -108,7 +174,6 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
               {course.title}
             </h1>
 
-            {/* Stats */}
             <div className="mt-4 flex flex-wrap items-center gap-4">
               {course.ratingAvg > 0 && (
                 <div className="flex items-center gap-1.5">
@@ -135,7 +200,6 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
               </div>
             </div>
 
-            {/* Instructor */}
             {course.instructor && (
               <div className="mt-4 flex items-center gap-2.5">
                 <div className="h-8 w-8 overflow-hidden rounded-full"
@@ -199,23 +263,28 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
               Course curriculum
             </h2>
             <div className="space-y-2">
-              {curriculum.map((s, i) => (
-                <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 + i * 0.04 }}
-                  className="flex items-center justify-between rounded-xl px-4 py-3 bg-white transition-colors hover:bg-gray-50"
-                  style={{ border: '1px solid #E4E7ED' }}>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold"
-                      style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A' }}>{i + 1}</div>
-                    <span className="text-sm font-medium" style={{ color: '#0D0F1A' }}>{s.section}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs" style={{ color: '#9CA3AF' }}>
-                    <span>{s.lessons} lessons</span>
-                    <span style={{ color: '#E4E7ED' }}>·</span>
-                    <span>{s.duration}</span>
-                  </div>
-                </motion.div>
-              ))}
+              {curriculum.map((s, i) => {
+                const totalSecs = s.lessons.reduce((acc, l) => acc + l.durationMins, 0)
+                return (
+                  <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 + i * 0.04 }}
+                    className="rounded-xl px-4 py-3 bg-white"
+                    style={{ border: '1px solid #E4E7ED' }}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold"
+                          style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A' }}>{i + 1}</div>
+                        <span className="text-sm font-medium" style={{ color: '#0D0F1A' }}>{s.section}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs" style={{ color: '#9CA3AF' }}>
+                        <span>{s.lessons.length} lessons</span>
+                        <span style={{ color: '#E4E7ED' }}>·</span>
+                        <span>{fmt(totalSecs)}</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )
+              })}
             </div>
           </motion.div>
 
@@ -232,6 +301,26 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
               ))}
             </motion.div>
           )}
+
+          {/* Live classes (only renders when there are upcoming sessions) */}
+          <LiveClassesPanel slug={course.slug} />
+
+          {/* AI Study Notes */}
+          <AINotesPanel slug={course.slug} />
+
+          {/* Reviews */}
+          <div className="mt-10">
+            <CourseReviews
+              courseId={course.id}
+              slug={course.slug}
+              canReview={isEnrolled}
+              ratingAvg={course.ratingAvg}
+              ratingCount={course.ratingCount}
+            />
+          </div>
+
+          {/* Recommendations */}
+          <CourseRecommendations slug={course.slug} />
         </div>
 
         {/* ── Right col — sticky CTA card ──────────── */}
@@ -243,7 +332,6 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
             className="lg:sticky lg:top-[76px] overflow-hidden rounded-3xl bg-white"
             style={{ border: '1px solid #E4E7ED', boxShadow: '0 8px 32px rgba(13,15,26,0.10)' }}>
 
-            {/* Thumbnail */}
             {course.thumbnailUrl && (
               <div className="relative hidden overflow-hidden lg:block" style={{ height: 180 }}>
                 <img src={course.thumbnailUrl} alt={course.title} className="h-full w-full object-cover" />
@@ -252,46 +340,177 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
                   style={{ background: 'rgba(255,107,26,0.92)', backdropFilter: 'blur(8px)', boxShadow: '0 8px 24px rgba(255,107,26,0.45)' }}>
                   <Play size={18} fill="white" color="white" />
                 </motion.div>
-                <span className="absolute bottom-3 left-3 rounded-lg px-2 py-1 text-[10px] font-semibold"
-                  style={{ background: 'rgba(255,255,255,0.92)', color: '#4B5563', backdropFilter: 'blur(8px)' }}>
-                  Preview available
-                </span>
               </div>
             )}
 
             <div className="p-5">
-              {/* Price */}
+              {/* ── Checkout result banners ─────────────── */}
+              <AnimatePresence>
+                {checkoutStatus === 'success' && (
+                  <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+                    className="mb-4 rounded-xl px-4 py-3 text-sm font-semibold"
+                    style={{ background: 'rgba(16,185,129,0.12)', color: '#10B981', border: '1px solid rgba(16,185,129,0.25)' }}>
+                    🎉 Payment successful! You&apos;re enrolled.
+                  </motion.div>
+                )}
+                {checkoutStatus === 'cancel' && (
+                  <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+                    className="mb-4 rounded-xl px-4 py-3 text-sm font-semibold"
+                    style={{ background: 'rgba(239,68,68,0.08)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.18)' }}>
+                    Payment cancelled — you were not charged.
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <div className="mb-5 flex items-center gap-3">
-                <p className="text-3xl font-bold" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-                  {course.isFree ? 'Free' : `$${course.price}`}
-                </p>
-                {!course.isFree && (
+                <div>
+                  {isPaid && couponInfo ? (
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-3xl font-bold" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+                        {formatPrice(discountedPrice)}
+                      </p>
+                      <p className="text-sm line-through" style={{ color: '#9CA3AF' }}>
+                        {formatPrice(course.price)}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-3xl font-bold" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+                      {course.isFree ? 'Free' : formatPrice(course.price)}
+                    </p>
+                  )}
+                </div>
+                {isEnrolled && (
                   <span className="rounded-lg px-2 py-0.5 text-xs font-bold"
                     style={{ background: 'rgba(16,185,129,0.10)', color: '#10B981', border: '1px solid rgba(16,185,129,0.22)' }}>
-                    Limited offer
+                    Enrolled
                   </span>
                 )}
               </div>
 
               {/* CTA */}
-              <motion.button
-                whileHover={{ y: -2, boxShadow: '0 12px 32px rgba(255,107,26,0.40)' }}
-                whileTap={{ scale: 0.97 }}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all"
-                style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)', boxShadow: '0 6px 24px rgba(255,107,26,0.30)' }}>
-                <Zap size={15} fill="white" />
-                {course.isFree ? 'Enroll for free' : 'Enroll now'}
-              </motion.button>
+              {isEnrolled && continueLessonId ? (
+                <Link href={`/learn/${course.slug}/${continueLessonId}`}>
+                  <motion.button
+                    whileHover={{ y: -2, boxShadow: '0 12px 32px rgba(255,107,26,0.40)' }}
+                    whileTap={{ scale: 0.97 }}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all"
+                    style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)', boxShadow: '0 6px 24px rgba(255,107,26,0.30)' }}>
+                    <Play size={15} fill="white" />
+                    Continue learning
+                  </motion.button>
+                </Link>
+              ) : isPaid ? (
+                <>
+                  <motion.button
+                    onClick={onCheckout}
+                    disabled={checkout.isPending}
+                    whileHover={{ y: -2, boxShadow: '0 12px 32px rgba(255,107,26,0.40)' }}
+                    whileTap={{ scale: 0.97 }}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all disabled:opacity-70"
+                    style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)', boxShadow: '0 6px 24px rgba(255,107,26,0.30)' }}>
+                    {checkout.isPending
+                      ? <><Loader2 size={15} className="animate-spin" />Redirecting…</>
+                      : <><ShoppingCart size={15} />Buy for {formatPrice(discountedPrice)}</>}
+                  </motion.button>
 
-              <p className="mt-2.5 text-center text-[11px]" style={{ color: '#9CA3AF' }}>
-                30-day money-back guarantee
-              </p>
+                  {/* Coupon code accordion */}
+                  <div className="mt-3">
+                    <button onClick={() => setCouponOpen(o => !o)}
+                      className="flex w-full items-center justify-between text-xs font-semibold transition-opacity hover:opacity-70"
+                      style={{ color: '#9CA3AF' }}>
+                      <span className="flex items-center gap-1">
+                        <TagIcon size={11} />Have a promo code?
+                      </span>
+                      <ChevronDown size={12} className={`transition-transform ${couponOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    <AnimatePresence>
+                      {couponOpen && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                          <div className="mt-2 flex gap-2">
+                            <input
+                              value={couponCode}
+                              onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                              placeholder="PROMO10"
+                              className="flex-1 rounded-xl px-3 py-2 text-xs outline-none"
+                              style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', color: '#111827' }}
+                            />
+                            {couponCode && (
+                              <button onClick={() => setCouponCode('')}
+                                className="flex h-9 w-9 items-center justify-center rounded-xl"
+                                style={{ background: '#F3F4F6' }}>
+                                <X size={12} style={{ color: '#9CA3AF' }} />
+                              </button>
+                            )}
+                          </div>
+                          <div className="mt-1 min-h-[16px]">
+                            {couponChecking && (
+                              <p className="text-[11px]" style={{ color: '#9CA3AF' }}>Checking…</p>
+                            )}
+                            {!couponChecking && couponInfo && (
+                              <p className="text-[11px] font-semibold" style={{ color: '#10B981' }}>
+                                ✓ {couponInfo.discountType === 'percent'
+                                  ? `${couponInfo.discountValue}% off`
+                                  : `$${couponInfo.discountValue} off`} applied
+                              </p>
+                            )}
+                            {!couponChecking && couponCode.length >= 2 && couponInvalid && (
+                              <p className="text-[11px]" style={{ color: '#EF4444' }}>Invalid or expired code</p>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </>
+              ) : (
+                <motion.button
+                  onClick={onEnroll}
+                  disabled={enroll.isPending}
+                  whileHover={{ y: -2, boxShadow: '0 12px 32px rgba(255,107,26,0.40)' }}
+                  whileTap={{ scale: 0.97 }}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all disabled:opacity-70"
+                  style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)', boxShadow: '0 6px 24px rgba(255,107,26,0.30)' }}>
+                  {enroll.isPending
+                    ? <><Loader2 size={15} className="animate-spin" />Enrolling…</>
+                    : <><Zap size={15} fill="white" />Enroll for free</>}
+                </motion.button>
+              )}
 
-              {/* Meta list */}
+              {enrollError && (
+                <p className="mt-2.5 text-center text-xs" style={{ color: '#EF4444' }}>
+                  {enrollError}
+                </p>
+              )}
+
+              {!enrollError && (
+                <p className="mt-2.5 text-center text-[11px]" style={{ color: '#9CA3AF' }}>
+                  {isEnrolled
+                    ? `${progress?.progressPercent ?? 0}% complete`
+                    : isPaid
+                      ? '30-day money-back guarantee'
+                      : 'Free preview included'}
+                </p>
+              )}
+
+              {/* Certificate download — only when course is completed */}
+              {progress?.status === 'completed' && progress.enrollmentId && (
+                <div className="mt-4 flex justify-center">
+                  <CertificateButton
+                    enrollmentId={progress.enrollmentId}
+                    courseTitle={course.title}
+                  />
+                </div>
+              )}
+
+              <div className="mt-3 flex justify-center">
+                <FavoriteButton courseId={course.id} />
+              </div>
+
               <div className="mt-5 space-y-3" style={{ borderTop: '1px solid #F0F1F5', paddingTop: 16 }}>
                 {[
                   { icon: Clock,    label: 'Total duration', value: fmt(course.durationMins) },
-                  { icon: BookOpen, label: 'Lectures',       value: `${curriculum.reduce((a, s) => a + s.lessons, 0)} lessons` },
+                  { icon: BookOpen, label: 'Lectures',       value: `${totalLessons} lessons` },
                   { icon: Globe,    label: 'Language',       value: course.language },
                   { icon: Users,    label: 'Students',       value: course.enrolledCount.toLocaleString() },
                 ].map(({ icon: Icon, label, value }) => (

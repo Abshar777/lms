@@ -1,14 +1,16 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   User, Bell, Shield, CreditCard, Globe,
   Camera, Check, LogOut, LayoutDashboard,
-  PanelLeft, AlignJustify, Monitor,
+  PanelLeft, AlignJustify, Monitor, Loader2, AlertCircle, Lock, Eye, EyeOff,
 } from 'lucide-react'
 import { useUIStore } from '@/store/ui.store'
+import { useCurrentUser, useUpdateProfile, useChangePassword, logout as apiLogout } from '@/lib/api/user'
+import { PrivacySecuritySection } from '@/components/auth/PrivacySecuritySection'
 
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.05 } } }
 const fadeUp  = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 280, damping: 26 } } }
@@ -141,10 +143,72 @@ function SettingsContent() {
   }
 
   const [saved,   setSaved]   = useState(false)
+  const [error,   setError]   = useState<string | null>(null)
   const [notifs,  setNotifs]  = useState({ course: true, email: true, push: false, weekly: true })
-  const [profile, setProfile] = useState({ name: 'Adit Irwan', email: 'student@learnos.com', role: 'Jr UI/UX Designer', bio: '' })
 
-  const handleSave = () => { setSaved(true); setTimeout(() => setSaved(false), 2500) }
+  /* Password change state */
+  const [pwForm,    setPwForm]    = useState({ current: '', next: '', confirm: '' })
+  const [pwSaved,   setPwSaved]   = useState(false)
+  const [pwError,   setPwError]   = useState<string | null>(null)
+  const [showCur,   setShowCur]   = useState(false)
+  const [showNew,   setShowNew]   = useState(false)
+  const changePasswordMutation = useChangePassword()
+
+  const handleChangePassword = async () => {
+    setPwError(null)
+    if (pwForm.next !== pwForm.confirm) { setPwError("New passwords don't match."); return }
+    if (pwForm.next.length < 8) { setPwError('Password must be at least 8 characters.'); return }
+    try {
+      await changePasswordMutation.mutateAsync({ currentPassword: pwForm.current, newPassword: pwForm.next })
+      setPwSaved(true)
+      setPwForm({ current: '', next: '', confirm: '' })
+      setTimeout(() => setPwSaved(false), 3000)
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message
+      setPwError(msg ?? 'Unable to change password. Please try again.')
+    }
+  }
+
+  /* Real user from the cookie session */
+  const { data: user, isLoading: userLoading } = useCurrentUser()
+  const updateMutation = useUpdateProfile()
+
+  /* Form state. role here maps to `headline` on the user document. */
+  const [profile, setProfile] = useState({ name: '', email: '', role: '', bio: '' })
+
+  /* Hydrate form when /auth/me resolves (or refreshes). */
+  useEffect(() => {
+    if (user) {
+      setProfile({
+        name:  user.name  ?? '',
+        email: user.email ?? '',
+        role:  user.headline ?? '',
+        bio:   user.bio   ?? '',
+      })
+    }
+  }, [user])
+
+  const handleSave = async () => {
+    setError(null)
+    try {
+      await updateMutation.mutateAsync({
+        name:     profile.name.trim(),
+        headline: profile.role,
+        bio:      profile.bio,
+      })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message
+        ?? err?.response?.data?.error?.details?.[0]?.message
+      setError(msg ?? 'Unable to save changes. Please try again.')
+    }
+  }
+
+  const handleLogout = async () => {
+    await apiLogout()
+    window.location.href = '/login'
+  }
 
   return (
     <motion.div variants={stagger} initial="hidden" animate="show"
@@ -177,7 +241,7 @@ function SettingsContent() {
         </div>
         <div className="mt-3 pt-3" style={{ borderTop: '1px solid #F3F4F6' }}>
           <button
-            onClick={() => { document.cookie = 'learnos_auth=; path=/; max-age=0'; window.location.href = '/login' }}
+            onClick={handleLogout}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-red-50"
             style={{ color: '#EF4444' }}>
             <LogOut size={15} />Logout
@@ -198,10 +262,15 @@ function SettingsContent() {
               <h2 className="mb-5 text-base font-bold" style={{ color: '#111827' }}>Profile Settings</h2>
               <div className="mb-6 flex items-center gap-4">
                 <div className="relative">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold text-white"
-                    style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>A</div>
+                  <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full text-xl font-bold text-white"
+                    style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+                    {user?.avatarUrl
+                      ? <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
+                      : (profile.name?.trim()?.[0]?.toUpperCase() ?? '?')}
+                  </div>
                   <button className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-md"
-                    style={{ border: '1px solid #E5E7EB', color: '#FF6B1A' }}>
+                    style={{ border: '1px solid #E5E7EB', color: '#FF6B1A' }}
+                    title="Photo upload coming soon">
                     <Camera size={12} />
                   </button>
                 </div>
@@ -210,20 +279,34 @@ function SettingsContent() {
                   <p className="text-xs" style={{ color: '#9CA3AF' }}>PNG, JPG up to 5MB</p>
                 </div>
               </div>
+              {userLoading && (
+                <div className="mb-4 flex items-center gap-2 text-xs" style={{ color: '#9CA3AF' }}>
+                  <Loader2 size={12} className="animate-spin" />Loading your profile…
+                </div>
+              )}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {([
-                  { label: 'Full Name', key: 'name',  type: 'text'  },
-                  { label: 'Email',     key: 'email', type: 'email' },
-                  { label: 'Job Title', key: 'role',  type: 'text'  },
+                  { label: 'Full Name', key: 'name',  type: 'text',  readOnly: false, placeholder: 'Your name' },
+                  { label: 'Email',     key: 'email', type: 'email', readOnly: true,  placeholder: 'you@example.com' },
+                  { label: 'Job Title', key: 'role',  type: 'text',  readOnly: false, placeholder: 'e.g. Frontend Developer' },
                 ] as const).map(f => (
                   <div key={f.key}>
-                    <label className="mb-1.5 block text-xs font-semibold" style={{ color: '#374151' }}>{f.label}</label>
+                    <label className="mb-1.5 block text-xs font-semibold" style={{ color: '#374151' }}>
+                      {f.label}{f.readOnly && <span className="ml-1 font-normal" style={{ color: '#9CA3AF' }}>(read-only)</span>}
+                    </label>
                     <input type={f.type}
                       value={profile[f.key]}
-                      onChange={e => setProfile({ ...profile, [f.key]: e.target.value })}
-                      className="w-full rounded-xl px-3.5 py-2.5 text-sm outline-none"
-                      style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', color: '#111827' }}
-                      onFocus={e => { e.currentTarget.style.border = '1.5px solid #FF6B1A'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.08)' }}
+                      readOnly={f.readOnly}
+                      placeholder={f.placeholder}
+                      onChange={e => !f.readOnly && setProfile({ ...profile, [f.key]: e.target.value })}
+                      className="w-full rounded-xl px-3.5 py-2.5 text-sm outline-none transition-all"
+                      style={{
+                        background: f.readOnly ? '#F3F4F6' : '#F9FAFB',
+                        border: '1px solid #E5E7EB',
+                        color: f.readOnly ? '#6B7280' : '#111827',
+                        cursor: f.readOnly ? 'not-allowed' : 'text',
+                      }}
+                      onFocus={e => { if (!f.readOnly) { e.currentTarget.style.border = '1.5px solid #FF6B1A'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.08)' } }}
                       onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none' }} />
                   </div>
                 ))}
@@ -237,17 +320,135 @@ function SettingsContent() {
                     onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none' }} />
                 </div>
               </div>
+              <AnimatePresence>
+                {error && (
+                  <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                    className="mt-4 flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs"
+                    style={{ background: '#FEE2E2', color: '#DC2626' }}>
+                    <AlertCircle size={13} />{error}
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <div className="mt-5 flex items-center justify-end gap-3">
-                <button className="rounded-xl px-4 py-2 text-sm font-semibold transition-colors hover:bg-gray-50"
+                <button
+                  type="button"
+                  onClick={() => user && setProfile({ name: user.name, email: user.email, role: user.headline ?? '', bio: user.bio ?? '' })}
+                  className="rounded-xl px-4 py-2 text-sm font-semibold transition-colors hover:bg-gray-50"
                   style={{ color: '#6B7280', border: '1px solid #E5E7EB' }}>Cancel</button>
                 <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
                   onClick={handleSave}
-                  className="flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold text-white transition-all"
+                  disabled={updateMutation.isPending || userLoading}
+                  className="flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold text-white transition-all disabled:opacity-70"
                   style={{
                     background: saved ? '#22C55E' : 'linear-gradient(135deg,#FF6B1A,#FF8C42)',
                     boxShadow: saved ? '0 4px 14px rgba(34,197,94,0.28)' : '0 4px 14px rgba(255,107,26,0.28)',
                   }}>
-                  {saved ? <><Check size={14} />Saved!</> : 'Save changes'}
+                  {updateMutation.isPending
+                    ? <><Loader2 size={14} className="animate-spin" />Saving…</>
+                    : saved
+                      ? <><Check size={14} />Saved!</>
+                      : 'Save changes'}
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── Change password (within Profile tab) ── */}
+          {active === 'profile' && (
+            <motion.div key="change-pw"
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, delay: 0.08 }}
+              className="rounded-2xl bg-white p-6" style={{ border: '1px solid #E5E7EB' }}>
+              <div className="mb-5 flex items-center gap-2">
+                <Lock size={15} style={{ color: '#FF6B1A' }} />
+                <h2 className="text-base font-bold" style={{ color: '#111827' }}>Change Password</h2>
+              </div>
+
+              <div className="space-y-3.5">
+                {/* Current password */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold" style={{ color: '#374151' }}>Current password</label>
+                  <div className="relative">
+                    <input
+                      type={showCur ? 'text' : 'password'}
+                      value={pwForm.current}
+                      onChange={e => setPwForm(p => ({ ...p, current: e.target.value }))}
+                      placeholder="Your current password"
+                      className="w-full rounded-xl px-3.5 py-2.5 text-sm pr-10 outline-none"
+                      style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', color: '#111827' }}
+                      onFocus={e => { e.currentTarget.style.border = '1.5px solid #FF6B1A'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.08)' }}
+                      onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none' }}
+                    />
+                    <button type="button" onClick={() => setShowCur(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
+                      style={{ color: '#9CA3AF' }}>
+                      {showCur ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* New password */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold" style={{ color: '#374151' }}>New password</label>
+                  <div className="relative">
+                    <input
+                      type={showNew ? 'text' : 'password'}
+                      value={pwForm.next}
+                      onChange={e => setPwForm(p => ({ ...p, next: e.target.value }))}
+                      placeholder="Min. 8 characters, 1 uppercase, 1 number"
+                      className="w-full rounded-xl px-3.5 py-2.5 text-sm pr-10 outline-none"
+                      style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', color: '#111827' }}
+                      onFocus={e => { e.currentTarget.style.border = '1.5px solid #FF6B1A'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.08)' }}
+                      onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none' }}
+                    />
+                    <button type="button" onClick={() => setShowNew(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
+                      style={{ color: '#9CA3AF' }}>
+                      {showNew ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Confirm new password */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold" style={{ color: '#374151' }}>Confirm new password</label>
+                  <input
+                    type="password"
+                    value={pwForm.confirm}
+                    onChange={e => setPwForm(p => ({ ...p, confirm: e.target.value }))}
+                    placeholder="Repeat your new password"
+                    className="w-full rounded-xl px-3.5 py-2.5 text-sm outline-none"
+                    style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', color: '#111827' }}
+                    onFocus={e => { e.currentTarget.style.border = '1.5px solid #FF6B1A'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.08)' }}
+                    onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none' }}
+                  />
+                </div>
+              </div>
+
+              <AnimatePresence>
+                {pwError && (
+                  <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                    className="mt-3.5 flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs"
+                    style={{ background: '#FEE2E2', color: '#DC2626' }}>
+                    <AlertCircle size={13} />{pwError}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="mt-5 flex justify-end">
+                <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
+                  onClick={handleChangePassword}
+                  disabled={changePasswordMutation.isPending || !pwForm.current || !pwForm.next || !pwForm.confirm}
+                  className="flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold text-white transition-all disabled:opacity-50"
+                  style={{
+                    background: pwSaved ? '#22C55E' : 'linear-gradient(135deg,#FF6B1A,#FF8C42)',
+                    boxShadow: pwSaved ? '0 4px 14px rgba(34,197,94,0.28)' : '0 4px 14px rgba(255,107,26,0.28)',
+                  }}>
+                  {changePasswordMutation.isPending
+                    ? <><Loader2 size={14} className="animate-spin" />Updating…</>
+                    : pwSaved
+                      ? <><Check size={14} />Password updated!</>
+                      : <><Lock size={14} />Update password</>}
                 </motion.button>
               </div>
             </motion.div>
@@ -356,8 +557,17 @@ function SettingsContent() {
             </motion.div>
           )}
 
+          {/* ── Privacy & Security (real) ── */}
+          {active === 'privacy' && (
+            <motion.div key="privacy"
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}>
+              <PrivacySecuritySection />
+            </motion.div>
+          )}
+
           {/* ── Coming soon sections ── */}
-          {(['privacy', 'billing', 'language'] as const).includes(active as never) && (
+          {(['billing', 'language'] as const).includes(active as never) && (
             <motion.div key={active}
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
@@ -365,7 +575,7 @@ function SettingsContent() {
               style={{ border: '1px solid #E5E7EB' }}>
               <div className="flex h-14 w-14 items-center justify-center rounded-3xl text-2xl"
                 style={{ background: '#FFF7ED', border: '1px solid rgba(255,107,26,0.18)' }}>
-                {active === 'privacy' ? '🔒' : active === 'billing' ? '💳' : '🌍'}
+                {active === 'billing' ? '💳' : '🌍'}
               </div>
               <p className="text-base font-bold" style={{ color: '#111827' }}>Coming soon</p>
               <p className="text-sm text-center max-w-xs" style={{ color: '#9CA3AF' }}>

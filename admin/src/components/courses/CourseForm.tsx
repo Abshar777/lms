@@ -11,6 +11,9 @@ import {
   Loader2, ArrowLeft, Check, AlertCircle, ChevronDown,
 } from 'lucide-react'
 import { useCreateCourse, useUpdateCourse } from '@/lib/api/courses'
+import { useCategories } from '@/lib/api/categories'
+import { useToast } from '@/store/ui.store'
+import { MediaUploadField } from '@/components/ui/MediaUploadField'
 import type { Course, CourseFormValues } from '@/types/index'
 
 /* ── Zod schema ─────────────────────────────────────────────── */
@@ -108,6 +111,9 @@ export function CourseForm({ course }: CourseFormProps) {
 
   const createMutation = useCreateCourse()
   const updateMutation = useUpdateCourse()
+  const { data: categories } = useCategories()
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const toast = useToast()
   const isEditing = !!course
 
   const { register, handleSubmit, control, watch, setValue, formState: { errors, isSubmitting } } = useForm<Values>({
@@ -140,15 +146,24 @@ export function CourseForm({ course }: CourseFormProps) {
   }, [titleVal, isEditing, setValue])
 
   const onSubmit = async (data: Values) => {
-    if (isEditing && course) {
-      await updateMutation.mutateAsync({ id: course.id, data })
-    } else {
-      await createMutation.mutateAsync(data as CourseFormValues)
+    setSubmitError(null)
+    try {
+      if (isEditing && course) {
+        await updateMutation.mutateAsync({ id: course.id, data })
+        toast.success('Course updated')
+      } else {
+        await createMutation.mutateAsync(data as CourseFormValues)
+        toast.success('Course created')
+      }
+      setSavedSuccess(true)
+      setTimeout(() => {
+        router.push('/courses')
+      }, 800)
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message
+        ?? err?.response?.data?.error?.details?.[0]?.message
+      setSubmitError(msg ?? 'Unable to save course. Please try again.')
     }
-    setSavedSuccess(true)
-    setTimeout(() => {
-      router.push('/courses')
-    }, 800)
   }
 
   const tabErrors: Partial<Record<TabId, boolean>> = {
@@ -249,32 +264,39 @@ export function CourseForm({ course }: CourseFormProps) {
           {/* MEDIA */}
           {activeTab === 'media' && (
             <motion.div key="media" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.18 }} className="space-y-5">
-              <Field label="Thumbnail URL" error={errors.thumbnailUrl?.message} hint="Recommended: 1280×720px (16:9)">
-                <div className="relative">
-                  <Image size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'rgba(255,255,255,0.3)' }} />
-                  <input {...register('thumbnailUrl')} placeholder="https://…"
-                    className={`${inputBase} pl-10`} style={inputStyle}
-                    onFocus={e => inputFocus(e.currentTarget)} onBlur={e => inputBlur(e.currentTarget)} />
-                </div>
-              </Field>
+              exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.18 }} className="space-y-6">
 
-              {/* Preview */}
-              {watch('thumbnailUrl') && !errors.thumbnailUrl && (
-                <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
-                  className="overflow-hidden rounded-xl" style={{ maxWidth: 320, border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <img src={watch('thumbnailUrl')} alt="Thumbnail preview" className="w-full object-cover" />
-                </motion.div>
-              )}
+              {/* Thumbnail — URL or file upload */}
+              <Controller
+                name="thumbnailUrl"
+                control={control}
+                render={({ field }) => (
+                  <MediaUploadField
+                    type="image"
+                    label="Course thumbnail"
+                    hint="Recommended: 1280×720px (16:9) · JPG, PNG, WebP · max 5 MB"
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                    error={errors.thumbnailUrl?.message}
+                  />
+                )}
+              />
 
-              <Field label="Preview video URL" error={errors.previewUrl?.message} hint="Optional free preview video (YouTube, Vimeo, or direct link)">
-                <div className="relative">
-                  <LinkIcon size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'rgba(255,255,255,0.3)' }} />
-                  <input {...register('previewUrl')} placeholder="https://youtube.com/watch?v=…"
-                    className={`${inputBase} pl-10`} style={inputStyle}
-                    onFocus={e => inputFocus(e.currentTarget)} onBlur={e => inputBlur(e.currentTarget)} />
-                </div>
-              </Field>
+              {/* Preview video — URL or file upload */}
+              <Controller
+                name="previewUrl"
+                control={control}
+                render={({ field }) => (
+                  <MediaUploadField
+                    type="video"
+                    label="Preview video"
+                    hint="Optional free-preview clip shown to non-enrolled visitors"
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                    error={errors.previewUrl?.message}
+                  />
+                )}
+              />
             </motion.div>
           )}
 
@@ -355,13 +377,7 @@ export function CourseForm({ course }: CourseFormProps) {
               <Field label="Category">
                 <Controller name="categoryId" control={control} render={({ field }) => (
                   <Select value={field.value} onChange={field.onChange} placeholder="Select category"
-                    options={[
-                      { value: 'design', label: 'Design' },
-                      { value: 'development', label: 'Development' },
-                      { value: 'marketing', label: 'Marketing' },
-                      { value: 'business', label: 'Business' },
-                      { value: 'data-science', label: 'Data Science' },
-                    ]} />
+                    options={(categories ?? []).map(c => ({ value: c.id, label: c.name }))} />
                 )} />
               </Field>
             </motion.div>
@@ -404,6 +420,16 @@ export function CourseForm({ course }: CourseFormProps) {
           )}
         </AnimatePresence>
       </div>
+
+      <AnimatePresence>
+        {submitError && (
+          <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className="mt-4 flex items-center gap-2 rounded-xl px-4 py-3 text-sm"
+            style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.20)', color: '#FCA5A5' }}>
+            <AlertCircle size={14} />{submitError}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Footer actions ───────────────────────────── */}
       <div className="mt-5 flex items-center justify-between">

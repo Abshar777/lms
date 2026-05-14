@@ -1,0 +1,37 @@
+'use client'
+import { useQuery } from '@tanstack/react-query'
+import { apiGet, api } from '@/lib/axios'
+
+export interface CurrentAdmin {
+  id:         string
+  name:       string
+  email:      string
+  avatarUrl?: string
+  role:       'student' | 'instructor' | 'admin'
+  headline?:  string
+  bio?:       string
+  isVerified: boolean
+  isActive:   boolean
+  createdAt:  string
+  updatedAt:  string
+}
+
+export const userKeys = {
+  me: ['auth', 'me'] as const,
+}
+
+export function useCurrentUser() {
+  return useQuery({
+    queryKey: userKeys.me,
+    queryFn:  async () => {
+      const data = await apiGet<{ user: CurrentAdmin }>('/auth/me')
+      return data.user
+    },
+    retry: false,
+    staleTime: 60_000,
+  })
+}
+
+export function logout(): Promise<void> {
+  return api.post('/auth/logout').then(() => {/* no-op */}).catch(() => {/* best-effort */})
+}

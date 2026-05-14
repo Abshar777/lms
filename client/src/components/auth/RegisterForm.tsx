@@ -109,7 +109,6 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm,  setShowConfirm]  = useState(false)
   const [serverError,  setServerError]  = useState<string | null>(null)
-  const [googleLoading, setGoogleLoading] = useState(false)
 
   const {
     register,
@@ -124,34 +123,17 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
   const onSubmit = async (data: RegisterValues) => {
     setServerError(null)
     try {
-      // Try real backend registration via axios
       await api.post('/auth/register', {
         name: data.name,
         email: data.email,
         password: data.password,
       })
-      // On success backend sets httpOnly cookie — set demo cookie as backup
-      document.cookie = `learnos_auth=demo; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`
-      window.location.href = '/'
+      // Backend sets httpOnly lms_at + lms_rt cookies on success
+      window.location.href = '/my-learning'
     } catch (err: any) {
       const msg = err?.response?.data?.error?.message
-      if (msg) {
-        setServerError(msg)
-        return
-      }
-      // Backend not running — demo mode: just log in
-      document.cookie = `learnos_auth=demo; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`
-      window.location.href = '/'
+      setServerError(msg ?? 'Unable to create your account. Please try again.')
     }
-  }
-
-  const handleGoogle = async () => {
-    setGoogleLoading(true)
-    // Demo fallback when NextAuth isn't configured
-    setTimeout(() => {
-      document.cookie = `learnos_auth=demo; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`
-      window.location.href = '/'
-    }, 800)
   }
 
   return (
@@ -182,43 +164,6 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
         <p className="mt-1.5 text-sm" style={{ color: '#6B7280' }}>
           Join 24,000+ learners already on LearnOS.
         </p>
-      </motion.div>
-
-      {/* Google OAuth */}
-      <motion.button
-        custom={0}
-        variants={fieldVariant}
-        initial="hidden"
-        animate="visible"
-        type="button"
-        onClick={handleGoogle}
-        disabled={googleLoading || isSubmitting}
-        whileHover={{ y: -2, boxShadow: '0 6px 24px rgba(0,0,0,0.10)' }}
-        whileTap={{ scale: 0.98 }}
-        className="relative flex w-full items-center justify-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium transition-all disabled:opacity-60"
-        style={{ borderColor: '#E4E7ED', color: '#0D0F1A', background: '#FFFFFF' }}
-      >
-        {googleLoading ? (
-          <Loader2 size={18} className="animate-spin" style={{ color: '#6B7280' }} />
-        ) : (
-          <GoogleIcon />
-        )}
-        Sign up with Google
-      </motion.button>
-
-      {/* Divider */}
-      <motion.div
-        custom={1}
-        variants={fieldVariant}
-        initial="hidden"
-        animate="visible"
-        className="my-5 flex items-center gap-3"
-      >
-        <div className="h-px flex-1" style={{ background: '#E4E7ED' }} />
-        <span className="text-xs font-medium" style={{ color: '#9CA3AF' }}>
-          or with email
-        </span>
-        <div className="h-px flex-1" style={{ background: '#E4E7ED' }} />
       </motion.div>
 
       {/* Form */}
@@ -419,7 +364,7 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
         <motion.div custom={7} variants={fieldVariant} initial="hidden" animate="visible">
           <motion.button
             type="submit"
-            disabled={isSubmitting || googleLoading}
+            disabled={isSubmitting}
             whileHover={{ y: -2, boxShadow: '0 8px 28px rgba(255,107,26,0.38)' }}
             whileTap={{ scale: 0.98 }}
             className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold text-white transition-all disabled:cursor-not-allowed disabled:opacity-60"
@@ -466,13 +411,3 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
   )
 }
 
-function GoogleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4" />
-      <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853" />
-      <path d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z" fill="#FBBC05" />
-      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 6.293C4.672 4.165 6.656 3.58 9 3.58z" fill="#EA4335" />
-    </svg>
-  )
-}

@@ -1,12 +1,15 @@
 import rateLimit from 'express-rate-limit'
 import { sendError } from '@/utils/response.ts'
 
-/* ─── Auth endpoints (strict) ───────────────────────
-   15 requests per 15 minutes per IP
+const isDev = process.env.NODE_ENV !== 'production'
+
+/* ─── Auth endpoints ─────────────────────────────────
+   Production: 15 requests per 15 minutes per IP
+   Development: 200 / 15min so dev iteration isn't blocked
 ───────────────────────────────────────────────────── */
 export const authRateLimit = rateLimit({
   windowMs:         15 * 60 * 1000,
-  max:              15,
+  max:              isDev ? 200 : 15,
   standardHeaders:  true,
   legacyHeaders:    false,
   handler: (_req, res) => {

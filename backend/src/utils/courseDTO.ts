@@ -1,0 +1,127 @@
+import type { ICourse, ISection, ILesson } from '@/models/schema.ts'
+
+/* ─────────────────────────────────────────────────────
+   Course DTO — flattens populated instructor/category
+   into separate top-level fields so the frontend doesn't
+   need to know that instructorId / categoryId are
+   sometimes ObjectIds and sometimes populated docs.
+───────────────────────────────────────────────────── */
+
+interface PopulatedUser { id: string; name: string; avatarUrl?: string; headline?: string; bio?: string }
+interface PopulatedCategory { id: string; name: string; slug: string }
+
+export interface CourseDTO {
+  id:             string
+  title:          string
+  slug:           string
+  description?:   string
+  thumbnailUrl?:  string
+  previewUrl?:    string
+  price:          number
+  isFree:         boolean
+  status:         string
+  level?:         string
+  durationMins:   number
+  language:       string
+  tags?:          string[]
+  instructorId:   string
+  categoryId?:    string
+  enrolledCount:  number
+  ratingAvg:      number
+  ratingCount:    number
+  lessonCount?:   number
+  createdAt:      string | Date
+  updatedAt:      string | Date
+  instructor?:    PopulatedUser
+  category?:      PopulatedCategory
+}
+
+export function toCourseDTO(course: ICourse, lessonCount?: number): CourseDTO {
+  const json = course.toJSON() as Record<string, unknown> & {
+    instructorId?: string | PopulatedUser
+    categoryId?:   string | PopulatedCategory
+  }
+
+  const dto: CourseDTO = {
+    id:            json['id']            as string,
+    title:         json['title']         as string,
+    slug:          json['slug']          as string,
+    description:   json['description']   as string | undefined,
+    thumbnailUrl:  json['thumbnailUrl']  as string | undefined,
+    previewUrl:    json['previewUrl']    as string | undefined,
+    price:         json['price']         as number,
+    isFree:        json['isFree']        as boolean,
+    status:        json['status']        as string,
+    level:         json['level']         as string | undefined,
+    durationMins:  json['durationMins']  as number,
+    language:      json['language']      as string,
+    tags:          json['tags']          as string[] | undefined,
+    enrolledCount: json['enrolledCount'] as number,
+    ratingAvg:     json['ratingAvg']     as number,
+    ratingCount:   json['ratingCount']   as number,
+    createdAt:     json['createdAt']     as string | Date,
+    updatedAt:     json['updatedAt']     as string | Date,
+    instructorId:  '',
+  }
+
+  const inst = json.instructorId
+  if (typeof inst === 'object' && inst !== null) {
+    dto.instructor   = inst
+    dto.instructorId = inst.id
+  } else {
+    dto.instructorId = String(inst ?? '')
+  }
+
+  const cat = json.categoryId
+  if (typeof cat === 'object' && cat !== null) {
+    dto.category   = cat
+    dto.categoryId = cat.id
+  } else if (cat) {
+    dto.categoryId = String(cat)
+  }
+
+  if (lessonCount !== undefined) dto.lessonCount = lessonCount
+
+  return dto
+}
+
+/* Section + lesson lightweight DTOs for the outline */
+export interface SectionDTO {
+  id:    string
+  title: string
+  order: number
+}
+
+export interface LessonDTO {
+  id:           string
+  sectionId:    string
+  courseId:     string
+  title:        string
+  type:         string
+  durationMins: number
+  order:        number
+  isFree:       boolean
+}
+
+export function toSectionDTO(s: ISection): SectionDTO {
+  const j = s.toJSON() as Record<string, unknown>
+  return {
+    id:    j['id']    as string,
+    title: j['title'] as string,
+    order: j['order'] as number,
+  }
+}
+
+export function toLessonDTO(l: ILesson): LessonDTO {
+  const j = l.toJSON() as Record<string, unknown>
+  return {
+    id:           j['id']           as string,
+    sectionId:    String(j['sectionId']),
+    courseId:     String(j['courseId']),
+    title:        j['title']        as string,
+    type:         j['type']         as string,
+    durationMins: j['durationMins'] as number,
+    order:        j['order']        as number,
+    isFree:       j['isFree']       as boolean,
+  }
+}

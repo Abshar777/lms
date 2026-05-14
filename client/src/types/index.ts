@@ -20,6 +20,7 @@ export interface Course {
   enrolledCount: number
   ratingAvg:     number
   ratingCount:   number
+  lessonCount?:  number
   createdAt:     string
   updatedAt:     string
   instructor?: { id: string; name: string; avatarUrl?: string }

@@ -1,9 +1,27 @@
 import axios from 'axios'
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1'
+/**
+ * Resolve the API base URL from env. Forgiving:
+ *   - Strips stray surrounding quotes (common .env mis-quoting).
+ *   - Strips trailing slashes.
+ *   - Appends /api/v1 if the user only gave a host.
+ *   - Falls back to http://localhost:4000/api/v1.
+ */
+function resolveBase(raw: string | undefined): string {
+  const fallback = 'http://localhost:4000/api/v1'
+  if (!raw) return fallback
+  let v = raw.trim().replace(/^["']/, '').replace(/["']$/, '').replace(/\/+$/, '')
+  if (!v) return fallback
+  if (!v.includes('/api/')) v = `${v}/api/v1`
+  return v
+}
+
+const BASE = resolveBase(process.env.NEXT_PUBLIC_API_URL)
 
 /**
- * Admin API client — calls the backend directly (no Next.js proxy needed for admin).
+ * Admin API client — calls the backend directly.
+ * Auth: httpOnly cookies set by the backend; `withCredentials: true`
+ * makes the browser attach them automatically.
  */
 export const api = axios.create({
   baseURL: BASE,
@@ -12,22 +30,14 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-/* ── Request interceptor ─────────────────────────── */
-api.interceptors.request.use(config => {
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('learnos_admin_token')
-    if (token) config.headers['Authorization'] = `Bearer ${token}`
-  }
-  return config
-})
-
 /* ── Response interceptor ───────────────────────── */
 api.interceptors.response.use(
   res => res,
   err => {
     if (err.response?.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem('learnos_admin_token')
-      window.location.href = '/login'
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(err)
   },

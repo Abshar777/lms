@@ -1,33 +1,91 @@
 import 'dotenv/config'
+import * as Sentry from '@sentry/node'
+
+/* ─── Sentry — init before any other imports ──────────
+   No-op when SENTRY_DSN is not set. Captures unhandled
+   exceptions and Express errors automatically.          */
+if (process.env['SENTRY_DSN']) {
+  Sentry.init({
+    dsn:              process.env['SENTRY_DSN'],
+    environment:      process.env['NODE_ENV'] ?? 'development',
+    tracesSampleRate: process.env['NODE_ENV'] === 'production' ? 0.2 : 1.0,
+  })
+}
+
 import express from 'express'
 import cors from 'cors'
+import cookieParser from 'cookie-parser'
+import helmet from 'helmet'
+import path from 'path'
 import { corsOptions } from '@/config/cors.ts'
 import { errorMiddleware, notFoundMiddleware } from '@/middleware/error.middleware.ts'
 import { logger } from '@/utils/logger.ts'
 import apiRouter from '@/routes/index.ts'
 
 const app = express()
+const isProd = process.env.NODE_ENV === 'production'
 
 /* ─── Trust proxy (for correct IP behind reverse proxy) */
 app.set('trust proxy', 1)
 
-/* ─── Security headers ───────────────────────────── */
+/* ─── Security headers (helmet) ──────────────────────
+   Sets X-Content-Type-Options, X-Frame-Options,
+   X-DNS-Prefetch-Control, X-Download-Options,
+   Strict-Transport-Security, Referrer-Policy,
+   Cross-Origin-* policies, and a strict CSP suitable
+   for a JSON API (no inline scripts allowed). HSTS is
+   prod-only so http dev keeps working. */
 app.disable('x-powered-by')
-app.use((_req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff')
-  res.setHeader('X-Frame-Options', 'DENY')
-  res.setHeader('X-XSS-Protection', '1; mode=block')
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
-  next()
-})
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'none'"],
+        baseUri:    ["'self'"],
+        frameAncestors: ["'none'"],
+        connectSrc: ["'self'"],
+        imgSrc:     ["'self'", 'data:'],
+        fontSrc:    ["'self'", 'data:'],
+        objectSrc:  ["'none'"],
+      },
+    },
+    /* The API never embeds anyone; let the browser apartmentalise it. */
+    crossOriginEmbedderPolicy:  false,    // would break image proxying / external thumbs
+    crossOriginResourcePolicy:  { policy: 'cross-origin' },  // frontends on other ports/origins read JSON
+    referrerPolicy:             { policy: 'strict-origin-when-cross-origin' },
+    /* HSTS only when behind HTTPS (production). 1 year, with subdomains, with preload list eligibility. */
+    strictTransportSecurity:    isProd
+      ? { maxAge: 365 * 24 * 60 * 60, includeSubDomains: true, preload: true }
+      : false,
+  }),
+)
 
 /* ─── CORS ───────────────────────────────────────── */
 app.use(cors(corsOptions))
 app.options('*', cors(corsOptions))
 
-/* ─── Body parsers ───────────────────────────────── */
+/* ─── Stripe webhook — raw body (must precede express.json) ──
+   Stripe signature verification requires the unmodified body
+   bytes. We buffer them as express.raw() then the global JSON
+   middleware runs for every other route. */
+app.use('/api/v1/webhooks/stripe', express.raw({ type: 'application/json' }))
+
+/* ─── Body + cookie parsers ──────────────────────── */
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+app.use(cookieParser())
+
+/* ─── Static file serving for uploaded media ────────
+   GET /uploads/images/:file → disk at uploads/images/
+   GET /uploads/videos/:file → disk at uploads/videos/
+   No auth required — URLs are unguessable (random hex). */
+app.use(
+  '/uploads',
+  express.static(path.join(process.cwd(), 'uploads'), {
+    maxAge: '30d',
+    immutable: true,
+  }),
+)
 
 /* ─── Request logging (dev only) ─────────────────── */
 if (process.env.NODE_ENV === 'development') {
@@ -42,6 +100,10 @@ app.use('/api/v1', apiRouter)
 
 /* ─── 404 + error handlers ───────────────────────── */
 app.use(notFoundMiddleware)
+/* Sentry must receive errors before our handler formats them */
+if (process.env['SENTRY_DSN']) {
+  Sentry.setupExpressErrorHandler(app)
+}
 app.use(errorMiddleware)
 
 export default app

@@ -1,0 +1,434 @@
+'use client'
+
+import { use, useEffect, useRef, useState, useCallback } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
+import {
+  ArrowLeft, CheckCircle2, Lock, Loader2, AlertCircle,
+  ChevronLeft, ChevronRight, ChevronDown, Play, Circle, Bookmark,
+  List, MessageSquare, FileText, BookmarkIcon, AlignLeft, Video,
+} from 'lucide-react'
+import { useCourse, type LessonOutline } from '@/lib/api/courses'
+import { useCourseProgress } from '@/lib/api/enrollments'
+import { useMarkLessonComplete, recordWatchTime, useMyLessonProgress } from '@/lib/api/progress'
+import { useCreateBookmark } from '@/lib/api/bookmarks'
+import { useTranscript } from '@/lib/api/transcript'
+import { QuizPlayer } from '@/components/learn/QuizPlayer'
+import { DiscussionPanel } from '@/components/learn/DiscussionPanel'
+import { NotesPanel } from '@/components/learn/NotesPanel'
+import { BookmarksPanel } from '@/components/learn/BookmarksPanel'
+
+type SidebarTab = 'curriculum' | 'transcript' | 'qa' | 'notes' | 'bookmarks'
+
+function fmt(mins: number) {
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return h > 0 ? `${h}h ${m > 0 ? m + 'm' : ''}`.trim() : `${m}m`
+}
+
+export default function LessonPlayerPage({ params }: { params: Promise<{ slug: string; lessonId: string }> }) {
+  const { slug, lessonId } = use(params)
+  const router = useRouter()
+  const [activeTab, setActiveTab] = useState<SidebarTab>('curriculum')
+
+  const { data, isLoading, isError } = useCourse(slug)
+  const { data: progress } = useCourseProgress(slug)
+  const markComplete = useMarkLessonComplete(slug)
+
+  /* Expose video ref so BookmarkPanel's onSeek can seek to a timestamp */
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const seekTo = useCallback((secs: number) => {
+    if (videoRef.current) videoRef.current.currentTime = secs
+  }, [])
+
+  /* ── All remaining hooks — must be before any early return ── */
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { data: transcriptData, isLoading: transcriptLoading } = useTranscript(lessonId)
+  const transcriptText = transcriptData?.transcript ?? null
+
+  /* ── Loading / error states ─────────────────────── */
+  if (isLoading) {
+    return (
+      <div className="flex h-[70vh] flex-col items-center justify-center gap-3">
+        <Loader2 size={30} className="animate-spin" style={{ color: '#FF6B1A' }} />
+        <p className="text-sm" style={{ color: '#9CA3AF' }}>Loading lesson…</p>
+      </div>
+    )
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="flex h-[70vh] flex-col items-center justify-center gap-4">
+        <div className="flex h-14 w-14 items-center justify-center rounded-3xl"
+          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)' }}>
+          <AlertCircle size={24} style={{ color: '#EF4444' }} />
+        </div>
+        <p className="text-base font-semibold" style={{ color: '#0D0F1A' }}>Course not found</p>
+        <Link href="/courses" className="text-sm font-semibold" style={{ color: '#FF6B1A' }}>← Back to courses</Link>
+      </div>
+    )
+  }
+
+  /* ── Enrollment gate ────────────────────────────── */
+  if (progress && !progress.isEnrolled) {
+    return (
+      <div className="flex h-[70vh] flex-col items-center justify-center gap-4">
+        <div className="flex h-14 w-14 items-center justify-center rounded-3xl"
+          style={{ background: 'rgba(255,107,26,0.10)', border: '1px solid rgba(255,107,26,0.22)' }}>
+          <Lock size={22} style={{ color: '#FF6B1A' }} />
+        </div>
+        <p className="text-base font-semibold" style={{ color: '#0D0F1A' }}>You need to enroll to watch this lesson</p>
+        <Link href={`/courses/${slug}`}
+          className="rounded-xl px-5 py-2.5 text-sm font-bold text-white"
+          style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+          Go to course page
+        </Link>
+      </div>
+    )
+  }
+
+  const { course, sections, lessons } = data
+  const lesson = lessons.find(l => l.id === lessonId)
+  const orderedLessons = [...lessons].sort((a, b) =>
+    a.sectionId === b.sectionId ? a.order - b.order : 0,
+  )
+  const currentIdx = orderedLessons.findIndex(l => l.id === lessonId)
+  const prevLesson = currentIdx > 0 ? orderedLessons[currentIdx - 1] : null
+  const nextLesson = currentIdx >= 0 && currentIdx < orderedLessons.length - 1
+    ? orderedLessons[currentIdx + 1]
+    : null
+
+  if (!lesson) {
+    return (
+      <div className="flex h-[70vh] flex-col items-center justify-center gap-4">
+        <p className="text-base font-semibold" style={{ color: '#0D0F1A' }}>Lesson not found in this course</p>
+        <Link href={`/courses/${slug}`} className="text-sm font-semibold" style={{ color: '#FF6B1A' }}>
+          ← Back to course
+        </Link>
+      </div>
+    )
+  }
+
+  const completedSet = new Set(progress?.completedLessons ?? [])
+  const isCompleted  = completedSet.has(lessonId)
+
+  const tabs: { key: SidebarTab; label: string; icon: React.ReactNode }[] = [
+    { key: 'curriculum', label: 'Content',    icon: <List size={12} /> },
+    { key: 'transcript', label: 'Transcript', icon: <AlignLeft size={12} /> },
+    { key: 'qa',         label: 'Q&A',        icon: <MessageSquare size={12} /> },
+    { key: 'notes',      label: 'Notes',      icon: <FileText size={12} /> },
+    { key: 'bookmarks',  label: 'Bookmarks',  icon: <BookmarkIcon size={12} /> },
+  ]
+
+  /* ── Sidebar content (shared between desktop aside and mobile drawer) */
+  const SidebarContent = () => (
+    <>
+      {/* Tab bar */}
+      <div className="flex border-b flex-shrink-0" style={{ borderColor: '#F0F1F5' }}>
+        {tabs.map(t => (
+          <button key={t.key} onClick={() => setActiveTab(t.key)}
+            className="flex flex-1 flex-col items-center gap-0.5 px-1 py-2.5 text-[10px] font-semibold transition-colors"
+            style={{
+              color:        activeTab === t.key ? '#FF6B1A' : '#9CA3AF',
+              borderBottom: activeTab === t.key ? '2px solid #FF6B1A' : '2px solid transparent',
+            }}>
+            {t.icon}{t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div className="flex-1 overflow-y-auto">
+        {activeTab === 'curriculum' && (
+          <div>
+            <div className="border-b px-4 py-3" style={{ borderColor: '#F0F1F5' }}>
+              <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Course</p>
+              <p className="mt-0.5 text-sm font-bold line-clamp-2" style={{ color: '#0D0F1A' }}>{course.title}</p>
+              <div className="mt-2 flex items-center gap-2">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ background: '#F3F4F6' }}>
+                  <motion.div className="h-full rounded-full"
+                    initial={{ width: 0 }} animate={{ width: `${progress?.progressPercent ?? 0}%` }}
+                    transition={{ duration: 0.6, ease: 'easeOut' }} style={{ background: '#22C55E' }} />
+                </div>
+                <span className="text-[11px] font-semibold" style={{ color: '#22C55E' }}>{progress?.progressPercent ?? 0}%</span>
+              </div>
+            </div>
+            <div className="p-2">
+              {sections.map((s, si) => {
+                const sectionLessons = lessons.filter(l => l.sectionId === s.id).sort((a, b) => a.order - b.order)
+                return (
+                  <div key={s.id} className={si > 0 ? 'mt-3' : ''}>
+                    <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>{s.title}</p>
+                    {sectionLessons.map(l => {
+                      const isCurrent = l.id === lessonId
+                      const done = completedSet.has(l.id)
+                      return (
+                        <Link key={l.id} href={`/learn/${slug}/${l.id}`} onClick={() => setSidebarOpen(false)}>
+                          <div className="group flex items-center gap-2.5 rounded-xl px-2 py-2 transition-colors"
+                            style={isCurrent ? { background: 'rgba(255,107,26,0.10)' } : {}}
+                            onMouseEnter={e => { if (!isCurrent) e.currentTarget.style.background = '#F4F5F8' }}
+                            onMouseLeave={e => { if (!isCurrent) e.currentTarget.style.background = 'transparent' }}>
+                            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
+                              {done ? <CheckCircle2 size={16} style={{ color: '#22C55E' }} />
+                                : isCurrent ? <Play size={12} fill="#FF6B1A" color="#FF6B1A" />
+                                  : <Circle size={14} style={{ color: '#D1D5DB' }} />}
+                            </span>
+                            <p className="flex-1 text-xs leading-snug line-clamp-2"
+                              style={{ color: isCurrent ? '#FF6B1A' : done ? '#0D0F1A' : '#4B5563', fontWeight: isCurrent ? 600 : 500 }}>
+                              {l.title}
+                            </p>
+                            <span className="text-[10px]" style={{ color: '#9CA3AF' }}>{fmt(l.durationMins)}</span>
+                          </div>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+        {activeTab === 'transcript' && (
+          <div className="p-4">
+            {transcriptLoading ? (
+              <div className="flex items-center gap-2 text-sm" style={{ color: '#9CA3AF' }}>
+                <Loader2 size={14} className="animate-spin" />Loading transcript…
+              </div>
+            ) : transcriptText ? (
+              <div>
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>
+                  Lesson transcript
+                </p>
+                <div className="space-y-3 text-sm leading-relaxed" style={{ color: '#374151' }}>
+                  {transcriptText.split(/\n\n+/).map((para, i) => (
+                    <p key={i}>{para.trim()}</p>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 py-10 text-center">
+                <AlignLeft size={28} style={{ color: '#D1D5DB' }} />
+                <p className="text-sm font-semibold" style={{ color: '#6B7280' }}>No transcript yet</p>
+                <p className="text-xs" style={{ color: '#9CA3AF' }}>
+                  The instructor hasn&apos;t added a transcript for this lesson.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+        {activeTab === 'qa'        && <div className="p-3"><DiscussionPanel lessonId={lessonId} /></div>}
+        {activeTab === 'notes'     && <div className="p-3"><NotesPanel lessonId={lessonId} /></div>}
+        {activeTab === 'bookmarks' && <div className="p-3"><BookmarksPanel lessonId={lessonId} onSeek={seekTo} /></div>}
+      </div>
+    </>
+  )
+
+  return (
+    <div className="mx-auto max-w-[1280px]">
+      {/* Back nav */}
+      <div className="mb-4">
+        <Link href={`/courses/${slug}`} className="inline-flex items-center gap-1.5 text-sm transition-opacity hover:opacity-70"
+          style={{ color: '#9CA3AF' }}>
+          <ArrowLeft size={13} />Back to course
+        </Link>
+      </div>
+
+      {/* ── Desktop: two-column  Mobile: stacked (main first) ── */}
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[320px_1fr]">
+
+        {/* ── Main player (order-first on all sizes) ───── */}
+        <main className="lg:order-2 min-w-0">
+          {lesson.type === 'quiz'
+            ? <QuizPlayer lessonId={lesson.id} onPassed={() => { if (nextLesson) router.push(`/learn/${slug}/${nextLesson.id}`) }} />
+            : <PlayerArea lesson={lesson} videoRef={videoRef} lessonId={lessonId} />}
+
+          <div className="mt-4 flex items-center justify-between rounded-2xl bg-white p-4" style={{ border: '1px solid #E4E7ED' }}>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>
+                Lesson {currentIdx + 1} / {orderedLessons.length}
+              </p>
+              <h2 className="mt-0.5 truncate text-base font-bold" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+                {lesson.title}
+              </h2>
+              <p className="text-xs" style={{ color: '#9CA3AF' }}>{fmt(lesson.durationMins)}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {prevLesson && (
+                <button onClick={() => router.push(`/learn/${slug}/${prevLesson.id}`)}
+                  className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold transition-colors hover:bg-gray-50"
+                  style={{ background: 'white', border: '1px solid #E5E7EB', color: '#374151' }}>
+                  <ChevronLeft size={14} />Prev
+                </button>
+              )}
+              <button
+                onClick={async () => { await markComplete.mutateAsync(lessonId); if (nextLesson) router.push(`/learn/${slug}/${nextLesson.id}`) }}
+                disabled={markComplete.isPending}
+                className="flex items-center gap-1 rounded-xl px-4 py-2 text-xs font-bold text-white transition-all disabled:opacity-60"
+                style={{ background: isCompleted ? '#22C55E' : 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+                {markComplete.isPending
+                  ? <><Loader2 size={13} className="animate-spin" />Saving…</>
+                  : isCompleted
+                    ? <><CheckCircle2 size={13} />Completed</>
+                    : <>Mark complete{nextLesson ? ' & next' : ''}{nextLesson && <ChevronRight size={13} />}</>}
+              </button>
+            </div>
+          </div>
+
+          {/* ── Mobile: inline sidebar accordion ── */}
+          <div className="mt-4 lg:hidden">
+            <button
+              onClick={() => setSidebarOpen(v => !v)}
+              className="flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3"
+              style={{ border: '1px solid #E4E7ED' }}>
+              <span className="text-sm font-semibold" style={{ color: '#0D0F1A' }}>
+                <List size={14} className="inline mr-2 -mt-0.5" style={{ color: '#FF6B1A' }} />
+                Course content
+              </span>
+              <ChevronDown size={16} style={{ color: '#9CA3AF', transform: sidebarOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+            </button>
+            {sidebarOpen && (
+              <div className="mt-2 flex flex-col rounded-2xl bg-white overflow-hidden"
+                style={{ border: '1px solid #E4E7ED', maxHeight: '60vh' }}>
+                <SidebarContent />
+              </div>
+            )}
+          </div>
+        </main>
+
+        {/* ── Sidebar — desktop only ───────────────────── */}
+        <aside className="hidden lg:flex lg:order-1 rounded-2xl bg-white flex-col"
+          style={{ border: '1px solid #E4E7ED', maxHeight: 'calc(100vh - 160px)' }}>
+          <SidebarContent />
+        </aside>
+      </div>
+    </div>
+  )
+}
+
+/* ─── Video player + watch-time tracker + bookmark ── */
+function PlayerArea({
+  lesson,
+  videoRef,
+  lessonId,
+}: {
+  lesson:   LessonOutline
+  videoRef: React.RefObject<HTMLVideoElement | null>
+  lessonId: string
+}) {
+  const lastReportRef  = useRef(0)
+  const seekedToResume = useRef(false)
+  const { data: lessonProgress } = useMyLessonProgress(lesson.id)
+  const createBookmark = useCreateBookmark(lessonId)
+  const [bookmarking, setBookmarking] = useState(false)
+  const [bookmarkLabel, setBookmarkLabel] = useState('')
+  const [showBmForm, setShowBmForm] = useState(false)
+
+  useEffect(() => {
+    lastReportRef.current  = 0
+    seekedToResume.current = false
+    setShowBmForm(false)
+  }, [lesson.id])
+
+  const onLoadedMetadata = () => {
+    if (seekedToResume.current) return
+    const v = videoRef.current
+    if (!v) return
+    const target = lessonProgress?.watchTimeSecs ?? 0
+    const duration = isFinite(v.duration) ? v.duration : Infinity
+    if (target >= 10 && target < duration - 15) {
+      v.currentTime = target
+      lastReportRef.current = Math.floor(target)
+    }
+    seekedToResume.current = true
+  }
+
+  const onTimeUpdate = () => {
+    const v = videoRef.current
+    if (!v) return
+    const current = Math.floor(v.currentTime)
+    if (current - lastReportRef.current >= 15) {
+      const delta = current - lastReportRef.current
+      lastReportRef.current = current
+      recordWatchTime(lesson.id, delta)
+    }
+  }
+
+  const addBookmark = async () => {
+    const v = videoRef.current
+    if (!v) return
+    const timeSecs = Math.floor(v.currentTime)
+    setBookmarking(true)
+    try {
+      await createBookmark.mutateAsync({ timeSecs, label: bookmarkLabel.trim() || undefined })
+      setShowBmForm(false)
+      setBookmarkLabel('')
+    } finally {
+      setBookmarking(false)
+    }
+  }
+
+  const showResumeBadge = !seekedToResume.current && (lessonProgress?.watchTimeSecs ?? 0) >= 10
+
+  return (
+    <div className="space-y-2">
+      <div className="relative overflow-hidden rounded-2xl bg-black" style={{ aspectRatio: '16 / 9' }}>
+        {lesson.contentUrl ? (
+          <video
+            ref={videoRef}
+            key={lesson.id}
+            controls
+            className="h-full w-full"
+            src={lesson.contentUrl}
+            onLoadedMetadata={onLoadedMetadata}
+            onTimeUpdate={onTimeUpdate}
+          />
+        ) : (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-3">
+            <div className="flex h-16 w-16 items-center justify-center rounded-3xl"
+              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)' }}>
+              <Video size={28} style={{ color: 'rgba(255,255,255,0.35)' }} />
+            </div>
+            <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.5)' }}>
+              No video available for this lesson yet.
+            </p>
+          </div>
+        )}
+        {showResumeBadge && (
+          <div className="pointer-events-none absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-semibold text-white"
+            style={{ background: 'rgba(13,15,26,0.72)', backdropFilter: 'blur(4px)' }}>
+            Resuming from {Math.floor((lessonProgress!.watchTimeSecs) / 60)}:{String((lessonProgress!.watchTimeSecs) % 60).padStart(2, '0')}
+          </div>
+        )}
+        {/* Bookmark button — bottom-right overlay */}
+        <div className="absolute bottom-3 right-3 flex items-center gap-2">
+          {showBmForm && (
+            <div className="flex items-center gap-1.5 rounded-xl px-2 py-1.5"
+              style={{ background: 'rgba(13,15,26,0.82)', backdropFilter: 'blur(4px)' }}>
+              <input
+                value={bookmarkLabel}
+                onChange={e => setBookmarkLabel(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') addBookmark(); if (e.key === 'Escape') setShowBmForm(false) }}
+                placeholder="Label (optional)"
+                autoFocus
+                className="w-36 bg-transparent text-xs text-white outline-none placeholder:text-white/50"
+              />
+              <button onClick={addBookmark} disabled={bookmarking}
+                className="text-xs font-semibold" style={{ color: '#FF6B1A' }}>
+                {bookmarking ? '…' : 'Save'}
+              </button>
+              <button onClick={() => setShowBmForm(false)} className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>✕</button>
+            </div>
+          )}
+          <button
+            onClick={() => setShowBmForm(f => !f)}
+            title="Add bookmark at current time"
+            className="flex h-8 w-8 items-center justify-center rounded-full transition-opacity hover:opacity-80"
+            style={{ background: 'rgba(13,15,26,0.72)', backdropFilter: 'blur(4px)' }}>
+            <Bookmark size={14} className="text-white" />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

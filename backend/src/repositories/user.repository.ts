@@ -1,6 +1,8 @@
 import { BaseRepository } from './base.repository.ts'
-import { UserModel, RefreshTokenModel } from '@/models/schema.ts'
-import type { IUser, IRefreshToken } from '@/models/schema.ts'
+import { UserModel, RefreshTokenModel, AuthTokenModel } from '@/models/schema.ts'
+import type {
+  IUser, IRefreshToken, IAuthToken, AuthTokenPurpose, RefreshTokenRevokeReason,
+} from '@/models/schema.ts'
 
 /* ─────────────────────────────────────────────────────
    UserRepository
@@ -42,14 +44,66 @@ export class UserRepository extends BaseRepository<IUser> {
     } as Partial<IUser>)
   }
 
-  /* ── Stamp last login time ───────────────────────── */
+  /* ── Stamp last login time + reset lockout counter ── */
   async touchLastLogin(id: string): Promise<void> {
-    await UserModel.findByIdAndUpdate(id, { $set: { lastLoginAt: new Date() } }).exec()
+    await UserModel.findByIdAndUpdate(id, {
+      $set:   { lastLoginAt: new Date(), failedLoginAttempts: 0 },
+      $unset: { lockedUntil: 1 },
+    }).exec()
+  }
+
+  /* ── Login-lockout helpers ──────────────────────── */
+  async incrementFailedLogin(id: string): Promise<{ attempts: number; lockedUntil?: Date }> {
+    const MAX_ATTEMPTS  = 5
+    const LOCK_DURATION = 15 * 60 * 1000  // 15 min
+
+    const updated = await UserModel.findByIdAndUpdate(
+      id,
+      { $inc: { failedLoginAttempts: 1 } },
+      { new: true },
+    ).exec()
+    if (!updated) return { attempts: 0 }
+
+    if (updated.failedLoginAttempts >= MAX_ATTEMPTS && !updated.lockedUntil) {
+      const lockedUntil = new Date(Date.now() + LOCK_DURATION)
+      await UserModel.findByIdAndUpdate(id, { $set: { lockedUntil } }).exec()
+      return { attempts: updated.failedLoginAttempts, lockedUntil }
+    }
+    return {
+      attempts:    updated.failedLoginAttempts,
+      lockedUntil: updated.lockedUntil,
+    }
+  }
+
+  async setVerified(id: string): Promise<void> {
+    await UserModel.findByIdAndUpdate(id, { $set: { isVerified: true } }).exec()
+  }
+
+  async updatePasswordHash(id: string, passwordHash: string): Promise<void> {
+    await UserModel.findByIdAndUpdate(id, {
+      $set:   { passwordHash, failedLoginAttempts: 0 },
+      $unset: { lockedUntil: 1 },
+    }).exec()
   }
 
   /* ── Check email exists ─────────────────────────── */
   async emailExists(email: string): Promise<boolean> {
     return this.exists({ email: email.toLowerCase().trim() })
+  }
+
+  /* ── Paginated list by role (admin / instructors / students) */
+  async listByRole(
+    role: IUser['role'],
+    params: { page: number; perPage: number; search?: string },
+  ): Promise<{ docs: IUser[]; totalCount: number }> {
+    const filter: Record<string, unknown> = { role }
+    if (params.search) {
+      filter['$or'] = [
+        { name:  { $regex: params.search, $options: 'i' } },
+        { email: { $regex: params.search, $options: 'i' } },
+      ]
+    }
+    return this.paginate(filter, params.page, params.perPage, { createdAt: -1 })
   }
 }
 
@@ -68,13 +122,18 @@ export class RefreshTokenRepository extends BaseRepository<IRefreshToken> {
     userId:    string
     tokenHash: string
     expiresAt: Date
+    userAgent?: string
+    ip?:        string
   }): Promise<IRefreshToken> {
     return this.create({
-      userId:    data.userId,
-      tokenHash: data.tokenHash,
-      isRevoked: false,
-      expiresAt: data.expiresAt,
-    } as Partial<IRefreshToken>)
+      userId:     data.userId,
+      tokenHash:  data.tokenHash,
+      isRevoked:  false,
+      expiresAt:  data.expiresAt,
+      userAgent:  data.userAgent,
+      ip:         data.ip,
+      lastUsedAt: new Date(),
+    } as unknown as Partial<IRefreshToken>)
   }
 
   /* ── Find a valid (non-revoked, non-expired) token ─ */
@@ -86,24 +145,109 @@ export class RefreshTokenRepository extends BaseRepository<IRefreshToken> {
     }).exec()
   }
 
-  /* ── Revoke a single token ─────────────────────── */
-  async revokeToken(tokenHash: string): Promise<void> {
+  /* ── Find by hash regardless of state (for refresh path) ─ */
+  async findByHash(tokenHash: string): Promise<IRefreshToken | null> {
+    return RefreshTokenModel.findOne({ tokenHash }).exec()
+  }
+
+  /* ── Stamp lastUsedAt on a refresh hit ───────────── */
+  async touchLastUsed(tokenHash: string): Promise<void> {
     await RefreshTokenModel.updateOne(
       { tokenHash },
-      { $set: { isRevoked: true } },
+      { $set: { lastUsedAt: new Date() } },
+    ).exec()
+  }
+
+  /* ── List a user's active sessions ───────────────── */
+  async listActiveForUser(userId: string): Promise<IRefreshToken[]> {
+    return RefreshTokenModel
+      .find({
+        userId,
+        isRevoked: false,
+        expiresAt: { $gt: new Date() },
+      })
+      .sort({ lastUsedAt: -1, createdAt: -1 })
+      .exec()
+  }
+
+  /* ── Find a specific session owned by the user ───── */
+  async findOwn(id: string, userId: string): Promise<IRefreshToken | null> {
+    return RefreshTokenModel.findOne({ _id: id, userId, isRevoked: false }).exec()
+  }
+
+  /* ── Revoke by ObjectId ────────────────────────── */
+  async revokeById(id: string, reason: RefreshTokenRevokeReason = 'user'): Promise<void> {
+    await RefreshTokenModel.updateOne(
+      { _id: id },
+      { $set: { isRevoked: true, revokedReason: reason } },
+    ).exec()
+  }
+
+  /* ── Revoke a single token by hash ────────────── */
+  async revokeToken(tokenHash: string, reason: RefreshTokenRevokeReason = 'logout'): Promise<void> {
+    await RefreshTokenModel.updateOne(
+      { tokenHash },
+      { $set: { isRevoked: true, revokedReason: reason } },
     ).exec()
   }
 
   /* ── Revoke all tokens for a user ───────────────── */
-  async revokeAllForUser(userId: string): Promise<void> {
+  async revokeAllForUser(userId: string, reason: RefreshTokenRevokeReason = 'security'): Promise<void> {
     await RefreshTokenModel.updateMany(
       { userId, isRevoked: false },
-      { $set: { isRevoked: true } },
+      { $set: { isRevoked: true, revokedReason: reason } },
     ).exec()
   }
 
   /* ── Delete expired tokens (maintenance) ────────── */
   async deleteExpired(): Promise<number> {
     return this.deleteMany({ expiresAt: { $lt: new Date() } })
+  }
+}
+
+/* ─────────────────────────────────────────────────────
+   AuthTokenRepository — password-reset + email-verify
+───────────────────────────────────────────────────── */
+export class AuthTokenRepository extends BaseRepository<IAuthToken> {
+  constructor() {
+    super(AuthTokenModel)
+  }
+
+  async create_(data: {
+    userId:    string
+    tokenHash: string
+    purpose:   AuthTokenPurpose
+    expiresAt: Date
+  }): Promise<IAuthToken> {
+    return this.create({
+      userId:    data.userId,
+      tokenHash: data.tokenHash,
+      purpose:   data.purpose,
+      expiresAt: data.expiresAt,
+    } as unknown as Partial<IAuthToken>)
+  }
+
+  /* Atomically claim the token: matches + not used + not expired,
+     and marks `usedAt` so a second consumer cannot replay it. */
+  async claim(tokenHash: string, purpose: AuthTokenPurpose): Promise<IAuthToken | null> {
+    return AuthTokenModel.findOneAndUpdate(
+      {
+        tokenHash,
+        purpose,
+        expiresAt: { $gt: new Date() },
+        usedAt:    { $exists: false },
+      },
+      { $set: { usedAt: new Date() } },
+      { new: false },  // return the doc as it was BEFORE the update
+    ).exec()
+  }
+
+  /* Invalidate any outstanding tokens of this purpose for a user
+     before issuing a new one — keeps the "only one live link" UX. */
+  async invalidateForUser(userId: string, purpose: AuthTokenPurpose): Promise<void> {
+    await AuthTokenModel.updateMany(
+      { userId, purpose, usedAt: { $exists: false } },
+      { $set: { usedAt: new Date() } },
+    ).exec()
   }
 }

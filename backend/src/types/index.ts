@@ -26,7 +26,19 @@ export type EnrollmentStatus = 'active' | 'completed' | 'dropped'
 
 export type CourseStatus = 'draft' | 'published' | 'archived'
 
-export type LessonType = 'video' | 'article' | 'quiz'
+export type LessonType = 'video' | 'article' | 'quiz' | 'assignment'
+
+export type QuestionType = 'mcq' | 'true_false' | 'short'
+
+export type AchievementKind =
+  | 'first_lesson'
+  | 'course_complete'
+  | 'quiz_ace'
+  | 'quiz_pass'
+  | 'streak_7'
+  | 'streak_30'
+  | 'streak_100'
+  | 'top_reviewer'
 
 /* ─────────────────────────────────────────────────────
    API Response shape

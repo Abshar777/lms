@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+const ACCESS_COOKIE = 'lms_at'
 const GUEST_ONLY = ['/login']
 
 function isAuthenticated(req: NextRequest): boolean {
-  return !!(
-    req.cookies.get('learnos_admin_auth')?.value ||
-    req.cookies.get('admin-mt5-session-token')?.value ||
-    req.cookies.get('next-auth.session-token')?.value
-  )
+  return !!req.cookies.get(ACCESS_COOKIE)?.value
 }
 
 export function middleware(req: NextRequest) {

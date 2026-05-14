@@ -3,6 +3,25 @@ import { ZodError } from 'zod'
 import { logger } from '@/utils/logger.ts'
 import { sendError } from '@/utils/response.ts'
 import { AuthError } from '@/services/auth.service.ts'
+import { CourseError } from '@/services/course.service.ts'
+import { EnrollmentError } from '@/services/enrollment.service.ts'
+import { ReviewError } from '@/services/review.service.ts'
+import { CategoryError } from '@/services/category.service.ts'
+import { LiveClassError } from '@/services/liveClass.service.ts'
+import { NotificationError } from '@/services/notification.service.ts'
+import { FavoriteError } from '@/services/favorite.service.ts'
+import { OutlineError } from '@/services/section.service.ts'
+import { UserError } from '@/services/user.service.ts'
+import { QuizError } from '@/services/quiz.service.ts'
+import { AssignmentError } from '@/services/assignment.service.ts'
+import { CertificateError } from '@/services/certificate.service.ts'
+import { OrderError } from '@/services/order.service.ts'
+import { CouponError } from '@/services/coupon.service.ts'
+import { DiscussionError } from '@/services/discussion.service.ts'
+import { NoteError } from '@/services/note.service.ts'
+import { BookmarkError } from '@/services/bookmark.service.ts'
+import { LearningPathError } from '@/services/learningpath.service.ts'
+import { AIError } from '@/services/ai.service.ts'
 
 /* ─────────────────────────────────────────────────────
    Global error handler
@@ -18,6 +37,82 @@ export function errorMiddleware(
 ): void {
   /* ── Domain errors (auth, business logic) ──────── */
   if (err instanceof AuthError) {
+    sendError(res, err.code, err.message, err.statusCode)
+    return
+  }
+  if (err instanceof CourseError) {
+    sendError(res, err.code, err.message, err.statusCode)
+    return
+  }
+  if (err instanceof EnrollmentError) {
+    sendError(res, err.code, err.message, err.statusCode)
+    return
+  }
+  if (err instanceof ReviewError) {
+    sendError(res, err.code, err.message, err.statusCode)
+    return
+  }
+  if (err instanceof CategoryError) {
+    sendError(res, err.code, err.message, err.statusCode)
+    return
+  }
+  if (err instanceof LiveClassError) {
+    sendError(res, err.code, err.message, err.statusCode)
+    return
+  }
+  if (err instanceof NotificationError) {
+    sendError(res, err.code, err.message, err.statusCode)
+    return
+  }
+  if (err instanceof FavoriteError) {
+    sendError(res, err.code, err.message, err.statusCode)
+    return
+  }
+  if (err instanceof OutlineError) {
+    sendError(res, err.code, err.message, err.statusCode)
+    return
+  }
+  if (err instanceof UserError) {
+    sendError(res, err.code, err.message, err.statusCode)
+    return
+  }
+  if (err instanceof QuizError) {
+    sendError(res, err.code, err.message, err.statusCode)
+    return
+  }
+  if (err instanceof AssignmentError) {
+    sendError(res, err.code, err.message, err.statusCode)
+    return
+  }
+  if (err instanceof CertificateError) {
+    sendError(res, err.code, err.message, err.statusCode)
+    return
+  }
+  if (err instanceof OrderError) {
+    sendError(res, err.code, err.message, err.statusCode)
+    return
+  }
+  if (err instanceof DiscussionError) {
+    sendError(res, err.code, err.message, err.statusCode)
+    return
+  }
+  if (err instanceof NoteError) {
+    sendError(res, err.code, err.message, err.statusCode)
+    return
+  }
+  if (err instanceof BookmarkError) {
+    sendError(res, err.code, err.message, err.statusCode)
+    return
+  }
+  if (err instanceof LearningPathError) {
+    sendError(res, err.code, err.message, err.statusCode)
+    return
+  }
+  if (err instanceof CouponError) {
+    sendError(res, err.code, err.message, err.statusCode)
+    return
+  }
+  if (err instanceof AIError) {
     sendError(res, err.code, err.message, err.statusCode)
     return
   }

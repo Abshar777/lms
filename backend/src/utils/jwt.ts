@@ -1,6 +1,13 @@
 import { SignJWT, jwtVerify, type JWTPayload } from 'jose'
+import { randomBytes } from 'crypto'
 import { env } from '@/config/env.ts'
 import type { AccessTokenPayload, RefreshTokenPayload, TokenPair, UserRole } from '@/types/index.ts'
+
+/* Random JWT ID — guarantees two tokens issued in the same second
+   still produce different signatures, so tokenHash stays unique. */
+function newJti(): string {
+  return randomBytes(16).toString('hex')
+}
 
 /* ─── Key helpers ───────────────────────────────────
    jose uses TextEncoder for HMAC keys
@@ -38,6 +45,7 @@ export async function signAccessToken(payload: {
   } satisfies Omit<AccessTokenPayload, 'sub'>)
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(payload.id)
+    .setJti(newJti())
     .setIssuedAt()
     .setExpirationTime(env.JWT_ACCESS_EXPIRES_IN)
     .sign(accessKey)
@@ -50,6 +58,7 @@ export async function signRefreshToken(userId: string): Promise<string> {
   return new SignJWT({ type: 'refresh' } satisfies Omit<RefreshTokenPayload, 'sub'>)
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(userId)
+    .setJti(newJti())
     .setIssuedAt()
     .setExpirationTime(env.JWT_REFRESH_EXPIRES_IN)
     .sign(refreshKey)

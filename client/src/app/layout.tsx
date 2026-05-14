@@ -30,7 +30,18 @@ const monoFont = JetBrains_Mono({
 export const metadata: Metadata = {
   title: { template: '%s — LearnOS', default: 'LearnOS — Learn Without Limits' },
   description: 'Expert-led courses, hands-on projects, and a community that grows with you.',
-  icons: { icon: '/favicon.ico' },
+  icons: {
+    icon:     [{ url: '/icons/icon.svg', type: 'image/svg+xml' }],
+    shortcut: '/icons/icon.svg',
+    apple:    '/icons/icon.svg',
+  },
+  manifest:    '/manifest.webmanifest',
+  applicationName: 'LearnOS',
+  appleWebApp: {
+    capable:    true,
+    title:      'LearnOS',
+    statusBarStyle: 'default',
+  },
 }
 
 export const viewport: Viewport = {

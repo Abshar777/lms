@@ -36,7 +36,7 @@ export class BaseRepository<T extends Document> {
       populate?: string | string[]
     } = {},
   ): Promise<T[]> {
-    let query = this.model.find(filter)
+    let query: any = this.model.find(filter)
     if (options.limit)    query = query.limit(options.limit)
     if (options.skip)     query = query.skip(options.skip)
     if (options.sort)     query = query.sort(options.sort)
@@ -47,7 +47,7 @@ export class BaseRepository<T extends Document> {
         : [options.populate]
       for (const f of fields) query = query.populate(f)
     }
-    return query.exec()
+    return query.exec() as Promise<T[]>
   }
 
   /* ── Count documents ────────────────────────────── */

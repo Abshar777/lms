@@ -1,27 +1,32 @@
 import type { Request, Response, NextFunction } from 'express'
 import { verifyAccessToken } from '@/utils/jwt.ts'
 import { sendError } from '@/utils/response.ts'
+import { ACCESS_COOKIE } from '@/utils/authCookies.ts'
 import type { UserRole } from '@/types/index.ts'
 
 /* ─────────────────────────────────────────────────────
    authenticate
    ─────────────────────────────────────────────────────
-   Verifies Bearer token from Authorization header.
-   Attaches decoded user to req.user on success.
+   Reads the access token from the `lms_at` httpOnly
+   cookie. Falls back to `Authorization: Bearer` for
+   non-browser clients (CLI, mobile). Attaches decoded
+   user to req.user on success.
 ───────────────────────────────────────────────────── */
 export async function authenticate(
   req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> {
-  const authHeader = req.headers['authorization']
+  const cookieToken = req.cookies?.[ACCESS_COOKIE]
+  const authHeader  = req.headers['authorization']
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
 
-  if (!authHeader?.startsWith('Bearer ')) {
-    sendError(res, 'MISSING_TOKEN', 'Authorization header is required', 401)
+  const token = cookieToken ?? bearerToken
+
+  if (!token) {
+    sendError(res, 'MISSING_TOKEN', 'Authentication required', 401)
     return
   }
-
-  const token = authHeader.slice(7)
 
   try {
     const payload = await verifyAccessToken(token)
@@ -46,13 +51,6 @@ export async function authenticate(
    requireRole(...roles)
    ─────────────────────────────────────────────────────
    Authorization guard — must come AFTER authenticate.
-
-   Usage:
-     router.delete('/course/:id',
-       authenticate,
-       requireRole('admin', 'instructor'),
-       courseController.delete
-     )
 ───────────────────────────────────────────────────── */
 export function requireRole(...roles: UserRole[]) {
   return (req: Request, res: Response, next: NextFunction): void => {

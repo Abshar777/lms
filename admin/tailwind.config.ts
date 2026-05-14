@@ -1,5 +1,15 @@
 import type { Config } from 'tailwindcss'
 import tailwindAnimate from 'tailwindcss-animate'
+import plugin from 'tailwindcss/plugin'
+
+const scrollbarHide = plugin(({ addUtilities }) => {
+  addUtilities({
+    '.scrollbar-none': {
+      'scrollbar-width': 'none',
+      '&::-webkit-scrollbar': { display: 'none' },
+    },
+  })
+})
 
 const config: Config = {
   darkMode: ['class'],
@@ -54,6 +64,6 @@ const config: Config = {
       },
     },
   },
-  plugins: [tailwindAnimate],
+  plugins: [tailwindAnimate, scrollbarHide],
 }
 export default config

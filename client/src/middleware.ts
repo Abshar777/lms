@@ -1,20 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Paths that require authentication — includes root (the dashboard)
-const PROTECTED_PREFIXES = ['/', '/courses', '/my-learning', '/profile', '/settings', '/achievements', '/favorites']
-
-// Paths only for guests (redirect logged-in users away)
+const ACCESS_COOKIE = 'lms_at'
+/* Guest-only: signed-in users get bounced away from these */
 const GUEST_ONLY = ['/login', '/register']
-
-// Auth API routes — never redirect these
-const PUBLIC_API_PREFIXES = ['/api/']
+/* Public: anyone can visit. Used for password reset / email
+   verification flows that need to work whether or not the user
+   is signed in (links arrive via email). */
+const PUBLIC = ['/forgot-password', '/reset-password', '/verify-email']
 
 function isAuthenticated(req: NextRequest): boolean {
-  return !!(
-    req.cookies.get('learnos_auth')?.value ||
-    req.cookies.get('next-auth.session-token')?.value ||
-    req.cookies.get('__Secure-next-auth.session-token')?.value
-  )
+  return !!req.cookies.get(ACCESS_COOKIE)?.value
 }
 
 export function middleware(req: NextRequest) {
@@ -22,11 +17,16 @@ export function middleware(req: NextRequest) {
   const authed = isAuthenticated(req)
 
   // Never touch API routes
-  if (PUBLIC_API_PREFIXES.some(p => pathname.startsWith(p))) {
+  if (pathname.startsWith('/api/')) {
     return NextResponse.next()
   }
 
-  // Guest-only routes → bounce to My Learning if already logged in
+  // Public routes — let everyone through, no redirects either way
+  if (PUBLIC.some(p => pathname === p || pathname.startsWith(p + '/'))) {
+    return NextResponse.next()
+  }
+
+  // Guest-only routes → bounce to My Learning if already signed in
   const isGuestOnly = GUEST_ONLY.some(p => pathname === p || pathname.startsWith(p + '/'))
   if (isGuestOnly && authed) {
     const url = req.nextUrl.clone()
@@ -34,12 +34,7 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Protected routes → bounce to login if not authenticated
-  const isProtected = PROTECTED_PREFIXES.some(p =>
-    p === '/' ? pathname === '/' || !GUEST_ONLY.some(g => pathname.startsWith(g))
-              : pathname === p || pathname.startsWith(p + '/')
-  )
-  // Simpler: everything that's not a guest-only page requires auth
+  // Everything else requires auth
   if (!isGuestOnly && !authed) {
     const url = req.nextUrl.clone()
     url.pathname = '/login'

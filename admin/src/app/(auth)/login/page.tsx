@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { motion } from 'framer-motion'
 import { GraduationCap } from 'lucide-react'
 import { AdminLoginForm } from '@/components/auth/AdminLoginForm'
@@ -37,7 +38,7 @@ export default function AdminLoginPage() {
         initial={{ opacity: 0, y: 24, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: 'spring', stiffness: 220, damping: 24 }}
-        className="relative z-10 w-full max-w-[460px] rounded-3xl p-10 mx-4"
+        className="relative z-10 w-full max-w-[460px] rounded-3xl p-5 sm:p-10 mx-4"
         style={{
           background: 'rgba(15,18,32,0.80)',
           border: '1px solid rgba(255,255,255,0.08)',
@@ -67,7 +68,9 @@ export default function AdminLoginPage() {
           </span>
         </motion.div>
 
-        <AdminLoginForm />
+        <Suspense fallback={<div className="h-[420px]" />}>
+          <AdminLoginForm />
+        </Suspense>
       </motion.div>
 
       {/* ── Footer ─────────────────────────────────── */}

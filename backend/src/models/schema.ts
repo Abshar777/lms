@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Document, type Types } from 'mongoose'
-import type { UserRole, CourseStatus, LessonType, EnrollmentStatus } from '@/types/index.ts'
+import type { UserRole, CourseStatus, LessonType, EnrollmentStatus, QuestionType, AchievementKind } from '@/types/index.ts'
 
 /* ─────────────────────────────────────────────────────
    Shared schema transform
@@ -40,6 +40,12 @@ export interface IUser extends Document {
   bio?:          string
   headline?:     string
   websiteUrl?:   string
+  /* Account safety */
+  failedLoginAttempts: number
+  lockedUntil?:  Date
+  /* Two-factor authentication (TOTP) */
+  twoFactorEnabled: boolean
+  twoFactorSecret?: string   // base32-encoded TOTP secret; select:false
   /* Meta */
   lastLoginAt?:  Date
   createdAt:     Date
@@ -60,12 +66,15 @@ const UserSchema = new Schema<IUser>(
     bio:          { type: String },
     headline:     { type: String, maxlength: 255 },
     websiteUrl:   { type: String },
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockedUntil:  { type: Date },
+    twoFactorEnabled: { type: Boolean, default: false },
+    twoFactorSecret:  { type: String, select: false },
     lastLoginAt:  { type: Date },
   },
   baseSchemaOptions,
 )
 
-UserSchema.index({ email: 1 })
 UserSchema.index({ provider: 1, providerId: 1 })
 
 export const UserModel = mongoose.model<IUser>('User', UserSchema)
@@ -73,31 +82,77 @@ export const UserModel = mongoose.model<IUser>('User', UserSchema)
 /* ─────────────────────────────────────────────────────
    REFRESH TOKEN
 ───────────────────────────────────────────────────── */
+export type RefreshTokenRevokeReason = 'rotation' | 'user' | 'logout' | 'security'
+
 export interface IRefreshToken extends Document {
-  id:         string
-  userId:     Types.ObjectId
-  tokenHash:  string
-  isRevoked:  boolean
-  expiresAt:  Date
-  createdAt:  Date
-  updatedAt:  Date
+  id:             string
+  userId:         Types.ObjectId
+  tokenHash:      string
+  isRevoked:      boolean
+  /* Why this token was revoked. Critical for refresh-reuse detection:
+     only 'rotation' triggers the kill-all-sessions response — the
+     others are explicit user/security actions and must never cascade. */
+  revokedReason?: RefreshTokenRevokeReason
+  expiresAt:      Date
+  /* Session metadata — populated on login, refreshed on each
+     successful token rotation. Used by the Active Sessions UI. */
+  userAgent?:     string
+  ip?:            string
+  lastUsedAt?:    Date
+  createdAt:      Date
+  updatedAt:      Date
 }
 
 const RefreshTokenSchema = new Schema<IRefreshToken>(
   {
-    userId:    { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    tokenHash: { type: String, required: true, unique: true },
-    isRevoked: { type: Boolean, default: false },
-    expiresAt: { type: Date, required: true },
+    userId:        { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    tokenHash:     { type: String, required: true, unique: true },
+    isRevoked:     { type: Boolean, default: false },
+    revokedReason: { type: String, enum: ['rotation', 'user', 'logout', 'security'] },
+    expiresAt:     { type: Date, required: true },
+    userAgent:     { type: String, maxlength: 500 },
+    ip:            { type: String, maxlength: 64 },
+    lastUsedAt:    { type: Date },
   },
   baseSchemaOptions,
 )
 
 RefreshTokenSchema.index({ userId: 1 })
-RefreshTokenSchema.index({ tokenHash: 1 })
 RefreshTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 })  // TTL index — auto-deletes
 
 export const RefreshTokenModel = mongoose.model<IRefreshToken>('RefreshToken', RefreshTokenSchema)
+
+/* ─────────────────────────────────────────────────────
+   AUTH TOKEN — used for password reset + email verify
+───────────────────────────────────────────────────── */
+export type AuthTokenPurpose = 'reset-password' | 'verify-email'
+
+export interface IAuthToken extends Document {
+  id:        string
+  userId:    Types.ObjectId
+  tokenHash: string
+  purpose:   AuthTokenPurpose
+  expiresAt: Date
+  usedAt?:   Date
+  createdAt: Date
+  updatedAt: Date
+}
+
+const AuthTokenSchema = new Schema<IAuthToken>(
+  {
+    userId:    { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    tokenHash: { type: String, required: true, unique: true },
+    purpose:   { type: String, enum: ['reset-password', 'verify-email'], required: true },
+    expiresAt: { type: Date, required: true },
+    usedAt:    { type: Date },
+  },
+  baseSchemaOptions,
+)
+
+AuthTokenSchema.index({ userId: 1, purpose: 1 })
+AuthTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 })
+
+export const AuthTokenModel = mongoose.model<IAuthToken>('AuthToken', AuthTokenSchema)
 
 /* ─────────────────────────────────────────────────────
    CATEGORY
@@ -174,7 +229,6 @@ const CourseSchema = new Schema<ICourse>(
   baseSchemaOptions,
 )
 
-CourseSchema.index({ slug: 1 })
 CourseSchema.index({ instructorId: 1 })
 CourseSchema.index({ categoryId: 1 })
 CourseSchema.index({ status: 1 })
@@ -218,6 +272,9 @@ export interface ILesson extends Document {
   type:         LessonType
   contentUrl?:  string
   contentBody?: string
+  /** Full plain-text transcript — stored as-is.
+   *  Can be manually authored or AI-generated via POST /admin/lessons/:id/generate-transcript */
+  transcript?:  string
   durationMins: number
   order:        number
   isFree:       boolean
@@ -230,9 +287,10 @@ const LessonSchema = new Schema<ILesson>(
     sectionId:   { type: Schema.Types.ObjectId, ref: 'Section', required: true },
     courseId:    { type: Schema.Types.ObjectId, ref: 'Course',  required: true },
     title:       { type: String, required: true, trim: true, maxlength: 255 },
-    type:        { type: String, enum: ['video', 'article', 'quiz'], default: 'video' },
+    type:        { type: String, enum: ['video', 'article', 'quiz', 'assignment'], default: 'video' },
     contentUrl:  { type: String },
     contentBody: { type: String },
+    transcript:  { type: String },
     durationMins: { type: Number, default: 0 },
     order:       { type: Number, default: 0 },
     isFree:      { type: Boolean, default: false },
@@ -254,8 +312,10 @@ export interface IEnrollment extends Document {
   courseId:        Types.ObjectId
   status:          EnrollmentStatus
   progressPercent: number
+  lastLessonId?:   Types.ObjectId
   enrolledAt:      Date
   completedAt?:    Date
+  certificateId?:  string   // generated cert UUID
   createdAt:       Date
   updatedAt:       Date
 }
@@ -266,8 +326,10 @@ const EnrollmentSchema = new Schema<IEnrollment>(
     courseId:        { type: Schema.Types.ObjectId, ref: 'Course', required: true },
     status:          { type: String, enum: ['active', 'completed', 'dropped'], default: 'active' },
     progressPercent: { type: Number, default: 0, min: 0, max: 100 },
+    lastLessonId:    { type: Schema.Types.ObjectId, ref: 'Lesson' },
     enrolledAt:      { type: Date, default: Date.now },
     completedAt:     { type: Date },
+    certificateId:   { type: String },
   },
   baseSchemaOptions,
 )
@@ -314,26 +376,764 @@ export const LessonProgressModel = mongoose.model<ILessonProgress>('LessonProgre
    REVIEW
 ───────────────────────────────────────────────────── */
 export interface IReview extends Document {
-  id:        string
-  userId:    Types.ObjectId
-  courseId:  Types.ObjectId
-  rating:    number
-  comment?:  string
-  createdAt: Date
-  updatedAt: Date
+  id:                 string
+  userId:             Types.ObjectId
+  courseId:           Types.ObjectId
+  rating:             number
+  comment?:           string
+  /* 6.2 — instructor reply */
+  instructorReply?:   string
+  instructorReplyAt?: Date
+  instructorId?:      Types.ObjectId   // who replied
+  /* 6.3 — helpfulness signals */
+  helpfulVotes:       number
+  reportCount:        number
+  isReported:         boolean
+  createdAt:          Date
+  updatedAt:          Date
 }
 
 const ReviewSchema = new Schema<IReview>(
   {
-    userId:   { type: Schema.Types.ObjectId, ref: 'User',   required: true },
-    courseId: { type: Schema.Types.ObjectId, ref: 'Course', required: true },
-    rating:   { type: Number, required: true, min: 1, max: 5 },
-    comment:  { type: String },
+    userId:            { type: Schema.Types.ObjectId, ref: 'User',   required: true },
+    courseId:          { type: Schema.Types.ObjectId, ref: 'Course', required: true },
+    rating:            { type: Number, required: true, min: 1, max: 5 },
+    comment:           { type: String, maxlength: 5000 },
+    instructorReply:   { type: String, maxlength: 5000 },
+    instructorReplyAt: { type: Date },
+    instructorId:      { type: Schema.Types.ObjectId, ref: 'User' },
+    helpfulVotes:      { type: Number, default: 0, min: 0 },
+    reportCount:       { type: Number, default: 0, min: 0 },
+    isReported:        { type: Boolean, default: false },
   },
   baseSchemaOptions,
 )
 
 ReviewSchema.index({ userId: 1, courseId: 1 }, { unique: true })  // one review per user/course
 ReviewSchema.index({ courseId: 1 })
+ReviewSchema.index({ isReported: 1 })
 
 export const ReviewModel = mongoose.model<IReview>('Review', ReviewSchema)
+
+/* ─────────────────────────────────────────────────────
+   NOTIFICATION — in-app activity feed for the bell icon
+───────────────────────────────────────────────────── */
+export type NotificationKind =
+  | 'enrollment'
+  | 'lesson-complete'
+  | 'course-complete'
+  | 'review-posted'
+  | 'live-class-scheduled'
+  | 'achievement'
+  | 'system'
+
+export interface INotification extends Document {
+  id:        string
+  userId:    Types.ObjectId
+  kind:      NotificationKind
+  title:     string
+  body?:     string
+  link?:     string     // in-app path, e.g. /courses/foo
+  readAt?:   Date
+  createdAt: Date
+  updatedAt: Date
+}
+
+const NotificationSchema = new Schema<INotification>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    kind:   { type: String, enum: ['enrollment','lesson-complete','course-complete','review-posted','live-class-scheduled','achievement','system'], required: true },
+    title:  { type: String, required: true, maxlength: 255 },
+    body:   { type: String, maxlength: 1000 },
+    link:   { type: String, maxlength: 1024 },
+    readAt: { type: Date },
+  },
+  baseSchemaOptions,
+)
+NotificationSchema.index({ userId: 1, createdAt: -1 })
+NotificationSchema.index({ userId: 1, readAt: 1 })
+
+export const NotificationModel = mongoose.model<INotification>('Notification', NotificationSchema)
+
+/* ─────────────────────────────────────────────────────
+   FAVORITE — user saves a course for later
+───────────────────────────────────────────────────── */
+export interface IFavorite extends Document {
+  id:        string
+  userId:    Types.ObjectId
+  courseId:  Types.ObjectId
+  createdAt: Date
+  updatedAt: Date
+}
+
+const FavoriteSchema = new Schema<IFavorite>(
+  {
+    userId:   { type: Schema.Types.ObjectId, ref: 'User',   required: true },
+    courseId: { type: Schema.Types.ObjectId, ref: 'Course', required: true },
+  },
+  baseSchemaOptions,
+)
+FavoriteSchema.index({ userId: 1, courseId: 1 }, { unique: true })
+FavoriteSchema.index({ userId: 1, createdAt: -1 })
+
+export const FavoriteModel = mongoose.model<IFavorite>('Favorite', FavoriteSchema)
+
+/* ─────────────────────────────────────────────────────
+   LIVE CLASS — scheduled real-time sessions
+   ─────────────────────────────────────────────────────
+   `meetingUrl` is an external link (Zoom / Meet / Jitsi).
+   Status is derived from now() vs scheduledStart + duration
+   for read paths; `cancelled` is the one stored override.
+───────────────────────────────────────────────────── */
+export type LiveClassStatus = 'scheduled' | 'live' | 'ended' | 'cancelled'
+
+export interface ILiveClass extends Document {
+  id:             string
+  courseId:       Types.ObjectId
+  instructorId:   Types.ObjectId
+  title:          string
+  description?:   string
+  scheduledStart: Date
+  durationMins:   number
+  meetingUrl:     string
+  cancelled:      boolean
+  createdAt:      Date
+  updatedAt:      Date
+}
+
+const LiveClassSchema = new Schema<ILiveClass>(
+  {
+    courseId:       { type: Schema.Types.ObjectId, ref: 'Course', required: true },
+    instructorId:   { type: Schema.Types.ObjectId, ref: 'User',   required: true },
+    title:          { type: String, required: true, trim: true, maxlength: 255 },
+    description:    { type: String, maxlength: 2000 },
+    scheduledStart: { type: Date,   required: true },
+    durationMins:   { type: Number, required: true, min: 5, max: 600 },
+    meetingUrl:     { type: String, required: true, maxlength: 2048 },
+    cancelled:      { type: Boolean, default: false },
+  },
+  baseSchemaOptions,
+)
+
+LiveClassSchema.index({ courseId: 1, scheduledStart: 1 })
+LiveClassSchema.index({ scheduledStart: 1 })
+
+export const LiveClassModel = mongoose.model<ILiveClass>('LiveClass', LiveClassSchema)
+
+/* ─────────────────────────────────────────────────────
+   QUIZ — one per quiz-type lesson
+   ─────────────────────────────────────────────────────
+   Questions are embedded to avoid extra roundtrips.
+   correctAnswer stores the 0-based index (as string)
+   for mcq/true_false, or the expected text for short.
+───────────────────────────────────────────────────── */
+export interface IQuizQuestion {
+  _id:          Types.ObjectId
+  text:         string
+  type:         QuestionType
+  choices:      string[]   // mcq: 4 options, true_false: ['True','False'], short: []
+  correctAnswer: string    // index string for mcq/tf, text for short
+  points:       number
+  explanation?: string
+}
+
+export interface IQuiz extends Document {
+  id:          string
+  lessonId:    Types.ObjectId
+  courseId:    Types.ObjectId
+  passPercent: number
+  timeLimit?:  number  // minutes; undefined = no limit
+  questions:   IQuizQuestion[]
+  createdAt:   Date
+  updatedAt:   Date
+}
+
+const QuizQuestionSchema = new Schema<IQuizQuestion>({
+  text:          { type: String, required: true, maxlength: 2000 },
+  type:          { type: String, enum: ['mcq', 'true_false', 'short'], required: true },
+  choices:       [{ type: String, maxlength: 500 }],
+  correctAnswer: { type: String, required: true },
+  points:        { type: Number, default: 1, min: 1 },
+  explanation:   { type: String, maxlength: 2000 },
+}, { _id: true })
+
+const QuizSchema = new Schema<IQuiz>(
+  {
+    lessonId:    { type: Schema.Types.ObjectId, ref: 'Lesson',  required: true, unique: true },
+    courseId:    { type: Schema.Types.ObjectId, ref: 'Course',  required: true },
+    passPercent: { type: Number, default: 70, min: 0, max: 100 },
+    timeLimit:   { type: Number, min: 1 },
+    questions:   [QuizQuestionSchema],
+  },
+  baseSchemaOptions,
+)
+
+QuizSchema.index({ courseId: 1 })
+
+export const QuizModel = mongoose.model<IQuiz>('Quiz', QuizSchema)
+
+/* ─────────────────────────────────────────────────────
+   QUIZ ATTEMPT — one per submission
+───────────────────────────────────────────────────── */
+export interface IQuizAttemptAnswer {
+  questionId: string
+  answer:     string  // index string or text
+}
+
+export interface IQuizAttempt extends Document {
+  id:            string
+  userId:        Types.ObjectId
+  quizId:        Types.ObjectId
+  lessonId:      Types.ObjectId
+  courseId:      Types.ObjectId
+  answers:       IQuizAttemptAnswer[]
+  score:         number   // raw points earned
+  maxScore:      number   // total possible points
+  scorePercent:  number
+  passed:        boolean
+  attemptNumber: number
+  completedAt:   Date
+  createdAt:     Date
+  updatedAt:     Date
+}
+
+const QuizAttemptAnswerSchema = new Schema<IQuizAttemptAnswer>({
+  questionId: { type: String, required: true },
+  answer:     { type: String, required: true },
+}, { _id: false })
+
+const QuizAttemptSchema = new Schema<IQuizAttempt>(
+  {
+    userId:        { type: Schema.Types.ObjectId, ref: 'User',   required: true },
+    quizId:        { type: Schema.Types.ObjectId, ref: 'Quiz',   required: true },
+    lessonId:      { type: Schema.Types.ObjectId, ref: 'Lesson', required: true },
+    courseId:      { type: Schema.Types.ObjectId, ref: 'Course', required: true },
+    answers:       [QuizAttemptAnswerSchema],
+    score:         { type: Number, required: true, min: 0 },
+    maxScore:      { type: Number, required: true, min: 0 },
+    scorePercent:  { type: Number, required: true, min: 0, max: 100 },
+    passed:        { type: Boolean, required: true },
+    attemptNumber: { type: Number, required: true, min: 1 },
+    completedAt:   { type: Date, default: Date.now },
+  },
+  baseSchemaOptions,
+)
+
+QuizAttemptSchema.index({ userId: 1, quizId: 1 })
+QuizAttemptSchema.index({ userId: 1, courseId: 1 })
+QuizAttemptSchema.index({ quizId: 1 })
+
+export const QuizAttemptModel = mongoose.model<IQuizAttempt>('QuizAttempt', QuizAttemptSchema)
+
+/* ─────────────────────────────────────────────────────
+   ASSIGNMENT — one per assignment-type lesson
+───────────────────────────────────────────────────── */
+export interface IAssignment extends Document {
+  id:           string
+  lessonId:     Types.ObjectId
+  courseId:     Types.ObjectId
+  title:        string
+  instructions: string
+  dueDate?:     Date
+  maxScore:     number
+  createdAt:    Date
+  updatedAt:    Date
+}
+
+const AssignmentSchema = new Schema<IAssignment>(
+  {
+    lessonId:     { type: Schema.Types.ObjectId, ref: 'Lesson',  required: true, unique: true },
+    courseId:     { type: Schema.Types.ObjectId, ref: 'Course',  required: true },
+    title:        { type: String, required: true, maxlength: 255 },
+    instructions: { type: String, required: true, maxlength: 20000 },
+    dueDate:      { type: Date },
+    maxScore:     { type: Number, default: 100, min: 1 },
+  },
+  baseSchemaOptions,
+)
+
+AssignmentSchema.index({ courseId: 1 })
+
+export const AssignmentModel = mongoose.model<IAssignment>('Assignment', AssignmentSchema)
+
+/* ─────────────────────────────────────────────────────
+   ASSIGNMENT SUBMISSION
+───────────────────────────────────────────────────── */
+export type SubmissionStatus = 'submitted' | 'graded' | 'returned'
+
+export interface IAssignmentSubmission extends Document {
+  id:              string
+  userId:          Types.ObjectId
+  assignmentId:    Types.ObjectId
+  courseId:        Types.ObjectId
+  submissionUrl?:  string
+  submissionText?: string
+  grade?:          number
+  feedback?:       string
+  gradedAt?:       Date
+  gradedBy?:       Types.ObjectId
+  status:          SubmissionStatus
+  createdAt:       Date
+  updatedAt:       Date
+}
+
+const AssignmentSubmissionSchema = new Schema<IAssignmentSubmission>(
+  {
+    userId:         { type: Schema.Types.ObjectId, ref: 'User',       required: true },
+    assignmentId:   { type: Schema.Types.ObjectId, ref: 'Assignment', required: true },
+    courseId:       { type: Schema.Types.ObjectId, ref: 'Course',     required: true },
+    submissionUrl:  { type: String, maxlength: 2048 },
+    submissionText: { type: String, maxlength: 20000 },
+    grade:          { type: Number, min: 0 },
+    feedback:       { type: String, maxlength: 5000 },
+    gradedAt:       { type: Date },
+    gradedBy:       { type: Schema.Types.ObjectId, ref: 'User' },
+    status:         { type: String, enum: ['submitted', 'graded', 'returned'], default: 'submitted' },
+  },
+  baseSchemaOptions,
+)
+
+AssignmentSubmissionSchema.index({ userId: 1, assignmentId: 1 }, { unique: true })
+AssignmentSubmissionSchema.index({ assignmentId: 1 })
+AssignmentSubmissionSchema.index({ userId: 1, courseId: 1 })
+
+export const AssignmentSubmissionModel = mongoose.model<IAssignmentSubmission>('AssignmentSubmission', AssignmentSubmissionSchema)
+
+/* ─────────────────────────────────────────────────────
+   USER ACHIEVEMENT — awarded badge / milestone
+───────────────────────────────────────────────────── */
+export interface IUserAchievement extends Document {
+  id:          string
+  userId:      Types.ObjectId
+  kind:        AchievementKind
+  title:       string
+  description: string
+  icon:        string   // emoji
+  metadata?:   Record<string, unknown>
+  earnedAt:    Date
+  createdAt:   Date
+  updatedAt:   Date
+}
+
+const UserAchievementSchema = new Schema<IUserAchievement>(
+  {
+    userId:      { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    kind:        { type: String, enum: ['first_lesson','course_complete','quiz_ace','quiz_pass','streak_7','streak_30','streak_100','top_reviewer'], required: true },
+    title:       { type: String, required: true, maxlength: 100 },
+    description: { type: String, required: true, maxlength: 255 },
+    icon:        { type: String, required: true, maxlength: 10 },
+    metadata:    { type: Schema.Types.Mixed },
+    earnedAt:    { type: Date, default: Date.now },
+  },
+  baseSchemaOptions,
+)
+
+/* One per kind per user — prevents duplicate awards */
+UserAchievementSchema.index({ userId: 1, kind: 1 }, { unique: true })
+UserAchievementSchema.index({ userId: 1, earnedAt: -1 })
+
+export const UserAchievementModel = mongoose.model<IUserAchievement>('UserAchievement', UserAchievementSchema)
+
+/* ─────────────────────────────────────────────────────
+   USER STREAK — one document per user
+───────────────────────────────────────────────────── */
+export interface IUserStreak extends Document {
+  id:              string
+  userId:          Types.ObjectId
+  currentStreak:   number   // consecutive days with activity
+  longestStreak:   number
+  lastActiveDate:  string   // 'YYYY-MM-DD' local date
+  totalDaysActive: number
+  weeklyGoal:      number   // target lessons per week
+  weekProgress:    number   // lessons completed this ISO week
+  weekStartDate:   string   // 'YYYY-MM-DD' of Monday that started weekProgress
+  createdAt:       Date
+  updatedAt:       Date
+}
+
+const UserStreakSchema = new Schema<IUserStreak>(
+  {
+    userId:          { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+    currentStreak:   { type: Number, default: 0 },
+    longestStreak:   { type: Number, default: 0 },
+    lastActiveDate:  { type: String, default: '' },
+    totalDaysActive: { type: Number, default: 0 },
+    weeklyGoal:      { type: Number, default: 5, min: 1, max: 50 },
+    weekProgress:    { type: Number, default: 0 },
+    weekStartDate:   { type: String, default: '' },
+  },
+  baseSchemaOptions,
+)
+
+UserStreakSchema.index({ userId: 1 })
+
+export const UserStreakModel = mongoose.model<IUserStreak>('UserStreak', UserStreakSchema)
+
+/* ─────────────────────────────────────────────────────
+   COUPON — discount codes for paid courses
+   ─────────────────────────────────────────────────────
+   discountType 'percent': discountValue is 1–100 (%)
+   discountType 'fixed':   discountValue is USD dollars
+   appliesTo: [] means all published courses
+───────────────────────────────────────────────────── */
+export type CouponDiscountType = 'percent' | 'fixed'
+
+export interface ICoupon extends Document {
+  id:           string
+  code:         string          // UPPERCASE, unique
+  discountType: CouponDiscountType
+  discountValue: number
+  maxUses:      number          // 0 = unlimited
+  usedCount:    number
+  expiresAt?:   Date
+  isActive:     boolean
+  appliesTo:    Types.ObjectId[]   // empty = all courses
+  createdAt:    Date
+  updatedAt:    Date
+}
+
+const CouponSchema = new Schema<ICoupon>(
+  {
+    code:          { type: String, required: true, unique: true, uppercase: true, trim: true, maxlength: 50 },
+    discountType:  { type: String, enum: ['percent', 'fixed'], required: true },
+    discountValue: { type: Number, required: true, min: 0 },
+    maxUses:       { type: Number, default: 0, min: 0 },
+    usedCount:     { type: Number, default: 0, min: 0 },
+    expiresAt:     { type: Date },
+    isActive:      { type: Boolean, default: true },
+    appliesTo:     [{ type: Schema.Types.ObjectId, ref: 'Course' }],
+  },
+  baseSchemaOptions,
+)
+
+CouponSchema.index({ code: 1 })
+CouponSchema.index({ isActive: 1 })
+
+export const CouponModel = mongoose.model<ICoupon>('Coupon', CouponSchema)
+
+/* ─────────────────────────────────────────────────────
+   ORDER — Stripe payment record
+   ─────────────────────────────────────────────────────
+   amount / discountAmount are stored in CENTS.
+   status: pending → paid (webhook) → refunded (admin)
+───────────────────────────────────────────────────── */
+export type OrderStatus = 'pending' | 'paid' | 'refunded'
+
+export interface IOrder extends Document {
+  id:                      string
+  userId:                  Types.ObjectId
+  courseId:                Types.ObjectId
+  stripeCheckoutSessionId: string
+  stripePaymentIntentId?:  string
+  amount:                  number    // charged amount in cents
+  currency:                string
+  status:                  OrderStatus
+  couponId?:               Types.ObjectId
+  discountAmount:          number    // cents saved by coupon (0 if none)
+  stripeInvoiceUrl?:       string
+  refundedAt?:             Date
+  createdAt:               Date
+  updatedAt:               Date
+}
+
+const OrderSchema = new Schema<IOrder>(
+  {
+    userId:                  { type: Schema.Types.ObjectId, ref: 'User',   required: true },
+    courseId:                { type: Schema.Types.ObjectId, ref: 'Course', required: true },
+    stripeCheckoutSessionId: { type: String, required: true, unique: true },
+    stripePaymentIntentId:   { type: String },
+    amount:                  { type: Number, required: true, min: 0 },
+    currency:                { type: String, required: true, default: 'usd', maxlength: 3 },
+    status:                  { type: String, enum: ['pending', 'paid', 'refunded'], default: 'pending' },
+    couponId:                { type: Schema.Types.ObjectId, ref: 'Coupon' },
+    discountAmount:          { type: Number, default: 0, min: 0 },
+    stripeInvoiceUrl:        { type: String, maxlength: 2048 },
+    refundedAt:              { type: Date },
+  },
+  baseSchemaOptions,
+)
+
+OrderSchema.index({ userId: 1, createdAt: -1 })
+OrderSchema.index({ courseId: 1 })
+OrderSchema.index({ status: 1 })
+OrderSchema.index({ stripeCheckoutSessionId: 1 })
+
+export const OrderModel = mongoose.model<IOrder>('Order', OrderSchema)
+
+/* ─────────────────────────────────────────────────────
+   REVIEW VOTE — helpful / report signal on a review  (6.3)
+───────────────────────────────────────────────────── */
+export type ReviewVoteType = 'helpful' | 'report'
+
+export interface IReviewVote extends Document {
+  id:        string
+  userId:    Types.ObjectId
+  reviewId:  Types.ObjectId
+  type:      ReviewVoteType
+  createdAt: Date
+  updatedAt: Date
+}
+
+const ReviewVoteSchema = new Schema<IReviewVote>(
+  {
+    userId:   { type: Schema.Types.ObjectId, ref: 'User',   required: true },
+    reviewId: { type: Schema.Types.ObjectId, ref: 'Review', required: true },
+    type:     { type: String, enum: ['helpful', 'report'], required: true },
+  },
+  baseSchemaOptions,
+)
+
+ReviewVoteSchema.index({ userId: 1, reviewId: 1, type: 1 }, { unique: true })
+ReviewVoteSchema.index({ reviewId: 1 })
+
+export const ReviewVoteModel = mongoose.model<IReviewVote>('ReviewVote', ReviewVoteSchema)
+
+/* ─────────────────────────────────────────────────────
+   DISCUSSION THREAD — per-lesson Q&A (6.1)
+   ─────────────────────────────────────────────────────
+   upvotedBy stored as user-id array for O(1) membership.
+   commentCount is denormalised for cheap list queries.
+───────────────────────────────────────────────────── */
+export interface IDiscussionThread extends Document {
+  id:           string
+  lessonId:     Types.ObjectId
+  courseId:     Types.ObjectId
+  authorId:     Types.ObjectId
+  title?:       string
+  body:         string
+  isPinned:     boolean
+  isResolved:   boolean
+  upvoteCount:  number
+  upvotedBy:    Types.ObjectId[]
+  commentCount: number
+  createdAt:    Date
+  updatedAt:    Date
+}
+
+const DiscussionThreadSchema = new Schema<IDiscussionThread>(
+  {
+    lessonId:     { type: Schema.Types.ObjectId, ref: 'Lesson', required: true },
+    courseId:     { type: Schema.Types.ObjectId, ref: 'Course', required: true },
+    authorId:     { type: Schema.Types.ObjectId, ref: 'User',   required: true },
+    title:        { type: String, maxlength: 255 },
+    body:         { type: String, required: true, maxlength: 10000 },
+    isPinned:     { type: Boolean, default: false },
+    isResolved:   { type: Boolean, default: false },
+    upvoteCount:  { type: Number, default: 0, min: 0 },
+    upvotedBy:    [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    commentCount: { type: Number, default: 0, min: 0 },
+  },
+  baseSchemaOptions,
+)
+
+DiscussionThreadSchema.index({ lessonId: 1, createdAt: -1 })
+DiscussionThreadSchema.index({ courseId: 1 })
+DiscussionThreadSchema.index({ authorId: 1 })
+
+export const DiscussionThreadModel = mongoose.model<IDiscussionThread>('DiscussionThread', DiscussionThreadSchema)
+
+/* ─────────────────────────────────────────────────────
+   DISCUSSION COMMENT — reply to a thread (6.1)
+   ─────────────────────────────────────────────────────
+   parentId: null = top-level reply, set = nested reply.
+   isInstructorAnswer: highlighted as the accepted answer.
+───────────────────────────────────────────────────── */
+export interface IDiscussionComment extends Document {
+  id:                 string
+  threadId:           Types.ObjectId
+  authorId:           Types.ObjectId
+  body:               string
+  parentId?:          Types.ObjectId  // null = direct reply to thread
+  upvoteCount:        number
+  upvotedBy:          Types.ObjectId[]
+  isInstructorAnswer: boolean
+  createdAt:          Date
+  updatedAt:          Date
+}
+
+const DiscussionCommentSchema = new Schema<IDiscussionComment>(
+  {
+    threadId:           { type: Schema.Types.ObjectId, ref: 'DiscussionThread', required: true },
+    authorId:           { type: Schema.Types.ObjectId, ref: 'User',             required: true },
+    body:               { type: String, required: true, maxlength: 10000 },
+    parentId:           { type: Schema.Types.ObjectId, ref: 'DiscussionComment' },
+    upvoteCount:        { type: Number, default: 0, min: 0 },
+    upvotedBy:          [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    isInstructorAnswer: { type: Boolean, default: false },
+  },
+  baseSchemaOptions,
+)
+
+DiscussionCommentSchema.index({ threadId: 1, createdAt: 1 })
+DiscussionCommentSchema.index({ parentId: 1 })
+DiscussionCommentSchema.index({ authorId: 1 })
+
+export const DiscussionCommentModel = mongoose.model<IDiscussionComment>('DiscussionComment', DiscussionCommentSchema)
+
+/* ─────────────────────────────────────────────────────
+   LESSON NOTE — private student notes per lesson (6.4)
+───────────────────────────────────────────────────── */
+export interface ILessonNote extends Document {
+  id:        string
+  userId:    Types.ObjectId
+  lessonId:  Types.ObjectId
+  courseId:  Types.ObjectId
+  body:      string
+  createdAt: Date
+  updatedAt: Date
+}
+
+const LessonNoteSchema = new Schema<ILessonNote>(
+  {
+    userId:   { type: Schema.Types.ObjectId, ref: 'User',   required: true },
+    lessonId: { type: Schema.Types.ObjectId, ref: 'Lesson', required: true },
+    courseId: { type: Schema.Types.ObjectId, ref: 'Course', required: true },
+    body:     { type: String, required: true, maxlength: 50000 },
+  },
+  baseSchemaOptions,
+)
+
+LessonNoteSchema.index({ userId: 1, lessonId: 1 }, { unique: true })
+LessonNoteSchema.index({ userId: 1, courseId: 1 })
+
+export const LessonNoteModel = mongoose.model<ILessonNote>('LessonNote', LessonNoteSchema)
+
+/* ─────────────────────────────────────────────────────
+   VIDEO BOOKMARK — timestamped bookmark in a lesson (6.5)
+───────────────────────────────────────────────────── */
+export interface IVideoBookmark extends Document {
+  id:        string
+  userId:    Types.ObjectId
+  lessonId:  Types.ObjectId
+  courseId:  Types.ObjectId
+  timeSecs:  number    // position in the video (seconds)
+  label?:    string
+  createdAt: Date
+  updatedAt: Date
+}
+
+const VideoBookmarkSchema = new Schema<IVideoBookmark>(
+  {
+    userId:   { type: Schema.Types.ObjectId, ref: 'User',   required: true },
+    lessonId: { type: Schema.Types.ObjectId, ref: 'Lesson', required: true },
+    courseId: { type: Schema.Types.ObjectId, ref: 'Course', required: true },
+    timeSecs: { type: Number, required: true, min: 0 },
+    label:    { type: String, maxlength: 200 },
+  },
+  baseSchemaOptions,
+)
+
+VideoBookmarkSchema.index({ userId: 1, lessonId: 1 })
+VideoBookmarkSchema.index({ userId: 1, courseId: 1 })
+
+export const VideoBookmarkModel = mongoose.model<IVideoBookmark>('VideoBookmark', VideoBookmarkSchema)
+
+/* ─────────────────────────────────────────────────────
+   LEARNING PATH — ordered collection of courses (6.6)
+   ─────────────────────────────────────────────────────
+   courses[] is embedded with ordering + prereq flag.
+   enrolledCount is denormalised for catalogue display.
+───────────────────────────────────────────────────── */
+export type LearningPathStatus = 'draft' | 'published'
+
+export interface ILearningPathCourse {
+  courseId:        Types.ObjectId
+  order:           number    // display order (1-based)
+  isPrerequisite:  boolean   // must complete this before the next
+}
+
+export interface ILearningPath extends Document {
+  id:             string
+  title:          string
+  slug:           string
+  description?:   string
+  thumbnailUrl?:  string
+  instructorId:   Types.ObjectId
+  categoryId?:    Types.ObjectId
+  status:         LearningPathStatus
+  courses:        ILearningPathCourse[]
+  enrolledCount:  number
+  createdAt:      Date
+  updatedAt:      Date
+}
+
+const LearningPathCourseSchema = new Schema<ILearningPathCourse>(
+  {
+    courseId:       { type: Schema.Types.ObjectId, ref: 'Course', required: true },
+    order:          { type: Number, required: true, min: 1 },
+    isPrerequisite: { type: Boolean, default: false },
+  },
+  { _id: false },
+)
+
+const LearningPathSchema = new Schema<ILearningPath>(
+  {
+    title:         { type: String, required: true, trim: true, maxlength: 255 },
+    slug:          { type: String, required: true, unique: true, lowercase: true, trim: true, maxlength: 255 },
+    description:   { type: String, maxlength: 5000 },
+    thumbnailUrl:  { type: String, maxlength: 2048 },
+    instructorId:  { type: Schema.Types.ObjectId, ref: 'User',     required: true },
+    categoryId:    { type: Schema.Types.ObjectId, ref: 'Category' },
+    status:        { type: String, enum: ['draft', 'published'], default: 'draft' },
+    courses:       [LearningPathCourseSchema],
+    enrolledCount: { type: Number, default: 0, min: 0 },
+  },
+  baseSchemaOptions,
+)
+
+LearningPathSchema.index({ slug: 1 }, { unique: true })
+LearningPathSchema.index({ status: 1 })
+LearningPathSchema.index({ instructorId: 1 })
+LearningPathSchema.index({ categoryId: 1 })
+
+export const LearningPathModel = mongoose.model<ILearningPath>('LearningPath', LearningPathSchema)
+
+/* ─────────────────────────────────────────────────────
+   AUDIT LOG — admin action trail (8.11)
+───────────────────────────────────────────────────── */
+export type AuditAction =
+  | 'course.create'   | 'course.update'   | 'course.delete'
+  | 'course.publish'  | 'course.archive'
+  | 'user.ban'        | 'user.unban'      | 'user.roleChange'
+  | 'review.delete'
+  | 'coupon.create'   | 'coupon.delete'
+  | 'order.refund'
+  | 'category.create' | 'category.update' | 'category.delete'
+  | 'bulk.publish'    | 'bulk.archive'    | 'bulk.delete'
+  | 'course.import'   | 'course.export'
+
+export interface IAuditLog extends Document {
+  id:         string
+  actorId:    Types.ObjectId
+  actorEmail: string
+  actorRole:  string
+  action:     AuditAction
+  entity:     string             // e.g. "Course", "User"
+  entityId?:  string
+  meta?:      Record<string, unknown>   // extra context (e.g. old/new values)
+  ip?:        string
+  userAgent?: string
+  createdAt:  Date
+}
+
+const AuditLogSchema = new Schema<IAuditLog>(
+  {
+    actorId:    { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    actorEmail: { type: String, required: true },
+    actorRole:  { type: String, required: true },
+    action:     { type: String, required: true },
+    entity:     { type: String, required: true },
+    entityId:   { type: String },
+    meta:       { type: Schema.Types.Mixed },
+    ip:         { type: String },
+    userAgent:  { type: String },
+  },
+  { timestamps: { createdAt: true, updatedAt: false }, toJSON: { virtuals: true }, toObject: { virtuals: true } },
+)
+
+AuditLogSchema.index({ actorId: 1 })
+AuditLogSchema.index({ action: 1 })
+AuditLogSchema.index({ createdAt: -1 })
+AuditLogSchema.index({ entity: 1, entityId: 1 })
+
+export const AuditLogModel = mongoose.model<IAuditLog>('AuditLog', AuditLogSchema)

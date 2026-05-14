@@ -9,6 +9,7 @@ import {
   Play, ChevronUp,
 } from 'lucide-react'
 import { useCourses } from '@/lib/api/courses'
+import { useCategories } from '@/lib/api/categories'
 import type { Course } from '@/types/index'
 
 const STATUS_TABS = ['All Status', 'Not Started', 'In Progress', 'Completed']
@@ -19,8 +20,25 @@ const SORTS = [
   { value: 'price_lo', label: 'Price: Low → High' },
   { value: 'price_hi', label: 'Price: High → Low' },
 ]
-const CATEGORIES = ['all', 'Design', 'Development', 'Data Science', 'Business', 'Marketing']
 const LEVELS     = ['all', 'beginner', 'intermediate', 'advanced'] as const
+
+type DurationKey = 'any' | 'lt1h' | '1to3' | '3to6' | 'gt6'
+const DURATIONS: { key: DurationKey; label: string; min?: number; max?: number }[] = [
+  { key: 'any',  label: 'Any length' },
+  { key: 'lt1h', label: '< 1 hour',    max: 60 },
+  { key: '1to3', label: '1 – 3 hours', min: 60,  max: 180 },
+  { key: '3to6', label: '3 – 6 hours', min: 180, max: 360 },
+  { key: 'gt6',  label: '> 6 hours',   min: 360 },
+]
+
+type PriceKey = 'any' | 'free' | 'lt30' | '30to100' | 'gt100'
+const PRICES: { key: PriceKey; label: string; min?: number; max?: number; free?: boolean }[] = [
+  { key: 'any',     label: 'Any price' },
+  { key: 'free',    label: 'Free',         free: true },
+  { key: 'lt30',    label: '$1 – $29',     min: 1,   max: 29 },
+  { key: '30to100', label: '$30 – $99',    min: 30,  max: 99 },
+  { key: 'gt100',   label: '$100+',        min: 100 },
+]
 
 const CONTENT_TYPES = [
   { value: 'all',    label: 'All',           color: '#6B7280', bg: '#F9FAFB'  },
@@ -87,12 +105,38 @@ export default function CoursesPage() {
   const [showSort,    setShowSort]    = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [contentType, setContentType] = useState('all')
+  const [duration,    setDuration]    = useState<DurationKey>('any')
+  const [priceRange,  setPriceRange]  = useState<PriceKey>('any')
 
   const lvl = level === 'all' ? '' : level
   const cat = category === 'all' ? '' : category
-  const { data, isLoading } = useCourses({ page, per_page: 8, search, level: lvl, category: cat, sort, free })
+  const dur = DURATIONS.find(d => d.key === duration)
+  const pr  = PRICES.find(p => p.key === priceRange)
+  /* When user picks the dedicated "Free" price chip, override `free` so the
+     backend filters by isFree=true (not just price=0). */
+  const effectiveFree = pr?.free ? true : free
+
+  const { data, isLoading } = useCourses({
+    page, per_page: 8, search, level: lvl, category: cat, sort,
+    free:         effectiveFree,
+    duration_min: dur?.min,
+    duration_max: dur?.max,
+    price_min:    pr?.min,
+    price_max:    pr?.max,
+  })
+  const { data: categoriesData } = useCategories()
+  const categories: string[] = ['all', ...(categoriesData?.map(c => c.slug) ?? [])]
+  const categoryLabel = (slug: string) => slug === 'all'
+    ? 'All categories'
+    : categoriesData?.find(c => c.slug === slug)?.name ?? slug
 
   const total = data?.meta.total_count ?? 0
+  const activeFilterCount =
+    (level !== 'all' ? 1 : 0) +
+    (category !== 'all' ? 1 : 0) +
+    (free || pr?.free ? 1 : 0) +
+    (duration !== 'any' ? 1 : 0) +
+    (priceRange !== 'any' && !pr?.free ? 1 : 0)
 
   return (
     <div>
@@ -119,7 +163,7 @@ export default function CoursesPage() {
 
         {/* Status tabs */}
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-1 rounded-2xl p-1" style={{ background: '#F3F4F6' }}>
+          <div className="flex items-center gap-1 overflow-x-auto rounded-2xl p-1 scrollbar-none" style={{ background: '#F3F4F6' }}>
             {STATUS_TABS.map(tab => (
               <motion.button key={tab} onClick={() => setActiveTab(tab)}
                 className="relative rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
@@ -136,24 +180,30 @@ export default function CoursesPage() {
           </div>
 
           {/* Search + controls row */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-1 items-center gap-2 sm:flex-none">
             {/* Search */}
-            <div className="relative">
+            <div className="relative flex-1 sm:flex-none">
               <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }} />
               <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
                 placeholder="Search..."
-                className="rounded-xl py-2 pl-9 pr-4 text-sm outline-none transition-all w-40"
+                className="w-full rounded-xl py-2 pl-9 pr-4 text-sm outline-none transition-all sm:w-40"
                 style={{ background: 'white', border: '1px solid #E5E7EB', color: '#111827' }}
-                onFocus={e => { e.currentTarget.style.border = '1.5px solid #FF6B1A'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.08)'; e.currentTarget.style.width = '200px' }}
-                onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.width = '160px' }} />
+                onFocus={e => { e.currentTarget.style.border = '1.5px solid #FF6B1A'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.08)' }}
+                onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none' }} />
             </div>
 
             {/* Add Filter */}
             <motion.button whileTap={{ scale: 0.96 }} onClick={() => setShowFilters(v => !v)}
-              className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold bg-white transition-colors hover:bg-gray-50"
+              className="relative flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold bg-white transition-colors hover:bg-gray-50"
               style={{ border: '1px solid #E5E7EB', color: '#374151' }}>
               <SlidersHorizontal size={13} />
               Add Filter
+              {activeFilterCount > 0 && (
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold"
+                  style={{ background: '#FF6B1A', color: 'white' }}>
+                  {activeFilterCount}
+                </span>
+              )}
             </motion.button>
 
             {/* Sort by */}
@@ -228,13 +278,43 @@ export default function CoursesPage() {
                 <div>
                   <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#9CA3AF' }}>Category</p>
                   <div className="flex flex-wrap gap-2">
-                    {CATEGORIES.map(c => (
+                    {categories.map(c => (
                       <button key={c} onClick={() => { setCategory(c); setPage(1) }}
                         className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
                         style={category === c
                           ? { background: 'rgba(99,102,241,0.10)', color: '#4F46E5', border: '1px solid rgba(99,102,241,0.28)' }
                           : { background: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}>
-                        {c === 'all' ? 'All categories' : c}
+                        {categoryLabel(c)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Duration */}
+                <div>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#9CA3AF' }}>Duration</p>
+                  <div className="flex flex-wrap gap-2">
+                    {DURATIONS.map(d => (
+                      <button key={d.key} onClick={() => { setDuration(d.key); setPage(1) }}
+                        className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
+                        style={duration === d.key
+                          ? { background: 'rgba(59,130,246,0.10)', color: '#2563EB', border: '1px solid rgba(59,130,246,0.28)' }
+                          : { background: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}>
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Price range */}
+                <div>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#9CA3AF' }}>Price</p>
+                  <div className="flex flex-wrap gap-2">
+                    {PRICES.map(p => (
+                      <button key={p.key} onClick={() => { setPriceRange(p.key); setPage(1) }}
+                        className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
+                        style={priceRange === p.key
+                          ? { background: 'rgba(34,197,94,0.10)', color: '#16A34A', border: '1px solid rgba(34,197,94,0.28)' }
+                          : { background: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}>
+                        {p.label}
                       </button>
                     ))}
                   </div>
@@ -248,7 +328,10 @@ export default function CoursesPage() {
                       : { background: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}>
                     {free ? '✓ ' : ''}Free only
                   </button>
-                  <button onClick={() => { setLevel('all'); setCategory('all'); setFree(false); setContentType('all'); setPage(1) }}
+                  <button onClick={() => {
+                    setLevel('all'); setCategory('all'); setFree(false); setContentType('all')
+                    setDuration('any'); setPriceRange('any'); setPage(1)
+                  }}
                     className="flex items-center gap-1 text-xs font-semibold transition-colors hover:text-red-500"
                     style={{ color: '#9CA3AF' }}>
                     <X size={11} />Clear all
@@ -289,7 +372,10 @@ export default function CoursesPage() {
             </div>
             <p className="text-base font-bold" style={{ color: '#111827' }}>No courses found</p>
             <p className="text-sm" style={{ color: '#9CA3AF' }}>Try adjusting your filters or search query</p>
-            <button onClick={() => { setSearch(''); setLevel('all'); setCategory('all'); setFree(false) }}
+            <button onClick={() => {
+              setSearch(''); setLevel('all'); setCategory('all'); setFree(false)
+              setDuration('any'); setPriceRange('any')
+            }}
               className="mt-1 rounded-xl px-5 py-2 text-sm font-semibold transition-colors hover:opacity-90"
               style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A' }}>
               Clear filters

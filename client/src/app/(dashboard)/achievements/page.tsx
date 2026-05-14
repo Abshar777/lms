@@ -1,175 +1,144 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Trophy, Star, Flame, TrendingUp, Award, Target, Calendar, ChevronRight } from 'lucide-react'
+import {
+  Trophy, Star, Flame, Award, Target, Crown, Heart, GraduationCap, Rocket, Medal, Loader2,
+} from 'lucide-react'
+import { useMyAchievements, type Achievement } from '@/lib/api/achievements'
 
-const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } }
-const fadeUp  = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 280, damping: 26 } } }
+const ICON_MAP: Record<Achievement['iconKey'], React.ElementType> = {
+  rocket: Rocket,
+  flame:  Flame,
+  trophy: Trophy,
+  star:   Star,
+  medal:  Medal,
+  crown:  Crown,
+  heart:  Heart,
+  graduation: GraduationCap,
+}
 
-const BADGES = [
-  { id: 1, name: 'First Step',       desc: 'Completed your first lesson',   icon: '🎯', color: '#6366F1', bg: '#EEF2FF', earned: true  },
-  { id: 2, name: 'Quick Learner',    desc: '5 lessons in a single day',      icon: '⚡', color: '#F59E0B', bg: '#FFFBEB', earned: true  },
-  { id: 3, name: '7-Day Streak',     desc: 'Learned 7 days in a row',        icon: '🔥', color: '#EF4444', bg: '#FEF2F2', earned: true  },
-  { id: 4, name: 'Course Master',    desc: 'Completed a full course',        icon: '📚', color: '#10B981', bg: '#ECFDF5', earned: true  },
-  { id: 5, name: 'Social Learner',   desc: 'Joined 3 discussions',           icon: '💬', color: '#8B5CF6', bg: '#F5F3FF', earned: true  },
-  { id: 6, name: 'Design Expert',    desc: 'Finish all design courses',      icon: '🎨', color: '#FF6B1A', bg: '#FFF7ED', earned: false },
-  { id: 7, name: 'Night Owl',        desc: 'Study after midnight',           icon: '🦉', color: '#6366F1', bg: '#EEF2FF', earned: false },
-  { id: 8, name: 'Top 10',           desc: 'Reach top 10 leaderboard',       icon: '🏆', color: '#F59E0B', bg: '#FFFBEB', earned: false },
-]
-
-const LEADERBOARD = [
-  { rank: 1, name: 'Sarah Chen',  pts: 2840, avatar: 'S', color: '#F59E0B' },
-  { rank: 2, name: 'Alex Kim',    pts: 2610, avatar: 'A', color: '#6366F1' },
-  { rank: 3, name: 'John Doe',    pts: 2480, avatar: 'J', color: '#FF6B1A', isYou: true },
-  { rank: 4, name: 'Maria López', pts: 2210, avatar: 'M', color: '#10B981' },
-  { rank: 5, name: 'Raj Patel',   pts: 1980, avatar: 'R', color: '#8B5CF6' },
-]
-
-const STREAK_DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+const ICON_COLORS: Record<Achievement['iconKey'], { fg: string; bg: string }> = {
+  rocket:     { fg: '#6366F1', bg: 'rgba(99,102,241,0.10)' },
+  flame:      { fg: '#EF4444', bg: 'rgba(239,68,68,0.10)' },
+  trophy:     { fg: '#F59E0B', bg: 'rgba(245,158,11,0.10)' },
+  star:       { fg: '#FBBF24', bg: 'rgba(251,191,36,0.10)' },
+  medal:      { fg: '#10B981', bg: 'rgba(16,185,129,0.10)' },
+  crown:      { fg: '#A855F7', bg: 'rgba(168,85,247,0.10)' },
+  heart:      { fg: '#EC4899', bg: 'rgba(236,72,153,0.10)' },
+  graduation: { fg: '#FF6B1A', bg: 'rgba(255,107,26,0.10)' },
+}
 
 export default function AchievementsPage() {
-  return (
-    <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-8">
+  const { data, isLoading } = useMyAchievements()
+  const items = data?.items ?? []
+  const earned = items.filter(a => a.earned)
+  const inProgress = items.filter(a => !a.earned)
 
-      {/* ── Stats row ─────────────────────────────── */}
-      <motion.div variants={fadeUp} className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {[
-          { icon: '🏆', value: '100',  label: 'Total Points',    color: '#F59E0B', bg: '#FFFBEB' },
-          { icon: '🎖',  value: '32',   label: 'Badges Earned',   color: '#6366F1', bg: '#EEF2FF' },
-          { icon: '📜',  value: '2',    label: 'Certificates',    color: '#10B981', bg: '#ECFDF5' },
-          { icon: '🔥',  value: '7',    label: 'Day Streak',      color: '#EF4444', bg: '#FEF2F2' },
-        ].map(s => (
-          <motion.div key={s.label}
-            whileHover={{ y: -3, boxShadow: '0 8px 24px rgba(0,0,0,0.08)' }}
-            className="flex items-center gap-3 rounded-2xl bg-white p-4"
-            style={{ border: '1px solid #E5E7EB', boxShadow: '0 2px 6px rgba(0,0,0,0.04)' }}>
-            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl text-2xl"
-              style={{ background: s.bg }}>
-              {s.icon}
-            </div>
-            <div>
-              <p className="text-2xl font-bold" style={{ color: '#111827' }}>{s.value}</p>
-              <p className="text-xs" style={{ color: '#9CA3AF' }}>{s.label}</p>
-            </div>
-          </motion.div>
-        ))}
+  return (
+    <div>
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Trophy size={14} style={{ color: '#F59E0B' }} />
+          <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#F59E0B' }}>
+            Achievements
+          </span>
+        </div>
+        <h1 className="text-2xl font-bold" style={{ color: '#111827', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+          Badges
+          {data && (
+            <span className="ml-2 inline-flex items-center justify-center rounded-lg px-2 py-0.5 text-sm font-bold"
+              style={{ background: 'rgba(245,158,11,0.10)', color: '#F59E0B' }}>
+              {data.earnedCount} / {data.total}
+            </span>
+          )}
+        </h1>
+        <p className="mt-1 text-sm" style={{ color: '#6B7280' }}>
+          Milestones you&apos;ve hit on your learning journey.
+        </p>
       </motion.div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px]">
-        {/* ── Left ─────────────────────────────────── */}
-        <div className="space-y-6">
-
-          {/* Badges */}
-          <motion.div variants={fadeUp} className="rounded-2xl bg-white p-5"
-            style={{ border: '1px solid #E5E7EB' }}>
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-bold" style={{ color: '#111827' }}>Your Badges</h2>
-              <span className="text-xs font-semibold" style={{ color: '#9CA3AF' }}>
-                {BADGES.filter(b => b.earned).length}/{BADGES.length} earned
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {BADGES.map((b, i) => (
-                <motion.div key={b.id}
-                  initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.1 + i * 0.05, type: 'spring', stiffness: 300, damping: 25 }}
-                  whileHover={{ y: -3 }}
-                  className="flex flex-col items-center gap-2 rounded-2xl p-3 text-center transition-all"
-                  style={{
-                    background: b.earned ? b.bg : '#F9FAFB',
-                    border: `1px solid ${b.earned ? b.color + '30' : '#E5E7EB'}`,
-                    opacity: b.earned ? 1 : 0.5,
-                  }}>
-                  <span className="text-2xl">{b.icon}</span>
-                  <div>
-                    <p className="text-xs font-bold" style={{ color: b.earned ? '#111827' : '#9CA3AF' }}>{b.name}</p>
-                    <p className="text-[10px] mt-0.5" style={{ color: '#9CA3AF' }}>{b.desc}</p>
-                  </div>
-                  {b.earned && (
-                    <span className="rounded-lg px-2 py-0.5 text-[9px] font-bold"
-                      style={{ background: b.color + '20', color: b.color }}>Earned</span>
-                  )}
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Streak calendar */}
-          <motion.div variants={fadeUp} className="rounded-2xl bg-white p-5"
-            style={{ border: '1px solid #E5E7EB' }}>
-            <div className="mb-4 flex items-center gap-2">
-              <Flame size={16} style={{ color: '#EF4444' }} />
-              <h2 className="text-base font-bold" style={{ color: '#111827' }}>Learning Streak</h2>
-            </div>
-            <div className="grid grid-cols-7 gap-2">
-              {STREAK_DAYS.map((d, i) => (
-                <div key={d} className="flex flex-col items-center gap-1.5">
-                  <motion.div
-                    initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.3 + i * 0.05 }}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold transition-all"
-                    style={i < 7
-                      ? { background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)', color: 'white', boxShadow: '0 4px 12px rgba(255,107,26,0.3)' }
-                      : { background: '#F3F4F6', color: '#D1D5DB' }}>
-                    {i < 7 ? '✓' : ''}
-                  </motion.div>
-                  <span className="text-[10px] font-medium" style={{ color: '#9CA3AF' }}>{d}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 rounded-xl p-3" style={{ background: '#FFF7ED', border: '1px solid rgba(255,107,26,0.18)' }}>
-              <p className="text-xs font-semibold" style={{ color: '#FF6B1A' }}>
-                🔥 7-day streak! Keep going — your longest streak is <strong>7 days</strong>.
-              </p>
-            </div>
-          </motion.div>
+      {isLoading && (
+        <div className="flex items-center justify-center gap-2 py-16 text-sm" style={{ color: '#9CA3AF' }}>
+          <Loader2 size={14} className="animate-spin" />Loading achievements…
         </div>
+      )}
 
-        {/* ── Right: Leaderboard ───────────────────── */}
-        <motion.div variants={fadeUp} className="rounded-2xl bg-white p-5 lg:sticky lg:top-[116px] lg:self-start"
-          style={{ border: '1px solid #E5E7EB' }}>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-bold" style={{ color: '#111827' }}>Leaderboard</h2>
-            <TrendingUp size={16} style={{ color: '#9CA3AF' }} />
+      {earned.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>
+            Earned
+          </h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {earned.map((a, i) => <BadgeCard key={a.id} a={a} index={i} />)}
           </div>
-          <div className="space-y-2">
-            {LEADERBOARD.map((u, i) => (
-              <motion.div key={u.rank}
-                initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 + i * 0.07 }}
-                className="flex items-center gap-3 rounded-xl px-3 py-3 transition-colors"
-                style={{
-                  background: u.isYou ? 'rgba(255,107,26,0.06)' : 'transparent',
-                  border: u.isYou ? '1px solid rgba(255,107,26,0.18)' : '1px solid transparent',
-                }}>
-                <span className="w-6 text-sm font-bold text-center flex-shrink-0">
-                  {u.rank === 1 ? '🥇' : u.rank === 2 ? '🥈' : u.rank === 3 ? '🥉' : `#${u.rank}`}
-                </span>
-                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-                  style={{ background: u.color }}>
-                  {u.avatar}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold truncate" style={{ color: u.isYou ? '#FF6B1A' : '#111827' }}>
-                    {u.name}{u.isYou && ' (You)'}
-                  </p>
-                  <p className="text-xs" style={{ color: '#9CA3AF' }}>{u.pts.toLocaleString()} pts</p>
-                </div>
-              </motion.div>
-            ))}
+        </section>
+      )}
+
+      {inProgress.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>
+            In progress
+          </h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {inProgress.map((a, i) => <BadgeCard key={a.id} a={a} index={i} />)}
           </div>
-          <div className="mt-4 rounded-xl p-3 text-center" style={{ background: '#F3F4F6' }}>
-            <p className="text-xs" style={{ color: '#6B7280' }}>
-              You&apos;re <strong style={{ color: '#111827' }}>130 pts</strong> away from 2nd place!
-            </p>
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full" style={{ background: '#E5E7EB' }}>
-              <motion.div className="h-full rounded-full"
-                style={{ background: 'linear-gradient(90deg,#FF6B1A,#FF8C42)', width: '94%' }}
-                initial={{ width: 0 }} animate={{ width: '94%' }}
-                transition={{ duration: 0.8, ease: 'easeOut', delay: 0.5 }} />
+        </section>
+      )}
+    </div>
+  )
+}
+
+function BadgeCard({ a, index }: { a: Achievement; index: number }) {
+  const Icon = ICON_MAP[a.iconKey]
+  const palette = ICON_COLORS[a.iconKey]
+  const pct = a.target > 0 ? Math.min(100, Math.round((a.progress / a.target) * 100)) : 0
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }}
+      className="rounded-2xl bg-white p-4 transition-all hover:shadow-md"
+      style={{
+        border: a.earned ? `1px solid ${palette.fg}40` : '1px solid #E5E7EB',
+        opacity: a.earned ? 1 : 0.85,
+      }}>
+      <div className="flex items-start gap-3">
+        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl"
+          style={{
+            background: a.earned ? palette.bg : '#F4F5F8',
+            border: `1px solid ${a.earned ? palette.fg + '40' : '#E5E7EB'}`,
+          }}>
+          <Icon size={20} style={{ color: a.earned ? palette.fg : '#9CA3AF' }} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-bold" style={{ color: a.earned ? '#111827' : '#6B7280' }}>{a.title}</p>
+            {a.earned && (
+              <Award size={12} style={{ color: palette.fg }} />
+            )}
+          </div>
+          <p className="mt-1 text-xs leading-relaxed" style={{ color: '#6B7280' }}>{a.description}</p>
+
+          {!a.earned && a.target > 1 && (
+            <div className="mt-2.5">
+              <div className="flex items-center justify-between text-[10px]" style={{ color: '#9CA3AF' }}>
+                <span>{a.progress} / {a.target}</span>
+                <span>{pct}%</span>
+              </div>
+              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full" style={{ background: '#F3F4F6' }}>
+                <motion.div className="h-full rounded-full"
+                  initial={{ width: 0 }} animate={{ width: `${pct}%` }}
+                  transition={{ duration: 0.7, ease: 'easeOut' }}
+                  style={{ background: palette.fg }} />
+              </div>
             </div>
-          </div>
-        </motion.div>
+          )}
+
+          {a.earned && a.earnedAt && (
+            <p className="mt-1.5 text-[10px]" style={{ color: '#9CA3AF' }}>
+              Earned {new Date(a.earnedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </p>
+          )}
+        </div>
       </div>
     </motion.div>
   )

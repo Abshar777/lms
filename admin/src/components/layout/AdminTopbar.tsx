@@ -2,9 +2,13 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Bell, Plus, ChevronDown, X, BookOpen, Users, GraduationCap } from 'lucide-react'
+import { Search, Bell, Plus, ChevronDown, X, BookOpen, Users, GraduationCap, Menu } from 'lucide-react'
 import Link from 'next/link'
 import { useUIStore } from '@/store/ui.store'
+import { useCurrentUser, logout } from '@/lib/api/user'
+import { useRouter } from 'next/navigation'
+import { LogOut } from 'lucide-react'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 const notifications = [
   { id: 1, type: 'enroll',     text: 'New enrollment: UI/UX Design Mastery', time: '2m ago',  unread: true },
@@ -20,13 +24,24 @@ const quickActions = [
 ]
 
 export function AdminTopbar() {
-  const { sidebarCollapsed } = useUIStore()
+  const { sidebarCollapsed, setMobileNav } = useUIStore()
   const [searchOpen,  setSearchOpen]  = useState(false)
   const [notifOpen,   setNotifOpen]   = useState(false)
   const [quickOpen,   setQuickOpen]   = useState(false)
+  const [avatarOpen,  setAvatarOpen]  = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const unreadCount = notifications.filter(n => n.unread).length
-  const left = sidebarCollapsed ? 68 : 240
+  const isMobile = useIsMobile()
+  const left = isMobile ? 0 : (sidebarCollapsed ? 68 : 240)
+
+  const { data: user } = useCurrentUser()
+  const router = useRouter()
+  const avatarInitial = (user?.name?.trim()?.[0] ?? '?').toUpperCase()
+
+  const handleLogout = async () => {
+    await logout()
+    router.replace('/login')
+  }
 
   return (
     <motion.header
@@ -35,6 +50,15 @@ export function AdminTopbar() {
       className="fixed top-0 right-0 z-30 flex h-[60px] items-center gap-3 px-5"
       style={{ background: 'rgba(8,10,18,0.85)', borderBottom: '1px solid rgba(255,255,255,0.06)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
     >
+      {/* ── Hamburger (mobile only) ─────────────────── */}
+      <button
+        onClick={() => setMobileNav(true)}
+        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-white/10 lg:hidden"
+        style={{ color: 'rgba(255,255,255,0.6)' }}
+        aria-label="Open menu">
+        <Menu size={18} />
+      </button>
+
       {/* ── Search ──────────────────────────────────── */}
       <div className="relative flex-1 max-w-[480px]">
         <AnimatePresence mode="wait">
@@ -127,7 +151,7 @@ export function AdminTopbar() {
               <motion.div
                 initial={{ opacity: 0, y: -8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -8, scale: 0.96 }} transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                className="absolute right-0 top-full mt-2 w-80 rounded-2xl z-50 overflow-hidden"
+                className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] sm:w-80 rounded-2xl z-50 overflow-hidden"
                 style={{ background: '#13162A', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
                 <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                   <span className="text-sm font-semibold text-white">Notifications</span>
@@ -155,16 +179,50 @@ export function AdminTopbar() {
           </AnimatePresence>
         </div>
 
-        {/* ── Avatar ───────────────────────────────── */}
-        <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white cursor-pointer ring-2 ring-transparent hover:ring-orange-500/40 transition-all"
-          style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
-          A
+        {/* ── Avatar + dropdown ────────────────────── */}
+        <div className="relative">
+          <motion.button
+            onClick={() => { setAvatarOpen(v => !v); setNotifOpen(false); setQuickOpen(false) }}
+            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+            className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full text-xs font-bold text-white ring-2 ring-transparent hover:ring-orange-500/40 transition-all"
+            style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}
+            title={user?.email}>
+            {user?.avatarUrl
+              ? <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
+              : avatarInitial}
+          </motion.button>
+
+          <AnimatePresence>
+            {avatarOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.96 }} transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] sm:w-60 rounded-2xl z-50 overflow-hidden"
+                style={{ background: '#13162A', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+                <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <p className="truncate text-sm font-semibold text-white">{user?.name ?? 'Loading…'}</p>
+                  <p className="mt-0.5 truncate text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>{user?.email ?? ''}</p>
+                  {user?.role && (
+                    <span className="mt-2 inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest"
+                      style={{ background: 'rgba(255,107,26,0.15)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.25)' }}>
+                      {user.role}
+                    </span>
+                  )}
+                </div>
+                <button onClick={handleLogout}
+                  className="flex w-full items-center gap-2 px-4 py-2.5 text-sm transition-colors hover:bg-white/04"
+                  style={{ color: '#EF4444' }}>
+                  <LogOut size={13} />Sign out
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
       {/* Backdrop for dropdowns */}
-      {(notifOpen || quickOpen) && (
-        <div className="fixed inset-0 z-40" onClick={() => { setNotifOpen(false); setQuickOpen(false) }} />
+      {(notifOpen || quickOpen || avatarOpen) && (
+        <div className="fixed inset-0 z-40" onClick={() => { setNotifOpen(false); setQuickOpen(false); setAvatarOpen(false) }} />
       )}
     </motion.header>
   )

@@ -11,6 +11,11 @@ interface UIState {
   setMobileNav:     (v: boolean) => void
   navLayout:        NavLayout
   setNavLayout:     (v: NavLayout) => void
+
+  /* Right-side activity panel */
+  rightPanelOpen:   boolean
+  toggleRightPanel: () => void
+  setRightPanel:    (v: boolean) => void
 }
 
 export const useUIStore = create<UIState>()(
@@ -23,10 +28,18 @@ export const useUIStore = create<UIState>()(
       setMobileNav:     (v) => set({ mobileNavOpen: v }),
       navLayout:        'sidebar',
       setNavLayout:     (v) => set({ navLayout: v }),
+
+      rightPanelOpen:   true,
+      toggleRightPanel: () => set(s => ({ rightPanelOpen: !s.rightPanelOpen })),
+      setRightPanel:    (v) => set({ rightPanelOpen: v }),
     }),
     {
       name: 'lms-client-ui',
-      partialize: (s) => ({ sidebarCollapsed: s.sidebarCollapsed, navLayout: s.navLayout }),
+      partialize: (s) => ({
+        sidebarCollapsed: s.sidebarCollapsed,
+        navLayout:        s.navLayout,
+        rightPanelOpen:   s.rightPanelOpen,
+      }),
     },
   ),
 )

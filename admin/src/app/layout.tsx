@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Bricolage_Grotesque, DM_Sans, JetBrains_Mono } from 'next/font/google'
 import { Providers } from './providers'
 import './globals.css'
@@ -10,6 +10,24 @@ const monoFont    = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono'
 export const metadata: Metadata = {
   title: { template: '%s — LearnOS Admin', default: 'LearnOS Admin' },
   description: 'LearnOS administration portal',
+  icons: {
+    icon:     [{ url: '/icons/icon.svg', type: 'image/svg+xml' }],
+    shortcut: '/icons/icon.svg',
+    apple:    '/icons/icon.svg',
+  },
+  manifest:        '/manifest.webmanifest',
+  applicationName: 'LearnOS Admin',
+  appleWebApp: {
+    capable:        true,
+    title:          'LearnOS Admin',
+    statusBarStyle: 'default',
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor:   '#0D0F1A',
+  width:        'device-width',
+  initialScale: 1,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

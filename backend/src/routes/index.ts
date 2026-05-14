@@ -1,6 +1,32 @@
 import { Router, type Request, type Response } from 'express'
+import mongoose from 'mongoose'
 import { apiRateLimit } from '@/middleware/rateLimit.middleware.ts'
-import authRoutes from './auth.routes.ts'
+import authRoutes          from './auth.routes.ts'
+import courseRoutes        from './courses.routes.ts'
+import categoryRoutes      from './categories.routes.ts'
+import enrollmentRoutes    from './enrollments.routes.ts'
+import lessonRoutes        from './lessons.routes.ts'
+import reviewRoutes        from './reviews.routes.ts'
+import adminRoutes         from './admin.routes.ts'
+import liveClassRoutes     from './liveClasses.routes.ts'
+import notificationRoutes  from './notifications.routes.ts'
+import favoriteRoutes      from './favorites.routes.ts'
+import achievementRoutes   from './achievements.routes.ts'
+import quizRoutes          from './quizzes.routes.ts'
+import assignmentRoutes    from './assignments.routes.ts'
+import certificateRoutes   from './certificates.routes.ts'
+import streakRoutes        from './streaks.routes.ts'
+import couponRoutes        from './coupons.routes.ts'
+import checkoutRoutes      from './checkout.routes.ts'
+import webhookRoutes       from './webhooks.routes.ts'
+import orderRoutes         from './orders.routes.ts'
+import discussionRoutes    from './discussion.routes.ts'
+import notesRoutes         from './notes.routes.ts'
+import bookmarksRoutes     from './bookmarks.routes.ts'
+import learningPathRoutes  from './learningpaths.routes.ts'
+import aiRoutes            from './ai.routes.ts'
+import auditLogRoutes      from './auditlog.routes.ts'
+import uploadRoutes        from './upload.routes.ts'
 
 const router = Router()
 
@@ -20,15 +46,57 @@ router.get('/health', (_req: Request, res: Response) => {
   })
 })
 
-/* ─── Domain routers ─────────────────────────────── */
-router.use('/auth', authRoutes)
+/* ─── Readiness probe (8.15) ─────────────────────
+   Returns 200 only when the DB connection is open.
+   K8s / docker-compose healthcheck: GET /api/v1/ready
+───────────────────────────────────────────────── */
+router.get('/ready', async (_req: Request, res: Response) => {
+  const dbState = mongoose.connection.readyState // 1 = connected
+  if (dbState !== 1) {
+    res.status(503).json({ success: false, error: { code: 'NOT_READY', message: 'Database not connected' } })
+    return
+  }
+  try {
+    await mongoose.connection.db!.admin().ping()
+    res.json({ success: true, data: { status: 'ready', db: 'connected' } })
+  } catch {
+    res.status(503).json({ success: false, error: { code: 'NOT_READY', message: 'Database ping failed' } })
+  }
+})
 
-// Future domains — uncomment as you build them:
-// router.use('/courses',     courseRoutes)
-// router.use('/enrollments', enrollmentRoutes)
-// router.use('/lessons',     lessonRoutes)
-// router.use('/users',       userRoutes)
-// router.use('/reviews',     reviewRoutes)
-// router.use('/categories',  categoryRoutes)
+/* ─── Domain routers ─────────────────────────────── */
+router.use('/auth',        authRoutes)
+router.use('/courses',     courseRoutes)
+router.use('/categories',  categoryRoutes)
+router.use('/enrollments', enrollmentRoutes)
+router.use('/lessons',     lessonRoutes)
+router.use('/reviews',     reviewRoutes)
+router.use('/admin',         adminRoutes)
+router.use('/live-classes',  liveClassRoutes)
+router.use('/notifications', notificationRoutes)
+router.use('/favorites',     favoriteRoutes)
+router.use('/achievements',  achievementRoutes)
+router.use('/quizzes',       quizRoutes)
+router.use('/assignments',   assignmentRoutes)
+router.use('/certificates',  certificateRoutes)
+router.use('/streaks',       streakRoutes)
+router.use('/coupons',         couponRoutes)
+router.use('/checkout',        checkoutRoutes)
+router.use('/webhooks',        webhookRoutes)
+router.use('/orders',          orderRoutes)
+/* 6.1 Q&A — thread/comment routes are nested under /lessons & /threads */
+router.use('/',                discussionRoutes)
+/* 6.4 Notes */
+router.use('/',                notesRoutes)
+/* 6.5 Bookmarks */
+router.use('/',                bookmarksRoutes)
+/* 6.6 Learning paths */
+router.use('/learning-paths',  learningPathRoutes)
+/* 7.x AI features */
+router.use('/ai',              aiRoutes)
+/* 8.11 Audit log */
+router.use('/audit-logs',      auditLogRoutes)
+/* Media uploads (image / video) */
+router.use('/uploads',         uploadRoutes)
 
 export default router
