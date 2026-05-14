@@ -34,6 +34,13 @@ const envSchema = z.object({
   /* Public URL — used to build absolute file URLs for uploaded media */
   BACKEND_PUBLIC_URL: z.string().url().default('http://localhost:4000'),
 
+  /* Cloudflare R2 object storage */
+  R2_ACCOUNT_ID:        z.string().min(1, 'R2_ACCOUNT_ID is required'),
+  R2_ACCESS_KEY_ID:     z.string().min(1, 'R2_ACCESS_KEY_ID is required'),
+  R2_SECRET_ACCESS_KEY: z.string().min(1, 'R2_SECRET_ACCESS_KEY is required'),
+  R2_BUCKET_NAME:       z.string().default('learnos-media'),
+  R2_PUBLIC_URL:        z.string().url('R2_PUBLIC_URL must be a valid URL, e.g. https://pub-xxx.r2.dev'),
+
   /* AI — Ollama (local LLM) */
   OLLAMA_BASE_URL: z.preprocess(v => (v === '' ? undefined : v), z.string().url().default('http://localhost:11434')),
   OLLAMA_MODEL:    z.preprocess(v => (v === '' ? undefined : v), z.string().default('llama3.2:3b')),

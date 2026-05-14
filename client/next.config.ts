@@ -5,6 +5,24 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ?? process.env.NEXT_PUBLIC_API_BASE_URL
   ?? 'http://localhost:4000'
 
+/* Parse the R2 public URL (set at build time via NEXT_PUBLIC_R2_PUBLIC_URL).
+   Falls back to allowing all *.r2.dev subdomains for local dev.           */
+const r2PublicUrl  = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ''
+const r2Hostname   = r2PublicUrl
+  ? (() => { try { return new URL(r2PublicUrl).hostname } catch { return '' } })()
+  : ''
+
+type RemotePattern = { protocol: 'https' | 'http'; hostname: string; port?: string; pathname?: string }
+
+const r2Patterns: RemotePattern[] = [
+  // r2.dev public subdomain (default when no custom domain is configured)
+  { protocol: 'https', hostname: '*.r2.dev' },
+  // Direct R2 storage hostname
+  { protocol: 'https', hostname: '*.r2.cloudflarestorage.com' },
+  // Custom domain configured via NEXT_PUBLIC_R2_PUBLIC_URL
+  ...(r2Hostname ? [{ protocol: 'https' as const, hostname: r2Hostname }] : []),
+]
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
@@ -12,6 +30,7 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: 'plus.unsplash.com' },
+      ...r2Patterns,
     ],
   },
   experimental: {

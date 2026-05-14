@@ -26,7 +26,7 @@
 import { useRef, useState, useCallback, type DragEvent, type ChangeEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, Upload, Image, Film, X, CheckCircle2, Loader2, AlertCircle } from 'lucide-react'
-import { useUploadImage, useUploadVideo } from '@/lib/api/upload'
+import { useUploadImage, uploadVideo } from '@/lib/api/upload'
 
 /* ── Shared styling tokens (match admin dark theme) ── */
 const BASE_INPUT =
@@ -108,14 +108,15 @@ export function MediaUploadField({
   placeholder,
   disabled = false,
 }: MediaUploadFieldProps) {
-  const [tab,       setTab]       = useState<'url' | 'upload'>('url')
-  const [dragging,  setDragging]  = useState(false)
-  const [uploadErr, setUploadErr] = useState<string | null>(null)
-  const [lastFile,  setLastFile]  = useState<{ name: string; size: number } | null>(null)
+  const [tab,        setTab]        = useState<'url' | 'upload'>('url')
+  const [dragging,   setDragging]   = useState(false)
+  const [uploadErr,  setUploadErr]  = useState<string | null>(null)
+  const [lastFile,   setLastFile]   = useState<{ name: string; size: number } | null>(null)
+  const [uploading,  setUploading]  = useState(false)
+  const [vidProgress, setVidProgress] = useState(0)
 
   const uploadImage = useUploadImage()
-  const uploadVideo = useUploadVideo()
-  const isUploading = uploadImage.isPending || uploadVideo.isPending
+  const isUploading = uploadImage.isPending || uploading
   const uploadDone  = !!value && !!lastFile
 
   const accept = type === 'image'
@@ -127,11 +128,18 @@ export function MediaUploadField({
     setUploadErr(null)
     setLastFile({ name: file.name, size: file.size })
     try {
-      const url = type === 'image'
-        ? await uploadImage.mutateAsync(file)
-        : await uploadVideo.mutateAsync(file)
+      let url: string
+      if (type === 'image') {
+        url = await uploadImage.mutateAsync(file)
+      } else {
+        setUploading(true)
+        setVidProgress(0)
+        url = await uploadVideo(file, (pct) => setVidProgress(pct))
+        setUploading(false)
+      }
       onChange(url)
     } catch (err: unknown) {
+      setUploading(false)
       const msg =
         (err as { response?: { data?: { error?: { message?: string } } } })
           ?.response?.data?.error?.message
@@ -139,7 +147,7 @@ export function MediaUploadField({
       setUploadErr(msg)
       setLastFile(null)
     }
-  }, [type, uploadImage, uploadVideo, onChange])
+  }, [type, uploadImage, onChange])
 
   /* ── Hidden file input ── */
   const { open: openPicker, input: fileInput } = useFilePicker({ accept, onPick: handleFile })
@@ -158,8 +166,9 @@ export function MediaUploadField({
     onChange('')
     setLastFile(null)
     setUploadErr(null)
+    setUploading(false)
+    setVidProgress(0)
     uploadImage.reset()
-    uploadVideo.reset()
   }
 
   /* ══════════════════════════════════════════════════
@@ -300,17 +309,31 @@ export function MediaUploadField({
 
             {/* Uploading state */}
             {isUploading && (
-              <div className="flex items-center gap-3 rounded-xl px-4 py-3"
+              <div className="space-y-2 rounded-xl px-4 py-3"
                 style={{ background: 'rgba(255,107,26,0.07)', border: '1px solid rgba(255,107,26,0.18)' }}>
-                <Loader2 size={16} className="animate-spin flex-shrink-0" style={{ color: '#FF6B1A' }} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                    Uploading {lastFile?.name}…
-                  </p>
-                  <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                    {lastFile ? humanSize(lastFile.size) : ''}
-                  </p>
+                <div className="flex items-center gap-3">
+                  <Loader2 size={16} className="animate-spin flex-shrink-0" style={{ color: '#FF6B1A' }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                      Uploading {lastFile?.name}…
+                    </p>
+                    <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                      {lastFile ? humanSize(lastFile.size) : ''}
+                      {uploading && vidProgress > 0 ? ` · ${vidProgress}%` : ''}
+                    </p>
+                  </div>
                 </div>
+                {/* Video upload progress bar */}
+                {uploading && (
+                  <div className="h-1 overflow-hidden rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                    <motion.div
+                      className="h-full rounded-full"
+                      style={{ background: 'linear-gradient(90deg,#FF6B1A,#FF8C42)' }}
+                      animate={{ width: `${vidProgress}%` }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  </div>
+                )}
               </div>
             )}
 

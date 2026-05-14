@@ -31,6 +31,7 @@ export async function connectDatabase(): Promise<void> {
       serverSelectionTimeoutMS: 5_000,
       socketTimeoutMS:   45_000,
       connectTimeoutMS:  10_000,
+      authSource: "admin"
     })
   } catch (err) {
     logger.error({ err }, '❌  Failed to connect to MongoDB')

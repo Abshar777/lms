@@ -1,26 +1,25 @@
 import { Router, type Request, type Response, type NextFunction } from 'express'
-import { authenticate }  from '@/middleware/auth.middleware.ts'
-import { imageUpload, videoUpload } from '@/middleware/upload.middleware.ts'
-import { sendSuccess } from '@/utils/response.ts'
-import { env } from '@/config/env.ts'
+import { z } from 'zod'
+import { authenticate }    from '@/middleware/auth.middleware.ts'
+import { imageUpload, ALLOWED_VIDEO } from '@/middleware/upload.middleware.ts'
+import { sendSuccess }     from '@/utils/response.ts'
+import {
+  uploadToR2,
+  generatePresignedPutUrl,
+  deleteFromR2,
+  makeKey,
+} from '@/services/r2.service.ts'
 
 const router = Router()
 
 /* ── All upload routes require a valid session ── */
 router.use(authenticate)
 
-/* ── Public URL prefix ───────────────────────────────────────
-   env.BACKEND_PUBLIC_URL defaults to http://localhost:4000.
-   Override in .env for production deployments.
-────────────────────────────────────────────────────────────── */
-function backendOrigin(): string {
-  return env.BACKEND_PUBLIC_URL
-}
-
 /* ── POST /uploads/image ─────────────────────────────────────
    Accepts: multipart/form-data with field "file"
    Accepts: JPEG, PNG, GIF, WebP — max 5 MB
-   Returns: { url: "https://…/uploads/images/filename.jpg" }
+   Flow:    multer (memoryStorage) → uploadToR2 → return CDN URL
+   Returns: { url, key, size }
 ────────────────────────────────────────────────────────────── */
 router.post(
   '/image',
@@ -36,7 +35,7 @@ router.post(
       next()
     })
   },
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     if (!req.file) {
       res.status(400).json({
         success: false,
@@ -44,41 +43,130 @@ router.post(
       })
       return
     }
-    const url = `${backendOrigin()}/uploads/images/${req.file.filename}`
-    sendSuccess(res, { url, filename: req.file.filename, size: req.file.size }, undefined, 201)
+
+    try {
+      const key = makeKey(req.file.originalname, 'images')
+      const url = await uploadToR2(req.file.buffer, key, req.file.mimetype)
+      sendSuccess(res, { url, key, size: req.file.size }, undefined, 201)
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        error: { code: 'R2_ERROR', message: (err as Error).message },
+      })
+    }
   },
 )
 
-/* ── POST /uploads/video ─────────────────────────────────────
-   Accepts: multipart/form-data with field "file"
-   Accepts: MP4, WebM, QuickTime, AVI, MKV — max 500 MB
-   Returns: { url: "https://…/uploads/videos/filename.mp4" }
+/* ── POST /uploads/presign ───────────────────────────────────
+   For large files (videos, PDFs) — client uploads directly to R2.
+   Body: { filename: string, contentType: string, folder?: string }
+   Returns: { presignedUrl, publicUrl, key }
+   The client PUTs the file to presignedUrl, then stores publicUrl.
 ────────────────────────────────────────────────────────────── */
-router.post(
-  '/video',
-  (req: Request, res: Response, next: NextFunction) => {
-    videoUpload.single('file')(req, res, (err) => {
-      if (err) {
-        res.status(400).json({
-          success: false,
-          error: { code: 'UPLOAD_ERROR', message: (err as Error).message },
-        })
-        return
-      }
-      next()
+const presignBody = z.object({
+  filename:    z.string().min(1),
+  contentType: z.string().min(1),
+  folder:      z.string().default('uploads'),
+})
+
+router.post('/presign', async (req: Request, res: Response) => {
+  const parsed = presignBody.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({
+      success: false,
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0]?.message ?? 'Validation error' },
     })
-  },
-  (req: Request, res: Response) => {
-    if (!req.file) {
-      res.status(400).json({
-        success: false,
-        error: { code: 'NO_FILE', message: 'No file was uploaded. Use the "file" field in your multipart form.' },
-      })
-      return
-    }
-    const url = `${backendOrigin()}/uploads/videos/${req.file.filename}`
-    sendSuccess(res, { url, filename: req.file.filename, size: req.file.size }, undefined, 201)
-  },
-)
+    return
+  }
+
+  const { filename, contentType, folder } = parsed.data
+
+  // Validate video MIME types when folder is videos
+  if (folder === 'videos' && !ALLOWED_VIDEO.has(contentType)) {
+    res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_TYPE', message: 'Only MP4, WebM, QuickTime, AVI or MKV videos are allowed' },
+    })
+    return
+  }
+
+  try {
+    const key    = makeKey(filename, folder)
+    const result = await generatePresignedPutUrl(key, contentType)
+    sendSuccess(res, result, undefined, 201)
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: { code: 'R2_ERROR', message: (err as Error).message },
+    })
+  }
+})
+
+/* ── POST /uploads/video (convenience alias) ─────────────────
+   Same as /presign with folder=videos.
+   Body: { filename: string, contentType: string }
+   Returns: { presignedUrl, publicUrl, key }
+────────────────────────────────────────────────────────────── */
+router.post('/video', async (req: Request, res: Response) => {
+  const parsed = z.object({
+    filename:    z.string().min(1),
+    contentType: z.string().min(1),
+  }).safeParse(req.body)
+
+  if (!parsed.success) {
+    res.status(400).json({
+      success: false,
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0]?.message ?? 'Validation error' },
+    })
+    return
+  }
+
+  const { filename, contentType } = parsed.data
+
+  if (!ALLOWED_VIDEO.has(contentType)) {
+    res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_TYPE', message: 'Only MP4, WebM, QuickTime, AVI or MKV videos are allowed' },
+    })
+    return
+  }
+
+  try {
+    const key    = makeKey(filename, 'videos')
+    const result = await generatePresignedPutUrl(key, contentType)
+    sendSuccess(res, result, undefined, 201)
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: { code: 'R2_ERROR', message: (err as Error).message },
+    })
+  }
+})
+
+/* ── DELETE /uploads/:key ────────────────────────────────────
+   Deletes an object from R2 by its key.
+   Param: key — URL-encoded R2 object key (e.g. images/1234-abc.jpg)
+   Returns: { deleted: true }
+────────────────────────────────────────────────────────────── */
+router.delete('/:key(*)', async (req: Request, res: Response) => {
+  const key = Array.isArray(req.params['key']) ? req.params['key'][0] : req.params['key']
+  if (!key) {
+    res.status(400).json({
+      success: false,
+      error: { code: 'NO_KEY', message: 'Provide the R2 object key in the URL path.' },
+    })
+    return
+  }
+
+  try {
+    await deleteFromR2(key)
+    sendSuccess(res, { deleted: true, key })
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: { code: 'R2_ERROR', message: (err as Error).message },
+    })
+  }
+})
 
 export default router
