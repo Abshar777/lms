@@ -22,11 +22,17 @@ interface BackendLoginResponse {
       role:      string
       avatarUrl: string | null
     }
-    tokens: {
-      access_token:  string
-      refresh_token: string
-    }
   }
+}
+
+/* The backend sets tokens as httpOnly cookies, not in the JSON body.
+   This helper extracts the raw JWT value from a Set-Cookie header string. */
+function extractCookie(setCookieHeaders: string[] | string | undefined, name: string): string {
+  const headers = Array.isArray(setCookieHeaders)
+    ? setCookieHeaders
+    : setCookieHeaders ? [setCookieHeaders] : []
+  const match = headers.find(h => h.startsWith(`${name}=`))
+  return match?.split(';')[0]?.replace(`${name}=`, '') ?? ''
 }
 
 export const authOptions: NextAuthOptions = {
@@ -48,12 +54,18 @@ export const authOptions: NextAuthOptions = {
             { timeout: 10_000 },
           )
 
-          const { user, tokens } = res.data.data
+          const { user } = res.data.data
 
           /* Admin-only portal — reject any non-admin account */
           if (user.role !== 'admin') {
             throw new Error('NOT_ADMIN')
           }
+
+          /* Tokens arrive as Set-Cookie headers, not in the JSON body */
+          const setCookieHeaders = res.headers['set-cookie']
+          const accessToken = extractCookie(setCookieHeaders, 'lms_at')
+
+          if (!accessToken) throw new Error('LOGIN_FAILED')
 
           return {
             id:           user.id,
@@ -61,7 +73,7 @@ export const authOptions: NextAuthOptions = {
             email:        user.email,
             image:        user.avatarUrl ?? undefined,
             role:         user.role,
-            backendToken: tokens.access_token,
+            backendToken: accessToken,
           }
         } catch (err: any) {
           const code    = err?.response?.data?.error?.code
