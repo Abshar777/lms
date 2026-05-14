@@ -72,7 +72,13 @@ const SECTION_TEMPLATES: { title: string; lessons: string[] }[] = [
 
 async function seed() {
   console.log('🌱  Seeding database…')
-  await mongoose.connect(env.DATABASE_URL)
+  await mongoose.connect(env.DATABASE_URL,{
+    maxPoolSize:       10,
+    serverSelectionTimeoutMS: 5_000,
+    socketTimeoutMS:   45_000,
+    connectTimeoutMS:  10_000,
+    authSource: "admin"
+  })
 
   /* 1. Wipe collections */
   await Promise.all([
