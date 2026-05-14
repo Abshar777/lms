@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useMemo, useState } from 'react'
+import { use, useMemo, useState, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -41,8 +41,8 @@ const whatYouLearn = [
   'Access lifetime updates and new content',
 ]
 
-export default function CourseDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = use(params)
+/* ── Inner component: uses useSearchParams (must be inside Suspense) ── */
+function CourseDetailInner({ slug }: { slug: string }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const checkoutStatus = searchParams.get('checkout') // 'success' | 'cancel' | null
@@ -527,5 +527,20 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
         </div>
       </div>
     </div>
+  )
+}
+
+/* ── Page shell: resolves dynamic params, wraps inner in Suspense ── */
+export default function CourseDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params)
+  return (
+    <Suspense fallback={
+      <div className="flex h-[70vh] flex-col items-center justify-center gap-3">
+        <Loader2 size={30} className="animate-spin" style={{ color: '#FF6B1A' }} />
+        <p className="text-sm" style={{ color: '#9CA3AF' }}>Loading course…</p>
+      </div>
+    }>
+      <CourseDetailInner slug={slug} />
+    </Suspense>
   )
 }

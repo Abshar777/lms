@@ -114,3 +114,5 @@ All endpoints return `{ success: true, data, meta? }` or `{ success: false, erro
 - **Payments are not implemented.** Paid courses return `402` from `POST /enrollments`; the UI hides the button.
 - **Instructor authoring is not implemented.** Course content comes from `bun run seed`.
 - **Quizzes / certificates** are not implemented.
+
+

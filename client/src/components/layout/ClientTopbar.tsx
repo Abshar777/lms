@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -68,6 +68,30 @@ function useTypeahead(q: string) {
   })
 }
 
+/* ── Syncs the search input with ?q= on the /search page ──────
+   Must live in its own component so useSearchParams() is
+   isolated inside a Suspense boundary (Next.js 15 requirement).
+────────────────────────────────────────────────────────────── */
+function SearchSync({
+  isSearchPage,
+  setQuery,
+  setDebouncedQ,
+}: {
+  isSearchPage:  boolean
+  setQuery:      (q: string) => void
+  setDebouncedQ: (q: string) => void
+}) {
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    if (isSearchPage) {
+      const q = searchParams.get('q') ?? ''
+      setQuery(q)
+      setDebouncedQ(q)
+    }
+  }, [isSearchPage, searchParams, setQuery, setDebouncedQ])
+  return null
+}
+
 function fmtMins(m: number) {
   if (m < 60) return `${m}m`
   const h = Math.floor(m / 60); const rem = m % 60
@@ -78,7 +102,6 @@ export function ClientTopbar() {
   const { sidebarCollapsed, navLayout, setMobileNav } = useUIStore()
   const pathname      = usePathname()
   const router        = useRouter()
-  const searchParams  = useSearchParams()
   const isSearchPage  = pathname === '/search'
 
   const [focused,    setFocused]    = useState(false)
@@ -88,15 +111,6 @@ export function ClientTopbar() {
   const [aiChatOpen, setAiChatOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
-
-  /* Sync navbar input with /search?q= on mount and URL changes */
-  useEffect(() => {
-    if (isSearchPage) {
-      const q = searchParams.get('q') ?? ''
-      setQuery(q)
-      setDebouncedQ(q)
-    }
-  }, [isSearchPage, searchParams])
 
   /* Debounce the query for typeahead (skip on search page — results shown inline) */
   useEffect(() => {
@@ -433,6 +447,11 @@ export function ClientTopbar() {
           </Link>
         </div>
       </div>
+
+      {/* ── Sync search input with /search?q= (Suspense-isolated) ── */}
+      <Suspense fallback={null}>
+        <SearchSync isSearchPage={isSearchPage} setQuery={setQuery} setDebouncedQ={setDebouncedQ} />
+      </Suspense>
 
       {/* ── Row 2: Nav tabs — scrollable on mobile ── */}
       <div className="flex h-[40px] items-end overflow-x-auto px-4 sm:px-6 scrollbar-none">
