@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { signIn } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useSearchParams } from 'next/navigation'
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, AlertCircle, Shield } from 'lucide-react'
-import { api } from '@/lib/axios'
 
 const schema = z.object({
   email:    z.string().email('Enter a valid email'),
@@ -17,45 +17,49 @@ type Values = z.infer<typeof schema>
 
 const fieldVariant = {
   hidden:  { opacity: 0, y: 12 },
-  visible: (i: number) => ({ opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 24, delay: i * 0.07 } }),
+  visible: (i: number) => ({
+    opacity: 1, y: 0,
+    transition: { type: 'spring' as const, stiffness: 300, damping: 24, delay: i * 0.07 },
+  }),
+}
+
+const ERROR_MESSAGES: Record<string, string> = {
+  NOT_ADMIN:           'This account does not have admin access.',
+  INVALID_CREDENTIALS: 'Incorrect email or password.',
+  LOGIN_FAILED:        'Unable to sign in. Please try again.',
+  CredentialsSignin:   'Incorrect email or password.',
 }
 
 export function AdminLoginForm() {
-  const [showPw, setShowPw]   = useState(false)
-  const [error, setError]     = useState<string | null>(null)
-  const searchParams          = useSearchParams()
-
-  /* Picked up from /login?reason=not-admin (AdminGuard redirect) */
-  useEffect(() => {
-    if (searchParams.get('reason') === 'not-admin') {
-      setError('That account does not have admin access. Sign in with an admin account.')
-    }
-  }, [searchParams])
+  const router   = useRouter()
+  const [showPw, setShowPw] = useState(false)
+  const [error,  setError]  = useState<string | null>(null)
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<Values>({
     resolver: zodResolver(schema),
   })
 
-  const onSubmit = async (data: Values) => {
+  const onSubmit = async ({ email, password }: Values) => {
     setError(null)
-    try {
-      const res = await api.post<{ success: true; data: { user: { role: string } } }>(
-        '/auth/login',
-        { email: data.email, password: data.password },
-      )
-      const role = res.data.data.user.role
-      if (role !== 'admin') {
-        // Non-admin signed in — revoke the session and refuse access
-        await api.post('/auth/logout').catch(() => { /* best-effort */ })
-        setError('This account does not have admin access.')
-        return
-      }
-      // Backend has set httpOnly lms_at + lms_rt cookies
-      window.location.href = '/'
-    } catch (err: any) {
-      const msg = err?.response?.data?.error?.message
-      setError(msg ?? 'Unable to sign in. Please try again.')
+    const result = await signIn('credentials', {
+      email,
+      password,
+      redirect: false,   // handle redirect manually so we can show errors
+    })
+
+    if (!result) {
+      setError(ERROR_MESSAGES['LOGIN_FAILED'])
+      return
     }
+
+    if (result.error) {
+      setError(ERROR_MESSAGES[result.error] ?? result.error)
+      return
+    }
+
+    /* Success — navigate to dashboard */
+    router.replace('/')
+    router.refresh()
   }
 
   return (
@@ -97,7 +101,8 @@ export function AdminLoginForm() {
             Email address
           </label>
           <div className="relative">
-            <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: errors.email ? '#EF4444' : 'rgba(255,255,255,0.3)' }} />
+            <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2"
+              style={{ color: errors.email ? '#EF4444' : 'rgba(255,255,255,0.3)' }} />
             <input
               {...register('email')}
               type="email"
@@ -107,8 +112,16 @@ export function AdminLoginForm() {
                 background: errors.email ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.06)',
                 border: `1.5px solid ${errors.email ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.08)'}`,
               }}
-              onFocus={e => { e.currentTarget.style.border = '1.5px solid rgba(255,107,26,0.6)'; e.currentTarget.style.background = 'rgba(255,255,255,0.09)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.12)' }}
-              onBlur={e => { e.currentTarget.style.border = `1.5px solid ${errors.email ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.08)'}` ; e.currentTarget.style.background = errors.email ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.06)'; e.currentTarget.style.boxShadow = 'none' }}
+              onFocus={e => {
+                e.currentTarget.style.border = '1.5px solid rgba(255,107,26,0.6)'
+                e.currentTarget.style.background = 'rgba(255,255,255,0.09)'
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.12)'
+              }}
+              onBlur={e => {
+                e.currentTarget.style.border = `1.5px solid ${errors.email ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.08)'}`
+                e.currentTarget.style.background = errors.email ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.06)'
+                e.currentTarget.style.boxShadow = 'none'
+              }}
             />
           </div>
           <AnimatePresence>
@@ -127,7 +140,8 @@ export function AdminLoginForm() {
             Password
           </label>
           <div className="relative">
-            <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: errors.password ? '#EF4444' : 'rgba(255,255,255,0.3)' }} />
+            <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2"
+              style={{ color: errors.password ? '#EF4444' : 'rgba(255,255,255,0.3)' }} />
             <input
               {...register('password')}
               type={showPw ? 'text' : 'password'}
@@ -137,8 +151,16 @@ export function AdminLoginForm() {
                 background: errors.password ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.06)',
                 border: `1.5px solid ${errors.password ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.08)'}`,
               }}
-              onFocus={e => { e.currentTarget.style.border = '1.5px solid rgba(255,107,26,0.6)'; e.currentTarget.style.background = 'rgba(255,255,255,0.09)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.12)' }}
-              onBlur={e => { e.currentTarget.style.border = `1.5px solid ${errors.password ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.08)'}`; e.currentTarget.style.background = errors.password ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.06)'; e.currentTarget.style.boxShadow = 'none' }}
+              onFocus={e => {
+                e.currentTarget.style.border = '1.5px solid rgba(255,107,26,0.6)'
+                e.currentTarget.style.background = 'rgba(255,255,255,0.09)'
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.12)'
+              }}
+              onBlur={e => {
+                e.currentTarget.style.border = `1.5px solid ${errors.password ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.08)'}`
+                e.currentTarget.style.background = errors.password ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.06)'
+                e.currentTarget.style.boxShadow = 'none'
+              }}
             />
             <button type="button" onClick={() => setShowPw(v => !v)}
               className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
@@ -156,7 +178,7 @@ export function AdminLoginForm() {
           </AnimatePresence>
         </motion.div>
 
-        {/* Error */}
+        {/* Server error */}
         <AnimatePresence>
           {error && (
             <motion.div initial={{ opacity: 0, y: -6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0 }}
@@ -174,11 +196,12 @@ export function AdminLoginForm() {
             whileTap={{ scale: 0.98 }}
             className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold text-white transition-all disabled:opacity-60"
             style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)', boxShadow: '0 4px 24px rgba(255,107,26,0.32)' }}>
-            {isSubmitting ? <><Loader2 size={16} className="animate-spin" />Signing in…</> : <>Sign in to Admin<ArrowRight size={16} /></>}
+            {isSubmitting
+              ? <><Loader2 size={16} className="animate-spin" />Signing in…</>
+              : <>Sign in to Admin<ArrowRight size={16} /></>}
           </motion.button>
         </motion.div>
       </form>
-
     </div>
   )
 }

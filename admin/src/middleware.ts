@@ -1,38 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { withAuth } from 'next-auth/middleware'
+import { NextResponse } from 'next/server'
 
-const ACCESS_COOKIE = 'lms_at'
-const GUEST_ONLY = ['/login']
+export default withAuth(
+  function middleware(req) {
+    const { pathname } = req.nextUrl
+    const token = req.nextauth.token
 
-function isAuthenticated(req: NextRequest): boolean {
-  return !!req.cookies.get(ACCESS_COOKIE)?.value
-}
+    /* Logged-in admin trying to visit /login → redirect to dashboard */
+    if (pathname === '/login' && token) {
+      return NextResponse.redirect(new URL('/', req.url))
+    }
 
-export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl
-  const authed = isAuthenticated(req)
-
-  // Never touch API / static routes
-  if (pathname.startsWith('/api/') || pathname.startsWith('/_next/')) {
     return NextResponse.next()
-  }
+  },
+  {
+    callbacks: {
+      /* Return true to allow the request; false forces redirect to signIn page */
+      authorized({ token, req }) {
+        const { pathname } = req.nextUrl
 
-  // Guest-only: redirect logged-in admins away from /login
-  const isGuestOnly = GUEST_ONLY.some(p => pathname === p || pathname.startsWith(p + '/'))
-  if (isGuestOnly && authed) {
-    const url = req.nextUrl.clone()
-    url.pathname = '/'
-    return NextResponse.redirect(url)
-  }
+        /* /login is always accessible */
+        if (pathname === '/login') return true
 
-  // Everything else requires auth
-  if (!isGuestOnly && !authed) {
-    const url = req.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
-  }
-
-  return NextResponse.next()
-}
+        /* Everything else requires a valid NextAuth session */
+        return !!token
+      },
+    },
+    pages: {
+      signIn: '/login',
+    },
+  },
+)
 
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],

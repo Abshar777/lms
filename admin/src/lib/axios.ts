@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { getSession } from 'next-auth/react'
 
 /**
  * Resolve the API base URL from env. Forgiving:
@@ -19,24 +20,34 @@ function resolveBase(raw: string | undefined): string {
 const BASE = resolveBase(process.env.NEXT_PUBLIC_API_URL)
 
 /**
- * Admin API client — calls the backend directly.
- * Auth: httpOnly cookies set by the backend; `withCredentials: true`
- * makes the browser attach them automatically.
+ * Admin API client — calls the backend directly with the backend
+ * access_token stored inside the NextAuth session JWT.
+ * Auth: Authorization: Bearer <backendToken>
  */
 export const api = axios.create({
-  baseURL: BASE,
-  withCredentials: true,
-  timeout: 15_000,
+  baseURL:         BASE,
+  withCredentials: false,   // not using backend cookies — using Bearer token
+  timeout:         15_000,
   headers: { 'Content-Type': 'application/json' },
 })
 
-/* ── Response interceptor ───────────────────────── */
+/* ── Request interceptor — inject backend token from NextAuth session ── */
+api.interceptors.request.use(async (config) => {
+  const session = await getSession()
+  if (session?.user?.backendToken) {
+    config.headers['Authorization'] = `Bearer ${session.user.backendToken}`
+  }
+  return config
+})
+
+/* ── Response interceptor — 401 → sign out ─────────────────────────── */
 api.interceptors.response.use(
   res => res,
-  err => {
+  async err => {
     if (err.response?.status === 401 && typeof window !== 'undefined') {
       if (window.location.pathname !== '/login') {
-        window.location.href = '/login'
+        const { signOut } = await import('next-auth/react')
+        await signOut({ redirect: true, callbackUrl: '/login' })
       }
     }
     return Promise.reject(err)
