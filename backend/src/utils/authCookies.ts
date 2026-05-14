@@ -18,6 +18,11 @@ const REFRESH_PATH = '/api/v1/auth'
 
 const isProd = () => env.NODE_ENV === 'production'
 
+/* Shared cookie domain in production so lms_at is readable by all
+   *.deltainstitutions.com subdomains (admin, client, api).
+   In development leave undefined so localhost cookies work normally. */
+const cookieDomain = () => isProd() ? '.deltainstitutions.com' : undefined
+
 function parseDurationMs(duration: string): number {
   const unit  = duration.slice(-1)
   const value = parseInt(duration.slice(0, -1), 10)
@@ -35,6 +40,7 @@ export function setAuthCookies(res: Response, tokens: TokenPair): void {
     httpOnly: true,
     secure:   isProd(),
     sameSite: 'lax',
+    domain:   cookieDomain(),
     path:     '/',
     maxAge:   parseDurationMs(env.JWT_ACCESS_EXPIRES_IN),
   })
@@ -42,12 +48,13 @@ export function setAuthCookies(res: Response, tokens: TokenPair): void {
     httpOnly: true,
     secure:   isProd(),
     sameSite: 'lax',
+    domain:   cookieDomain(),
     path:     REFRESH_PATH,
     maxAge:   parseDurationMs(env.JWT_REFRESH_EXPIRES_IN),
   })
 }
 
 export function clearAuthCookies(res: Response): void {
-  res.clearCookie(ACCESS_COOKIE,  { path: '/' })
-  res.clearCookie(REFRESH_COOKIE, { path: REFRESH_PATH })
+  res.clearCookie(ACCESS_COOKIE,  { path: '/',          domain: cookieDomain() })
+  res.clearCookie(REFRESH_COOKIE, { path: REFRESH_PATH, domain: cookieDomain() })
 }
