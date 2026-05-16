@@ -458,13 +458,13 @@ export function ClientTopbar() {
         {tabs.map((tab, i) => {
           const active = isActive(tab.href)
           return (
-            <Link key={tab.href} href={tab.href}>
+            <Link key={tab.href} href={tab.href} className="shrink-0">
               <motion.div
                 initial={{ opacity: 0, y: -16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ type: 'spring', stiffness: 320, damping: 26, delay: 0.05 + i * 0.04 }}
                 className="relative flex h-[40px] items-center gap-1.5 px-4 cursor-pointer select-none">
-                <span className="text-sm font-medium transition-colors"
+                <span className="whitespace-nowrap text-sm font-medium transition-colors"
                   style={{ color: active ? '#111827' : '#9CA3AF', fontWeight: active ? 600 : 400 }}>
                   {tab.label}
                 </span>

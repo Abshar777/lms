@@ -31,8 +31,8 @@ export function StatCard({ label, value, change, changeLabel, icon: Icon, color 
       style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
     >
       {/* Subtle glow behind icon */}
-      <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full opacity-20 blur-2xl"
-        style={{ background: color }} />
+      {/* <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full opacity-20 blur-2xl"
+        style={{ background: color }} /> */}
 
       <div className="relative z-10">
         {/* Icon + label */}

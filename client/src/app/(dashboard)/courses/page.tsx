@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useCourses } from '@/lib/api/courses'
 import { useCategories } from '@/lib/api/categories'
+import { useUIStore } from '@/store/ui.store'
 import type { Course } from '@/types/index'
 
 const STATUS_TABS = ['All Status', 'Not Started', 'In Progress', 'Completed']
@@ -95,6 +96,7 @@ function ProgressHalf({ pct }: { pct: number }) {
 }
 
 export default function CoursesPage() {
+  const { rightPanelOpen } = useUIStore()
   const [search,      setSearch]      = useState('')
   const [activeTab,   setActiveTab]   = useState('All Status')
   const [level,       setLevel]       = useState('all')
@@ -159,14 +161,16 @@ export default function CoursesPage() {
       {/* ── Status tabs + controls ──────────────────── */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05, type: 'spring', stiffness: 280, damping: 26 }}
-        className="mb-5 flex flex-col gap-3">
+        className="mb-5 flex flex-col gap-2.5">
 
-        {/* Status tabs */}
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-1 overflow-x-auto rounded-2xl p-1 scrollbar-none" style={{ background: '#F3F4F6' }}>
+        {/* Row 1: status tabs (always scrollable, never breaks) + controls on same row ≥ sm */}
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+          {/* Status tabs */}
+          <div className="flex shrink-0 items-center gap-1 overflow-x-auto rounded-2xl p-1 scrollbar-none self-start sm:self-auto"
+            style={{ background: '#F3F4F6' }}>
             {STATUS_TABS.map(tab => (
               <motion.button key={tab} onClick={() => setActiveTab(tab)}
-                className="relative rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
+                className="relative rounded-xl px-4 py-2 text-sm font-semibold transition-colors whitespace-nowrap"
                 style={{ color: activeTab === tab ? '#111827' : '#9CA3AF' }}>
                 {activeTab === tab && (
                   <motion.div layoutId="status-pill"
@@ -179,14 +183,14 @@ export default function CoursesPage() {
             ))}
           </div>
 
-          {/* Search + controls row */}
-          <div className="flex flex-1 items-center gap-2 sm:flex-none">
+          {/* Controls row — always in one line, never wraps */}
+          <div className="flex shrink-0 items-center gap-2">
             {/* Search */}
-            <div className="relative flex-1 sm:flex-none">
+            <div className="relative">
               <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }} />
               <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
                 placeholder="Search..."
-                className="w-full rounded-xl py-2 pl-9 pr-4 text-sm outline-none transition-all sm:w-40"
+                className="w-36 rounded-xl py-2 pl-9 pr-4 text-sm outline-none transition-all focus:w-44"
                 style={{ background: 'white', border: '1px solid #E5E7EB', color: '#111827' }}
                 onFocus={e => { e.currentTarget.style.border = '1.5px solid #FF6B1A'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.08)' }}
                 onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none' }} />
@@ -194,12 +198,12 @@ export default function CoursesPage() {
 
             {/* Add Filter */}
             <motion.button whileTap={{ scale: 0.96 }} onClick={() => setShowFilters(v => !v)}
-              className="relative flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold bg-white transition-colors hover:bg-gray-50"
+              className="relative flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold bg-white transition-colors hover:bg-gray-50"
               style={{ border: '1px solid #E5E7EB', color: '#374151' }}>
               <SlidersHorizontal size={13} />
-              Add Filter
+              <span className="hidden sm:inline">Add Filter</span>
               {activeFilterCount > 0 && (
-                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold"
+                <span className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold"
                   style={{ background: '#FF6B1A', color: 'white' }}>
                   {activeFilterCount}
                 </span>
@@ -207,12 +211,12 @@ export default function CoursesPage() {
             </motion.button>
 
             {/* Sort by */}
-            <div className="relative">
+            <div className="relative shrink-0">
               <motion.button whileTap={{ scale: 0.96 }} onClick={() => setShowSort(v => !v)}
                 className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold bg-white transition-colors hover:bg-gray-50"
                 style={{ border: '1px solid #E5E7EB', color: '#374151' }}>
                 <ChevronDown size={13} />
-                Sort by
+                <span className="hidden sm:inline">Sort by</span>
               </motion.button>
               <AnimatePresence>
                 {showSort && (
@@ -347,7 +351,7 @@ export default function CoursesPage() {
       <AnimatePresence mode="wait">
         {isLoading ? (
           <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            className={`grid gap-5 grid-cols-1 sm:grid-cols-2 ${rightPanelOpen ? 'xl:grid-cols-3 2xl:grid-cols-4' : 'lg:grid-cols-3 xl:grid-cols-4'}`}>
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="overflow-hidden rounded-2xl bg-white" style={{ border: '1px solid #E5E7EB' }}>
                 <div className="h-40 animate-pulse" style={{ background: '#F3F4F6' }} />
@@ -383,7 +387,7 @@ export default function CoursesPage() {
           </motion.div>
         ) : (
           <motion.div key="grid" variants={stagger} initial="hidden" animate="show"
-            className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            className={`grid gap-5 grid-cols-1 sm:grid-cols-2 ${rightPanelOpen ? 'xl:grid-cols-3 2xl:grid-cols-4' : 'lg:grid-cols-3 xl:grid-cols-4'}`}>
             {data?.docs.map(course => (
               <motion.div key={course.id} variants={cardAnim}>
                 <MaterialCard course={course} />
@@ -499,14 +503,14 @@ function MaterialCard({ course }: { course: Course }) {
           {/* Tags */}
           <div className="mt-2.5 flex flex-wrap gap-1.5">
             {course.category && (
-              <span className="rounded-lg px-2.5 py-1 text-[11px] font-medium"
+              <span className="whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-medium"
                 style={{ background: '#F3F4F6', color: '#4B5563' }}>{course.category.name}</span>
             )}
             {course.level && (
-              <span className="rounded-lg px-2.5 py-1 text-[11px] font-medium capitalize"
+              <span className="whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-medium capitalize"
                 style={{ background: '#F3F4F6', color: '#4B5563' }}>{course.level}</span>
             )}
-            <span className="rounded-lg px-2.5 py-1 text-[11px] font-medium"
+            <span className="whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-medium"
               style={{ background: '#F3F4F6', color: '#4B5563' }}>Not Urgent</span>
           </div>
 

@@ -87,7 +87,7 @@ export default function DashboardPage() {
               View all <ArrowUpRight size={12} />
             </Link>
           </div>
-          <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+          <div className="">
             {!coursesData && (
               <div className="flex items-center justify-center gap-2 px-5 py-10 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
                 <Loader2 size={14} className="animate-spin" />Loading…
@@ -102,7 +102,7 @@ export default function DashboardPage() {
               <motion.div key={c.id}
                 initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.25 + i * 0.04 }}
-                className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-white/03">
+                className="flex border-b border-[#e5e7eb17] items-center gap-3 px-5 py-3.5 transition-colors hover:bg-white/03">
                 <div className="relative h-10 w-16 flex-shrink-0 overflow-hidden rounded-xl"
                   style={{ background: 'rgba(255,255,255,0.06)' }}>
                   {c.thumbnailUrl && <img src={c.thumbnailUrl} alt="" className="h-full w-full object-cover" />}

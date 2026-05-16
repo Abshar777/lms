@@ -51,9 +51,9 @@ body {
 
 /* ── Focus visible ──────────────────────────────── */
 :focus-visible {
-  outline: 2px solid var(--color-secondary);
+  outline: 2px solid #FF6B1A !important;
   outline-offset: 2px;
-  border-radius: 4px;
+  /* border-radius: 4px; */
 }
 
 /* ── Selection ──────────────────────────────────── */

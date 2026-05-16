@@ -113,7 +113,7 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
                 fontFamily: 'DM Sans, sans-serif',
               }}
               onFocus={e => {
-                e.currentTarget.style.border = `1.5px solid ${errors.email ? '#EF4444' : '#2F6BFF'}`
+                e.currentTarget.style.border = `1.5px solid ${errors.email ? '#EF4444' : 'transparent'}`
                 e.currentTarget.style.background = '#FFFFFF'
                 e.currentTarget.style.boxShadow = errors.email
                   ? '0 0 0 3px rgba(239,68,68,0.12)'
@@ -175,7 +175,7 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
                 fontFamily: 'DM Sans, sans-serif',
               }}
               onFocus={e => {
-                e.currentTarget.style.border = `1.5px solid ${errors.password ? '#EF4444' : '#2F6BFF'}`
+                e.currentTarget.style.border = `1.5px solid ${errors.password ? '#EF4444' : 'transparent'}`
                 e.currentTarget.style.background = '#FFFFFF'
                 e.currentTarget.style.boxShadow = errors.password
                   ? '0 0 0 3px rgba(239,68,68,0.12)'
