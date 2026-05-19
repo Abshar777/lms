@@ -486,6 +486,7 @@ export const FavoriteModel = mongoose.model<IFavorite>('Favorite', FavoriteSchem
    for read paths; `cancelled` is the one stored override.
 ───────────────────────────────────────────────────── */
 export type LiveClassStatus = 'scheduled' | 'live' | 'ended' | 'cancelled'
+export type LiveClassType   = 'external' | 'internal'
 
 export interface ILiveClass extends Document {
   id:             string
@@ -495,8 +496,28 @@ export interface ILiveClass extends Document {
   description?:   string
   scheduledStart: Date
   durationMins:   number
-  meetingUrl:     string
-  cancelled:      boolean
+
+  /* Type discriminator */
+  type:           LiveClassType    // 'external' | 'internal'
+
+  /* External-only */
+  meetingUrl?:    string           // required when type=external
+
+  /* Internal-only (Mux) */
+  muxLiveStreamId?:  string       // Mux live stream ID
+  muxStreamKey?:     string       // RTMP stream key — select:false, never sent to clients
+  muxPlaybackId?:    string       // HLS playback ID
+  muxAssetId?:       string       // recording asset ID (set after stream ends)
+
+  /* Status — replaces cancelled: boolean */
+  status:         LiveClassStatus
+
+  /* Post-stream */
+  recordingUrl?:  string          // set when recording is ready
+  viewerCount:    number          // updated by Mux Real-Time API
+  startedAt?:     Date
+  endedAt?:       Date
+
   createdAt:      Date
   updatedAt:      Date
 }
@@ -509,14 +530,26 @@ const LiveClassSchema = new Schema<ILiveClass>(
     description:    { type: String, maxlength: 2000 },
     scheduledStart: { type: Date,   required: true },
     durationMins:   { type: Number, required: true, min: 5, max: 600 },
-    meetingUrl:     { type: String, required: true, maxlength: 2048 },
-    cancelled:      { type: Boolean, default: false },
+
+    type:           { type: String, enum: ['external', 'internal'], default: 'external' },
+    status:         { type: String, enum: ['scheduled', 'live', 'ended', 'cancelled'], default: 'scheduled' },
+
+    meetingUrl:        { type: String, maxlength: 2048 },
+    muxLiveStreamId:   { type: String },
+    muxStreamKey:      { type: String, select: false },   // never returned in standard queries
+    muxPlaybackId:     { type: String },
+    muxAssetId:        { type: String },
+    recordingUrl:      { type: String },
+    viewerCount:       { type: Number, default: 0 },
+    startedAt:         { type: Date },
+    endedAt:           { type: Date },
   },
   baseSchemaOptions,
 )
 
 LiveClassSchema.index({ courseId: 1, scheduledStart: 1 })
 LiveClassSchema.index({ scheduledStart: 1 })
+LiveClassSchema.index({ muxLiveStreamId: 1 }, { sparse: true })
 
 export const LiveClassModel = mongoose.model<ILiveClass>('LiveClass', LiveClassSchema)
 

@@ -7,7 +7,7 @@ import {
   Search, Plus, Edit2, Trash2, BookOpen, Star, Users,
   ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
   CheckSquare, Square, Globe, Archive, Trash,
-  LayoutGrid, List, TrendingUp, FileEdit, Clock,
+  LayoutGrid, List, TrendingUp, FileEdit, Clock, Eye,
 } from 'lucide-react'
 import { useCourses, useBulkCourses } from '@/lib/api/courses'
 import { useAdminStats } from '@/lib/api/stats'
@@ -188,6 +188,15 @@ function CourseCard({ course, index, checked, onToggle, onDelete }: {
 
         {/* Hover action overlay */}
         <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+          <Link href={`/courses/${course.id}`}>
+            <motion.button
+              whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}
+              className="flex h-9 w-9 items-center justify-center rounded-xl"
+              style={{ background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.25)' }}
+              title="View">
+              <Eye size={14} className="text-white" />
+            </motion.button>
+          </Link>
           <Link href={`/courses/${course.id}/edit`}>
             <motion.button
               whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}
@@ -370,6 +379,12 @@ function CourseRow({ course, index, checked, onToggle, onDelete }: {
       {/* Actions */}
       <td className="px-4 py-3.5">
         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Link href={`/courses/${course.id}`}>
+            <button className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/10"
+              style={{ color: 'rgba(255,255,255,0.45)' }} title="View">
+              <Eye size={13} />
+            </button>
+          </Link>
           <Link href={`/courses/${course.id}/edit`}>
             <button className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/10"
               style={{ color: 'rgba(255,255,255,0.45)' }} title="Edit">

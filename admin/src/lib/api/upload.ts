@@ -67,14 +67,30 @@ export async function uploadToR2Direct(
   })
 }
 
-/* ── Video: presigned URL flow (no large file through backend) ── */
+/* ── Transcode a video already on R2 to HLS ── */
+export async function transcodeVideo(key: string): Promise<string> {
+  const res = await api.post<{ success: true; data: { hlsUrl: string } }>(
+    '/uploads/transcode',
+    { key },
+  )
+  return res.data.data.hlsUrl
+}
+
+/* ── Video: presigned upload → HLS transcode ── */
 export async function uploadVideo(
-  file:        File,
-  onProgress?: (pct: number) => void,
+  file:           File,
+  onProgress?:    (pct: number) => void,
+  onTranscoding?: () => void,
 ): Promise<string> {
+  // 1. Get presigned PUT URL + R2 key
   const result = await getPresignedUrl(file.name, file.type, 'videos')
+  // 2. Upload directly to R2 (with progress)
   await uploadToR2Direct(result.presignedUrl, file, onProgress)
-  return result.publicUrl
+  // 3. Signal UI that upload is done, transcoding starts
+  onTranscoding?.()
+  // 4. Transcode to HLS on the backend — returns master.m3u8 URL
+  const hlsUrl = await transcodeVideo(result.key)
+  return hlsUrl
 }
 
 /* ── React Query hooks ── */

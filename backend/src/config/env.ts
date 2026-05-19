@@ -44,6 +44,11 @@ const envSchema = z.object({
   /* AI — Ollama (local LLM) */
   OLLAMA_BASE_URL: z.preprocess(v => (v === '' ? undefined : v), z.string().url().default('http://localhost:11434')),
   OLLAMA_MODEL:    z.preprocess(v => (v === '' ? undefined : v), z.string().default('llama3.2:3b')),
+
+  /* Mux — live streaming */
+  MUX_TOKEN_ID:       opt(z.string().min(1)),
+  MUX_TOKEN_SECRET:   opt(z.string().min(1)),
+  MUX_WEBHOOK_SECRET: opt(z.string().min(1)),
 })
 
 const parsed = envSchema.safeParse(process.env)

@@ -8,7 +8,12 @@ import {
   ArrowLeft, CheckCircle2, Lock, Loader2, AlertCircle,
   ChevronLeft, ChevronRight, ChevronDown, Play, Circle, Bookmark,
   List, MessageSquare, FileText, BookmarkIcon, AlignLeft, Video,
+  RotateCcw, RotateCw,
 } from 'lucide-react'
+import { MediaPlayer, MediaProvider, type MediaPlayerInstance } from '@vidstack/react'
+import { DefaultVideoLayout, defaultLayoutIcons } from '@vidstack/react/player/layouts/default'
+import '@vidstack/react/player/styles/default/theme.css'
+import '@vidstack/react/player/styles/default/layouts/video.css'
 import { useCourse, type LessonOutline } from '@/lib/api/courses'
 import { useCourseProgress } from '@/lib/api/enrollments'
 import { useMarkLessonComplete, recordWatchTime, useMyLessonProgress } from '@/lib/api/progress'
@@ -36,10 +41,10 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
   const { data: progress } = useCourseProgress(slug)
   const markComplete = useMarkLessonComplete(slug)
 
-  /* Expose video ref so BookmarkPanel's onSeek can seek to a timestamp */
-  const videoRef = useRef<HTMLVideoElement>(null)
+  /* Expose player ref so BookmarkPanel's onSeek can seek to a timestamp */
+  const playerRef = useRef<MediaPlayerInstance>(null)
   const seekTo = useCallback((secs: number) => {
-    if (videoRef.current) videoRef.current.currentTime = secs
+    if (playerRef.current) playerRef.current.currentTime = secs
   }, [])
 
   /* ── All remaining hooks — must be before any early return ── */
@@ -241,7 +246,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
         <main className="lg:order-2 min-w-0">
           {lesson.type === 'quiz'
             ? <QuizPlayer lessonId={lesson.id} onPassed={() => { if (nextLesson) router.push(`/learn/${slug}/${nextLesson.id}`) }} />
-            : <PlayerArea lesson={lesson} videoRef={videoRef} lessonId={lessonId} />}
+            : <PlayerArea lesson={lesson} playerRef={playerRef} lessonId={lessonId} />}
 
           <div className="mt-4 flex items-center justify-between rounded-2xl bg-white p-4" style={{ border: '1px solid #E4E7ED' }}>
             <div className="min-w-0">
@@ -306,23 +311,23 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
   )
 }
 
-/* ─── Video player + watch-time tracker + bookmark ── */
+/* ─── Vidstack player + watch-time tracker + bookmark ── */
 function PlayerArea({
   lesson,
-  videoRef,
+  playerRef,
   lessonId,
 }: {
-  lesson:   LessonOutline
-  videoRef: React.RefObject<HTMLVideoElement | null>
-  lessonId: string
+  lesson:    LessonOutline
+  playerRef: React.RefObject<MediaPlayerInstance | null>
+  lessonId:  string
 }) {
   const lastReportRef  = useRef(0)
   const seekedToResume = useRef(false)
   const { data: lessonProgress } = useMyLessonProgress(lesson.id)
   const createBookmark = useCreateBookmark(lessonId)
-  const [bookmarking, setBookmarking] = useState(false)
+  const [bookmarking,   setBookmarking]   = useState(false)
   const [bookmarkLabel, setBookmarkLabel] = useState('')
-  const [showBmForm, setShowBmForm] = useState(false)
+  const [showBmForm,    setShowBmForm]    = useState(false)
 
   useEffect(() => {
     lastReportRef.current  = 0
@@ -330,23 +335,25 @@ function PlayerArea({
     setShowBmForm(false)
   }, [lesson.id])
 
+  /* Resume from last watch position once metadata is loaded */
   const onLoadedMetadata = () => {
     if (seekedToResume.current) return
-    const v = videoRef.current
-    if (!v) return
-    const target = lessonProgress?.watchTimeSecs ?? 0
-    const duration = isFinite(v.duration) ? v.duration : Infinity
+    const player = playerRef.current
+    if (!player) return
+    const target   = lessonProgress?.watchTimeSecs ?? 0
+    const duration = isFinite(player.duration) ? player.duration : Infinity
     if (target >= 10 && target < duration - 15) {
-      v.currentTime = target
+      player.currentTime    = target
       lastReportRef.current = Math.floor(target)
     }
     seekedToResume.current = true
   }
 
+  /* Report watch-time every 15 seconds */
   const onTimeUpdate = () => {
-    const v = videoRef.current
-    if (!v) return
-    const current = Math.floor(v.currentTime)
+    const player = playerRef.current
+    if (!player) return
+    const current = Math.floor(player.currentTime)
     if (current - lastReportRef.current >= 15) {
       const delta = current - lastReportRef.current
       lastReportRef.current = current
@@ -354,10 +361,19 @@ function PlayerArea({
     }
   }
 
+  /* Skip ±10 seconds */
+  const skip = useCallback((secs: number) => {
+    const player = playerRef.current
+    if (!player) return
+    const next = Math.max(0, Math.min(player.currentTime + secs, player.duration || Infinity))
+    player.currentTime = next
+  }, [])
+
+  /* Bookmark at current timestamp */
   const addBookmark = async () => {
-    const v = videoRef.current
-    if (!v) return
-    const timeSecs = Math.floor(v.currentTime)
+    const player = playerRef.current
+    if (!player) return
+    const timeSecs = Math.floor(player.currentTime)
     setBookmarking(true)
     try {
       await createBookmark.mutateAsync({ timeSecs, label: bookmarkLabel.trim() || undefined })
@@ -374,15 +390,17 @@ function PlayerArea({
     <div className="space-y-2">
       <div className="relative overflow-hidden rounded-2xl bg-black" style={{ aspectRatio: '16 / 9' }}>
         {lesson.contentUrl ? (
-          <video
-            ref={videoRef}
+          <MediaPlayer
+            ref={playerRef}
             key={lesson.id}
-            controls
-            className="h-full w-full"
             src={lesson.contentUrl}
+            className="h-full w-full"
             onLoadedMetadata={onLoadedMetadata}
             onTimeUpdate={onTimeUpdate}
-          />
+          >
+            <MediaProvider />
+            <DefaultVideoLayout icons={defaultLayoutIcons} />
+          </MediaPlayer>
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-3">
             <div className="flex h-16 w-16 items-center justify-center rounded-3xl"
@@ -394,21 +412,49 @@ function PlayerArea({
             </p>
           </div>
         )}
+
+        {/* Resume badge */}
         {showResumeBadge && (
           <div className="pointer-events-none absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-semibold text-white"
             style={{ background: 'rgba(13,15,26,0.72)', backdropFilter: 'blur(4px)' }}>
             Resuming from {Math.floor((lessonProgress!.watchTimeSecs) / 60)}:{String((lessonProgress!.watchTimeSecs) % 60).padStart(2, '0')}
           </div>
         )}
-        {/* Bookmark button — bottom-right overlay */}
-        <div className="absolute bottom-3 right-3 flex items-center gap-2">
+
+        {/* Skip ±10s buttons — bottom-center, above Vidstack controls */}
+        {lesson.contentUrl && (
+          <div className="absolute bottom-14 left-1/2 -translate-x-1/2 flex items-center gap-2 pointer-events-auto">
+            <button
+              onClick={() => skip(-10)}
+              title="Skip back 10 seconds"
+              className="group flex flex-col items-center justify-center gap-0.5 h-9 w-9 rounded-full transition-all hover:scale-110 active:scale-95"
+              style={{ background: 'rgba(13,15,26,0.72)', backdropFilter: 'blur(4px)' }}>
+              <RotateCcw size={13} className="text-white" />
+              <span className="text-[8px] font-bold leading-none text-white/80">10</span>
+            </button>
+            <button
+              onClick={() => skip(10)}
+              title="Skip forward 10 seconds"
+              className="group flex flex-col items-center justify-center gap-0.5 h-9 w-9 rounded-full transition-all hover:scale-110 active:scale-95"
+              style={{ background: 'rgba(13,15,26,0.72)', backdropFilter: 'blur(4px)' }}>
+              <RotateCw size={13} className="text-white" />
+              <span className="text-[8px] font-bold leading-none text-white/80">10</span>
+            </button>
+          </div>
+        )}
+
+        {/* Bookmark overlay — bottom-right */}
+        <div className="absolute bottom-14 right-3 flex items-center gap-2">
           {showBmForm && (
             <div className="flex items-center gap-1.5 rounded-xl px-2 py-1.5"
               style={{ background: 'rgba(13,15,26,0.82)', backdropFilter: 'blur(4px)' }}>
               <input
                 value={bookmarkLabel}
                 onChange={e => setBookmarkLabel(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') addBookmark(); if (e.key === 'Escape') setShowBmForm(false) }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') addBookmark()
+                  if (e.key === 'Escape') setShowBmForm(false)
+                }}
                 placeholder="Label (optional)"
                 autoFocus
                 className="w-36 bg-transparent text-xs text-white outline-none placeholder:text-white/50"
@@ -417,7 +463,8 @@ function PlayerArea({
                 className="text-xs font-semibold" style={{ color: '#FF6B1A' }}>
                 {bookmarking ? '…' : 'Save'}
               </button>
-              <button onClick={() => setShowBmForm(false)} className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>✕</button>
+              <button onClick={() => setShowBmForm(false)}
+                className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>✕</button>
             </div>
           )}
           <button

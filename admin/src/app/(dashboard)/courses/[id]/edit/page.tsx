@@ -2,12 +2,52 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { ArrowLeft, Edit2, Loader2, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Edit2, Loader2, AlertCircle, Radio, Users } from 'lucide-react'
 import { use } from 'react'
 import { useCourse } from '@/lib/api/courses'
 import { CourseForm } from '@/components/courses/CourseForm'
 import { LiveClassesSection } from '@/components/courses/LiveClassesSection'
 import { CourseOutlineEditor } from '@/components/courses/CourseOutlineEditor'
+import { useLiveClassesForCourse } from '@/lib/api/liveClasses'
+
+/* ── Live alert banner ───────────────────────────────── */
+function LiveAlertBanner({ courseId }: { courseId: string }) {
+  const { data: classes } = useLiveClassesForCourse(courseId)
+  const liveSession = classes?.find(c => c.status === 'live')
+  if (!liveSession) return null
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl px-4 py-3"
+      style={{ background: 'rgba(239,68,68,0.09)', border: '1px solid rgba(239,68,68,0.28)' }}>
+      <div className="flex items-center gap-3">
+        <motion.div
+          animate={{ opacity: [1, 0.4, 1] }}
+          transition={{ duration: 1.4, repeat: Infinity }}
+          className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] font-bold text-white"
+          style={{ background: '#EF4444' }}>
+          <span className="h-1.5 w-1.5 rounded-full bg-white" />LIVE
+        </motion.div>
+        <div>
+          <p className="text-sm font-semibold text-white">{liveSession.title}</p>
+          {liveSession.viewerCount > 0 && (
+            <p className="flex items-center gap-1 text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
+              <Users size={10} />{liveSession.viewerCount.toLocaleString()} watching
+            </p>
+          )}
+        </div>
+      </div>
+      <Link
+        href={`/live-classes/${liveSession.id}/monitor`}
+        className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-white transition-all hover:brightness-110"
+        style={{ background: '#EF4444' }}>
+        <Radio size={11} />Open Monitor →
+      </Link>
+    </motion.div>
+  )
+}
 
 export default function EditCoursePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -43,6 +83,9 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="mx-auto max-w-3xl">
+      {/* Live class alert banner */}
+      <LiveAlertBanner courseId={course.id} />
+
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -12 }}

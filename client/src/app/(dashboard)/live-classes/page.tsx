@@ -2,10 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import Link from 'next/link'
 import {
   Video, Radio, Calendar, Clock, Loader2, AlertCircle, ChevronRight,
+  Tv2, ExternalLink, BookOpen,
 } from 'lucide-react'
-import { useUpcomingLiveClasses, isLive, isUpcoming, type LiveClass } from '@/lib/api/liveClasses'
+import {
+  useUpcomingLiveClasses, isLive, isUpcoming, isEnded, hasRecording, fmtCountdown,
+  type LiveClass,
+} from '@/lib/api/liveClasses'
 
 /* ── Helpers ─────────────────────────────────────── */
 function fmtTime(iso: string): string {
@@ -23,47 +28,36 @@ function fmtDuration(mins: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`
 }
 
-function fmtCountdown(startIso: string, now: number): string {
-  const diff = new Date(startIso).getTime() - now
-  if (diff <= 0) return 'starting now'
-  const s    = Math.floor(diff / 1000)
-  const days = Math.floor(s / 86400)
-  if (days >= 2)  return `in ${days} days`
-  if (days === 1) return 'tomorrow'
-  const hrs  = Math.floor(s / 3600)
-  if (hrs >= 1)   return `in ${hrs}h`
-  const mins = Math.floor(s / 60)
-  return `in ${mins}m`
-}
-
-/** Group classes by calendar date label. */
 function groupByDate(items: LiveClass[]): { label: string; date: string; items: LiveClass[] }[] {
   const groups = new Map<string, LiveClass[]>()
-
   for (const item of items) {
-    const d   = new Date(item.scheduledStart)
-    const key = d.toDateString() // "Mon May 14 2026"
+    const key = new Date(item.scheduledStart).toDateString()
     if (!groups.has(key)) groups.set(key, [])
     groups.get(key)!.push(item)
   }
-
   const today    = new Date().toDateString()
   const tomorrow = new Date(Date.now() + 86_400_000).toDateString()
-
   return Array.from(groups.entries()).map(([key, items]) => ({
-    label: key === today ? 'Today'
-         : key === tomorrow ? 'Tomorrow'
-         : fmtDate(items[0]!.scheduledStart),
+    label: key === today ? 'Today' : key === tomorrow ? 'Tomorrow' : fmtDate(items[0]!.scheduledStart),
     date:  key,
-    items: items.sort(
-      (a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime(),
-    ),
+    items: items.sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime()),
   }))
 }
 
 /* ── Card ──────────────────────────────────────────── */
 function ClassCard({ live, now, index }: { live: LiveClass; now: number; index: number }) {
-  const liveNow = isLive(live, now)
+  const liveNow    = isLive(live)
+  const upcoming   = isUpcoming(live)
+  const ended      = isEnded(live)
+  const recording  = hasRecording(live)
+  const isInternal = live.type === 'internal'
+
+  /* Border color */
+  const border = liveNow
+    ? 'rgba(239,68,68,0.28)'
+    : ended && recording
+    ? 'rgba(34,197,94,0.22)'
+    : '#E4E7ED'
 
   return (
     <motion.div
@@ -71,22 +65,33 @@ function ClassCard({ live, now, index }: { live: LiveClass; now: number; index: 
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04, type: 'spring', stiffness: 300, damping: 28 }}
       className="flex items-center gap-4 rounded-2xl bg-white p-4"
-      style={{ border: `1px solid ${liveNow ? 'rgba(239,68,68,0.28)' : '#E4E7ED'}` }}>
+      style={{ border: `1px solid ${border}` }}>
 
       {/* Icon */}
       <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl"
         style={{
-          background: liveNow ? 'rgba(239,68,68,0.10)' : 'rgba(99,102,241,0.09)',
-          border:     liveNow ? '1px solid rgba(239,68,68,0.22)' : '1px solid rgba(99,102,241,0.18)',
+          background: liveNow
+            ? 'rgba(239,68,68,0.10)'
+            : isInternal
+            ? 'rgba(255,107,26,0.09)'
+            : 'rgba(99,102,241,0.09)',
+          border: liveNow
+            ? '1px solid rgba(239,68,68,0.22)'
+            : isInternal
+            ? '1px solid rgba(255,107,26,0.18)'
+            : '1px solid rgba(99,102,241,0.18)',
         }}>
         {liveNow
           ? <Radio size={18} style={{ color: '#EF4444' }} />
+          : isInternal
+          ? <Tv2 size={18} style={{ color: '#FF6B1A' }} />
           : <Video size={18} style={{ color: '#6366F1' }} />}
       </div>
 
       {/* Info */}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
+          {/* Status badges */}
           {liveNow && (
             <motion.span
               animate={{ opacity: [1, 0.4, 1] }}
@@ -96,6 +101,20 @@ function ClassCard({ live, now, index }: { live: LiveClass; now: number; index: 
               <span className="h-1.5 w-1.5 rounded-full bg-white" />Live now
             </motion.span>
           )}
+          {ended && recording && (
+            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+              style={{ background: 'rgba(34,197,94,0.12)', color: '#16A34A' }}>
+              <BookOpen size={9} />Recording
+            </span>
+          )}
+          {/* Type badge */}
+          <span className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
+            style={{
+              background: isInternal ? 'rgba(255,107,26,0.09)' : 'rgba(99,102,241,0.09)',
+              color:      isInternal ? '#FF6B1A' : '#6366F1',
+            }}>
+            {isInternal ? 'In-App Stream' : 'External Link'}
+          </span>
           <p className="truncate text-sm font-bold" style={{ color: '#0D0F1A' }}>{live.title}</p>
         </div>
 
@@ -113,7 +132,14 @@ function ClassCard({ live, now, index }: { live: LiveClass; now: number; index: 
               {live.course.title}
             </span>
           )}
-          {!liveNow && (
+          {/* Viewer count when live */}
+          {liveNow && live.viewerCount > 0 && (
+            <span className="font-semibold" style={{ color: '#EF4444' }}>
+              {live.viewerCount.toLocaleString()} watching
+            </span>
+          )}
+          {/* Countdown when upcoming */}
+          {upcoming && (
             <span style={{ color: '#FF6B1A', fontWeight: 600 }}>
               {fmtCountdown(live.scheduledStart, now)}
             </span>
@@ -122,35 +148,61 @@ function ClassCard({ live, now, index }: { live: LiveClass; now: number; index: 
       </div>
 
       {/* CTA */}
-      <a
-        href={live.meetingUrl}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="flex-shrink-0 rounded-xl px-4 py-2 text-xs font-bold text-white transition-all hover:opacity-90"
-        style={liveNow
-          ? { background: 'linear-gradient(135deg,#EF4444,#DC2626)', boxShadow: '0 4px 14px rgba(239,68,68,0.32)' }
-          : { background: 'linear-gradient(135deg,#6366F1,#818CF8)' }}>
-        {liveNow ? 'Join now' : 'Open link'}
-      </a>
+      {/* Internal: watch page */}
+      {isInternal && (liveNow || ended) && (
+        <Link href={`/live-classes/${live.id}/watch`} className="flex-shrink-0">
+          <motion.button
+            whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+            className="rounded-xl px-4 py-2 text-xs font-bold text-white"
+            style={liveNow
+              ? { background: 'linear-gradient(135deg,#EF4444,#DC2626)', boxShadow: '0 4px 14px rgba(239,68,68,0.32)' }
+              : { background: 'linear-gradient(135deg,#22C55E,#16A34A)' }}>
+            {liveNow ? 'Watch now' : 'Recording'}
+          </motion.button>
+        </Link>
+      )}
+      {/* Internal: upcoming — no CTA yet, just a reminder */}
+      {isInternal && upcoming && (
+        <Link href={`/live-classes/${live.id}/watch`} className="flex-shrink-0">
+          <motion.button
+            whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+            className="rounded-xl px-4 py-2 text-xs font-bold"
+            style={{ background: 'rgba(255,107,26,0.09)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.20)' }}>
+            View details
+          </motion.button>
+        </Link>
+      )}
+      {/* External */}
+      {!isInternal && live.meetingUrl && (liveNow || upcoming) && (
+        <a href={live.meetingUrl} target="_blank" rel="noreferrer noopener" className="flex-shrink-0">
+          <motion.button
+            whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+            className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white"
+            style={liveNow
+              ? { background: 'linear-gradient(135deg,#EF4444,#DC2626)', boxShadow: '0 4px 14px rgba(239,68,68,0.32)' }
+              : { background: 'linear-gradient(135deg,#6366F1,#818CF8)' }}>
+            <ExternalLink size={11} />{liveNow ? 'Join now' : 'Open link'}
+          </motion.button>
+        </a>
+      )}
     </motion.div>
   )
 }
 
-/* ── Date group header ─────────────────────────────── */
+/* ── Date group ─────────────────────────────────────── */
 function DateGroup({ label, items, now, groupIndex }: {
   label:      string
   items:      LiveClass[]
   now:        number
   groupIndex: number
 }) {
-  const hasLiveNow = items.some(l => isLive(l, now))
+  const hasLiveNow = items.some(l => isLive(l))
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: groupIndex * 0.06, type: 'spring', stiffness: 260, damping: 26 }}>
-      {/* Date label */}
       <div className="mb-3 flex items-center gap-2">
         <div className="flex h-7 items-center gap-1.5 rounded-xl px-3"
           style={{
@@ -167,8 +219,6 @@ function DateGroup({ label, items, now, groupIndex }: {
           {items.length} {items.length === 1 ? 'session' : 'sessions'}
         </span>
       </div>
-
-      {/* Cards */}
       <div className="space-y-3">
         {items.map((live, i) => (
           <ClassCard key={live.id} live={live} now={now} index={i} />
@@ -183,26 +233,23 @@ export default function LiveClassesPage() {
   const { data, isLoading, isError } = useUpcomingLiveClasses(50)
   const [now, setNow] = useState(() => Date.now())
 
-  /* Tick every 30s — keeps Live/Upcoming badges accurate */
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30_000)
     return () => clearInterval(t)
   }, [])
 
-  /* Filter and sort */
+  /* Show scheduled + live. Ended classes only shown if they have a recording. */
   const active = (data ?? [])
-    .filter(l => !l.cancelled && (isLive(l, now) || isUpcoming(l, now)))
+    .filter(l => l.status !== 'cancelled' && (isLive(l) || isUpcoming(l) || hasRecording(l)))
     .sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime())
 
-  const groups = groupByDate(active)
-  const liveNowCount = active.filter(l => isLive(l, now)).length
+  const groups       = groupByDate(active)
+  const liveNowCount = active.filter(l => isLive(l)).length
 
   return (
     <div className="mx-auto max-w-3xl">
-
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
         className="mb-8 flex items-center gap-4">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl"
           style={{ background: 'linear-gradient(135deg,rgba(99,102,241,0.15),rgba(99,102,241,0.08))', border: '1px solid rgba(99,102,241,0.25)' }}>
@@ -213,7 +260,7 @@ export default function LiveClassesPage() {
             Live Classes
           </h1>
           <p className="mt-0.5 text-sm" style={{ color: '#9CA3AF' }}>
-            Upcoming real-time sessions across all your courses — sorted by start time
+            Upcoming and active sessions across your enrolled courses
           </p>
         </div>
 
@@ -234,17 +281,14 @@ export default function LiveClassesPage() {
       {/* States */}
       <AnimatePresence mode="wait">
         {isLoading && (
-          <motion.div key="loading"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="flex items-center justify-center gap-2 py-20 text-sm"
-            style={{ color: '#9CA3AF' }}>
+          <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="flex items-center justify-center gap-2 py-20 text-sm" style={{ color: '#9CA3AF' }}>
             <Loader2 size={16} className="animate-spin" />Loading your schedule…
           </motion.div>
         )}
 
         {isError && (
-          <motion.div key="error"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="flex flex-col items-center gap-3 py-16">
             <div className="flex h-14 w-14 items-center justify-center rounded-3xl"
               style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)' }}>
@@ -256,8 +300,7 @@ export default function LiveClassesPage() {
         )}
 
         {!isLoading && !isError && groups.length === 0 && (
-          <motion.div key="empty"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="flex flex-col items-center gap-4 py-20 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-3xl"
               style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.18)' }}>

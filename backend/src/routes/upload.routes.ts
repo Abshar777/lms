@@ -9,6 +9,7 @@ import {
   deleteFromR2,
   makeKey,
 } from '@/services/r2.service.ts'
+import { transcodeToHLS }  from '@/services/hls.service.ts'
 
 const router = Router()
 
@@ -139,6 +140,34 @@ router.post('/video', async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: { code: 'R2_ERROR', message: (err as Error).message },
+    })
+  }
+})
+
+/* ── POST /uploads/transcode ─────────────────────────────────
+   Transcodes a video already on R2 to HLS (360p / 720p / 1080p).
+   Body: { key: string }  — the R2 key of the source MP4
+   Returns: { hlsUrl }    — public URL of master.m3u8
+   Note: This is a long-running operation (30 s – 3 min depending on video length).
+────────────────────────────────────────────────────────────── */
+router.post('/transcode', async (req: Request, res: Response) => {
+  const parsed = z.object({ key: z.string().min(1) }).safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({
+      success: false,
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0]?.message ?? 'Validation error' },
+    })
+    return
+  }
+
+  try {
+    const hlsUrl = await transcodeToHLS(parsed.data.key)
+    sendSuccess(res, { hlsUrl }, undefined, 201)
+  } catch (err) {
+    console.error('[transcode] FFmpeg error:', err)
+    res.status(500).json({
+      success: false,
+      error: { code: 'TRANSCODE_ERROR', message: (err as Error).message },
     })
   }
 })

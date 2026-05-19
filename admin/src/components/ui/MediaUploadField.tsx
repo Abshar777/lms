@@ -112,12 +112,13 @@ export function MediaUploadField({
   const [dragging,   setDragging]   = useState(false)
   const [uploadErr,  setUploadErr]  = useState<string | null>(null)
   const [lastFile,   setLastFile]   = useState<{ name: string; size: number } | null>(null)
-  const [uploading,  setUploading]  = useState(false)
-  const [vidProgress, setVidProgress] = useState(0)
+  const [uploading,    setUploading]    = useState(false)
+  const [transcoding,  setTranscoding]  = useState(false)
+  const [vidProgress,  setVidProgress]  = useState(0)
 
   const uploadImage = useUploadImage()
-  const isUploading = uploadImage.isPending || uploading
-  const uploadDone  = !!value && !!lastFile
+  const isUploading = uploadImage.isPending || uploading || transcoding
+  const uploadDone  = !!value && !!lastFile && !transcoding
 
   const accept = type === 'image'
     ? 'image/jpeg,image/png,image/gif,image/webp'
@@ -134,12 +135,17 @@ export function MediaUploadField({
       } else {
         setUploading(true)
         setVidProgress(0)
-        url = await uploadVideo(file, (pct) => setVidProgress(pct))
-        setUploading(false)
+        url = await uploadVideo(
+          file,
+          (pct) => setVidProgress(pct),
+          () => { setUploading(false); setTranscoding(true) },
+        )
+        setTranscoding(false)
       }
       onChange(url)
     } catch (err: unknown) {
       setUploading(false)
+      setTranscoding(false)
       const msg =
         (err as { response?: { data?: { error?: { message?: string } } } })
           ?.response?.data?.error?.message
@@ -167,6 +173,7 @@ export function MediaUploadField({
     setLastFile(null)
     setUploadErr(null)
     setUploading(false)
+    setTranscoding(false)
     setVidProgress(0)
     uploadImage.reset()
   }
@@ -176,34 +183,57 @@ export function MediaUploadField({
   ══════════════════════════════════════════════════ */
   if (mode === 'compact') {
     return (
-      <div className="relative flex items-center gap-1">
-        {fileInput}
-        <input
-          value={value}
-          onChange={e => { setLastFile(null); onChange(e.target.value) }}
-          placeholder={placeholder ?? (type === 'image' ? 'Image URL or upload ↗' : 'Video URL or upload ↗')}
-          disabled={disabled || isUploading}
-          className={`${BASE_INPUT} pr-1`}
-          style={{
-            background: DARK_BG,
-            border: error ? '1px solid rgba(239,68,68,0.55)' : BORDER,
-          }}
-          onFocus={e  => { e.currentTarget.style.border = FOCUS_BORDER }}
-          onBlur={e   => { e.currentTarget.style.border = error ? '1px solid rgba(239,68,68,0.55)' : BORDER }}
-        />
-        {/* Upload button */}
-        <button
-          type="button"
-          onClick={openPicker}
-          disabled={disabled || isUploading}
-          title={`Upload ${type === 'image' ? 'image' : 'video'}`}
-          className="flex-shrink-0 flex h-[34px] w-[34px] items-center justify-center rounded-lg transition-all disabled:opacity-40 hover:opacity-80"
-          style={{ background: 'rgba(255,107,26,0.15)', border: '1px solid rgba(255,107,26,0.30)', color: '#FF6B1A' }}
-        >
-          {isUploading
-            ? <Loader2 size={13} className="animate-spin" />
-            : <Upload size={13} />}
-        </button>
+      <div className="space-y-1">
+        <div className="relative flex items-center gap-1">
+          {fileInput}
+          <input
+            value={value}
+            onChange={e => { setLastFile(null); onChange(e.target.value) }}
+            placeholder={placeholder ?? (type === 'image' ? 'Image URL or upload ↗' : 'Video URL or upload ↗')}
+            disabled={disabled || isUploading}
+            className={`${BASE_INPUT} pr-1`}
+            style={{
+              background: DARK_BG,
+              border: (error || uploadErr) ? '1px solid rgba(239,68,68,0.55)' : BORDER,
+            }}
+            onFocus={e  => { e.currentTarget.style.border = FOCUS_BORDER }}
+            onBlur={e   => { e.currentTarget.style.border = (error || uploadErr) ? '1px solid rgba(239,68,68,0.55)' : BORDER }}
+          />
+          {/* Upload button */}
+          <button
+            type="button"
+            onClick={openPicker}
+            disabled={disabled || isUploading}
+            title={`Upload ${type === 'image' ? 'image' : 'video'}`}
+            className="flex-shrink-0 flex h-[34px] w-[34px] items-center justify-center rounded-lg transition-all disabled:opacity-40 hover:opacity-80"
+            style={{ background: 'rgba(255,107,26,0.15)', border: '1px solid rgba(255,107,26,0.30)', color: '#FF6B1A' }}
+          >
+            {isUploading
+              ? <Loader2 size={13} className="animate-spin" />
+              : <Upload size={13} />}
+          </button>
+        </div>
+        {/* Compact upload/transcode progress */}
+        {(uploading || transcoding) && (
+          <div className="flex items-center gap-1.5 rounded-md px-2 py-1"
+            style={{ background: 'rgba(255,107,26,0.08)', border: '1px solid rgba(255,107,26,0.18)' }}>
+            <Loader2 size={10} className="animate-spin flex-shrink-0" style={{ color: '#FF6B1A' }} />
+            <p className="text-[10px] font-medium" style={{ color: 'rgba(255,255,255,0.7)' }}>
+              {transcoding ? 'Transcoding to HLS…' : `Uploading… ${vidProgress > 0 ? vidProgress + '%' : ''}`}
+            </p>
+          </div>
+        )}
+        {/* Compact error display */}
+        {(error || uploadErr) && (
+          <motion.div initial={{ opacity: 0, y: -2 }} animate={{ opacity: 1, y: 0 }}
+            className="flex items-start gap-1 rounded-md px-2 py-1"
+            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.20)' }}>
+            <AlertCircle size={10} className="mt-0.5 flex-shrink-0" style={{ color: '#EF4444' }} />
+            <p className="text-[10px] leading-snug break-all" style={{ color: '#EF4444' }}>
+              {uploadErr ?? error}
+            </p>
+          </motion.div>
+        )}
       </div>
     )
   }
@@ -308,22 +338,25 @@ export function MediaUploadField({
             )}
 
             {/* Uploading state */}
-            {isUploading && (
+            {(uploading || transcoding) && (
               <div className="space-y-2 rounded-xl px-4 py-3"
                 style={{ background: 'rgba(255,107,26,0.07)', border: '1px solid rgba(255,107,26,0.18)' }}>
                 <div className="flex items-center gap-3">
                   <Loader2 size={16} className="animate-spin flex-shrink-0" style={{ color: '#FF6B1A' }} />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                      Uploading {lastFile?.name}…
+                      {transcoding
+                        ? 'Transcoding to HLS…'
+                        : `Uploading ${lastFile?.name}…`}
                     </p>
                     <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                      {lastFile ? humanSize(lastFile.size) : ''}
-                      {uploading && vidProgress > 0 ? ` · ${vidProgress}%` : ''}
+                      {transcoding
+                        ? 'Generating 360p / 720p / 1080p streams — this may take a minute'
+                        : `${lastFile ? humanSize(lastFile.size) : ''}${vidProgress > 0 ? ` · ${vidProgress}%` : ''}`}
                     </p>
                   </div>
                 </div>
-                {/* Video upload progress bar */}
+                {/* Upload progress bar */}
                 {uploading && (
                   <div className="h-1 overflow-hidden rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}>
                     <motion.div
@@ -331,6 +364,17 @@ export function MediaUploadField({
                       style={{ background: 'linear-gradient(90deg,#FF6B1A,#FF8C42)' }}
                       animate={{ width: `${vidProgress}%` }}
                       transition={{ duration: 0.3 }}
+                    />
+                  </div>
+                )}
+                {/* Transcoding indeterminate bar */}
+                {transcoding && (
+                  <div className="h-1 overflow-hidden rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                    <motion.div
+                      className="h-full rounded-full"
+                      style={{ background: 'linear-gradient(90deg,#FF6B1A,#FF8C42)', width: '40%' }}
+                      animate={{ x: ['0%', '150%', '0%'] }}
+                      transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
                     />
                   </div>
                 )}

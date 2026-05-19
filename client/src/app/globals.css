@@ -49,11 +49,24 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
 
-/* ── Focus visible ──────────────────────────────── */
-:focus-visible {
+/* ── Focus visible — only on interactive non-form elements ── */
+:focus-visible:not(input):not(textarea):not(select) {
   outline: 2px solid #FF6B1A !important;
   outline-offset: 2px;
-  /* border-radius: 4px; */
+}
+
+/* ── Kill @tailwindcss/forms blue ring on every form element ── */
+input, textarea, select {
+  --tw-ring-shadow:        0 0 #0000;
+  --tw-ring-offset-shadow: 0 0 #0000;
+}
+input:focus, input:focus-visible,
+textarea:focus, textarea:focus-visible,
+select:focus, select:focus-visible {
+  outline:                 none !important;
+  box-shadow:              none !important;
+  --tw-ring-shadow:        0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
 }
 
 /* ── Selection ──────────────────────────────────── */

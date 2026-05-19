@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Calendar, Video, Loader2, Radio, Clock, AlertCircle } from 'lucide-react'
-import { useLiveClassesForCourse, isLive, isUpcoming, type LiveClass } from '@/lib/api/liveClasses'
+import Link from 'next/link'
+import { Tv2 } from 'lucide-react'
+import { useLiveClassesForCourse, isLive, isUpcoming, fmtCountdown, type LiveClass } from '@/lib/api/liveClasses'
 
 function fmtDateTime(iso: string): string {
   return new Date(iso).toLocaleString('en-US', {
@@ -19,17 +21,6 @@ function fmtDuration(mins: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`
 }
 
-function fmtCountdown(ms: number): string {
-  if (ms <= 0)            return 'now'
-  const s = Math.floor(ms / 1000)
-  const days = Math.floor(s / 86400)
-  if (days >= 2)          return `in ${days} days`
-  if (days === 1)         return 'tomorrow'
-  const hours = Math.floor(s / 3600)
-  if (hours >= 1)         return `in ${hours}h`
-  const mins = Math.floor(s / 60)
-  return `in ${mins}m`
-}
 
 export function LiveClassesPanel({ slug }: { slug: string }) {
   const { data: items, isLoading, isError } = useLiveClassesForCourse(slug)
@@ -40,7 +31,7 @@ export function LiveClassesPanel({ slug }: { slug: string }) {
     return () => clearInterval(t)
   }, [])
 
-  const upcoming = items?.filter(l => !l.cancelled && (isLive(l, now) || isUpcoming(l, now))) ?? []
+  const upcoming = items?.filter(l => isLive(l) || isUpcoming(l)) ?? []
   /* Show at most 4 by default — full list is a follow-up. */
   const visible = upcoming.slice(0, 4)
 
@@ -101,9 +92,9 @@ export function LiveClassesPanel({ slug }: { slug: string }) {
 }
 
 function LiveClassRow({ live, now, index }: { live: LiveClass; now: number; index: number }) {
-  const startMs = new Date(live.scheduledStart).getTime()
-  const isLiveNow = isLive(live, now)
-  const countdown = fmtCountdown(startMs - now)
+  const isLiveNow  = isLive(live)
+  const isInternal = live.type === 'internal'
+  const countdown  = fmtCountdown(live.scheduledStart, now)
 
   return (
     <motion.div
@@ -113,11 +104,13 @@ function LiveClassRow({ live, now, index }: { live: LiveClass; now: number; inde
 
       <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl"
         style={{
-          background: isLiveNow ? 'rgba(239,68,68,0.10)' : 'rgba(99,102,241,0.08)',
-          border:     `1px solid ${isLiveNow ? 'rgba(239,68,68,0.25)' : 'rgba(99,102,241,0.18)'}`,
+          background: isLiveNow ? 'rgba(239,68,68,0.10)' : isInternal ? 'rgba(255,107,26,0.08)' : 'rgba(99,102,241,0.08)',
+          border: `1px solid ${isLiveNow ? 'rgba(239,68,68,0.25)' : isInternal ? 'rgba(255,107,26,0.18)' : 'rgba(99,102,241,0.18)'}`,
         }}>
         {isLiveNow
           ? <Radio size={18} style={{ color: '#EF4444' }} />
+          : isInternal
+          ? <Tv2 size={18} style={{ color: '#FF6B1A' }} />
           : <Calendar size={18} style={{ color: '#6366F1' }} />}
       </div>
 
@@ -145,16 +138,24 @@ function LiveClassRow({ live, now, index }: { live: LiveClass; now: number; inde
         </div>
       </div>
 
-      <a
-        href={live.meetingUrl}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="rounded-xl px-3.5 py-2 text-xs font-bold text-white transition-all"
-        style={isLiveNow
-          ? { background: 'linear-gradient(135deg, #EF4444, #DC2626)', boxShadow: '0 4px 16px rgba(239,68,68,0.32)' }
-          : { background: 'linear-gradient(135deg, #6366F1, #818CF8)' }}>
-        {isLiveNow ? 'Join now' : 'Open link'}
-      </a>
+      {/* CTA — internal uses watch page, external opens link */}
+      {isInternal ? (
+        <Link href={`/live-classes/${live.id}/watch`}
+          className="rounded-xl px-3.5 py-2 text-xs font-bold text-white transition-all"
+          style={isLiveNow
+            ? { background: 'linear-gradient(135deg, #EF4444, #DC2626)', boxShadow: '0 4px 16px rgba(239,68,68,0.32)' }
+            : { background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+          {isLiveNow ? 'Watch now' : 'View'}
+        </Link>
+      ) : (
+        <a href={live.meetingUrl ?? '#'} target="_blank" rel="noreferrer noopener"
+          className="rounded-xl px-3.5 py-2 text-xs font-bold text-white transition-all"
+          style={isLiveNow
+            ? { background: 'linear-gradient(135deg, #EF4444, #DC2626)', boxShadow: '0 4px 16px rgba(239,68,68,0.32)' }
+            : { background: 'linear-gradient(135deg, #6366F1, #818CF8)' }}>
+          {isLiveNow ? 'Join now' : 'Open link'}
+        </a>
+      )}
     </motion.div>
   )
 }

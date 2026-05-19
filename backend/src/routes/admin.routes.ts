@@ -176,22 +176,32 @@ const liveCreateSchema = z.object({
   description:    z.string().max(2000).optional(),
   scheduledStart: z.string().datetime().or(z.string().refine(s => !isNaN(Date.parse(s)), 'Invalid date')),
   durationMins:   z.coerce.number().int().min(5).max(600),
-  meetingUrl:     z.string().url().max(2048),
+  type:           z.enum(['external', 'internal']).default('external'),
+  meetingUrl:     z.string().url().max(2048).optional(),
   instructorId:   z.string().optional(),
-})
+}).refine(
+  data => data.type === 'internal' || !!data.meetingUrl,
+  { message: 'meetingUrl is required for external live classes', path: ['meetingUrl'] },
+)
 const liveUpdateSchema = z.object({
   title:          z.string().min(3).max(255).trim().optional(),
   description:    z.string().max(2000).optional(),
   scheduledStart: z.string().refine(s => !isNaN(Date.parse(s)), 'Invalid date').optional(),
   durationMins:   z.coerce.number().int().min(5).max(600).optional(),
   meetingUrl:     z.string().url().max(2048).optional(),
-  cancelled:      z.boolean().optional(),
+  status:         z.enum(['scheduled', 'live', 'ended', 'cancelled']).optional(),
 })
 
-router.get   ('/courses/:courseId/live-classes', live.adminListForCourse)
-router.post  ('/live-classes',                   validate(liveCreateSchema), live.adminCreate)
-router.patch ('/live-classes/:id',               validate(liveUpdateSchema), live.adminUpdate)
-router.delete('/live-classes/:id',               live.adminDelete)
+router.get   ('/courses/:courseId/live-classes',          live.adminListForCourse)
+router.get   ('/live-classes',                            live.adminListAll)
+router.get   ('/live-classes/:id',                        live.adminGetById)
+router.post  ('/live-classes',                            validate(liveCreateSchema), live.adminCreate)
+router.patch ('/live-classes/:id',                        validate(liveUpdateSchema), live.adminUpdate)
+router.delete('/live-classes/:id',                        live.adminDelete)
+router.post  ('/live-classes/:id/start',                  live.adminStart)
+router.post  ('/live-classes/:id/end',                    live.adminEnd)
+router.post  ('/live-classes/:id/recreate',               live.adminRecreate)
+router.get   ('/live-classes/:id/stream-credentials',     live.adminGetStreamCredentials)
 
 /* ─── Quiz management (admin + own-course instructor) ─── */
 const quizUpsertSchema = z.object({

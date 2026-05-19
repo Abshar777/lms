@@ -101,6 +101,7 @@ export interface LessonDTO {
   durationMins: number
   order:        number
   isFree:       boolean
+  contentUrl?:  string   // only included for enrolled users or free lessons
 }
 
 export function toSectionDTO(s: ISection): SectionDTO {
@@ -112,9 +113,9 @@ export function toSectionDTO(s: ISection): SectionDTO {
   }
 }
 
-export function toLessonDTO(l: ILesson): LessonDTO {
+export function toLessonDTO(l: ILesson, includeContentUrl = false): LessonDTO {
   const j = l.toJSON() as Record<string, unknown>
-  return {
+  const dto: LessonDTO = {
     id:           j['id']           as string,
     sectionId:    String(j['sectionId']),
     courseId:     String(j['courseId']),
@@ -124,4 +125,8 @@ export function toLessonDTO(l: ILesson): LessonDTO {
     order:        j['order']        as number,
     isFree:       j['isFree']       as boolean,
   }
+  if (includeContentUrl) {
+    dto.contentUrl = j['contentUrl'] as string | undefined
+  }
+  return dto
 }

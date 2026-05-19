@@ -1,0 +1,244 @@
+'use client'
+
+import { use } from 'react'
+import Link from 'next/link'
+import { motion } from 'framer-motion'
+import {
+  Radio, Clock, Loader2, AlertCircle, Calendar, ChevronLeft,
+  ExternalLink, BookOpen, Users, Tv2,
+} from 'lucide-react'
+import { useWatchAccess } from '@/lib/api/liveClasses'
+import MuxPlayer from '@mux/mux-player-react'
+import { useCurrentUser } from '@/lib/api/user'
+
+/* ── Helpers ─────────────────────────────────────────── */
+function StatusBadge({ status }: { status: string }) {
+  if (status === 'live') {
+    return (
+      <motion.span
+        animate={{ opacity: [1, 0.4, 1] }}
+        transition={{ duration: 1.4, repeat: Infinity }}
+        className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1 text-xs font-bold text-white"
+        style={{ background: '#EF4444' }}>
+        <span className="h-2 w-2 rounded-full bg-white" />
+        LIVE NOW
+      </motion.span>
+    )
+  }
+  if (status === 'ended') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1 text-xs font-bold"
+        style={{ background: 'rgba(34,197,94,0.12)', color: '#16A34A', border: '1px solid rgba(34,197,94,0.25)' }}>
+        <BookOpen size={11} />Recording
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1 text-xs font-semibold"
+      style={{ background: '#F3F4F6', color: '#6B7280' }}>
+      <Clock size={11} />Scheduled
+    </span>
+  )
+}
+
+/* ── Placeholder while stream hasn't started ─────────── */
+function ScheduledPlaceholder({ thumbnailUrl }: { thumbnailUrl?: string }) {
+  return (
+    <div className="flex aspect-video w-full flex-col items-center justify-center gap-4 rounded-2xl"
+      style={{ background: thumbnailUrl ? undefined : '#0D0F1A', position: 'relative', overflow: 'hidden' }}>
+      {thumbnailUrl && (
+        <img src={thumbnailUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-20" />
+      )}
+      <div className="relative z-10 flex flex-col items-center gap-3 text-center px-6">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl"
+          style={{ background: 'rgba(255,107,26,0.15)', border: '1px solid rgba(255,107,26,0.25)' }}>
+          <Tv2 size={28} style={{ color: '#FF6B1A' }} />
+        </div>
+        <p className="text-lg font-bold text-white">Stream hasn&apos;t started yet</p>
+        <p className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>
+          This page will update automatically when the instructor goes live.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+/* ── Page ────────────────────────────────────────────── */
+export default function WatchPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id }   = use(params)
+  const { data: user }   = useCurrentUser()
+  const { data, isLoading, isError, error } = useWatchAccess(id)
+
+  /* ── Loading ── */
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <Loader2 size={24} className="animate-spin" style={{ color: '#FF6B1A' }} />
+      </div>
+    )
+  }
+
+  /* ── Error states ── */
+  if (isError) {
+    const errCode = (error as any)?.response?.data?.error?.code
+    const isNotEnrolled = errCode === 'NOT_ENROLLED'
+    const isCancelled   = errCode === 'SESSION_CANCELLED'
+
+    return (
+      <div className="mx-auto max-w-xl py-20 text-center">
+        <div className="flex h-16 w-16 mx-auto mb-4 items-center justify-center rounded-3xl"
+          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)' }}>
+          <AlertCircle size={24} style={{ color: '#EF4444' }} />
+        </div>
+        <p className="text-lg font-bold" style={{ color: '#0D0F1A' }}>
+          {isNotEnrolled ? 'Enrollment required'
+           : isCancelled ? 'Session cancelled'
+           : 'Something went wrong'}
+        </p>
+        <p className="mt-2 text-sm" style={{ color: '#6B7280' }}>
+          {isNotEnrolled ? 'You must be enrolled in this course to watch the live class.'
+           : isCancelled  ? 'This session was cancelled by the instructor.'
+           : 'We couldn\'t load the stream. Please try again.'}
+        </p>
+        <Link href="/live-classes"
+          className="mt-6 inline-flex items-center gap-2 text-sm font-semibold transition-opacity hover:opacity-70"
+          style={{ color: '#FF6B1A' }}>
+          <ChevronLeft size={14} />Back to Live Classes
+        </Link>
+      </div>
+    )
+  }
+
+  if (!data) return null
+
+  /* ── External type — just redirect info ── */
+  if (data.type === 'external' && data.meetingUrl) {
+    return (
+      <div className="mx-auto max-w-xl py-20 text-center">
+        <div className="flex h-16 w-16 mx-auto mb-4 items-center justify-center rounded-3xl"
+          style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.18)' }}>
+          <ExternalLink size={24} style={{ color: '#6366F1' }} />
+        </div>
+        <p className="text-lg font-bold" style={{ color: '#0D0F1A' }}>This is an external live class</p>
+        <p className="mt-2 text-sm" style={{ color: '#6B7280' }}>
+          This session is hosted on an external platform. Click the button below to join.
+        </p>
+        <a href={data.meetingUrl} target="_blank" rel="noreferrer noopener"
+          className="mt-6 inline-flex items-center gap-2 rounded-2xl px-6 py-3 text-sm font-bold text-white"
+          style={{ background: 'linear-gradient(135deg,#6366F1,#818CF8)', boxShadow: '0 4px 14px rgba(99,102,241,0.30)' }}>
+          <ExternalLink size={14} />Open external link
+        </a>
+        <div className="mt-4">
+          <Link href="/live-classes"
+            className="text-sm font-semibold transition-opacity hover:opacity-70"
+            style={{ color: '#9CA3AF' }}>
+            ← Back to Live Classes
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  /* ── Internal (Mux) ── */
+  const isLiveNow  = data.status === 'live'
+  const isEnded    = data.status === 'ended'
+  const isScheduled = data.status === 'scheduled'
+
+  /* Stream URL: live playback or recording */
+  const streamUrl = isLiveNow
+    ? data.playbackUrl
+    : isEnded && data.recordingUrl
+    ? data.recordingUrl
+    : null
+
+  return (
+    <div className="mx-auto max-w-5xl">
+      {/* Back nav */}
+      <Link href="/live-classes"
+        className="mb-5 inline-flex items-center gap-1.5 text-sm font-semibold transition-opacity hover:opacity-70"
+        style={{ color: '#9CA3AF' }}>
+        <ChevronLeft size={14} />Live Classes
+      </Link>
+
+      <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+        {/* ── Left: player ── */}
+        <div className="space-y-4">
+          {/* Player or placeholder */}
+          {streamUrl ? (
+            <div className="overflow-hidden rounded-2xl bg-black">
+              <MuxPlayer
+                streamType={isLiveNow ? 'live' : 'on-demand'}
+                src={streamUrl}
+                metadata={{
+                  video_title: `Live class`,
+                  viewer_user_id: user?.id ?? 'anonymous',
+                }}
+                autoPlay={isLiveNow}
+                muted={false}
+                style={{ width: '100%', aspectRatio: '16/9' }}
+              />
+            </div>
+          ) : (
+            <ScheduledPlaceholder thumbnailUrl={data.thumbnailUrl} />
+          )}
+
+          {/* Status bar */}
+          <div className="flex flex-wrap items-center gap-3">
+            <StatusBadge status={data.status} />
+
+            {isLiveNow && data.viewerCount > 0 && (
+              <span className="flex items-center gap-1.5 text-sm font-semibold" style={{ color: '#EF4444' }}>
+                <Users size={13} />{data.viewerCount.toLocaleString()} watching
+              </span>
+            )}
+
+            {isScheduled && (
+              <span className="text-sm" style={{ color: '#6B7280' }}>
+                This page refreshes automatically when the stream starts.
+              </span>
+            )}
+
+            {isEnded && !data.recordingUrl && (
+              <span className="text-sm" style={{ color: '#6B7280' }}>
+                Stream ended. Recording is being processed — check back in a few minutes.
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* ── Right: info panel (chat placeholder — Phase 2) ── */}
+        <div className="flex flex-col gap-4">
+          <div className="rounded-2xl p-4"
+            style={{ background: 'white', border: '1px solid #E5E7EB' }}>
+            <h2 className="text-sm font-bold" style={{ color: '#0D0F1A' }}>About this session</h2>
+            <p className="mt-2 text-xs" style={{ color: '#6B7280' }}>
+              {isLiveNow
+                ? 'You\'re watching live. The instructor can see the viewer count.'
+                : isEnded
+                ? data.recordingUrl
+                  ? 'This session has ended. You\'re watching the recording.'
+                  : 'This session has ended. The recording will be available shortly.'
+                : 'This session hasn\'t started yet. Stay on this page — it will update automatically.'}
+            </p>
+
+            {/* Live chat coming soon notice */}
+            {isLiveNow && (
+              <div className="mt-4 rounded-xl p-3 text-center"
+                style={{ background: '#F9FAFB', border: '1px dashed #E5E7EB' }}>
+                <Radio size={16} className="mx-auto mb-1.5" style={{ color: '#D1D5DB' }} />
+                <p className="text-xs font-semibold" style={{ color: '#9CA3AF' }}>Live chat</p>
+                <p className="mt-0.5 text-[11px]" style={{ color: '#D1D5DB' }}>Coming soon</p>
+              </div>
+            )}
+          </div>
+
+          <Link href="/live-classes"
+            className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold transition-colors hover:opacity-70"
+            style={{ background: '#F3F4F6', color: '#374151' }}>
+            <ChevronLeft size={13} />All live classes
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}

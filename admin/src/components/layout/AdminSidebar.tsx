@@ -6,14 +6,16 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, BookOpen, Users, GraduationCap,
   Tag, Star, Settings, ChevronLeft, LogOut, X,
-  ShoppingBag, Ticket, Map, ClipboardList,
+  ShoppingBag, Ticket, Map, ClipboardList, Video,
 } from 'lucide-react'
 import { useUIStore } from '@/store/ui.store'
+import { useAllLiveClasses } from '@/lib/api/liveClasses'
 
 const navItems = [
   { label: 'Dashboard',      href: '/',                 icon: LayoutDashboard },
   { label: 'Courses',        href: '/courses',           icon: BookOpen },
   { label: 'Learning Paths', href: '/learning-paths',   icon: Map },
+  { label: 'Live Classes',   href: '/live-classes',     icon: Video },
   { label: 'Students',       href: '/students',          icon: Users },
   { label: 'Instructors',    href: '/instructors',       icon: GraduationCap },
   { label: 'Categories',     href: '/categories',        icon: Tag },
@@ -34,6 +36,8 @@ interface SidebarContentProps {
 
 function SidebarContent({ collapsed, onClose }: SidebarContentProps) {
   const pathname = usePathname()
+  const { data: allLive } = useAllLiveClasses('live')
+  const liveNowCount = allLive?.length ?? 0
 
   const isActive = (href: string) =>
     href === '/' ? pathname === '/' : pathname.startsWith(href)
@@ -112,11 +116,30 @@ function SidebarContent({ collapsed, onClose }: SidebarContentProps) {
                     <motion.span
                       initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -6 }} transition={{ duration: 0.13 }}
-                      className="relative z-10 whitespace-nowrap text-sm font-medium">
+                      className="relative z-10 flex flex-1 items-center justify-between whitespace-nowrap text-sm font-medium">
                       {item.label}
+                      {/* Pulsing live badge — only on Live Classes item when streams are active */}
+                      {item.href === '/live-classes' && liveNowCount > 0 && (
+                        <motion.span
+                          animate={{ opacity: [1, 0.4, 1] }}
+                          transition={{ duration: 1.4, repeat: Infinity }}
+                          className="ml-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
+                          style={{ background: '#EF4444' }}>
+                          {liveNowCount}
+                        </motion.span>
+                      )}
                     </motion.span>
                   )}
                 </AnimatePresence>
+                {/* Collapsed state: small red dot indicator */}
+                {collapsed && item.href === '/live-classes' && liveNowCount > 0 && (
+                  <motion.span
+                    animate={{ opacity: [1, 0.3, 1] }}
+                    transition={{ duration: 1.4, repeat: Infinity }}
+                    className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full"
+                    style={{ background: '#EF4444' }}
+                  />
+                )}
               </motion.div>
             </Link>
           )

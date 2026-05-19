@@ -75,3 +75,38 @@ export function requireRole(...roles: UserRole[]) {
 export const requireAdmin      = requireRole('admin')
 export const requireInstructor = requireRole('instructor', 'admin')
 export const requireStudent    = requireRole('student', 'instructor', 'admin')
+
+/* ─────────────────────────────────────────────────────
+   optionalAuthenticate
+   ─────────────────────────────────────────────────────
+   Like authenticate but never rejects the request.
+   Sets req.user when a valid token is present;
+   leaves req.user undefined otherwise.
+   Use on public endpoints that want to personalise
+   their response when the caller happens to be logged in.
+───────────────────────────────────────────────────── */
+export async function optionalAuthenticate(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const cookieToken = req.cookies?.[ACCESS_COOKIE]
+  const authHeader  = req.headers['authorization']
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+  const token       = cookieToken ?? bearerToken
+
+  if (token) {
+    try {
+      const payload = await verifyAccessToken(token)
+      req.user = {
+        id:    payload.sub!,
+        email: payload.email,
+        role:  payload.role,
+      }
+    } catch {
+      /* expired / invalid — treat as unauthenticated */
+    }
+  }
+
+  next()
+}

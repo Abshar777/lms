@@ -6,6 +6,8 @@ import axios from 'axios'
  * Auth: httpOnly cookies set by the backend — `withCredentials: true`
  * makes the browser attach them automatically.
  */
+
+
 export const api = axios.create({
   baseURL: '/api/v1',
   withCredentials: true,

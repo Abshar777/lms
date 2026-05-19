@@ -2,13 +2,15 @@ import type { Request, Response, NextFunction } from 'express'
 import { CourseService } from '@/services/course.service.ts'
 import { AINotesService } from '@/services/aiNotes.service.ts'
 import { LessonRepository } from '@/repositories/lesson.repository.ts'
+import { EnrollmentRepository } from '@/repositories/enrollment.repository.ts'
 import { sendSuccess, buildPaginationMeta, parsePagination } from '@/utils/response.ts'
 import { toCourseDTO, toSectionDTO, toLessonDTO } from '@/utils/courseDTO.ts'
 
 export class CourseController {
-  private readonly service    = new CourseService()
-  private readonly aiNotes    = new AINotesService()
-  private readonly lessonRepo = new LessonRepository()
+  private readonly service      = new CourseService()
+  private readonly aiNotes      = new AINotesService()
+  private readonly lessonRepo   = new LessonRepository()
+  private readonly enrollRepo   = new EnrollmentRepository()
 
   list = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -46,10 +48,21 @@ export class CourseController {
     try {
       const slug = String(req.params['slug'] ?? '')
       const { course, sections, lessons } = await this.service.getBySlug(slug)
+
+      /* Check enrollment so we can expose contentUrl for enrolled users */
+      let isEnrolled = false
+      if (req.user) {
+        const enrollment = await this.enrollRepo.findByUserCourse(req.user.id, course.id)
+        isEnrolled = !!enrollment
+      }
+
       sendSuccess(res, {
         course:   toCourseDTO(course, lessons.length),
         sections: sections.map(toSectionDTO),
-        lessons:  lessons.map(toLessonDTO),
+        lessons:  lessons.map(l => {
+          const j = l.toJSON() as Record<string, unknown>
+          return toLessonDTO(l, isEnrolled || (j['isFree'] as boolean) === true)
+        }),
       })
     } catch (err) {
       next(err)
@@ -60,10 +73,21 @@ export class CourseController {
     try {
       const id = String(req.params['id'] ?? '')
       const { course, sections, lessons } = await this.service.getByIdPublic(id)
+
+      /* Check enrollment so we can expose contentUrl for enrolled users */
+      let isEnrolled = false
+      if (req.user) {
+        const enrollment = await this.enrollRepo.findByUserCourse(req.user.id, course.id)
+        isEnrolled = !!enrollment
+      }
+
       sendSuccess(res, {
         course:   toCourseDTO(course, lessons.length),
         sections: sections.map(toSectionDTO),
-        lessons:  lessons.map(toLessonDTO),
+        lessons:  lessons.map(l => {
+          const j = l.toJSON() as Record<string, unknown>
+          return toLessonDTO(l, isEnrolled || (j['isFree'] as boolean) === true)
+        }),
       })
     } catch (err) {
       next(err)

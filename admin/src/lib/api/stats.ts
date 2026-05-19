@@ -176,10 +176,11 @@ export function useAdminLearningPaths(page = 1) {
   return useQuery({
     queryKey: ['admin', 'learning-paths', page],
     queryFn: async () => {
-      const res = await api.get<{ success: true; data: AdminLearningPath[]; meta: any }>(
+      /* Backend returns { success, data: { paths: [...], meta: {...} } } */
+      const res = await api.get<{ success: true; data: { paths: AdminLearningPath[]; meta: any } }>(
         '/learning-paths/admin/list', { params: { page, per_page: 20 } },
       )
-      return { paths: res.data.data, meta: res.data.meta }
+      return { paths: res.data.data.paths, meta: res.data.data.meta }
     },
     staleTime: 30_000,
   })
