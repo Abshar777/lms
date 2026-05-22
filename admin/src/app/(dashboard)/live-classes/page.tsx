@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Video, Radio, Calendar, Clock, Users, Loader2,
   AlertCircle, Tv2, ExternalLink, BookOpen,
-  ChevronRight, PlayCircle, Eye,
+  ChevronRight, PlayCircle, Eye, CalendarDays,
 } from 'lucide-react'
 import { useAllLiveClasses, type LiveClass } from '@/lib/api/liveClasses'
 
@@ -311,19 +311,28 @@ export default function LiveClassesPage() {
           </p>
         </div>
 
-        {/* Live now badge in header */}
-        {liveNowCount > 0 && (
-          <motion.div
-            animate={{ opacity: [1, 0.5, 1] }}
-            transition={{ duration: 1.6, repeat: Infinity }}
-            className="ml-auto flex items-center gap-2 rounded-2xl px-4 py-2"
-            style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)' }}>
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: '#EF4444' }} />
-            <span className="text-sm font-bold" style={{ color: '#EF4444' }}>
-              {liveNowCount} live now
-            </span>
-          </motion.div>
-        )}
+        <div className="ml-auto flex items-center gap-3">
+          {/* Timetable button */}
+          <Link href="/live-classes/timetable"
+            className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition-colors hover:bg-white/10"
+            style={{ color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.10)' }}>
+            <CalendarDays size={14} />Timetable
+          </Link>
+
+          {/* Live now badge */}
+          {liveNowCount > 0 && (
+            <motion.div
+              animate={{ opacity: [1, 0.5, 1] }}
+              transition={{ duration: 1.6, repeat: Infinity }}
+              className="flex items-center gap-2 rounded-2xl px-4 py-2"
+              style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)' }}>
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: '#EF4444' }} />
+              <span className="text-sm font-bold" style={{ color: '#EF4444' }}>
+                {liveNowCount} live now
+              </span>
+            </motion.div>
+          )}
+        </div>
       </motion.div>
 
       {/* Stats */}
