@@ -551,26 +551,6 @@ export default function TimetablePage() {
       <div className="flex flex-1 overflow-hidden rounded-2xl"
         style={{ border: '1px solid rgba(255,255,255,0.07)', background: '#0D0F1A' }}>
 
-        {/* Time column */}
-        <div className="flex w-14 flex-shrink-0 flex-col overflow-hidden"
-          style={{ borderRight: '1px solid rgba(255,255,255,0.06)' }}>
-          {/* Header spacer */}
-          <div className="h-12 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }} />
-          {/* Scroll wrapper */}
-          <div className="relative flex-1 overflow-y-scroll scrollbar-hide" style={{ height: 0 }}>
-            <div style={{ height: GRID_HEIGHT + PX_PER_HOUR }}>
-              {timeLabels.map(t => (
-                <div
-                  key={t.hour}
-                  className="absolute right-2 text-[9px] font-semibold"
-                  style={{ top: t.top - 6, color: 'rgba(255,255,255,0.2)' }}>
-                  {t.label}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
         {/* Day columns — scrollable body */}
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Day headers */}
@@ -623,11 +603,17 @@ export default function TimetablePage() {
                     }}
                     onClick={e => handleColClick(dayIndex, e)}
                   >
-                    {/* Horizontal hour lines */}
+                    {/* Horizontal hour lines with time labels */}
                     {timeLabels.map(t => (
                       <div key={t.hour}
-                        className="pointer-events-none absolute inset-x-0"
-                        style={{ top: t.top, borderTop: '1px solid rgba(255,255,255,0.04)' }} />
+                        className="pointer-events-none absolute inset-x-0 flex items-start"
+                        style={{ top: t.top, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                        <span
+                          className="select-none pl-1 text-[9px] font-semibold leading-none"
+                          style={{ color: 'rgba(255,255,255,0.22)', marginTop: 2 }}>
+                          {t.label}
+                        </span>
+                      </div>
                     ))}
 
                     {/* Current time line */}
