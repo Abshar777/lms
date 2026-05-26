@@ -6,12 +6,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Video, Radio, Calendar, Clock, Users, Loader2,
   AlertCircle, Tv2, ExternalLink, BookOpen, ChevronRight,
-  GraduationCap,
+  GraduationCap, X as XIcon, CheckCircle, Phone,
 } from 'lucide-react'
 import {
   useUpcomingLiveClasses, isLive, isUpcoming, isEnded, hasRecording,
   fmtCountdown, type LiveClass,
 } from '@/lib/api/liveClasses'
+import { useCreateBooking } from '@/lib/api/bookings'
 
 /* ── Helpers ─────────────────────────────────────────── */
 function fmtTime(iso: string) {
@@ -256,8 +257,102 @@ function LiveHeroCard({ live, index }: { live: LiveClass; index: number }) {
   )
 }
 
+/* ── Contact Admin modal (2× attendance cap) ─────────── */
+function ContactAdminModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.92 }}
+        className="relative max-w-sm w-full rounded-3xl bg-white p-6 text-center"
+        style={{ boxShadow: '0 24px 60px rgba(0,0,0,0.15)' }}>
+        <button onClick={onClose}
+          className="absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-gray-100"
+          style={{ color: '#9CA3AF' }}>
+          <XIcon size={14} />
+        </button>
+        <div className="flex h-16 w-16 mx-auto mb-4 items-center justify-center rounded-3xl"
+          style={{ background: 'rgba(255,107,26,0.08)', border: '1px solid rgba(255,107,26,0.20)' }}>
+          <Phone size={26} style={{ color: '#FF6B1A' }} />
+        </div>
+        <h3 className="text-lg font-bold mb-2" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+          Maximum Sessions Reached
+        </h3>
+        <p className="text-sm mb-5" style={{ color: '#6B7280' }}>
+          You've attended this class twice. To attend additional sessions, please contact the admin team.
+        </p>
+        <button onClick={onClose}
+          className="w-full rounded-2xl px-4 py-2.5 text-sm font-semibold text-white"
+          style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+          Got it
+        </button>
+      </motion.div>
+    </div>
+  )
+}
+
+/* ── Book seat button ─────────────────────────────────── */
+function BookSeatButton({ live, onContactAdmin }: { live: LiveClass; onContactAdmin: () => void }) {
+  const bookMutation = useCreateBooking()
+  const [booked, setBooked] = useState(false)
+
+  if (!live.batchId) return null
+
+  const isFull    = live.bookedCount >= live.sessionCapacity
+  const pct       = live.sessionCapacity > 0
+    ? Math.min(100, Math.round((live.bookedCount / live.sessionCapacity) * 100))
+    : 0
+  const capColor  = isFull ? '#EF4444' : pct >= 80 ? '#F59E0B' : '#10B981'
+
+  if (booked) {
+    return (
+      <div className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold"
+        style={{ background: 'rgba(16,185,129,0.10)', color: '#10B981', border: '1px solid rgba(16,185,129,0.20)' }}>
+        <CheckCircle size={10} />Booked
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      {/* Capacity bar */}
+      {live.sessionCapacity > 0 && (
+        <div className="flex items-center gap-1.5">
+          <div className="h-1 w-14 overflow-hidden rounded-full" style={{ background: '#F3F4F6' }}>
+            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: capColor }} />
+          </div>
+          <span className="text-[9px]" style={{ color: capColor }}>{live.bookedCount}/{live.sessionCapacity}</span>
+        </div>
+      )}
+      <motion.button
+        whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+        disabled={isFull || bookMutation.isPending}
+        onClick={async () => {
+          try {
+            await bookMutation.mutateAsync(live.id)
+            setBooked(true)
+          } catch (err: any) {
+            const code = err?.response?.data?.error?.code
+            if (code === 'CONTACT_ADMIN') { onContactAdmin(); return }
+            if (code === 'ALREADY_BOOKED') { setBooked(true); return }
+          }
+        }}
+        className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold disabled:opacity-50"
+        style={{
+          background: isFull ? 'rgba(239,68,68,0.08)' : 'linear-gradient(135deg,#6366F1,#818CF8)',
+          color:      isFull ? '#EF4444' : 'white',
+          border:     isFull ? '1px solid rgba(239,68,68,0.20)' : 'none',
+        }}>
+        {bookMutation.isPending ? <Loader2 size={9} className="animate-spin" /> : null}
+        {isFull ? 'Full' : 'Book seat'}
+      </motion.button>
+    </div>
+  )
+}
+
 /* ── Immersive session card ──────────────────────────── */
-function SessionCard({ live, index, now }: { live: LiveClass; now: number; index: number }) {
+function SessionCard({ live, index, now, onContactAdmin }: { live: LiveClass; now: number; index: number; onContactAdmin: () => void }) {
   const thumb    = live.thumbnailUrl ?? live.course?.thumbnailUrl
   const gradient = GRADIENTS[index % GRADIENTS.length]!
   const liveNow  = isLive(live)
@@ -356,6 +451,10 @@ function SessionCard({ live, index, now }: { live: LiveClass; now: number; index
           </p>
 
           {/* CTA */}
+          {/* Book seat for batch sessions */}
+          {live.batchId && upcoming && (
+            <BookSeatButton live={live} onContactAdmin={onContactAdmin} />
+          )}
           {isInt && liveNow && (
             <Link href={`/live-classes/${live.id}/watch`}>
               <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
@@ -365,7 +464,7 @@ function SessionCard({ live, index, now }: { live: LiveClass; now: number; index
               </motion.button>
             </Link>
           )}
-          {isInt && upcoming && (
+          {isInt && upcoming && !live.batchId && (
             <Link href={`/live-classes/${live.id}/watch`}>
               <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
                 className="rounded-xl px-3 py-1.5 text-[10px] font-bold"
@@ -383,7 +482,7 @@ function SessionCard({ live, index, now }: { live: LiveClass; now: number; index
               </motion.button>
             </Link>
           )}
-          {!isInt && live.meetingUrl && (liveNow || upcoming) && (
+          {!isInt && live.meetingUrl && (liveNow || upcoming) && !live.batchId && (
             <a href={live.meetingUrl} target="_blank" rel="noreferrer">
               <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
                 className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold text-white"
@@ -401,9 +500,10 @@ function SessionCard({ live, index, now }: { live: LiveClass; now: number; index
 /* ── Page ─────────────────────────────────────────────── */
 export default function LiveClassesPage() {
   const { data, isLoading, isError } = useUpcomingLiveClasses(50)
-  const [now,          setNow]          = useState(() => Date.now())
-  const [filter,       setFilter]       = useState<FilterKey>('all')
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [now,             setNow]          = useState(() => Date.now())
+  const [filter,          setFilter]       = useState<FilterKey>('all')
+  const [selectedDate,    setSelectedDate] = useState<string | null>(null)
+  const [showContactAdmin, setShowContactAdmin] = useState(false)
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30_000)
@@ -541,7 +641,7 @@ export default function LiveClassesPage() {
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                     className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {filtered.map((l, i) => (
-                      <SessionCard key={l.id} live={l} index={i} now={now} />
+                      <SessionCard key={l.id} live={l} index={i} now={now} onContactAdmin={() => setShowContactAdmin(true)} />
                     ))}
                   </motion.div>
                 )}
@@ -596,6 +696,13 @@ export default function LiveClassesPage() {
           </div>
         </>
       )}
+
+      {/* Contact Admin modal */}
+      <AnimatePresence>
+        {showContactAdmin && (
+          <ContactAdminModal onClose={() => setShowContactAdmin(false)} />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

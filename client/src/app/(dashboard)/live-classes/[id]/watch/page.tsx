@@ -10,6 +10,8 @@ import {
 import { useWatchAccess } from '@/lib/api/liveClasses'
 import MuxPlayer from '@mux/mux-player-react'
 import { useCurrentUser } from '@/lib/api/user'
+import { SessionHomework } from '@/components/live-classes/SessionHomework'
+import { SessionFeedback } from '@/components/live-classes/SessionFeedback'
 
 /* ── Helpers ─────────────────────────────────────────── */
 function StatusBadge({ status }: { status: string }) {
@@ -231,6 +233,13 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
               </div>
             )}
           </div>
+
+          <SessionHomework sessionId={id} />
+
+          {/* Feedback — shown only after session has ended */}
+          {isEnded && (
+            <SessionFeedback sessionId={id} sessionTitle={data.title} />
+          )}
 
           <Link href="/live-classes"
             className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold transition-colors hover:opacity-70"

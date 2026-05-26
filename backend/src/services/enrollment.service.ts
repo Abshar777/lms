@@ -112,6 +112,7 @@ export class EnrollmentService {
     lastLessonId:      string | null
     certificateId:     string | null
     completedLessons:  string[]
+    blockedLessons:    string[]
   }> {
     const course = await this.courseRepo.findBySlug(courseSlug)
     if (!course) {
@@ -131,6 +132,7 @@ export class EnrollmentService {
       lastLessonId:     enrollment?.lastLessonId?.toString() ?? null,
       certificateId:    enrollment?.certificateId ?? null,
       completedLessons,
+      blockedLessons:   (enrollment?.blockedLessons ?? []).map((id: any) => id.toString()),
     }
   }
 

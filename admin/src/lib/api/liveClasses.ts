@@ -27,9 +27,15 @@ export interface LiveClass {
   playbackUrl?:   string
   thumbnailUrl?:  string
   recordingUrl?:  string
+  mentorNotes?:   string
   viewerCount:    number
   startedAt?:     string
   endedAt?:       string
+
+  /* Batch scheduling */
+  batchId?:        string | { id: string; name: string }
+  sessionCapacity: number
+  bookedCount:     number
 
   createdAt:      string
   updatedAt:      string
@@ -88,13 +94,54 @@ export function useStreamCredentials(id: string | undefined) {
 }
 
 export interface CreateLiveClassInput {
-  courseId:       string
-  title:          string
-  description?:   string
-  scheduledStart: string       // ISO
-  durationMins:   number
-  type:           LiveClassType
-  meetingUrl?:    string       // required when type=external
+  courseId:        string
+  title:           string
+  description?:    string
+  scheduledStart:  string       // ISO
+  durationMins:    number
+  type:            LiveClassType
+  meetingUrl?:     string       // required when type=external
+  batchId?:        string
+  sessionCapacity?: number
+}
+
+export interface UpdateLiveClassInput {
+  courseId?:        string
+  title?:           string
+  description?:     string
+  scheduledStart?:  string
+  durationMins?:    number
+  type?:            LiveClassType
+  meetingUrl?:      string
+  batchId?:         string | null
+  sessionCapacity?: number
+  status?:          LiveClassStatus
+  mentorNotes?:     string
+}
+
+/* ── Availability types ─────────────────────── */
+export interface AvailabilitySlot {
+  dayOfWeek: number   // 0=Sun … 6=Sat
+  startTime: string   // HH:MM
+  endTime:   string   // HH:MM
+}
+
+export interface MentorAvailability {
+  mentorId: string
+  slots:    AvailabilitySlot[]
+}
+
+/* ── Booking types (admin view) ─────────────── */
+export type BookingStatus = 'booked' | 'attended' | 'missed' | 'cancelled'
+
+export interface ClassBooking {
+  id:          string
+  userId:      { id: string; name: string; email: string; avatarUrl?: string }
+  liveClassId: { id: string; title: string; scheduledStart: string; durationMins: number }
+  batchId:     { id: string; name: string }
+  status:      BookingStatus
+  bookedAt:    string
+  cancelledAt?: string
 }
 
 export function useCreateLiveClass() {
@@ -111,10 +158,12 @@ export function useCreateLiveClass() {
 export function useUpdateLiveClass(courseId: string | undefined) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<CreateLiveClassInput & { status: LiveClassStatus }> }) =>
+    mutationFn: ({ id, data }: { id: string; data: UpdateLiveClassInput }) =>
       apiPatch<LiveClass>(`/admin/live-classes/${id}`, data),
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       if (courseId) qc.invalidateQueries({ queryKey: liveClassKeys.forCourse(courseId) })
+      qc.invalidateQueries({ queryKey: liveClassKeys.byId(vars.id) })
+      qc.invalidateQueries({ queryKey: ['admin', 'live-classes', 'all'] })
     },
   })
 }
@@ -181,6 +230,91 @@ export function useDeleteLiveClass(courseId: string | undefined) {
     mutationFn: async (id: string) => { await api.delete(`/admin/live-classes/${id}`) },
     onSuccess: () => {
       if (courseId) qc.invalidateQueries({ queryKey: liveClassKeys.forCourse(courseId) })
+      qc.invalidateQueries({ queryKey: ['admin', 'live-classes', 'all'] })
+    },
+  })
+}
+
+/* ── Mentor Availability ────────────────────────── */
+const availabilityKeys = {
+  forMentor: (mentorId: string) => ['admin', 'availability', mentorId] as const,
+  me: () => ['admin', 'availability', 'me'] as const,
+}
+
+export function useMentorAvailability(mentorId: string | undefined) {
+  return useQuery({
+    queryKey: availabilityKeys.forMentor(mentorId ?? ''),
+    queryFn:  () => apiGet<MentorAvailability>(`/admin/mentors/${mentorId}/availability`),
+    enabled:  !!mentorId,
+    staleTime: 60_000,
+  })
+}
+
+export function useMyAvailability() {
+  return useQuery({
+    queryKey: availabilityKeys.me(),
+    queryFn:  () => apiGet<MentorAvailability>('/admin/availability/me'),
+    staleTime: 60_000,
+  })
+}
+
+export function useUpdateMentorAvailability(mentorId: string | undefined) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (slots: AvailabilitySlot[]) => {
+      const res = await api.put<{ success: true; data: MentorAvailability }>(
+        `/admin/mentors/${mentorId}/availability`, { slots },
+      )
+      return res.data.data
+    },
+    onSuccess: () => {
+      if (mentorId) qc.invalidateQueries({ queryKey: availabilityKeys.forMentor(mentorId) })
+    },
+  })
+}
+
+export function useUpdateMyAvailability() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (slots: AvailabilitySlot[]) => {
+      const res = await api.put<{ success: true; data: MentorAvailability }>(
+        '/admin/availability/me', { slots },
+      )
+      return res.data.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: availabilityKeys.me() })
+    },
+  })
+}
+
+/* ── Admin Booking Roster ───────────────────────── */
+const bookingKeys = {
+  list: (p: object) => ['admin', 'bookings', p] as const,
+}
+
+export function useAdminBookings(params: {
+  liveClassId?: string
+  batchId?:     string
+  userId?:      string
+  status?:      BookingStatus
+  page?:        number
+  per_page?:    number
+} = {}) {
+  return useQuery({
+    queryKey: bookingKeys.list(params),
+    queryFn:  () => apiGet<ClassBooking[]>('/admin/bookings', params),
+    staleTime: 30_000,
+  })
+}
+
+export function useUpdateAttendance() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: 'attended' | 'missed' }) =>
+      apiPatch<ClassBooking>(`/admin/bookings/${id}/attendance`, { status }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'bookings'] })
     },
   })
 }

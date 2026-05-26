@@ -12,11 +12,21 @@ import { TopCoursesWidget } from '@/components/analytics/TopCoursesWidget'
 import { CompletionWidget } from '@/components/analytics/CompletionWidget'
 import { useCourses } from '@/lib/api/courses'
 import { useAdminStats } from '@/lib/api/stats'
+import { useCurrentUser } from '@/lib/api/user'
 import Link from 'next/link'
+
+function timeGreeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 18) return 'Good afternoon'
+  return 'Good evening'
+}
 
 export default function DashboardPage() {
   const { data: coursesData } = useCourses({ per_page: 5, status: 'published', sort: 'createdAt:desc' })
   const { data: stats, isLoading: statsLoading } = useAdminStats()
+  const { data: currentUser } = useCurrentUser()
+  const firstName = currentUser?.name?.split(' ')[0] ?? 'Admin'
 
   /* Split a money value into a display number + suffix so StatCard's
      prefix/suffix props work (it expects `value: number`). */
@@ -42,7 +52,7 @@ export default function DashboardPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 260, damping: 24 }}>
         <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-          Good morning, Admin 👋
+          {timeGreeting()}, {firstName} 👋
         </h1>
         <p className="mt-1 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
           Here&apos;s what&apos;s happening with LearnOS today.

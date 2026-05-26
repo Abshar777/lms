@@ -6,7 +6,7 @@ import { sendLiveClassScheduled } from '@/services/email.service.ts'
 import * as muxSvc from '@/services/mux.service.ts'
 import { logger } from '@/utils/logger.ts'
 import { env } from '@/config/env.ts'
-import { EnrollmentModel, LiveClassModel, type ILiveClass, type LiveClassType } from '@/models/schema.ts'
+import { BatchModel, EnrollmentModel, LiveClassModel, type ILiveClass, type LiveClassType } from '@/models/schema.ts'
 
 export class LiveClassError extends Error {
   constructor(
@@ -62,24 +62,48 @@ export class LiveClassService {
   }
 
   /* ── Personalised upcoming feed ──────────────────── */
-  async listUpcomingForUser(userId: string, limit = 5): Promise<ILiveClass[]> {
+  async listUpcomingForUser(userId: string, limit = 50): Promise<ILiveClass[]> {
+    // 1. Course-based sessions (from enrollments)
     const enrollments = await this.enrollRepo.listForUser(userId)
     const courseIds = enrollments
       .map(e => (typeof e.courseId === 'object' ? (e.courseId as { _id?: unknown })._id ?? null : e.courseId))
       .filter(Boolean) as Array<string | Types.ObjectId>
-    return this.liveRepo.listUpcomingForCourses(courseIds, limit)
+    const courseSessions = courseIds.length > 0
+      ? await this.liveRepo.listUpcomingForCourses(courseIds, limit)
+      : []
+
+    // 2. Batch-based sessions (from batch membership)
+    const batches = await BatchModel.find({ studentIds: userId, status: 'active' }).select('_id').lean()
+    const batchIds = batches.map(b => b._id)
+    const batchSessions = batchIds.length > 0
+      ? await this.liveRepo.listUpcomingForBatches(batchIds, limit)
+      : []
+
+    // 3. Merge, deduplicate by id, sort by scheduledStart
+    const seen = new Set<string>()
+    const merged: ILiveClass[] = []
+    for (const s of [...batchSessions, ...courseSessions]) {
+      const id = String((s as any)._id)
+      if (!seen.has(id)) { seen.add(id); merged.push(s) }
+    }
+    merged.sort((a, b) =>
+      new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime()
+    )
+    return merged.slice(0, limit)
   }
 
   /* ── Admin/instructor create ──────────────────────── */
   async create(input: {
-    courseId:       string
-    instructorId:   string
-    title:          string
-    description?:   string
-    scheduledStart: Date
-    durationMins:   number
-    type:           LiveClassType
-    meetingUrl?:    string
+    courseId:        string
+    instructorId:    string
+    title:           string
+    description?:    string
+    scheduledStart:  Date
+    durationMins:    number
+    type:            LiveClassType
+    meetingUrl?:     string
+    batchId?:        string
+    sessionCapacity?: number
   }): Promise<ILiveClass> {
     if (!Types.ObjectId.isValid(input.courseId)) {
       throw new LiveClassError('INVALID_COURSE_ID', 'Invalid course id', 400)
@@ -109,14 +133,20 @@ export class LiveClassService {
     }
 
     const doc: Partial<ILiveClass> = {
-      courseId:       new Types.ObjectId(input.courseId),
-      instructorId:   new Types.ObjectId(input.instructorId),
-      title:          input.title.trim(),
-      description:    input.description,
-      scheduledStart: input.scheduledStart,
-      durationMins:   input.durationMins,
-      type:           input.type,
-      status:         'scheduled',
+      courseId:        new Types.ObjectId(input.courseId),
+      instructorId:    new Types.ObjectId(input.instructorId),
+      title:           input.title.trim(),
+      description:     input.description,
+      scheduledStart:  input.scheduledStart,
+      durationMins:    input.durationMins,
+      type:            input.type,
+      status:          'scheduled',
+      sessionCapacity: input.sessionCapacity ?? 30,
+      bookedCount:     0,
+    }
+
+    if (input.batchId && Types.ObjectId.isValid(input.batchId)) {
+      doc.batchId = new Types.ObjectId(input.batchId)
     }
 
     if (input.type === 'external') {
@@ -256,15 +286,25 @@ export class LiveClassService {
     const live = await this.liveRepo.findByIdPopulated(id)
     if (!live) throw new LiveClassError('LIVE_CLASS_NOT_FOUND', 'Live class not found', 404)
 
-    /* Check enrollment — courseId may be a populated Mongoose document, so extract _id */
+    /* Access gate: student must EITHER be enrolled in the course OR have a booking for this session */
     const rawCourseId = live.courseId as unknown
     const courseId =
       rawCourseId instanceof Types.ObjectId
         ? rawCourseId
         : (rawCourseId as { _id?: Types.ObjectId })?._id ?? String(rawCourseId)
     const enrollment = await this.enrollRepo.findByUserCourse(userId, courseId).catch(() => null)
+
     if (!enrollment) {
-      throw new LiveClassError('NOT_ENROLLED', 'You must be enrolled in this course to watch', 403)
+      /* Fall back: check for a batch booking (students can watch via booking even without enrollment) */
+      const { ClassBookingModel } = await import('@/models/schema.ts')
+      const booking = await ClassBookingModel.findOne({
+        userId:      new Types.ObjectId(userId),
+        liveClassId: new Types.ObjectId(id),
+        status:      { $in: ['booked', 'attended'] },
+      }).lean()
+      if (!booking) {
+        throw new LiveClassError('NOT_ENROLLED', 'You must be enrolled in this course or have a booking to watch', 403)
+      }
     }
 
     if (live.status === 'cancelled') {
@@ -405,12 +445,15 @@ export class LiveClassService {
 
   /* ── Update ──────────────────────────────────────── */
   async update(id: string, input: Partial<{
-    title:          string
-    description:    string
-    scheduledStart: Date
-    durationMins:   number
-    meetingUrl:     string
-    status:         'scheduled' | 'live' | 'ended' | 'cancelled'
+    title:           string
+    description:     string
+    scheduledStart:  Date
+    durationMins:    number
+    meetingUrl:      string
+    status:          'scheduled' | 'live' | 'ended' | 'cancelled'
+    batchId:         string | null
+    sessionCapacity: number
+    mentorNotes:     string
   }>): Promise<ILiveClass> {
     if (!Types.ObjectId.isValid(id)) {
       throw new LiveClassError('INVALID_ID', 'Invalid id', 400)

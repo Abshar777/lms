@@ -27,6 +27,8 @@ import learningPathRoutes  from './learningpaths.routes.ts'
 import aiRoutes            from './ai.routes.ts'
 import auditLogRoutes      from './auditlog.routes.ts'
 import uploadRoutes        from './upload.routes.ts'
+import bookingRoutes       from './bookings.routes.ts'
+import feedbackRoutes      from './feedback.routes.ts'
 
 const router = Router()
 
@@ -98,5 +100,9 @@ router.use('/ai',              aiRoutes)
 router.use('/audit-logs',      auditLogRoutes)
 /* Media uploads (image / video) */
 router.use('/uploads',         uploadRoutes)
+/* Class bookings (Phase 3) */
+router.use('/bookings',        bookingRoutes)
+/* Class feedback */
+router.use('/feedback',        feedbackRoutes)
 
 export default router

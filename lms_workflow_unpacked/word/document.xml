@@ -1,0 +1,869 @@
+<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml" xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk" xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" xmlns:wpsCustomData="http://www.wps.cn/officeDocument/2013/wpsCustomData" mc:Ignorable="w14 w15 wp14">
+  <w:body>
+    <w:p w14:paraId="632BB962">
+      <w:pPr>
+        <w:pStyle w:val="2"/>
+        <w:jc w:val="center"/>
+        <w:rPr>
+          <w:sz w:val="36"/>
+          <w:szCs w:val="36"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:sz w:val="36"/>
+          <w:szCs w:val="36"/>
+        </w:rPr>
+        <w:t>LMS Class Management Process Flow</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="3C4EF180">
+      <w:r>
+        <w:t>This document outlines the proposed operational process flow for the LMS (Learning Management System) focused on class management, mentor allocation, scheduling, and student booking workflows.</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="63D8F2D0">
+      <w:pPr>
+        <w:pStyle w:val="3"/>
+      </w:pPr>
+      <w:r>
+        <w:t>1. Super Admin Management</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="54F338D1">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Create and manage admin accounts</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="64EA4C23">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Create mentor profiles and assign permissions</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="7589777A">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Create modules</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="1C636D82">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Monitor system-wide scheduling a</w:t>
+      </w:r>
+      <w:bookmarkStart w:id="0" w:name="_GoBack"/>
+      <w:bookmarkEnd w:id="0"/>
+      <w:r>
+        <w:t>nd operations</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="679888A8">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:hint="default"/>
+          <w:lang w:val="en-GB"/>
+        </w:rPr>
+        <w:t>Sessions will be recorded for internal purposes (QC Purpose)</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="06BCE0D4">
+      <w:pPr>
+        <w:pStyle w:val="3"/>
+      </w:pPr>
+      <w:r>
+        <w:t>2. Admin Scheduling Workflow</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="60F1F36D">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Create weekly/monthly class schedules</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="52CC8953">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Assign mentors to batches and sessions</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="3DAD3ADB">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Set class timings and student capacity</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="6AD64FB1">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Publish approved schedules to the LMS portal</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="2EE56997">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:hint="default"/>
+          <w:lang w:val="en-GB"/>
+        </w:rPr>
+        <w:t>Community announcements and offer updations (Offer popups)</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="6833AA9D">
+      <w:pPr>
+        <w:pStyle w:val="3"/>
+      </w:pPr>
+      <w:r>
+        <w:t>3. Mentor Workflow</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="38F4A1B5">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Set mentor availability (3 class slots per day for each mentor)</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="4B110C61">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Receive assigned sessions from admin</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="681AB63F">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Conduct sessions</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="01D925FB">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Mark attendance</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="32A2ECEF">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Upload recordings or notes if required</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="2A2512DA">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:hint="default"/>
+          <w:lang w:val="en-GB"/>
+        </w:rPr>
+        <w:t>Home work - evaluation/Examination</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="18A0A02E">
+      <w:pPr>
+        <w:pStyle w:val="3"/>
+      </w:pPr>
+      <w:r>
+        <w:t>4. Student Workflow</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="042A50AB">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Login to LMS portal</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="3972E47D">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>View available classes and schedules</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="76BDDB98">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Book preferred available sessions under preferred mentors</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="2EDDE99E">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Receive booking confirmations and reminders</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="728F9D02">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Attend classes and access session history</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="154F23A2">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Students with partial payments will receive access only to the eligible classes based on payment completed</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="51C36FA3">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:hint="default"/>
+          <w:lang w:val="en-GB"/>
+        </w:rPr>
+        <w:t>Instant class feedbacks</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="116008BE">
+      <w:pPr>
+        <w:pStyle w:val="3"/>
+      </w:pPr>
+      <w:r>
+        <w:t>5. Booking &amp; Attendance Flow</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="10A7CADF">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Students book available class slots</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="4FA49A10">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>A student can attend a particular class only twice</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="73C7EAAA">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>If a student attempts to attend the same class for the third time, a popup notification will instruct them to contact the admin team</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="1E23F6A9">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>System validates capacity and eligibility</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="2DC9B503">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Booking confirmation is generated automatically</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="17BE1EF2">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Attendance is marked during sessions</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="126EB6A5">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Attendance reports are updated automatically</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="60177508">
+      <w:pPr>
+        <w:pStyle w:val="3"/>
+      </w:pPr>
+      <w:r>
+        <w:t>6. Notification &amp; Communication System</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="3576AA55">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Booking confirmation through Email or WhatsApp</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="7281C7FB">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Session link shared one day before the class</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="6F6C76DF">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Reminder notification on the day of the session</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="2EF1AE3E">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Final reminder before the session starts</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="6CE4862E">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Notifications for rescheduled or cancelled classes</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="28F63FCF">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Batch-wise announcements</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="299ADC73">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Mentor communication updates</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="372F9CCE">
+      <w:pPr>
+        <w:pStyle w:val="3"/>
+      </w:pPr>
+      <w:r>
+        <w:t>7. Reporting &amp; Monitoring</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="092E247D">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Track mentor schedules and class completion</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="6A50B174">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Monitor attendance percentages</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="2375F208">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Review batch performance and participation</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="3FBE50AD">
+      <w:pPr>
+        <w:pStyle w:val="23"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Generate operational reports for management</w:t>
+      </w:r>
+    </w:p>
+    <w:p w14:paraId="38161F55">
+      <w:pPr>
+        <w:pStyle w:val="3"/>
+      </w:pPr>
+      <w:r>
+        <w:t>Proposed LMS Workflow Summary</w:t>
+      </w:r>
+    </w:p>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblStyle w:val="35"/>
+        <w:tblW w:w="0" w:type="auto"/>
+        <w:tblInd w:w="0" w:type="dxa"/>
+        <w:tblBorders>
+          <w:top w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+          <w:left w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+          <w:bottom w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+          <w:right w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+          <w:insideH w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+          <w:insideV w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+        </w:tblBorders>
+        <w:tblLayout w:type="autofit"/>
+        <w:tblCellMar>
+          <w:top w:w="0" w:type="dxa"/>
+          <w:left w:w="108" w:type="dxa"/>
+          <w:bottom w:w="0" w:type="dxa"/>
+          <w:right w:w="108" w:type="dxa"/>
+        </w:tblCellMar>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="744"/>
+        <w:gridCol w:w="7896"/>
+      </w:tblGrid>
+      <w:tr w14:paraId="7B929464">
+        <w:tblPrEx>
+          <w:tblBorders>
+            <w:top w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:left w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:bottom w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:right w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:insideH w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:insideV w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+          </w:tblBorders>
+          <w:tblCellMar>
+            <w:top w:w="0" w:type="dxa"/>
+            <w:left w:w="108" w:type="dxa"/>
+            <w:bottom w:w="0" w:type="dxa"/>
+            <w:right w:w="108" w:type="dxa"/>
+          </w:tblCellMar>
+        </w:tblPrEx>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="744" w:type="dxa"/>
+          </w:tcPr>
+          <w:p w14:paraId="54C1C406">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+            </w:pPr>
+            <w:r>
+              <w:t>Step</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7896" w:type="dxa"/>
+          </w:tcPr>
+          <w:p w14:paraId="319D23AA">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+            </w:pPr>
+            <w:r>
+              <w:t>Process</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w14:paraId="6283862A">
+        <w:tblPrEx>
+          <w:tblBorders>
+            <w:top w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:left w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:bottom w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:right w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:insideH w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:insideV w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+          </w:tblBorders>
+          <w:tblCellMar>
+            <w:top w:w="0" w:type="dxa"/>
+            <w:left w:w="108" w:type="dxa"/>
+            <w:bottom w:w="0" w:type="dxa"/>
+            <w:right w:w="108" w:type="dxa"/>
+          </w:tblCellMar>
+        </w:tblPrEx>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="744" w:type="dxa"/>
+          </w:tcPr>
+          <w:p w14:paraId="3FFB423A">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+            </w:pPr>
+            <w:r>
+              <w:t>1</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7896" w:type="dxa"/>
+          </w:tcPr>
+          <w:p w14:paraId="7D36A312">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+            </w:pPr>
+            <w:r>
+              <w:t>Super Admin creates batches and mentor access</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w14:paraId="2B532EF8">
+        <w:tblPrEx>
+          <w:tblBorders>
+            <w:top w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:left w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:bottom w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:right w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:insideH w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:insideV w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+          </w:tblBorders>
+          <w:tblCellMar>
+            <w:top w:w="0" w:type="dxa"/>
+            <w:left w:w="108" w:type="dxa"/>
+            <w:bottom w:w="0" w:type="dxa"/>
+            <w:right w:w="108" w:type="dxa"/>
+          </w:tblCellMar>
+        </w:tblPrEx>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="744" w:type="dxa"/>
+          </w:tcPr>
+          <w:p w14:paraId="7EDE69F3">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+            </w:pPr>
+            <w:r>
+              <w:t>2</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7896" w:type="dxa"/>
+          </w:tcPr>
+          <w:p w14:paraId="7F737E1D">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+            </w:pPr>
+            <w:r>
+              <w:t>Admin prepares class timetable</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w14:paraId="37373E41">
+        <w:tblPrEx>
+          <w:tblBorders>
+            <w:top w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:left w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:bottom w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:right w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:insideH w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:insideV w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+          </w:tblBorders>
+          <w:tblCellMar>
+            <w:top w:w="0" w:type="dxa"/>
+            <w:left w:w="108" w:type="dxa"/>
+            <w:bottom w:w="0" w:type="dxa"/>
+            <w:right w:w="108" w:type="dxa"/>
+          </w:tblCellMar>
+        </w:tblPrEx>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="744" w:type="dxa"/>
+          </w:tcPr>
+          <w:p w14:paraId="7B6825FB">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+            </w:pPr>
+            <w:r>
+              <w:t>3</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7896" w:type="dxa"/>
+          </w:tcPr>
+          <w:p w14:paraId="7E1666C0">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+            </w:pPr>
+            <w:r>
+              <w:t>Mentors receive allocated schedules</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w14:paraId="0847B541">
+        <w:tblPrEx>
+          <w:tblBorders>
+            <w:top w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:left w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:bottom w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:right w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:insideH w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:insideV w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+          </w:tblBorders>
+          <w:tblCellMar>
+            <w:top w:w="0" w:type="dxa"/>
+            <w:left w:w="108" w:type="dxa"/>
+            <w:bottom w:w="0" w:type="dxa"/>
+            <w:right w:w="108" w:type="dxa"/>
+          </w:tblCellMar>
+        </w:tblPrEx>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="744" w:type="dxa"/>
+          </w:tcPr>
+          <w:p w14:paraId="608F3B8C">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+            </w:pPr>
+            <w:r>
+              <w:t>4</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7896" w:type="dxa"/>
+          </w:tcPr>
+          <w:p w14:paraId="41330ABF">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+            </w:pPr>
+            <w:r>
+              <w:t>Schedules are published to students</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w14:paraId="61924368">
+        <w:tblPrEx>
+          <w:tblBorders>
+            <w:top w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:left w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:bottom w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:right w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:insideH w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:insideV w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+          </w:tblBorders>
+          <w:tblCellMar>
+            <w:top w:w="0" w:type="dxa"/>
+            <w:left w:w="108" w:type="dxa"/>
+            <w:bottom w:w="0" w:type="dxa"/>
+            <w:right w:w="108" w:type="dxa"/>
+          </w:tblCellMar>
+        </w:tblPrEx>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="744" w:type="dxa"/>
+          </w:tcPr>
+          <w:p w14:paraId="3F65AC9D">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+            </w:pPr>
+            <w:r>
+              <w:t>5</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7896" w:type="dxa"/>
+          </w:tcPr>
+          <w:p w14:paraId="1E403067">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+            </w:pPr>
+            <w:r>
+              <w:t>Students book available classes</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w14:paraId="780EAA37">
+        <w:tblPrEx>
+          <w:tblBorders>
+            <w:top w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:left w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:bottom w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:right w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:insideH w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:insideV w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+          </w:tblBorders>
+          <w:tblCellMar>
+            <w:top w:w="0" w:type="dxa"/>
+            <w:left w:w="108" w:type="dxa"/>
+            <w:bottom w:w="0" w:type="dxa"/>
+            <w:right w:w="108" w:type="dxa"/>
+          </w:tblCellMar>
+        </w:tblPrEx>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="744" w:type="dxa"/>
+          </w:tcPr>
+          <w:p w14:paraId="1D4F85E9">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+            </w:pPr>
+            <w:r>
+              <w:t>6</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7896" w:type="dxa"/>
+          </w:tcPr>
+          <w:p w14:paraId="2C86CAC5">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+            </w:pPr>
+            <w:r>
+              <w:t>System confirms bookings automatically</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w14:paraId="30FD41BF">
+        <w:tblPrEx>
+          <w:tblBorders>
+            <w:top w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:left w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:bottom w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:right w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:insideH w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:insideV w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+          </w:tblBorders>
+          <w:tblCellMar>
+            <w:top w:w="0" w:type="dxa"/>
+            <w:left w:w="108" w:type="dxa"/>
+            <w:bottom w:w="0" w:type="dxa"/>
+            <w:right w:w="108" w:type="dxa"/>
+          </w:tblCellMar>
+        </w:tblPrEx>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="744" w:type="dxa"/>
+          </w:tcPr>
+          <w:p w14:paraId="5BD17C23">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+            </w:pPr>
+            <w:r>
+              <w:t>7</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7896" w:type="dxa"/>
+          </w:tcPr>
+          <w:p w14:paraId="28E05F40">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+            </w:pPr>
+            <w:r>
+              <w:t>Mentors conduct classes and mark attendance</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w14:paraId="7E51396B">
+        <w:tblPrEx>
+          <w:tblBorders>
+            <w:top w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:left w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:bottom w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:right w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:insideH w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+            <w:insideV w:val="single" w:color="auto" w:sz="4" w:space="0"/>
+          </w:tblBorders>
+          <w:tblCellMar>
+            <w:top w:w="0" w:type="dxa"/>
+            <w:left w:w="108" w:type="dxa"/>
+            <w:bottom w:w="0" w:type="dxa"/>
+            <w:right w:w="108" w:type="dxa"/>
+          </w:tblCellMar>
+        </w:tblPrEx>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="744" w:type="dxa"/>
+          </w:tcPr>
+          <w:p w14:paraId="362D2DB3">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+            </w:pPr>
+            <w:r>
+              <w:t>8</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7896" w:type="dxa"/>
+          </w:tcPr>
+          <w:p w14:paraId="104412BE">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+            </w:pPr>
+            <w:r>
+              <w:t>Reports and analytics are generated</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p w14:paraId="0900751C"/>
+    <w:sectPr>
+      <w:headerReference r:id="rId5" w:type="default"/>
+      <w:pgSz w:w="12240" w:h="15840"/>
+      <w:pgMar w:top="1440" w:right="1800" w:bottom="1440" w:left="1800" w:header="720" w:footer="720" w:gutter="0"/>
+      <w:cols w:space="720" w:num="1"/>
+      <w:docGrid w:linePitch="360" w:charSpace="0"/>
+    </w:sectPr>
+  </w:body>
+</w:document>

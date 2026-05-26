@@ -1,5 +1,6 @@
 import { Types } from 'mongoose'
 import { UserRepository, RefreshTokenRepository } from '@/repositories/user.repository.ts'
+import { hashPassword } from '@/utils/hash.ts'
 import type { UserRole } from '@/types/index.ts'
 import type { IUser } from '@/models/schema.ts'
 
@@ -48,5 +49,36 @@ export class UserService {
       await this.refreshRepo.revokeAllForUser(id, 'security')
     }
     return updated
+  }
+
+  /* Admin creates a new user (instructor / admin) directly. */
+  async adminCreateUser(dto: {
+    name:      string
+    email:     string
+    password:  string
+    role:      UserRole
+    bio?:      string
+    headline?: string
+  }): Promise<IUser> {
+    const exists = await this.repo.emailExists(dto.email)
+    if (exists) {
+      throw new UserError('EMAIL_TAKEN', 'An account with this email already exists.', 409)
+    }
+    const passwordHash = await hashPassword(dto.password)
+    const user = await this.repo.createUser({
+      name:         dto.name.trim(),
+      email:        dto.email,
+      passwordHash,
+      role:         dto.role,
+    })
+    /* Patch bio / headline if provided */
+    if (dto.bio || dto.headline) {
+      const patch: Partial<IUser> = {}
+      if (dto.bio)      patch.bio      = dto.bio
+      if (dto.headline) patch.headline = dto.headline
+      await this.repo.updateById(user.id, patch)
+      Object.assign(user, patch)
+    }
+    return user
   }
 }

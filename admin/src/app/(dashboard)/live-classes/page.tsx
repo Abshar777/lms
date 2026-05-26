@@ -6,8 +6,8 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Video, Radio, Calendar, Clock, Users, Loader2,
-  AlertCircle, Tv2, ExternalLink, BookOpen,
-  ChevronRight, PlayCircle, Eye, CalendarDays,
+  AlertCircle, Tv2, ExternalLink, BookOpen, Star,
+  ChevronRight, PlayCircle, Eye, CalendarDays, UsersRound,
 } from 'lucide-react'
 import { useAllLiveClasses, type LiveClass } from '@/lib/api/liveClasses'
 
@@ -186,6 +186,14 @@ function ClassCard({ live, index }: { live: LiveClass; index: number }) {
             }}>
             {isInternal ? 'In-App' : 'External'}
           </span>
+          {/* Batch badge */}
+          {live.batchId && (
+            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
+              style={{ background: 'rgba(139,92,246,0.12)', color: '#A78BFA' }}>
+              <UsersRound size={8} />
+              {typeof live.batchId === 'object' ? live.batchId.name : 'Batch'}
+            </span>
+          )}
           <p className={`truncate text-sm font-semibold text-white ${isCancelled ? 'line-through opacity-40' : ''}`}>
             {live.title}
           </p>
@@ -256,6 +264,32 @@ function ClassCard({ live, index }: { live: LiveClass; index: number }) {
             style={{ background: '#EF4444' }}>
             <ExternalLink size={11} />Join
           </a>
+        )}
+        {/* Attendance sheet — only for batch sessions */}
+        {live.batchId && (
+          <Link href={`/live-classes/${live.id}/attendance`}
+            className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[10px] font-semibold transition-colors hover:bg-white/10"
+            style={{ color: 'rgba(167,139,250,0.8)', border: '1px solid rgba(139,92,246,0.20)' }}
+            title="Attendance sheet">
+            <Users size={10} />Attendance
+          </Link>
+        )}
+        {/* Homework — always available for ended/live sessions */}
+        {(live.status === 'ended' || live.status === 'live' || live.batchId) && (
+          <Link href={`/live-classes/${live.id}/homework`}
+            className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[10px] font-semibold transition-colors hover:bg-white/10"
+            style={{ color: 'rgba(251,191,36,0.8)', border: '1px solid rgba(251,191,36,0.20)' }}
+            title="Homework">
+            <BookOpen size={10} /><span>Homework</span>
+          </Link>
+        )}
+        {live.status === 'ended' && (
+          <Link href={`/live-classes/${live.id}/feedback`}
+            className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[10px] font-semibold transition-colors hover:bg-white/10"
+            style={{ color: 'rgba(245,158,11,0.85)', border: '1px solid rgba(245,158,11,0.20)' }}
+            title="Student Feedback">
+            <Star size={10} /><span>Feedback</span>
+          </Link>
         )}
         {/* Course link */}
         {live.course && (

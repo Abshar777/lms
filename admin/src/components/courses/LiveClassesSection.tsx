@@ -14,6 +14,7 @@ import {
   useUpdateLiveClass, useStartLiveStream, useEndLiveStream, useStreamCredentials,
   type LiveClass, type LiveClassType, type LiveClassStatus,
 } from '@/lib/api/liveClasses'
+import { useBatches } from '@/lib/api/batches'
 
 /* ── Helpers ──────────────────────────────────────────── */
 function fmtDateTime(iso: string): string {
@@ -192,6 +193,13 @@ function LiveRow({
               }}>
               {isInternal ? 'In-App' : 'External'}
             </span>
+            {/* Batch badge */}
+            {live.batchId && (
+              <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
+                style={{ background: 'rgba(139,92,246,0.12)', color: '#A78BFA' }}>
+                {typeof live.batchId === 'object' ? live.batchId.name : 'Batch'}
+              </span>
+            )}
             <p className={`truncate text-sm font-semibold ${isCancelled ? 'line-through opacity-50' : ''}`}
               style={{ color: 'white' }}>
               {live.title}
@@ -407,22 +415,29 @@ function CreateForm({
   courseId: string
   pending:  boolean
   onSubmit: (data: {
-    courseId:       string
-    title:          string
-    description?:   string
-    scheduledStart: string
-    durationMins:   number
-    type:           LiveClassType
-    meetingUrl?:    string
+    courseId:        string
+    title:           string
+    description?:    string
+    scheduledStart:  string
+    durationMins:    number
+    type:            LiveClassType
+    meetingUrl?:     string
+    batchId?:        string
+    sessionCapacity?: number
   }) => Promise<void>
   error: string | null
 }) {
-  const [type,         setType]         = useState<LiveClassType>('external')
-  const [title,        setTitle]        = useState('')
-  const [description,  setDescription]  = useState('')
-  const [start,        setStart]        = useState('')
-  const [durationMins, setDurationMins] = useState(60)
-  const [meetingUrl,   setMeetingUrl]   = useState('')
+  const [type,            setType]           = useState<LiveClassType>('external')
+  const [title,           setTitle]          = useState('')
+  const [description,     setDescription]    = useState('')
+  const [start,           setStart]          = useState('')
+  const [durationMins,    setDurationMins]   = useState(60)
+  const [meetingUrl,      setMeetingUrl]     = useState('')
+  const [batchId,         setBatchId]        = useState('')
+  const [sessionCapacity, setSessionCapacity] = useState(30)
+
+  const { data: batchData } = useBatches({ status: 'active', per_page: 100 })
+  const batches = batchData?.docs ?? []
 
   const handle = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -432,13 +447,16 @@ function CreateForm({
     await onSubmit({
       courseId,
       title,
-      description:    description || undefined,
-      scheduledStart: iso,
+      description:     description || undefined,
+      scheduledStart:  iso,
       durationMins,
       type,
-      meetingUrl:     type === 'external' ? meetingUrl : undefined,
+      meetingUrl:      type === 'external' ? meetingUrl : undefined,
+      batchId:         batchId || undefined,
+      sessionCapacity: sessionCapacity || 30,
     })
     setTitle(''); setDescription(''); setStart(''); setMeetingUrl(''); setDurationMins(60)
+    setBatchId(''); setSessionCapacity(30)
   }
 
   const inputStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' } as const
@@ -491,6 +509,22 @@ function CreateForm({
           <input value={durationMins} onChange={e => setDurationMins(Number(e.target.value))}
             type="number" min={5} max={600} step={5}
             placeholder="Duration (mins)"
+            className={base} style={inputStyle} />
+        </div>
+
+        {/* Batch + capacity */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr]">
+          <select value={batchId} onChange={e => setBatchId(e.target.value)}
+            className={base} style={{ ...inputStyle, color: batchId ? 'white' : 'rgba(255,255,255,0.3)' }}>
+            <option value="">No batch (open session)</option>
+            {batches.map(b => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </select>
+          <input value={sessionCapacity} onChange={e => setSessionCapacity(Number(e.target.value))}
+            type="number" min={1} max={500}
+            placeholder="Max seats"
+            title="Session capacity (max bookings)"
             className={base} style={inputStyle} />
         </div>
 

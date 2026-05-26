@@ -8,6 +8,7 @@ import {
   ArrowLeft, Star, Users, Clock, Globe, BookOpen,
   CheckCircle2, Play, Tag, Loader2, AlertCircle, Zap,
   ShoppingCart, Tag as TagIcon, X, ChevronDown,
+  Lock, Video, FileText, HelpCircle,
 } from 'lucide-react'
 import { useCourse } from '@/lib/api/courses'
 import { useCourseProgress, useEnroll } from '@/lib/api/enrollments'
@@ -259,22 +260,29 @@ function CourseDetailInner({ slug }: { slug: string }) {
           {/* Curriculum */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.18 }} className="mt-8">
-            <h2 className="mb-4 text-base font-bold" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-              Course curriculum
-            </h2>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-base font-bold" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+                Course curriculum
+              </h2>
+              <span className="text-xs" style={{ color: '#9CA3AF' }}>
+                {totalLessons} lessons · {lessons.filter(l => l.isFree).length} free preview
+              </span>
+            </div>
             <div className="space-y-2">
               {curriculum.map((s, i) => {
                 const totalSecs = s.lessons.reduce((acc, l) => acc + l.durationMins, 0)
                 return (
                   <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 + i * 0.04 }}
-                    className="rounded-xl px-4 py-3 bg-white"
+                    className="overflow-hidden rounded-xl bg-white"
                     style={{ border: '1px solid #E4E7ED' }}>
-                    <div className="flex items-center justify-between">
+                    {/* Section header */}
+                    <div className="flex items-center justify-between px-4 py-3"
+                      style={{ background: '#FAFAFA', borderBottom: s.lessons.length > 0 ? '1px solid #F0F1F5' : 'none' }}>
                       <div className="flex items-center gap-3">
                         <div className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold"
                           style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A' }}>{i + 1}</div>
-                        <span className="text-sm font-medium" style={{ color: '#0D0F1A' }}>{s.section}</span>
+                        <span className="text-sm font-semibold" style={{ color: '#0D0F1A' }}>{s.section}</span>
                       </div>
                       <div className="flex items-center gap-3 text-xs" style={{ color: '#9CA3AF' }}>
                         <span>{s.lessons.length} lessons</span>
@@ -282,6 +290,41 @@ function CourseDetailInner({ slug }: { slug: string }) {
                         <span>{fmt(totalSecs)}</span>
                       </div>
                     </div>
+                    {/* Lesson rows */}
+                    {s.lessons.map((lesson, li) => {
+                      const TypeIcon = lesson.type === 'video' ? Video
+                        : lesson.type === 'quiz' ? HelpCircle : FileText
+                      const canAccess = isEnrolled || lesson.isFree
+                      return (
+                        <div key={lesson.id}
+                          className={`flex items-center gap-3 px-4 py-2.5 ${li < s.lessons.length - 1 ? 'border-b' : ''}`}
+                          style={{ borderColor: '#F0F1F5' }}>
+                          {/* Icon */}
+                          <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md"
+                            style={{ background: canAccess ? 'rgba(255,107,26,0.08)' : 'rgba(156,163,175,0.10)' }}>
+                            {canAccess
+                              ? <TypeIcon size={11} style={{ color: '#FF6B1A' }} />
+                              : <Lock size={10} style={{ color: '#9CA3AF' }} />}
+                          </div>
+                          {/* Title */}
+                          <span className="flex-1 text-xs" style={{ color: canAccess ? '#374151' : '#9CA3AF' }}>
+                            {lesson.title}
+                          </span>
+                          {/* Right side */}
+                          <div className="flex flex-shrink-0 items-center gap-2">
+                            {lesson.isFree && !isEnrolled && (
+                              <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                                style={{ background: 'rgba(16,185,129,0.10)', color: '#10B981' }}>
+                                Preview
+                              </span>
+                            )}
+                            <span className="text-[11px]" style={{ color: '#9CA3AF' }}>
+                              {lesson.durationMins > 0 ? fmt(lesson.durationMins) : ''}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </motion.div>
                 )
               })}

@@ -3,6 +3,7 @@ import app from './app.ts'
 import { env } from '@/config/env.ts'
 import { connectDatabase, disconnectDatabase } from '@/config/database.ts'
 import { logger } from '@/utils/logger.ts'
+import { startReminderJobs } from '@/jobs/reminders.job.ts'
 
 async function bootstrap() {
   /* 1. Connect to MongoDB before accepting traffic */
@@ -15,7 +16,10 @@ async function bootstrap() {
     logger.info(`🌍  Environment: ${env.NODE_ENV}`)
   })
 
-  /* 3. Graceful shutdown */
+  /* 3. Start cron jobs */
+  startReminderJobs()
+
+  /* 4. Graceful shutdown */
   const shutdown = (signal: string) => {
     logger.info(`${signal} received — shutting down gracefully`)
     server.close(async () => {
@@ -33,7 +37,7 @@ async function bootstrap() {
   process.on('SIGTERM', () => shutdown('SIGTERM'))
   process.on('SIGINT',  () => shutdown('SIGINT'))
 
-  /* 4. Unhandled rejections */
+  /* 5. Unhandled rejections */
   process.on('unhandledRejection', (reason) => {
     logger.error({ reason }, 'Unhandled promise rejection')
     // Don't exit — log and continue in prod

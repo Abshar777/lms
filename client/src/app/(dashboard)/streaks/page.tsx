@@ -13,11 +13,23 @@ function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 }
 
+/* Returns the most-recent Monday for a given date */
+function getMondayOf(d: Date): Date {
+  const copy = new Date(d)
+  copy.setHours(0, 0, 0, 0)
+  const day = copy.getDay() // 0 = Sun
+  copy.setDate(copy.getDate() - ((day + 6) % 7))
+  return copy
+}
+
 /* Week calendar — 7 day slots from weekStartDate */
 function WeekCalendar({ weekStartDate, weekProgress }: { weekStartDate: string; weekProgress: number }) {
-  const start = new Date(weekStartDate)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
+
+  // Guard: fall back to current Monday when weekStartDate is absent or invalid
+  const parsed = weekStartDate ? new Date(weekStartDate) : null
+  const start  = parsed && !isNaN(parsed.getTime()) ? parsed : getMondayOf(today)
 
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(start)
@@ -268,7 +280,7 @@ export default function StreaksPage() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs" style={{ color: '#9CA3AF' }}>
-              week of {fmtDate(data.weekStartDate)}
+              week of {data.weekStartDate ? fmtDate(data.weekStartDate) : '—'}
             </span>
           </div>
         </div>

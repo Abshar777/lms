@@ -1,0 +1,45 @@
+Warning: Duplicate schema index on {"userId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+ code: "MONGOOSE"
+
+      at <anonymous> (C:\Users\MSI-PC\Delta\lms\backend\node_modules\mongoose\lib\schema.js:2308:13)
+      at C:\Users\MSI-PC\Delta\lms\backend\src\models\schema.ts:815:18
+      at loadAndEvaluateModule (2:1)
+
+Warning: Duplicate schema index on {"code":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+ code: "MONGOOSE"
+
+      at <anonymous> (C:\Users\MSI-PC\Delta\lms\backend\node_modules\mongoose\lib\schema.js:2308:13)
+      at C:\Users\MSI-PC\Delta\lms\backend\src\models\schema.ts:856:14
+      at loadAndEvaluateModule (2:1)
+
+Warning: Duplicate schema index on {"stripeCheckoutSessionId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+ code: "MONGOOSE"
+
+      at <anonymous> (C:\Users\MSI-PC\Delta\lms\backend\node_modules\mongoose\lib\schema.js:2308:13)
+      at C:\Users\MSI-PC\Delta\lms\backend\src\models\schema.ts:906:13
+      at loadAndEvaluateModule (2:1)
+
+Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+ code: "MONGOOSE"
+
+      at <anonymous> (C:\Users\MSI-PC\Delta\lms\backend\node_modules\mongoose\lib\schema.js:2308:13)
+      at C:\Users\MSI-PC\Delta\lms\backend\src\models\schema.ts:1131:20
+      at loadAndEvaluateModule (2:1)
+
+[10:30:26] [32mINFO[39m: [36m📧  Email backend: console (set SMTP_HOST, SMTP_USER, SMTP_PASS, EMAIL_FROM to enable real sending)[39m
+[10:30:27] [32mINFO[39m: [36m✅  MongoDB connected[39m
+[10:30:27] [41mFATAL[49m: [36mUncaught exception — exiting[39m
+    err: {
+      "type": "Error",
+      "message": "Failed to start server. Is port 8000 in use?",
+      "stack":
+          Error: Failed to start server. Is port 8000 in use?
+              at serve (unknown)
+              at <anonymous> (node:_http_server:275:39)
+              at <anonymous> (node:_http_server:252:33)
+              at bootstrap (C:\Users\MSI-PC\Delta\lms\backend\src\index.ts:12:22)
+              at processTicksAndRejections (native:7:39)
+      "code": "EADDRINUSE",
+      "syscall": "listen",
+      "errno": 0
+    }

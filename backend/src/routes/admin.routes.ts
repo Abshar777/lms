@@ -9,6 +9,7 @@ import { AssignmentService } from '@/services/assignment.service.ts'
 import { SectionService } from '@/services/section.service.ts'
 import { OrderService } from '@/services/order.service.ts'
 import { CouponService } from '@/services/coupon.service.ts'
+import { UserService } from '@/services/user.service.ts'
 import { sendSuccess, buildPaginationMeta, parsePagination } from '@/utils/response.ts'
 import { audit } from '@/middleware/audit.middleware.ts'
 import type { Request, Response, NextFunction } from 'express'
@@ -21,6 +22,7 @@ const assignSvc  = new AssignmentService()
 const sectionSvc = new SectionService()
 const orderSvc   = new OrderService()
 const couponSvc  = new CouponService()
+const userSvc    = new UserService()
 
 /* Admin routes are open to admins and instructors. Per-resource
    ownership checks inside the controllers reject instructors who
@@ -120,7 +122,61 @@ const userUpdateSchema = z.object({
   isVerified: z.boolean().optional(),
 }).refine(d => Object.keys(d).length > 0, { message: 'Provide at least one field' })
 
+const userCreateSchema = z.object({
+  name:      z.string().min(2).max(100).trim(),
+  email:     z.string().email(),
+  password:  z.string().min(8, 'Password must be at least 8 characters'),
+  role:      z.enum(['student', 'instructor', 'admin']).default('instructor'),
+  bio:       z.string().max(2000).optional(),
+  headline:  z.string().max(255).optional(),
+  courses:   z.array(z.object({
+    courseId:       z.string().min(1),
+    blockedLessons: z.array(z.string()).default([]),
+  })).optional(),
+})
+
 router.get  ('/users',          requireAdmin, validate(usersQuerySchema, 'query'), ctrl.listUsers)
+/* Admins can create any role; instructors can only create students. */
+router.post ('/users',          validate(userCreateSchema), audit('user.create', 'User'),
+  async (req, res, next) => {
+    const role = req.user!.role
+    const targetRole = (req.body as { role?: string }).role ?? 'instructor'
+    if (role === 'instructor' && targetRole !== 'student') {
+      res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Instructors can only create student accounts.' } })
+      return
+    }
+    next()
+  },
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      /* Build DTO without the courses field (handled separately) */
+      const { courses, ...userDto } = req.body as z.infer<typeof userCreateSchema>
+      const user = await userSvc.adminCreateUser(userDto)
+
+      /* Enroll the new student into the requested courses */
+      if (courses && courses.length > 0) {
+        const { EnrollmentModel } = await import('@/models/schema.ts')
+        const { Types } = await import('mongoose')
+        await Promise.all(
+          courses.map(async (c: { courseId: string; blockedLessons: string[] }) => {
+            try {
+              const blockedObjectIds = (c.blockedLessons ?? [])
+                .filter((id: string) => Types.ObjectId.isValid(id))
+                .map((id: string) => new Types.ObjectId(id))
+              await EnrollmentModel.create({
+                userId:         new Types.ObjectId(user.id),
+                courseId:       new Types.ObjectId(c.courseId),
+                blockedLessons: blockedObjectIds,
+              })
+            } catch (_) { /* skip duplicate enrollments silently */ }
+          })
+        )
+      }
+
+      sendSuccess(res, user, 'User created', 201)
+    } catch (err) { next(err) }
+  },
+)
 router.patch('/users/:id',      requireAdmin, validate(userUpdateSchema), audit('user.roleChange', 'User', r => String(r.params['id'] ?? '')), ctrl.updateUser)
 
 /* ─── Reviews (admin-only) ────────────────────────── */
@@ -171,25 +227,30 @@ router.put   ('/sections/:sectionId/lessons/reorder',     validate(reorderSchema
 
 /* ─── Live classes ────────────────────────────────── */
 const liveCreateSchema = z.object({
-  courseId:       z.string().min(1),
-  title:          z.string().min(3).max(255).trim(),
-  description:    z.string().max(2000).optional(),
-  scheduledStart: z.string().datetime().or(z.string().refine(s => !isNaN(Date.parse(s)), 'Invalid date')),
-  durationMins:   z.coerce.number().int().min(5).max(600),
-  type:           z.enum(['external', 'internal']).default('external'),
-  meetingUrl:     z.string().url().max(2048).optional(),
-  instructorId:   z.string().optional(),
+  courseId:        z.string().min(1),
+  title:           z.string().min(3).max(255).trim(),
+  description:     z.string().max(2000).optional(),
+  scheduledStart:  z.string().datetime().or(z.string().refine(s => !isNaN(Date.parse(s)), 'Invalid date')),
+  durationMins:    z.coerce.number().int().min(5).max(600),
+  type:            z.enum(['external', 'internal']).default('external'),
+  meetingUrl:      z.string().url().max(2048).optional(),
+  instructorId:    z.string().optional(),
+  batchId:         z.string().optional(),
+  sessionCapacity: z.coerce.number().int().min(1).max(500).optional(),
 }).refine(
   data => data.type === 'internal' || !!data.meetingUrl,
   { message: 'meetingUrl is required for external live classes', path: ['meetingUrl'] },
 )
 const liveUpdateSchema = z.object({
-  title:          z.string().min(3).max(255).trim().optional(),
-  description:    z.string().max(2000).optional(),
-  scheduledStart: z.string().refine(s => !isNaN(Date.parse(s)), 'Invalid date').optional(),
-  durationMins:   z.coerce.number().int().min(5).max(600).optional(),
-  meetingUrl:     z.string().url().max(2048).optional(),
-  status:         z.enum(['scheduled', 'live', 'ended', 'cancelled']).optional(),
+  title:           z.string().min(3).max(255).trim().optional(),
+  description:     z.string().max(2000).optional(),
+  scheduledStart:  z.string().refine(s => !isNaN(Date.parse(s)), 'Invalid date').optional(),
+  durationMins:    z.coerce.number().int().min(5).max(600).optional(),
+  meetingUrl:      z.string().url().max(2048).optional(),
+  status:          z.enum(['scheduled', 'live', 'ended', 'cancelled']).optional(),
+  batchId:         z.string().optional().nullable(),
+  sessionCapacity: z.coerce.number().int().min(1).max(500).optional(),
+  mentorNotes:     z.string().max(5000).optional(),
 })
 
 router.get   ('/courses/:courseId/live-classes',          live.adminListForCourse)
@@ -404,6 +465,557 @@ router.get('/coupons/validate', async (req: Request, res: Response, next: NextFu
       discountType:  coupon.discountType,
       discountValue: coupon.discountValue,
     })
+  } catch (err) { next(err) }
+})
+
+/* ─── Batches ─────────────────────────────────────── */
+const batchCreateSchema = z.object({
+  name:        z.string().min(2).max(120).trim(),
+  description: z.string().max(2000).optional().default(''),
+  mentorId:    z.string().min(1),
+  studentIds:  z.array(z.string()).optional().default([]),
+  courseId:    z.string().optional(),
+  maxStudents: z.coerce.number().int().min(1).max(500).optional().default(30),
+  status:      z.enum(['active', 'archived']).optional().default('active'),
+})
+
+const batchUpdateSchema = batchCreateSchema.partial()
+
+const batchQuerySchema = z.object({
+  page:     z.coerce.number().int().min(1).default(1),
+  per_page: z.coerce.number().int().min(1).max(100).default(20),
+  status:   z.enum(['active', 'archived', 'all']).optional().default('all'),
+  mentorId: z.string().optional(),
+  search:   z.string().trim().optional(),
+})
+
+/* Admin-only: full CRUD. Instructors: read own batches only. */
+router.get('/batches', validate(batchQuerySchema, 'query'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { BatchModel } = await import('@/models/schema.ts')
+    const { Types } = await import('mongoose')
+    const { page, per_page, status, mentorId, search } = req.query as any
+    const isInstructor = req.user!.role === 'instructor'
+
+    const filter: Record<string, any> = {}
+    if (isInstructor) {
+      /* Instructors only see their own batches */
+      filter['mentorId'] = new Types.ObjectId(req.user!.id)
+    } else {
+      /* Admin can filter by mentor */
+      if (mentorId && Types.ObjectId.isValid(mentorId)) filter['mentorId'] = new Types.ObjectId(mentorId)
+    }
+    if (status && status !== 'all') filter['status'] = status
+    if (search) filter['name'] = { $regex: search, $options: 'i' }
+
+    const skip  = (Number(page) - 1) * Number(per_page)
+    const [docs, totalCount] = await Promise.all([
+      BatchModel.find(filter)
+        .populate('mentorId', 'id name email avatarUrl')
+        .populate('courseId', 'id title slug thumbnailUrl')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(per_page))
+        .lean({ virtuals: true }),
+      BatchModel.countDocuments(filter),
+    ])
+    const withId = (d: any) => ({ ...d, id: d.id ?? String(d._id) })
+    sendSuccess(res, docs.map(withId), undefined, 200, buildPaginationMeta(totalCount, Number(page), Number(per_page)))
+  } catch (err) { next(err) }
+})
+
+router.get('/batches/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { BatchModel } = await import('@/models/schema.ts')
+    const { Types } = await import('mongoose')
+    const id = String(req.params['id'] ?? '')
+    if (!Types.ObjectId.isValid(id)) { res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid batch id' } }); return }
+
+    const batch = await BatchModel.findById(id)
+      .populate('mentorId', 'id name email avatarUrl')
+      .populate('studentIds', 'id name email avatarUrl')
+      .populate('courseId', 'id title slug thumbnailUrl')
+      .lean({ virtuals: true })
+
+    if (!batch) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Batch not found' } }); return }
+
+    /* Instructors can only view their own batches */
+    if (req.user!.role === 'instructor' && batch.mentorId?.toString() !== req.user!.id) {
+      res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } }); return
+    }
+    sendSuccess(res, { ...(batch as any), id: (batch as any).id ?? String((batch as any)._id) })
+  } catch (err) { next(err) }
+})
+
+router.post('/batches', requireAdmin, validate(batchCreateSchema), audit('batch.create', 'Batch'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { BatchModel } = await import('@/models/schema.ts')
+    const { Types } = await import('mongoose')
+    const body = req.body as z.infer<typeof batchCreateSchema>
+    const batch = await BatchModel.create({
+      name:        body.name,
+      description: body.description,
+      mentorId:    new Types.ObjectId(body.mentorId),
+      studentIds:  (body.studentIds ?? []).filter(id => Types.ObjectId.isValid(id)).map(id => new Types.ObjectId(id)),
+      courseId:    body.courseId && Types.ObjectId.isValid(body.courseId) ? new Types.ObjectId(body.courseId) : undefined,
+      maxStudents: body.maxStudents,
+      status:      body.status,
+    })
+    const populated = await BatchModel.findById(batch._id)
+      .populate('mentorId', 'id name email avatarUrl')
+      .populate('courseId', 'id title slug thumbnailUrl')
+      .lean({ virtuals: true })
+    const p = populated as any
+    sendSuccess(res, { ...p, id: p?.id ?? String(p?._id) }, 'Batch created', 201)
+  } catch (err) { next(err) }
+})
+
+router.patch('/batches/:id', requireAdmin, validate(batchUpdateSchema), audit('batch.update', 'Batch', r => String(r.params['id'] ?? '')), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { BatchModel } = await import('@/models/schema.ts')
+    const { Types } = await import('mongoose')
+    const id   = String(req.params['id'] ?? '')
+    const body = req.body as z.infer<typeof batchUpdateSchema>
+    if (!Types.ObjectId.isValid(id)) { res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid batch id' } }); return }
+
+    const update: Record<string, any> = {}
+    if (body.name        !== undefined) update['name']        = body.name
+    if (body.description !== undefined) update['description'] = body.description
+    if (body.maxStudents !== undefined) update['maxStudents'] = body.maxStudents
+    if (body.status      !== undefined) update['status']      = body.status
+    if (body.mentorId    !== undefined && Types.ObjectId.isValid(body.mentorId)) update['mentorId'] = new Types.ObjectId(body.mentorId)
+    if (body.courseId    !== undefined) update['courseId'] = body.courseId && Types.ObjectId.isValid(body.courseId) ? new Types.ObjectId(body.courseId) : null
+
+    const batch = await BatchModel.findByIdAndUpdate(id, { $set: update }, { new: true })
+      .populate('mentorId', 'id name email avatarUrl')
+      .populate('courseId', 'id title slug thumbnailUrl')
+      .lean({ virtuals: true })
+    if (!batch) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Batch not found' } }); return }
+    sendSuccess(res, { ...(batch as any), id: (batch as any).id ?? String((batch as any)._id) }, 'Batch updated')
+  } catch (err) { next(err) }
+})
+
+router.delete('/batches/:id', requireAdmin, audit('batch.delete', 'Batch', r => String(r.params['id'] ?? '')), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { BatchModel } = await import('@/models/schema.ts')
+    const { Types } = await import('mongoose')
+    const id = String(req.params['id'] ?? '')
+    if (!Types.ObjectId.isValid(id)) { res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid batch id' } }); return }
+    const batch = await BatchModel.findByIdAndDelete(id)
+    if (!batch) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Batch not found' } }); return }
+    sendSuccess(res, null, 'Batch deleted')
+  } catch (err) { next(err) }
+})
+
+/* Add students to a batch */
+router.post('/batches/:id/students', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { BatchModel } = await import('@/models/schema.ts')
+    const { Types } = await import('mongoose')
+    const id = String(req.params['id'] ?? '')
+    const { studentIds } = req.body as { studentIds: string[] }
+    if (!Array.isArray(studentIds) || studentIds.length === 0) {
+      res.status(400).json({ success: false, error: { code: 'INVALID_INPUT', message: 'studentIds array required' } }); return
+    }
+    const objectIds = studentIds.filter(id => Types.ObjectId.isValid(id)).map(id => new Types.ObjectId(id))
+    const batch = await BatchModel.findByIdAndUpdate(
+      id,
+      { $addToSet: { studentIds: { $each: objectIds } } },
+      { new: true },
+    ).populate('mentorId', 'id name email avatarUrl').lean({ virtuals: true })
+    if (!batch) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Batch not found' } }); return }
+    sendSuccess(res, { ...(batch as any), id: (batch as any).id ?? String((batch as any)._id) }, 'Students added')
+  } catch (err) { next(err) }
+})
+
+/* Remove a student from a batch */
+router.delete('/batches/:id/students/:userId', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { BatchModel } = await import('@/models/schema.ts')
+    const { Types } = await import('mongoose')
+    const id     = String(req.params['id']     ?? '')
+    const userId = String(req.params['userId'] ?? '')
+    const batch  = await BatchModel.findByIdAndUpdate(
+      id,
+      { $pull: { studentIds: new Types.ObjectId(userId) } },
+      { new: true },
+    ).populate('mentorId', 'id name email avatarUrl').lean({ virtuals: true })
+    if (!batch) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Batch not found' } }); return }
+    sendSuccess(res, { ...(batch as any), id: (batch as any).id ?? String((batch as any)._id) }, 'Student removed')
+  } catch (err) { next(err) }
+})
+
+/* ─────────────────────────────────────────────────────
+   MENTOR AVAILABILITY
+   GET  /admin/mentors/:id/availability  — fetch slots
+   PUT  /admin/mentors/:id/availability  — replace all slots
+─────────────────────────────────────────────────────── */
+const availabilitySlotSchema = z.object({
+  dayOfWeek: z.coerce.number().int().min(0).max(6),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/, 'Expected HH:MM'),
+  endTime:   z.string().regex(/^\d{2}:\d{2}$/, 'Expected HH:MM'),
+}).refine(d => d.startTime < d.endTime, { message: 'startTime must be before endTime', path: ['endTime'] })
+
+const availabilityUpdateSchema = z.object({
+  slots: z.array(availabilitySlotSchema).max(21, 'Max 3 slots per day (7 days × 3)'),
+}).refine(data => {
+  const counts: Record<number, number> = {}
+  for (const s of data.slots) {
+    counts[s.dayOfWeek] = (counts[s.dayOfWeek] ?? 0) + 1
+    if ((counts[s.dayOfWeek] as number) > 3) return false
+  }
+  return true
+}, { message: 'Maximum 3 slots per day of week' })
+
+router.get('/mentors/:id/availability', requireRole('admin', 'instructor'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { MentorAvailabilityModel } = await import('@/models/schema.ts')
+    const mentorId = String(req.params['id'] ?? '')
+    const avail = await MentorAvailabilityModel.findOne({ mentorId }).lean({ virtuals: true })
+    sendSuccess(res, avail ?? { mentorId, slots: [] })
+  } catch (err) { next(err) }
+})
+
+router.put('/mentors/:id/availability', requireRole('admin', 'instructor'), validate(availabilityUpdateSchema), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { MentorAvailabilityModel } = await import('@/models/schema.ts')
+    const mentorId = String(req.params['id'] ?? '')
+    // Instructors can only update their own availability
+    if (req.user!.role === 'instructor' && req.user!.id !== mentorId) {
+      res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Cannot edit another mentor\'s availability' } }); return
+    }
+    const { slots } = req.body as { slots: Array<{ dayOfWeek: number; startTime: string; endTime: string }> }
+    const avail = await MentorAvailabilityModel.findOneAndUpdate(
+      { mentorId },
+      { mentorId, slots },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    ).lean({ virtuals: true })
+    sendSuccess(res, avail, 'Availability updated')
+  } catch (err) { next(err) }
+})
+
+/* Own availability — instructor shortcut (GET/PUT /availability/me) */
+/* These are registered on the instructor sub-router in instructor.routes.ts if it exists,
+   but we also expose them here so admin portal can use the same endpoints */
+router.get('/availability/me', requireRole('admin', 'instructor'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { MentorAvailabilityModel } = await import('@/models/schema.ts')
+    const mentorId = req.user!.id
+    const avail = await MentorAvailabilityModel.findOne({ mentorId }).lean({ virtuals: true })
+    sendSuccess(res, avail ?? { mentorId, slots: [] })
+  } catch (err) { next(err) }
+})
+
+router.put('/availability/me', requireRole('admin', 'instructor'), validate(availabilityUpdateSchema), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { MentorAvailabilityModel } = await import('@/models/schema.ts')
+    const mentorId = req.user!.id
+    const { slots } = req.body as { slots: Array<{ dayOfWeek: number; startTime: string; endTime: string }> }
+    const avail = await MentorAvailabilityModel.findOneAndUpdate(
+      { mentorId },
+      { mentorId, slots },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    ).lean({ virtuals: true })
+    sendSuccess(res, avail, 'Availability updated')
+  } catch (err) { next(err) }
+})
+
+/* ─────────────────────────────────────────────────────
+   ADMIN BOOKING ROSTER
+   GET  /admin/bookings — list all bookings (filter by liveClassId, batchId, userId)
+   PATCH /admin/bookings/:id/attendance — mark attended/missed
+─────────────────────────────────────────────────────── */
+const bookingQuerySchema = z.object({
+  liveClassId: z.string().optional(),
+  batchId:     z.string().optional(),
+  userId:      z.string().optional(),
+  status:      z.enum(['booked', 'attended', 'missed', 'cancelled']).optional(),
+  page:        z.coerce.number().int().min(1).default(1),
+  per_page:    z.coerce.number().int().min(1).max(100).default(20),
+})
+
+router.get('/bookings', requireRole('admin', 'instructor'), validate(bookingQuerySchema, 'query'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { ClassBookingModel } = await import('@/models/schema.ts')
+    const { Types } = await import('mongoose')
+    const q = req.query as unknown as z.infer<typeof bookingQuerySchema>
+    const filter: Record<string, any> = {}
+    if (q.liveClassId && Types.ObjectId.isValid(q.liveClassId)) filter['liveClassId'] = new Types.ObjectId(q.liveClassId)
+    if (q.batchId     && Types.ObjectId.isValid(q.batchId))     filter['batchId']     = new Types.ObjectId(q.batchId)
+    if (q.userId      && Types.ObjectId.isValid(q.userId))      filter['userId']      = new Types.ObjectId(q.userId)
+    if (q.status) filter['status'] = q.status
+    const page     = Number(q.page)    || 1
+    const per_page = Number(q.per_page) || 20
+    const skip     = (page - 1) * per_page
+    const [docs, total] = await Promise.all([
+      ClassBookingModel.find(filter)
+        .populate('userId', 'id name email avatarUrl')
+        .populate('liveClassId', 'id title scheduledStart durationMins')
+        .populate('batchId', 'id name')
+        .sort({ bookedAt: -1 })
+        .skip(skip).limit(per_page)
+        .lean({ virtuals: true }),
+      ClassBookingModel.countDocuments(filter),
+    ])
+    const withId = (d: any) => ({ ...d, id: d.id ?? String(d._id) })
+    res.json({
+      success: true,
+      data: docs.map(withId),
+      meta: { page, per_page, total_count: total, total_pages: Math.ceil(total / per_page) },
+    })
+  } catch (err) { next(err) }
+})
+
+const attendanceUpdateSchema = z.object({
+  status: z.enum(['attended', 'missed']),
+})
+
+router.patch('/bookings/:id/attendance', requireRole('admin', 'instructor'), validate(attendanceUpdateSchema), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { ClassBookingModel } = await import('@/models/schema.ts')
+    const id = String(req.params['id'] ?? '')
+    const { status } = req.body as { status: 'attended' | 'missed' }
+    const booking = await ClassBookingModel.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true },
+    ).populate('userId', 'id name email').lean({ virtuals: true })
+    if (!booking) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Booking not found' } }); return }
+    sendSuccess(res, { ...(booking as any), id: (booking as any).id ?? String((booking as any)._id) }, 'Attendance updated')
+  } catch (err) { next(err) }
+})
+
+/* ─────────────────────────────────────────────────────
+   REPORTS
+   GET /admin/reports/attendance?batchId=&from=&to=
+   GET /admin/reports/batch-performance?batchId=
+─────────────────────────────────────────────────────── */
+router.get('/reports/attendance', requireRole('admin', 'instructor'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { ClassBookingModel } = await import('@/models/schema.ts')
+    const { Types } = await import('mongoose')
+    const { batchId, from, to } = req.query as Record<string, string>
+    const filter: Record<string, any> = {}
+    if (batchId && Types.ObjectId.isValid(batchId)) filter['batchId'] = new Types.ObjectId(batchId)
+    if (from || to) {
+      filter['bookedAt'] = {}
+      if (from) filter['bookedAt']['$gte'] = new Date(from)
+      if (to)   filter['bookedAt']['$lte'] = new Date(to)
+    }
+    const bookings = await ClassBookingModel.find(filter)
+      .populate('userId', 'id name email')
+      .populate('liveClassId', 'id title scheduledStart')
+      .lean({ virtuals: true })
+    // Aggregate per student
+    const byStudent: Record<string, { user: any; total: number; attended: number; missed: number; booked: number }> = {}
+    for (const b of bookings) {
+      const u = b.userId as any
+      const uid = String(u.id ?? u._id)
+      if (!byStudent[uid]) byStudent[uid] = { user: { ...u, id: uid }, total: 0, attended: 0, missed: 0, booked: 0 }
+      byStudent[uid].total++
+      if (b.status === 'attended') byStudent[uid].attended++
+      else if (b.status === 'missed') byStudent[uid].missed++
+      else if (b.status === 'booked') byStudent[uid].booked++
+    }
+    sendSuccess(res, Object.values(byStudent))
+  } catch (err) { next(err) }
+})
+
+router.get('/reports/batch-performance', requireRole('admin', 'instructor'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { ClassBookingModel, BatchModel, LiveClassModel } = await import('@/models/schema.ts')
+    const { Types } = await import('mongoose')
+    const { batchId } = req.query as Record<string, string>
+    const batchFilter: Record<string, any> = {}
+    if (batchId && Types.ObjectId.isValid(batchId)) batchFilter['_id'] = new Types.ObjectId(batchId)
+    const batches = await BatchModel.find(batchFilter).lean({ virtuals: true })
+    const results = await Promise.all(batches.map(async batch => {
+      const bid = batch._id as unknown
+      const [sessions, bookings] = await Promise.all([
+        LiveClassModel.countDocuments({ batchId: bid }),
+        ClassBookingModel.find({ batchId: bid }).lean(),
+      ])
+      const attended = bookings.filter(b => b.status === 'attended').length
+      const total    = bookings.length
+      return {
+        batch: { id: (batch as any).id ?? String(batch._id), name: batch.name, status: batch.status },
+        sessions,
+        totalBookings: total,
+        attended,
+        attendanceRate: total > 0 ? Math.round((attended / total) * 100) : 0,
+        activeStudents: batch.studentIds.length,
+      }
+    }))
+    sendSuccess(res, results)
+  } catch (err) { next(err) }
+})
+
+/* ─────────────────────────────────────────────────────
+   REPORTS — Mentor Schedule
+   GET /admin/reports/mentor-schedule?from=&to=&mentorId=
+─────────────────────────────────────────────────────── */
+router.get('/reports/mentor-schedule', requireRole('admin', 'instructor'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { LiveClassModel } = await import('@/models/schema.ts')
+    const { Types } = await import('mongoose')
+    const { from, to, mentorId } = req.query as Record<string, string>
+
+    const filter: Record<string, any> = {}
+    if (from || to) {
+      filter['scheduledStart'] = {}
+      if (from) filter['scheduledStart']['$gte'] = new Date(from)
+      if (to)   filter['scheduledStart']['$lte'] = new Date(to)
+    }
+    if (mentorId && Types.ObjectId.isValid(mentorId)) {
+      filter['instructorId'] = new Types.ObjectId(mentorId)
+    }
+
+    const sessions = await LiveClassModel.find(filter)
+      .populate('instructorId', 'id name email')
+      .lean({ virtuals: true })
+
+    // Group by instructor
+    const mentorMap = new Map<string, {
+      mentor: { id: string; name: string; email: string }
+      assigned: number
+      conducted: number
+      cancelled: number
+      completionPct: number
+    }>()
+
+    for (const s of sessions) {
+      const inst = s.instructorId as any
+      if (!inst) continue
+      const key = String(inst._id ?? inst.id)
+      if (!mentorMap.has(key)) {
+        mentorMap.set(key, { mentor: { id: key, name: inst.name, email: inst.email }, assigned: 0, conducted: 0, cancelled: 0, completionPct: 0 })
+      }
+      const row = mentorMap.get(key)!
+      row.assigned++
+      if (s.status === 'ended') row.conducted++
+      if (s.status === 'cancelled') row.cancelled++
+    }
+
+    const results = Array.from(mentorMap.values()).map(row => ({
+      ...row,
+      completionPct: row.assigned > 0 ? Math.round((row.conducted / row.assigned) * 100) : 0,
+    }))
+
+    sendSuccess(res, results)
+  } catch (err) { next(err) }
+})
+
+/* ─────────────────────────────────────────────────────
+   HOMEWORK — Session homework for live classes
+   POST   /admin/live-classes/:id/homework       — create homework
+   GET    /admin/live-classes/:id/homework       — list homework for session
+   GET    /admin/live-classes/:id/homework/submissions — all submissions
+   PATCH  /admin/homework/:id                    — update homework
+   DELETE /admin/homework/:id                    — delete homework
+   PATCH  /admin/homework-submissions/:id/grade  — grade a submission
+─────────────────────────────────────────────────────── */
+const homeworkCreateSchema = z.object({
+  title:       z.string().min(1).max(200),
+  description: z.string().max(5000).default(''),
+  dueDate:     z.string().datetime().optional(),
+})
+
+const homeworkUpdateSchema = homeworkCreateSchema.partial()
+
+const gradeHomeworkSchema = z.object({
+  grade:    z.number().min(0).max(100),
+  feedback: z.string().max(2000).optional(),
+})
+
+router.post('/live-classes/:id/homework', requireRole('admin', 'instructor'), validate(homeworkCreateSchema), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { SessionHomeworkModel } = await import('@/models/schema.ts')
+    const liveClassId = String(req.params['id'] ?? '')
+    const { title, description, dueDate } = req.body as { title: string; description: string; dueDate?: string }
+    const hw = await SessionHomeworkModel.create({
+      liveClassId,
+      assignedBy: req.user!.id,
+      title,
+      description,
+      dueDate: dueDate ? new Date(dueDate) : undefined,
+    })
+    sendSuccess(res, hw, 'Homework created', 201)
+  } catch (err) { next(err) }
+})
+
+router.get('/live-classes/:id/homework', requireRole('admin', 'instructor'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { SessionHomeworkModel } = await import('@/models/schema.ts')
+    const liveClassId = String(req.params['id'] ?? '')
+    const list = await SessionHomeworkModel.find({ liveClassId }).populate('assignedBy', 'id name').lean({ virtuals: true })
+    sendSuccess(res, (list as any[]).map(d => ({ ...d, id: d.id ?? String(d._id) })))
+  } catch (err) { next(err) }
+})
+
+router.get('/live-classes/:id/homework/submissions', requireRole('admin', 'instructor'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { SessionHomeworkModel, HomeworkSubmissionModel } = await import('@/models/schema.ts')
+    const liveClassId = String(req.params['id'] ?? '')
+    const homeworks = await SessionHomeworkModel.find({ liveClassId }).lean({ virtuals: true })
+    const hwIds = homeworks.map(h => h._id)
+    const submissions = await HomeworkSubmissionModel.find({ homeworkId: { $in: hwIds } })
+      .populate('userId', 'id name email')
+      .populate('homeworkId', 'id title')
+      .populate('gradedBy', 'id name')
+      .lean({ virtuals: true })
+    sendSuccess(res, (submissions as any[]).map(d => ({ ...d, id: d.id ?? String(d._id) })))
+  } catch (err) { next(err) }
+})
+
+router.patch('/homework/:id', requireRole('admin', 'instructor'), validate(homeworkUpdateSchema), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { SessionHomeworkModel } = await import('@/models/schema.ts')
+    const id = String(req.params['id'] ?? '')
+    const hw = await SessionHomeworkModel.findByIdAndUpdate(id, req.body, { new: true }).lean({ virtuals: true })
+    if (!hw) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Homework not found' } }); return }
+    sendSuccess(res, hw, 'Homework updated')
+  } catch (err) { next(err) }
+})
+
+router.delete('/homework/:id', requireRole('admin', 'instructor'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { SessionHomeworkModel } = await import('@/models/schema.ts')
+    const id = String(req.params['id'] ?? '')
+    await SessionHomeworkModel.findByIdAndDelete(id)
+    sendSuccess(res, null, 'Homework deleted')
+  } catch (err) { next(err) }
+})
+
+router.patch('/homework-submissions/:id/grade', requireRole('admin', 'instructor'), validate(gradeHomeworkSchema), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { HomeworkSubmissionModel } = await import('@/models/schema.ts')
+    const id = String(req.params['id'] ?? '')
+    const { grade, feedback } = req.body as { grade: number; feedback?: string }
+    const sub = await HomeworkSubmissionModel.findByIdAndUpdate(
+      id,
+      { grade, feedback, status: 'graded', gradedAt: new Date(), gradedBy: req.user!.id },
+      { new: true },
+    ).populate('userId', 'id name email').lean({ virtuals: true })
+    if (!sub) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Submission not found' } }); return }
+    sendSuccess(res, sub, 'Submission graded')
+  } catch (err) { next(err) }
+})
+
+/* GET /admin/live-classes/:id/feedback — feedback summary for a session */
+router.get('/live-classes/:id/feedback', authenticate, requireRole('admin', 'instructor'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { ClassFeedbackModel } = await import('@/models/schema.ts')
+    const { Types } = await import('mongoose')
+    const liveClassId = String(req.params['id'] ?? '')
+    if (!Types.ObjectId.isValid(liveClassId)) {
+      res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid id' } }); return
+    }
+    const docs = await ClassFeedbackModel.find({ liveClassId: new Types.ObjectId(liveClassId) })
+      .populate('userId', 'id name email avatarUrl')
+      .sort({ createdAt: -1 })
+      .lean({ virtuals: true })
+    const avg = docs.length > 0 ? docs.reduce((s, d: any) => s + d.rating, 0) / docs.length : null
+    res.json({ success: true, data: { feedbacks: docs, averageRating: avg ? Math.round(avg * 10) / 10 : null, count: docs.length } })
   } catch (err) { next(err) }
 })
 

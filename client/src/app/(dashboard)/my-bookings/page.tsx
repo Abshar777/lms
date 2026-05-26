@@ -1,0 +1,250 @@
+'use client'
+
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Video, Calendar, Clock, CheckCircle, XCircle, Loader2,
+  X as XIcon, AlertCircle, ExternalLink, Tv2, BookOpen, Users, FileText,
+} from 'lucide-react'
+import Link from 'next/link'
+import { useMyBookings, useCancelBooking, type BookingStatus, type MyBooking } from '@/lib/api/bookings'
+
+/* ── Helpers ─────────────────────────────────────────── */
+function fmtDate(iso: string) {
+  const d = new Date(iso)
+  const today = new Date()
+  const tom   = new Date(Date.now() + 86_400_000)
+  if (d.toDateString() === today.toDateString()) return 'Today'
+  if (d.toDateString() === tom.toDateString())   return 'Tomorrow'
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+}
+function fmtDuration(mins: number) {
+  if (mins < 60) return `${mins}m`
+  const h = Math.floor(mins / 60), m = mins % 60
+  return m === 0 ? `${h}h` : `${h}h ${m}m`
+}
+
+function statusInfo(status: BookingStatus) {
+  switch (status) {
+    case 'attended':  return { label: 'Attended',  color: '#10B981', bg: 'rgba(16,185,129,0.08)',  icon: CheckCircle }
+    case 'missed':    return { label: 'Missed',    color: '#EF4444', bg: 'rgba(239,68,68,0.08)',   icon: XCircle }
+    case 'cancelled': return { label: 'Cancelled', color: '#9CA3AF', bg: 'rgba(156,163,175,0.08)', icon: XIcon }
+    default:          return { label: 'Booked',    color: '#6366F1', bg: 'rgba(99,102,241,0.08)',  icon: CheckCircle }
+  }
+}
+
+/* ── Booking card ─────────────────────────────────────── */
+function BookingCard({ booking }: { booking: MyBooking }) {
+  const cancelMutation = useCancelBooking()
+  const [confirming, setConfirming] = useState(false)
+
+  const session   = booking.liveClassId
+  const batch     = booking.batchId
+  const isPast    = new Date(session.scheduledStart) < new Date() || session.status === 'ended' || session.status === 'cancelled'
+  const isLiveNow = session.status === 'live'
+  const isBooked  = booking.status === 'booked'
+  const { label, color, bg, icon: StatusIcon } = statusInfo(booking.status)
+  const isExternal = session.type === 'external'
+
+  const handleCancel = async () => {
+    if (!confirming) { setConfirming(true); return }
+    await cancelMutation.mutateAsync(booking.id)
+    setConfirming(false)
+  }
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.97 }}
+      className="rounded-2xl bg-white p-4 transition-shadow hover:shadow-sm"
+      style={{ border: isLiveNow ? '1px solid rgba(239,68,68,0.30)' : '1px solid #E4E7ED' }}>
+
+      {/* Top row */}
+      <div className="flex items-start gap-3">
+        {/* Icon */}
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
+          style={{
+            background: isLiveNow ? 'rgba(239,68,68,0.10)' : isExternal ? 'rgba(99,102,241,0.08)' : 'rgba(255,107,26,0.08)',
+            border:     isLiveNow ? '1px solid rgba(239,68,68,0.20)' : isExternal ? '1px solid rgba(99,102,241,0.15)' : '1px solid rgba(255,107,26,0.15)',
+          }}>
+          {isLiveNow
+            ? <motion.div animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1.4, repeat: Infinity }}>
+                <Video size={16} style={{ color: '#EF4444' }} />
+              </motion.div>
+            : isExternal
+            ? <ExternalLink size={16} style={{ color: '#6366F1' }} />
+            : <Tv2 size={16} style={{ color: '#FF6B1A' }} />}
+        </div>
+
+        {/* Info */}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+            {/* Live badge */}
+            {isLiveNow && (
+              <motion.span animate={{ opacity: [1, 0.5, 1] }} transition={{ duration: 1.4, repeat: Infinity }}
+                className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                style={{ background: '#EF4444' }}>
+                <span className="h-1 w-1 rounded-full bg-white" />LIVE
+              </motion.span>
+            )}
+            {/* Attendance status */}
+            <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold"
+              style={{ background: bg, color }}>
+              <StatusIcon size={9} />{label}
+            </span>
+            {/* Batch */}
+            {batch && (
+              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                style={{ background: 'rgba(139,92,246,0.08)', color: '#7C3AED' }}>
+                <Users size={9} />{batch.name}
+              </span>
+            )}
+          </div>
+          <p className="text-sm font-bold truncate" style={{ color: '#0D0F1A' }}>{session.title}</p>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs" style={{ color: '#6B7280' }}>
+            <span className="flex items-center gap-1"><Calendar size={10} />{fmtDate(session.scheduledStart)}</span>
+            <span>·</span>
+            <span className="flex items-center gap-1"><Clock size={10} />{fmtTime(session.scheduledStart)}</span>
+            <span>·</span>
+            <span>{fmtDuration(session.durationMins)}</span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-shrink-0 flex-col items-end gap-1.5">
+          {/* Join button for upcoming/live */}
+          {!isPast && isBooked && isExternal && session.meetingUrl && (
+            <a href={session.meetingUrl} target="_blank" rel="noreferrer"
+              className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-white"
+              style={{ background: isLiveNow ? '#EF4444' : 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+              <ExternalLink size={11} />Join
+            </a>
+          )}
+          {!isPast && isBooked && !isExternal && session.muxPlaybackId && (
+            <a href={`/live-classes/${session.id}/watch`}
+              className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-white"
+              style={{ background: isLiveNow ? '#EF4444' : 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+              <Video size={11} />Watch
+            </a>
+          )}
+          {/* Homework link for internal sessions */}
+          {!isExternal && (
+            <Link href={`/live-classes/${session.id}/watch`}
+              className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold"
+              style={{ background: 'rgba(255,107,26,0.08)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.18)' }}>
+              <FileText size={11} />Homework
+            </Link>
+          )}
+          {/* Cancel button for upcoming booked only */}
+          {!isPast && isBooked && (
+            confirming ? (
+              <div className="flex items-center gap-1.5">
+                <button onClick={() => setConfirming(false)} className="text-[10px] font-medium" style={{ color: '#9CA3AF' }}>
+                  No
+                </button>
+                <button onClick={handleCancel} disabled={cancelMutation.isPending}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold text-white disabled:opacity-60"
+                  style={{ background: '#EF4444' }}>
+                  {cancelMutation.isPending ? <Loader2 size={9} className="animate-spin" /> : null}
+                  Cancel booking
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => setConfirming(true)}
+                className="text-[10px] font-medium transition-colors hover:text-red-500"
+                style={{ color: '#9CA3AF' }}>
+                Cancel
+              </button>
+            )
+          )}
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+/* ── Page ──────────────────────────────────────────────── */
+const TABS: { key: BookingStatus | 'upcoming'; label: string }[] = [
+  { key: 'upcoming',  label: 'Upcoming' },
+  { key: 'attended',  label: 'Attended' },
+  { key: 'missed',    label: 'Missed' },
+  { key: 'cancelled', label: 'Cancelled' },
+]
+
+export default function MyBookingsPage() {
+  const [tab, setTab] = useState<BookingStatus | 'upcoming'>('upcoming')
+
+  const statusParam = tab === 'upcoming' ? 'booked' : tab
+  const { data, isLoading } = useMyBookings({ status: statusParam as BookingStatus, per_page: 50 })
+
+  const bookings = data?.docs ?? []
+
+  /* For upcoming, further filter to sessions in the future */
+  const filtered = tab === 'upcoming'
+    ? bookings.filter(b => new Date(b.liveClassId.scheduledStart) >= new Date() || b.liveClassId.status === 'live')
+    : bookings
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+          My Classes
+        </h1>
+        <p className="mt-1 text-sm" style={{ color: '#6B7280' }}>
+          Your session bookings and attendance history
+        </p>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 mb-5 rounded-2xl p-1" style={{ background: '#F9FAFB' }}>
+        {TABS.map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            className="flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition-all"
+            style={{
+              background: tab === t.key ? 'white' : 'transparent',
+              color:      tab === t.key ? '#0D0F1A' : '#6B7280',
+              boxShadow:  tab === t.key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+            }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      {isLoading ? (
+        <div className="flex h-48 items-center justify-center gap-2 text-sm" style={{ color: '#9CA3AF' }}>
+          <Loader2 size={16} className="animate-spin" />Loading…
+        </div>
+      ) : filtered.length === 0 ? (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          className="flex flex-col items-center gap-3 py-16">
+          <div className="flex h-14 w-14 items-center justify-center rounded-3xl"
+            style={{ background: 'rgba(255,107,26,0.08)', border: '1px solid rgba(255,107,26,0.15)' }}>
+            <Video size={22} style={{ color: '#FF6B1A' }} />
+          </div>
+          <p className="text-sm font-semibold" style={{ color: '#0D0F1A' }}>
+            No {tab === 'upcoming' ? 'upcoming classes' : `${tab} sessions`}
+          </p>
+          <p className="text-xs text-center max-w-xs" style={{ color: '#9CA3AF' }}>
+            {tab === 'upcoming'
+              ? 'Visit the Live Classes page to book available sessions in your batch.'
+              : 'Your history will appear here once you attend or miss a session.'}
+          </p>
+        </motion.div>
+      ) : (
+        <motion.div layout className="flex flex-col gap-3">
+          <AnimatePresence mode="popLayout">
+            {filtered.map(booking => (
+              <BookingCard key={booking.id} booking={booking} />
+            ))}
+          </AnimatePresence>
+        </motion.div>
+      )}
+    </div>
+  )
+}

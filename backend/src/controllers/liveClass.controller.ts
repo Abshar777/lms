@@ -11,6 +11,7 @@ function toDTO(doc: any) {
   const j              = doc.toJSON ? doc.toJSON() : doc
   const courseRef      = j.courseId
   const instructorRef  = j.instructorId
+  const batchRef       = j.batchId
   const isInternal     = j.type === 'internal'
 
   return {
@@ -44,6 +45,13 @@ function toDTO(doc: any) {
     startedAt:      j.startedAt,
     endedAt:        j.endedAt,
 
+    /* Batch / capacity fields (Phase 2–3) */
+    batchId:         batchRef
+                       ? (isPopulated(batchRef) ? batchRef : String(batchRef))
+                       : undefined,
+    sessionCapacity: j.sessionCapacity ?? 30,
+    bookedCount:     j.bookedCount     ?? 0,
+
     createdAt:      j.createdAt,
     updatedAt:      j.updatedAt,
   }
@@ -64,7 +72,7 @@ export class LiveClassController {
   /* GET /live-classes/upcoming — auth */
   upcomingForMe = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const limit = Math.min(Number(req.query['limit'] ?? 5), 20)
+      const limit = Math.min(Number(req.query['limit'] ?? 10), 100)
       const docs  = await this.service.listUpcomingForUser(req.user!.id, limit)
       sendSuccess(res, docs.map(toDTO))
     } catch (err) { next(err) }
@@ -132,24 +140,28 @@ export class LiveClassController {
   adminCreate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const dto = req.body as {
-        courseId:       string
-        title:          string
-        description?:   string
-        scheduledStart: string | Date
-        durationMins:   number
-        type?:          'external' | 'internal'
-        meetingUrl?:    string
-        instructorId?:  string
+        courseId:        string
+        title:           string
+        description?:    string
+        scheduledStart:  string | Date
+        durationMins:    number
+        type?:           'external' | 'internal'
+        meetingUrl?:     string
+        instructorId?:   string
+        batchId?:        string
+        sessionCapacity?: number
       }
       const live = await this.service.create({
-        courseId:       dto.courseId,
-        instructorId:   dto.instructorId ?? req.user!.id,
-        title:          dto.title,
-        description:    dto.description,
-        scheduledStart: new Date(dto.scheduledStart),
-        durationMins:   dto.durationMins,
-        type:           dto.type ?? 'external',
-        meetingUrl:     dto.meetingUrl,
+        courseId:        dto.courseId,
+        instructorId:    dto.instructorId ?? req.user!.id,
+        title:           dto.title,
+        description:     dto.description,
+        scheduledStart:  new Date(dto.scheduledStart),
+        durationMins:    dto.durationMins,
+        type:            dto.type ?? 'external',
+        meetingUrl:      dto.meetingUrl,
+        batchId:         dto.batchId,
+        sessionCapacity: dto.sessionCapacity,
       })
       sendSuccess(res, toDTO(live), 'Live class scheduled', 201)
     } catch (err) { next(err) }
@@ -160,13 +172,51 @@ export class LiveClassController {
       const id  = String(req.params['id'] ?? '')
       const dto = req.body as Record<string, unknown>
       const data: Parameters<LiveClassService['update']>[1] = {}
-      if (typeof dto['title']          === 'string')  data.title          = dto['title']
-      if (typeof dto['description']    === 'string')  data.description    = dto['description']
-      if (typeof dto['scheduledStart'] === 'string')  data.scheduledStart = new Date(dto['scheduledStart'])
-      if (typeof dto['durationMins']   === 'number')  data.durationMins   = dto['durationMins']
-      if (typeof dto['meetingUrl']     === 'string')  data.meetingUrl     = dto['meetingUrl']
-      if (typeof dto['status']         === 'string')  data.status         = dto['status'] as any
+      if (typeof dto['title']           === 'string')  data.title           = dto['title']
+      if (typeof dto['description']     === 'string')  data.description     = dto['description']
+      if (typeof dto['scheduledStart']  === 'string')  data.scheduledStart  = new Date(dto['scheduledStart'])
+      if (typeof dto['durationMins']    === 'number')  data.durationMins    = dto['durationMins']
+      if (typeof dto['meetingUrl']      === 'string')  data.meetingUrl      = dto['meetingUrl']
+      if (typeof dto['status']          === 'string')  data.status          = dto['status'] as any
+      if (typeof dto['batchId']         === 'string')  data.batchId         = dto['batchId']
+      if (dto['batchId'] === null)                      data.batchId         = null
+      if (typeof dto['sessionCapacity'] === 'number')  data.sessionCapacity = dto['sessionCapacity']
+      if (typeof dto['mentorNotes']     === 'string')  data.mentorNotes     = dto['mentorNotes']
+
+      /* Snapshot old session BEFORE update for notification comparison */
+      const { LiveClassModel, ClassBookingModel, UserModel } = await import('@/models/schema.ts')
+      const oldSession = await LiveClassModel.findById(id).lean()
+
       const live = await this.service.update(id, data)
+
+      /* ── Trigger notifications on status/schedule changes (non-blocking) ── */
+      const wasCancelled    = oldSession?.status !== 'cancelled' && data.status === 'cancelled'
+      const wasRescheduled  = data.scheduledStart && oldSession?.scheduledStart &&
+        new Date(oldSession.scheduledStart).getTime() !== new Date(data.scheduledStart).getTime()
+
+      if (wasCancelled || wasRescheduled) {
+        ;(async () => {
+          try {
+            const { sendCancelledNotification, sendRescheduledNotification } = await import('@/services/email.service.ts')
+            const bookings = await ClassBookingModel.find({
+              liveClassId: id, status: { $in: ['booked', 'attended'] },
+            }).lean()
+            for (const booking of bookings) {
+              const user = await UserModel.findById(booking.userId).lean()
+              if (!user?.email) continue
+              const title   = live.title
+              const oldDate = oldSession?.scheduledStart ? new Date(oldSession.scheduledStart).toLocaleString() : 'TBD'
+              const newDate = live.scheduledStart ? new Date(live.scheduledStart).toLocaleString() : 'TBD'
+              if (wasCancelled) {
+                sendCancelledNotification(user.email, user.name, title, oldDate).catch(() => {})
+              } else {
+                sendRescheduledNotification(user.email, user.name, title, oldDate, newDate).catch(() => {})
+              }
+            }
+          } catch (e) { console.error('[Notification] update notification failed:', e) }
+        })()
+      }
+
       sendSuccess(res, toDTO(live), 'Live class updated')
     } catch (err) { next(err) }
   }

@@ -1,6 +1,10 @@
 import type { NextConfig } from 'next'
 import { withSentryConfig } from '@sentry/nextjs'
 
+/* Backend origin — used only server-side for the rewrite proxy.
+   NOT a NEXT_PUBLIC var; never sent to the browser.              */
+const API_ORIGIN = process.env.API_URL ?? 'http://localhost:8000'
+
 /* Parse the R2 public URL (set at build time via NEXT_PUBLIC_R2_PUBLIC_URL). */
 const r2PublicUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ''
 const r2Hostname  = r2PublicUrl
@@ -25,23 +29,26 @@ const nextConfig: NextConfig = {
       ...r2Patterns,
     ],
   },
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'framer-motion'],
+  },
+  /* Proxy /api/v1/* → backend so the browser never calls a different origin.
+     This means cookies work as same-origin (no CORS, no SameSite issues).  */
+  async rewrites() {
+    return [
+      {
+        source:      '/api/v1/:path*',
+        destination: `${API_ORIGIN}/api/v1/:path*`,
+      },
+    ]
+  },
 }
 
 export default withSentryConfig(nextConfig, {
-  // Sentry org + project are optional — needed only for source-map uploads.
-  // Set SENTRY_ORG, SENTRY_PROJECT, SENTRY_AUTH_TOKEN in .env to enable.
   org:     process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
-
-  // Suppress Sentry build-time output unless CI is running
-  silent: !process.env.CI,
-
-  // Upload wider sourcemaps (includes vendor code)
-  widenClientFileUpload: true,
-
-  // Tree-shake the Sentry logger in production
-  disableLogger: true,
-
-  // Don't instrument Vercel Cron Monitors (not used)
-  automaticVercelMonitors: false,
+  silent:  !process.env.CI,
+  widenClientFileUpload:     true,
+  disableLogger:             true,
+  automaticVercelMonitors:   false,
 })

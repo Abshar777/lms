@@ -1,13 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, AlertCircle, Shield } from 'lucide-react'
+import { api } from '@/lib/axios'
 
 const schema = z.object({
   email:    z.string().email('Enter a valid email'),
@@ -23,11 +23,21 @@ const fieldVariant = {
   }),
 }
 
-const ERROR_MESSAGES: Record<string, string> = {
-  NOT_ADMIN:           'This account does not have admin access.',
-  INVALID_CREDENTIALS: 'Incorrect email or password.',
-  LOGIN_FAILED:        'Unable to sign in. Please try again.',
-  CredentialsSignin:   'Incorrect email or password.',
+function extractErrorMessage(err: unknown): string {
+  if (err && typeof err === 'object' && 'response' in err) {
+    const resp = (err as { response?: { data?: { error?: { message?: string; code?: string } } } }).response
+    const code = resp?.data?.error?.code
+    const msg  = resp?.data?.error?.message
+
+    if (code === 'NOT_ADMIN' || code === 'FORBIDDEN') {
+      return 'This account does not have admin or instructor access.'
+    }
+    if (code === 'INVALID_CREDENTIALS' || code === 'ACCOUNT_LOCKED') {
+      return msg ?? 'Incorrect email or password.'
+    }
+    if (msg) return msg
+  }
+  return 'Unable to sign in. Please try again.'
 }
 
 export function AdminLoginForm() {
@@ -41,25 +51,25 @@ export function AdminLoginForm() {
 
   const onSubmit = async ({ email, password }: Values) => {
     setError(null)
-    const result = await signIn('credentials', {
-      email,
-      password,
-      redirect: false,   // handle redirect manually so we can show errors
-    })
+    try {
+      const res = await api.post<{
+        success: true
+        data: { user: { role: string } }
+      }>('/auth/login', { email, password })
 
-    if (!result) {
-      setError(ERROR_MESSAGES['LOGIN_FAILED'])
-      return
+      const role = res.data?.data?.user?.role
+      if (role !== 'admin' && role !== 'instructor') {
+        /* Log out immediately so we don't leave a student cookie */
+        await api.post('/auth/logout').catch(() => {/* best-effort */})
+        setError('This portal is for admins and instructors only.')
+        return
+      }
+
+      router.replace('/')
+      router.refresh()
+    } catch (err) {
+      setError(extractErrorMessage(err))
     }
-
-    if (result.error) {
-      setError(ERROR_MESSAGES[result.error] ?? result.error)
-      return
-    }
-
-    /* Success — navigate to dashboard */
-    router.replace('/')
-    router.refresh()
   }
 
   return (
@@ -73,7 +83,7 @@ export function AdminLoginForm() {
         style={{ background: 'rgba(255,107,26,0.12)', border: '1px solid rgba(255,107,26,0.24)' }}
       >
         <Shield size={14} color="#FF6B1A" strokeWidth={2} />
-        <span className="text-xs font-semibold" style={{ color: '#FF6B1A' }}>Admin Access Only</span>
+        <span className="text-xs font-semibold" style={{ color: '#FF6B1A' }}>Admin &amp; Instructor Portal</span>
       </motion.div>
 
       {/* Heading */}
@@ -90,7 +100,7 @@ export function AdminLoginForm() {
           Welcome back
         </h1>
         <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14 }}>
-          Sign in to your admin portal
+          Sign in to your admin or instructor portal
         </p>
       </motion.div>
 
@@ -106,7 +116,7 @@ export function AdminLoginForm() {
             <input
               {...register('email')}
               type="email"
-              placeholder="admin@learnos.com"
+              placeholder="you@learnos.com"
               className="w-full rounded-xl py-3 pl-10 pr-4 text-sm text-white outline-none transition-all placeholder:text-white/25"
               style={{
                 background: errors.email ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.06)',
@@ -198,7 +208,7 @@ export function AdminLoginForm() {
             style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)', boxShadow: '0 4px 24px rgba(255,107,26,0.32)' }}>
             {isSubmitting
               ? <><Loader2 size={16} className="animate-spin" />Signing in…</>
-              : <>Sign in to Admin<ArrowRight size={16} /></>}
+              : <>Sign in<ArrowRight size={16} /></>}
           </motion.button>
         </motion.div>
       </form>

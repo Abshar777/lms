@@ -316,6 +316,7 @@ export interface IEnrollment extends Document {
   enrolledAt:      Date
   completedAt?:    Date
   certificateId?:  string   // generated cert UUID
+  blockedLessons:  Types.ObjectId[]  // lessons blocked by admin/instructor
   createdAt:       Date
   updatedAt:       Date
 }
@@ -330,6 +331,7 @@ const EnrollmentSchema = new Schema<IEnrollment>(
     enrolledAt:      { type: Date, default: Date.now },
     completedAt:     { type: Date },
     certificateId:   { type: String },
+    blockedLessons:  [{ type: Schema.Types.ObjectId, ref: 'Lesson' }],
   },
   baseSchemaOptions,
 )
@@ -514,9 +516,15 @@ export interface ILiveClass extends Document {
 
   /* Post-stream */
   recordingUrl?:  string          // set when recording is ready
+  mentorNotes?:   string          // mentor can add notes/summary after session
   viewerCount:    number          // updated by Mux Real-Time API
   startedAt?:     Date
   endedAt?:       Date
+
+  /* Batch scheduling (Phase 2) */
+  batchId?:          Types.ObjectId   // links session to a batch
+  sessionCapacity:   number           // max bookings (default 30)
+  bookedCount:       number           // denormalised, incremented on booking
 
   createdAt:      Date
   updatedAt:      Date
@@ -540,9 +548,14 @@ const LiveClassSchema = new Schema<ILiveClass>(
     muxPlaybackId:     { type: String },
     muxAssetId:        { type: String },
     recordingUrl:      { type: String },
+    mentorNotes:       { type: String, maxlength: 5000 },
     viewerCount:       { type: Number, default: 0 },
     startedAt:         { type: Date },
     endedAt:           { type: Date },
+    // Batch scheduling
+    batchId:           { type: Schema.Types.ObjectId, ref: 'Batch' },
+    sessionCapacity:   { type: Number, default: 30, min: 1, max: 500 },
+    bookedCount:       { type: Number, default: 0, min: 0 },
   },
   baseSchemaOptions,
 )
@@ -550,6 +563,7 @@ const LiveClassSchema = new Schema<ILiveClass>(
 LiveClassSchema.index({ courseId: 1, scheduledStart: 1 })
 LiveClassSchema.index({ scheduledStart: 1 })
 LiveClassSchema.index({ muxLiveStreamId: 1 }, { sparse: true })
+LiveClassSchema.index({ batchId: 1 }, { sparse: true })
 
 export const LiveClassModel = mongoose.model<ILiveClass>('LiveClass', LiveClassSchema)
 
@@ -1127,13 +1141,14 @@ export const LearningPathModel = mongoose.model<ILearningPath>('LearningPath', L
 export type AuditAction =
   | 'course.create'   | 'course.update'   | 'course.delete'
   | 'course.publish'  | 'course.archive'
-  | 'user.ban'        | 'user.unban'      | 'user.roleChange'
+  | 'user.create'     | 'user.ban'        | 'user.unban'      | 'user.roleChange'
   | 'review.delete'
   | 'coupon.create'   | 'coupon.delete'
   | 'order.refund'
   | 'category.create' | 'category.update' | 'category.delete'
   | 'bulk.publish'    | 'bulk.archive'    | 'bulk.delete'
   | 'course.import'   | 'course.export'
+  | 'batch.create'    | 'batch.update'    | 'batch.delete'
 
 export interface IAuditLog extends Document {
   id:         string
@@ -1170,3 +1185,220 @@ AuditLogSchema.index({ createdAt: -1 })
 AuditLogSchema.index({ entity: 1, entityId: 1 })
 
 export const AuditLogModel = mongoose.model<IAuditLog>('AuditLog', AuditLogSchema)
+
+/* ─────────────────────────────────────────────────────
+   BATCH  — cohort of students assigned to a mentor
+───────────────────────────────────────────────────── */
+export type BatchStatus = 'active' | 'archived'
+
+export interface IBatch extends Document {
+  id:          string
+  name:        string
+  description: string
+  mentorId:    Types.ObjectId
+  studentIds:  Types.ObjectId[]
+  courseId?:   Types.ObjectId
+  maxStudents: number
+  status:      BatchStatus
+  createdAt:   Date
+  updatedAt:   Date
+}
+
+const BatchSchema = new Schema<IBatch>(
+  {
+    name:        { type: String, required: true, trim: true, maxlength: 120 },
+    description: { type: String, default: '', maxlength: 2000 },
+    mentorId:    { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    studentIds:  [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    courseId:    { type: Schema.Types.ObjectId, ref: 'Course' },
+    maxStudents: { type: Number, default: 30, min: 1, max: 500 },
+    status:      { type: String, enum: ['active', 'archived'], default: 'active' },
+  },
+  baseSchemaOptions,
+)
+
+BatchSchema.index({ mentorId: 1 })
+BatchSchema.index({ studentIds: 1 })
+BatchSchema.index({ status: 1 })
+
+export const BatchModel = mongoose.model<IBatch>('Batch', BatchSchema)
+
+/* ─────────────────────────────────────────────────────
+   MENTOR AVAILABILITY — weekly recurring time slots
+───────────────────────────────────────────────────── */
+export interface IAvailabilitySlot {
+  dayOfWeek:  number   // 0 = Sunday … 6 = Saturday
+  startTime:  string   // "HH:MM" 24-hour
+  endTime:    string   // "HH:MM" 24-hour
+}
+
+export interface IMentorAvailability extends Document {
+  id:       string
+  mentorId: Types.ObjectId
+  slots:    IAvailabilitySlot[]
+  createdAt: Date
+  updatedAt: Date
+}
+
+const AvailabilitySlotSchema = new Schema<IAvailabilitySlot>(
+  {
+    dayOfWeek: { type: Number, required: true, min: 0, max: 6 },
+    startTime: { type: String, required: true, match: /^\d{2}:\d{2}$/ },
+    endTime:   { type: String, required: true, match: /^\d{2}:\d{2}$/ },
+  },
+  { _id: false },
+)
+
+const MentorAvailabilitySchema = new Schema<IMentorAvailability>(
+  {
+    mentorId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+    slots:    { type: [AvailabilitySlotSchema], default: [] },
+  },
+  baseSchemaOptions,
+)
+
+export const MentorAvailabilityModel = mongoose.model<IMentorAvailability>(
+  'MentorAvailability',
+  MentorAvailabilitySchema,
+)
+
+/* ─────────────────────────────────────────────────────
+   CLASS BOOKING — student books a specific session slot
+───────────────────────────────────────────────────── */
+export type BookingStatus = 'booked' | 'attended' | 'missed' | 'cancelled'
+
+export interface IClassBooking extends Document {
+  id:          string
+  userId:      Types.ObjectId
+  liveClassId: Types.ObjectId
+  batchId:     Types.ObjectId
+  status:      BookingStatus
+  bookedAt:    Date
+  cancelledAt?: Date
+  // Reminder flags
+  reminderDayBeforeSent:  boolean
+  reminderDayOfSent:      boolean
+  reminderPreSessionSent: boolean
+  createdAt:   Date
+  updatedAt:   Date
+}
+
+const ClassBookingSchema = new Schema<IClassBooking>(
+  {
+    userId:      { type: Schema.Types.ObjectId, ref: 'User',      required: true },
+    liveClassId: { type: Schema.Types.ObjectId, ref: 'LiveClass', required: true },
+    batchId:     { type: Schema.Types.ObjectId, ref: 'Batch',     required: true },
+    status:      { type: String, enum: ['booked', 'attended', 'missed', 'cancelled'], default: 'booked' },
+    bookedAt:    { type: Date, default: Date.now },
+    cancelledAt: { type: Date },
+    reminderDayBeforeSent:  { type: Boolean, default: false },
+    reminderDayOfSent:      { type: Boolean, default: false },
+    reminderPreSessionSent: { type: Boolean, default: false },
+  },
+  baseSchemaOptions,
+)
+
+// Prevent duplicate bookings; allow re-booking after cancel via the application layer
+ClassBookingSchema.index({ userId: 1, liveClassId: 1 }, { unique: true })
+ClassBookingSchema.index({ liveClassId: 1 })
+ClassBookingSchema.index({ batchId: 1 })
+ClassBookingSchema.index({ userId: 1, status: 1 })
+
+export const ClassBookingModel = mongoose.model<IClassBooking>('ClassBooking', ClassBookingSchema)
+
+/* ─────────────────────────────────────────────────────
+   SESSION HOMEWORK — assigned post-class tasks
+───────────────────────────────────────────────────── */
+export interface ISessionHomework extends Document {
+  id:          string
+  liveClassId: Types.ObjectId
+  assignedBy:  Types.ObjectId
+  title:       string
+  description: string
+  dueDate?:    Date
+  createdAt:   Date
+  updatedAt:   Date
+}
+
+const SessionHomeworkSchema = new Schema<ISessionHomework>(
+  {
+    liveClassId: { type: Schema.Types.ObjectId, ref: 'LiveClass', required: true },
+    assignedBy:  { type: Schema.Types.ObjectId, ref: 'User',      required: true },
+    title:       { type: String, required: true, trim: true, maxlength: 200 },
+    description: { type: String, default: '',   maxlength: 5000 },
+    dueDate:     { type: Date },
+  },
+  baseSchemaOptions,
+)
+
+SessionHomeworkSchema.index({ liveClassId: 1 })
+SessionHomeworkSchema.index({ assignedBy: 1 })
+
+export const SessionHomeworkModel = mongoose.model<ISessionHomework>('SessionHomework', SessionHomeworkSchema)
+
+/* ─────────────────────────────────────────────────────
+   HOMEWORK SUBMISSION — student submits work
+───────────────────────────────────────────────────── */
+export type HomeworkSubmissionStatus = 'submitted' | 'graded' | 'returned'
+
+export interface IHomeworkSubmission extends Document {
+  id:              string
+  homeworkId:      Types.ObjectId
+  userId:          Types.ObjectId
+  submissionText?: string
+  submissionUrl?:  string
+  grade?:          number
+  feedback?:       string
+  gradedAt?:       Date
+  gradedBy?:       Types.ObjectId
+  status:          HomeworkSubmissionStatus
+  createdAt:       Date
+  updatedAt:       Date
+}
+
+const HomeworkSubmissionSchema = new Schema<IHomeworkSubmission>(
+  {
+    homeworkId:      { type: Schema.Types.ObjectId, ref: 'SessionHomework', required: true },
+    userId:          { type: Schema.Types.ObjectId, ref: 'User',            required: true },
+    submissionText:  { type: String, maxlength: 10000 },
+    submissionUrl:   { type: String, maxlength: 500 },
+    grade:           { type: Number, min: 0, max: 100 },
+    feedback:        { type: String, maxlength: 2000 },
+    gradedAt:        { type: Date },
+    gradedBy:        { type: Schema.Types.ObjectId, ref: 'User' },
+    status:          { type: String, enum: ['submitted', 'graded', 'returned'], default: 'submitted' },
+  },
+  baseSchemaOptions,
+)
+
+HomeworkSubmissionSchema.index({ homeworkId: 1 })
+HomeworkSubmissionSchema.index({ userId: 1 })
+HomeworkSubmissionSchema.index({ homeworkId: 1, userId: 1 }, { unique: true })
+
+export const HomeworkSubmissionModel = mongoose.model<IHomeworkSubmission>('HomeworkSubmission', HomeworkSubmissionSchema)
+
+/* ── Class Feedback ─────────────────────────────────────────── */
+export interface IClassFeedback extends Document {
+  id: string
+  liveClassId: Types.ObjectId
+  userId:      Types.ObjectId
+  rating:      number   // 1–5
+  comment?:    string
+  createdAt:   Date
+  updatedAt:   Date
+}
+
+const ClassFeedbackSchema = new Schema<IClassFeedback>(
+  {
+    liveClassId: { type: Schema.Types.ObjectId, ref: 'LiveClass', required: true, index: true },
+    userId:      { type: Schema.Types.ObjectId, ref: 'User',      required: true },
+    rating:      { type: Number, min: 1, max: 5, required: true },
+    comment:     { type: String, maxlength: 1000 },
+  },
+  { timestamps: true },
+)
+ClassFeedbackSchema.index({ liveClassId: 1, userId: 1 }, { unique: true })
+ClassFeedbackSchema.virtual('id').get(function() { return this._id.toString() })
+ClassFeedbackSchema.set('toJSON', { virtuals: true })
+
+export const ClassFeedbackModel = mongoose.model<IClassFeedback>('ClassFeedback', ClassFeedbackSchema)

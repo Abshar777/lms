@@ -293,6 +293,140 @@ export async function sendCourseCompletion(
   })
 }
 
+/* ── Phase 5: Booking & Session reminder templates ──────── */
+
+export async function sendBookingConfirmation(
+  to: string,
+  name: string,
+  sessionTitle: string,
+  date: string,
+  joinUrl: string,
+): Promise<void> {
+  const subject = `Booking confirmed: ${sessionTitle}`
+  const html = wrap(subject, `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">Session booked! 🎉</h2>
+    <p>Hi ${escapeHtml(name)}, your seat is confirmed for <strong>${escapeHtml(sessionTitle)}</strong>.</p>
+    <table cellpadding="0" cellspacing="0" style="margin:18px 0;background:#F4F5F8;border-radius:12px;padding:16px;width:100%">
+      <tr><td style="font-size:14px;color:#374151;padding:4px 0">
+        <strong>Date &amp; Time:</strong> ${escapeHtml(date)}
+      </td></tr>
+    </table>
+    <p style="margin:24px 0">
+      <a href="${joinUrl}" style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
+        Join session →
+      </a>
+    </p>
+    <p style="font-size:12px;color:#9CA3AF">You'll receive reminder emails before the session starts.</p>
+  `)
+  await sender.send({ to, subject, html, text: `Your seat is confirmed for ${sessionTitle} on ${date}. Join: ${joinUrl}` })
+}
+
+export async function sendSessionLinkReminder(
+  to: string,
+  name: string,
+  sessionTitle: string,
+  date: string,
+  joinUrl: string,
+): Promise<void> {
+  const subject = `Tomorrow: ${sessionTitle}`
+  const html = wrap(subject, `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">Your session is tomorrow 📅</h2>
+    <p>Hi ${escapeHtml(name)}, just a reminder that <strong>${escapeHtml(sessionTitle)}</strong> is scheduled for tomorrow.</p>
+    <table cellpadding="0" cellspacing="0" style="margin:18px 0;background:#F4F5F8;border-radius:12px;padding:16px;width:100%">
+      <tr><td style="font-size:14px;color:#374151;padding:4px 0">
+        <strong>Date &amp; Time:</strong> ${escapeHtml(date)}
+      </td></tr>
+    </table>
+    <p style="margin:24px 0">
+      <a href="${joinUrl}" style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
+        Join session →
+      </a>
+    </p>
+  `)
+  await sender.send({ to, subject, html, text: `${sessionTitle} is tomorrow at ${date}. Join: ${joinUrl}` })
+}
+
+export async function sendDayOfReminder(
+  to: string,
+  name: string,
+  sessionTitle: string,
+  time: string,
+  joinUrl: string,
+): Promise<void> {
+  const subject = `Today: ${sessionTitle} at ${time}`
+  const html = wrap(subject, `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">Session today! ⏰</h2>
+    <p>Hi ${escapeHtml(name)}, <strong>${escapeHtml(sessionTitle)}</strong> is happening today at <strong>${escapeHtml(time)}</strong>.</p>
+    <p>Get ready and make sure your connection is stable.</p>
+    <p style="margin:24px 0">
+      <a href="${joinUrl}" style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
+        Join session →
+      </a>
+    </p>
+  `)
+  await sender.send({ to, subject, html, text: `${sessionTitle} is today at ${time}. Join: ${joinUrl}` })
+}
+
+export async function sendPreSessionReminder(
+  to: string,
+  name: string,
+  sessionTitle: string,
+  minutesLeft: number,
+  joinUrl: string,
+): Promise<void> {
+  const subject = `Starting in ${minutesLeft} mins: ${sessionTitle}`
+  const html = wrap(subject, `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">Starting soon! 🚀</h2>
+    <p>Hi ${escapeHtml(name)}, <strong>${escapeHtml(sessionTitle)}</strong> starts in <strong>${minutesLeft} minutes</strong>.</p>
+    <p>Click below to join now so you don't miss anything.</p>
+    <p style="margin:24px 0">
+      <a href="${joinUrl}" style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
+        Join now →
+      </a>
+    </p>
+  `)
+  await sender.send({ to, subject, html, text: `${sessionTitle} starts in ${minutesLeft} minutes. Join: ${joinUrl}` })
+}
+
+export async function sendRescheduledNotification(
+  to: string,
+  name: string,
+  sessionTitle: string,
+  oldDate: string,
+  newDate: string,
+): Promise<void> {
+  const subject = `Rescheduled: ${sessionTitle}`
+  const html = wrap(subject, `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">Session rescheduled 📆</h2>
+    <p>Hi ${escapeHtml(name)}, <strong>${escapeHtml(sessionTitle)}</strong> has been rescheduled.</p>
+    <table cellpadding="0" cellspacing="0" style="margin:18px 0;background:#F4F5F8;border-radius:12px;padding:16px;width:100%">
+      <tr><td style="font-size:14px;color:#374151;padding:4px 0">
+        <strong>Old time:</strong> ${escapeHtml(oldDate)}
+      </td></tr>
+      <tr><td style="font-size:14px;color:#374151;padding:4px 0">
+        <strong>New time:</strong> ${escapeHtml(newDate)}
+      </td></tr>
+    </table>
+    <p>Your booking is automatically updated. We'll send you reminders for the new time.</p>
+  `)
+  await sender.send({ to, subject, html, text: `${sessionTitle} has been rescheduled from ${oldDate} to ${newDate}.` })
+}
+
+export async function sendCancelledNotification(
+  to: string,
+  name: string,
+  sessionTitle: string,
+  date: string,
+): Promise<void> {
+  const subject = `Cancelled: ${sessionTitle}`
+  const html = wrap(subject, `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">Session cancelled</h2>
+    <p>Hi ${escapeHtml(name)}, unfortunately <strong>${escapeHtml(sessionTitle)}</strong> scheduled for ${escapeHtml(date)} has been cancelled.</p>
+    <p>Please contact the admin team if you have any questions.</p>
+  `)
+  await sender.send({ to, subject, html, text: `${sessionTitle} on ${date} has been cancelled.` })
+}
+
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]!))
 }

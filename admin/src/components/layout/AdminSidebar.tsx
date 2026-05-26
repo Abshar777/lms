@@ -6,23 +6,39 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, BookOpen, Users, GraduationCap,
   Tag, Star, Settings, ChevronLeft, LogOut, X,
-  ShoppingBag, Ticket, Map, ClipboardList, Video,
+  ShoppingBag, Ticket, Map, ClipboardList, Video, UsersRound, CalendarDays, BarChart3,
 } from 'lucide-react'
 import { useUIStore } from '@/store/ui.store'
 import { useAllLiveClasses } from '@/lib/api/liveClasses'
+import { useCurrentUser, logout } from '@/lib/api/user'
+import { useRouter } from 'next/navigation'
 
-const navItems = [
+/* ── All nav items (admin sees all) ──────────────────── */
+const adminNavItems = [
   { label: 'Dashboard',      href: '/',                 icon: LayoutDashboard },
   { label: 'Courses',        href: '/courses',           icon: BookOpen },
   { label: 'Learning Paths', href: '/learning-paths',   icon: Map },
   { label: 'Live Classes',   href: '/live-classes',     icon: Video },
+  { label: 'Batches',        href: '/batches',           icon: UsersRound },
   { label: 'Students',       href: '/students',          icon: Users },
   { label: 'Instructors',    href: '/instructors',       icon: GraduationCap },
   { label: 'Categories',     href: '/categories',        icon: Tag },
   { label: 'Reviews',        href: '/reviews',           icon: Star },
   { label: 'Orders',         href: '/orders',            icon: ShoppingBag },
   { label: 'Coupons',        href: '/coupons',           icon: Ticket },
+  { label: 'Reports',        href: '/reports',           icon: BarChart3 },
   { label: 'Audit Logs',     href: '/audit-logs',        icon: ClipboardList },
+]
+
+/* ── Instructor-restricted nav (view users + own content) ─ */
+const instructorNavItems = [
+  { label: 'My Courses',    href: '/courses',            icon: BookOpen },
+  { label: 'Live Classes',  href: '/live-classes',       icon: Video },
+  { label: 'My Batches',    href: '/batches',            icon: UsersRound },
+  { label: 'Availability',  href: '/availability',       icon: CalendarDays },
+  { label: 'Students',      href: '/students',            icon: Users },
+  { label: 'Instructors',   href: '/instructors',        icon: GraduationCap },
+  { label: 'Reviews',       href: '/reviews',             icon: Star },
 ]
 
 const bottomItems = [
@@ -35,12 +51,26 @@ interface SidebarContentProps {
 }
 
 function SidebarContent({ collapsed, onClose }: SidebarContentProps) {
-  const pathname = usePathname()
+  const pathname      = usePathname()
+  const router        = useRouter()
+  const { data: user } = useCurrentUser()
   const { data: allLive } = useAllLiveClasses('live')
   const liveNowCount = allLive?.length ?? 0
 
+  const isInstructor = user?.role === 'instructor'
+  const navItems     = isInstructor ? instructorNavItems : adminNavItems
+  const roleLabel    = isInstructor ? 'Instructor' : 'Admin'
+
   const isActive = (href: string) =>
     href === '/' ? pathname === '/' : pathname.startsWith(href)
+
+  const handleLogout = async () => {
+    await logout()
+    router.replace('/login')
+  }
+
+  /* First letter of display name for avatar */
+  const initial = (user?.name ?? 'A').charAt(0).toUpperCase()
 
   return (
     <>
@@ -60,7 +90,7 @@ function SidebarContent({ collapsed, onClose }: SidebarContentProps) {
               style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 16 }}>
               LearnOS
               <span className="ml-1.5 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-                style={{ background: 'rgba(255,107,26,0.18)', color: '#FF6B1A' }}>Admin</span>
+                style={{ background: 'rgba(255,107,26,0.18)', color: '#FF6B1A' }}>{roleLabel}</span>
             </motion.span>
           )}
         </AnimatePresence>
@@ -170,17 +200,23 @@ function SidebarContent({ collapsed, onClose }: SidebarContentProps) {
         <div className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5"
           style={{ background: 'rgba(255,255,255,0.04)' }}>
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-            style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>A</div>
+            style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>{initial}</div>
           <AnimatePresence>
             {!collapsed && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="min-w-0 flex-1">
-                <p className="truncate text-xs font-semibold text-white">Admin User</p>
-                <p className="truncate text-[10px]" style={{ color: 'rgba(255,255,255,0.3)' }}>admin@learnos.com</p>
+                <p className="truncate text-xs font-semibold text-white">{user?.name ?? '—'}</p>
+                <p className="truncate text-[10px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  {user?.email ?? ''}
+                </p>
               </motion.div>
             )}
           </AnimatePresence>
-          <button className="flex-shrink-0 transition-opacity hover:opacity-70" style={{ color: 'rgba(255,255,255,0.3)' }}>
+          <button
+            onClick={handleLogout}
+            className="flex-shrink-0 transition-opacity hover:opacity-70 hover:text-red-400"
+            style={{ color: 'rgba(255,255,255,0.3)' }}
+            title="Sign out">
             <LogOut size={14} />
           </button>
         </div>

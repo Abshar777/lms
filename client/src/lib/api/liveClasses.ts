@@ -31,6 +31,11 @@ export interface LiveClass {
   startedAt?:     string
   endedAt?:       string
 
+  /* Batch scheduling */
+  batchId?:        string | { id: string; name: string }
+  sessionCapacity: number
+  bookedCount:     number
+
   createdAt:      string
   updatedAt:      string
 }
@@ -77,12 +82,23 @@ export function fmtCountdown(startIso: string, now: number): string {
 
 /* ── Query keys ──────────────────────────────────────── */
 export const liveClassKeys = {
-  forCourse:   (slug: string) => ['live-classes', 'course', slug] as const,
-  upcoming:    ['live-classes', 'upcoming']                         as const,
-  watch:       (id: string)   => ['live-classes', id, 'watch']     as const,
+  forCourse:   (slug: string)   => ['live-classes', 'course', slug]     as const,
+  myBatch:     (status: string) => ['live-classes', 'my-batch', status] as const,
+  upcoming:    ['live-classes', 'upcoming']                              as const,
+  watch:       (id: string)     => ['live-classes', id, 'watch']        as const,
 }
 
 /* ── Hooks ───────────────────────────────────────────── */
+
+/* GET /live-classes — all sessions for the student's batches */
+export function useMyBatchLiveClasses(status: string = 'all') {
+  return useQuery({
+    queryKey:        liveClassKeys.myBatch(status),
+    queryFn:         () => apiGet<LiveClass[]>('/live-classes', status !== 'all' ? { status } : {}),
+    staleTime:       15_000,
+    refetchInterval: 30_000,
+  })
+}
 
 /* GET /courses/:slug/live-classes */
 export function useLiveClassesForCourse(slug: string | undefined) {

@@ -177,6 +177,21 @@ export class AdminController {
     } catch (err) { next(err) }
   }
 
+  createUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const dto = req.body as {
+        name:      string
+        email:     string
+        password:  string
+        role:      UserRole
+        bio?:      string
+        headline?: string
+      }
+      const user = await this.userService.adminCreateUser(dto)
+      sendSuccess(res, user, 'User created', 201)
+    } catch (err) { next(err) }
+  }
+
   /* ─── Reviews (global) ────────────────────────── */
   listReviews = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

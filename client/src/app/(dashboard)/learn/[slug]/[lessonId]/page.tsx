@@ -75,8 +75,9 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
     )
   }
 
-  /* ── Enrollment gate ────────────────────────────── */
-  if (progress && !progress.isEnrolled) {
+  /* ── Enrollment gate (skip for free-preview lessons) ── */
+  const thisLesson = data?.lessons?.find(l => l.id === lessonId)
+  if (progress && !progress.isEnrolled && !thisLesson?.isFree) {
     return (
       <div className="flex h-[70vh] flex-col items-center justify-center gap-4">
         <div className="flex h-14 w-14 items-center justify-center rounded-3xl"
@@ -88,6 +89,27 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
           className="rounded-xl px-5 py-2.5 text-sm font-bold text-white"
           style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
           Go to course page
+        </Link>
+      </div>
+    )
+  }
+
+  /* ── Blocked-lesson gate ── */
+  if (progress?.isEnrolled && (progress.blockedLessons ?? []).includes(lessonId)) {
+    return (
+      <div className="flex h-[70vh] flex-col items-center justify-center gap-4">
+        <div className="flex h-14 w-14 items-center justify-center rounded-3xl"
+          style={{ background: 'rgba(99,102,241,0.10)', border: '1px solid rgba(99,102,241,0.22)' }}>
+          <Lock size={22} style={{ color: '#6366F1' }} />
+        </div>
+        <p className="text-base font-semibold" style={{ color: '#0D0F1A' }}>This lesson is not available to you</p>
+        <p className="text-sm text-center max-w-xs" style={{ color: '#9CA3AF' }}>
+          Your instructor has restricted access to this lesson. Contact them for more information.
+        </p>
+        <Link href={`/courses/${slug}`}
+          className="rounded-xl px-5 py-2.5 text-sm font-bold text-white"
+          style={{ background: 'linear-gradient(135deg, #6366F1, #818CF8)' }}>
+          Back to course
         </Link>
       </div>
     )

@@ -11,6 +11,7 @@ export interface EnrollmentSummary {
   lastLessonId:     string | null
   certificateId:    string | null
   completedLessons: string[]
+  blockedLessons:   string[]
 }
 
 export interface MyEnrollment {
