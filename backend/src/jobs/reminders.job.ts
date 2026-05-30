@@ -1,128 +1,126 @@
 /**
- * Reminder cron job — runs on backend startup.
- * Sends booking reminders via email (and optionally WhatsApp).
+ * reminders.job.ts — Booking reminder cron jobs
  *
- * Schedule:
- *  - Every hour: check for sessions starting in ~24h → day-before email
- *  - Every hour: check for sessions starting in ~30min → pre-session email
- *  - Every day 7am: check for sessions today → day-of email
+ * Three tiers of reminders for every booked class slot:
+ *   1. Day-before  — sent when session is 23–25 h away   (runs every hour)
+ *   2. Day-of      — sent on the morning of the session   (runs daily at 7am)
+ *   3. Pre-session — sent when session is 25–35 min away  (runs every hour)
  *
- * Requires: npm install node-cron
+ * Each reminder:
+ *   a) Creates an in-app notification  (always, even if SMTP is unconfigured)
+ *   b) Sends an email                  (non-blocking)
+ *   c) If email fails → creates a 'system' in-app notification so the student
+ *      still gets alerted inside the app
+ *
+ * Duplicate prevention: reminder flag fields on ClassBooking
+ *   (reminderDayBeforeSent / reminderDayOfSent / reminderPreSessionSent)
+ *   are set to true after the first successful dispatch.
  */
 import cron from 'node-cron'
+import { logger } from '@/utils/logger.ts'
+import { NotificationService } from '@/services/notification.service.ts'
 import {
   sendSessionLinkReminder,
   sendDayOfReminder,
   sendPreSessionReminder,
 } from '@/services/email.service.ts'
 
+const notifSvc = new NotificationService()
+
+/* ── Types ──────────────────────────────────────────── */
 interface BookingWithRefs {
-  _id: any
-  userId: { name: string; email: string }
+  _id:    any
+  userId: { _id: any; id: string; name: string; email: string }
   liveClassId: {
-    title: string
+    id:             string
+    title:          string
     scheduledStart: Date
-    meetingUrl?: string
+    meetingUrl?:    string
     muxPlaybackId?: string
   }
-  reminderDayBeforeSent: boolean
-  reminderDayOfSent:     boolean
+  reminderDayBeforeSent:  boolean
+  reminderDayOfSent:      boolean
   reminderPreSessionSent: boolean
 }
 
+/* ── Helpers ─────────────────────────────────────────── */
 function getJoinUrl(lc: BookingWithRefs['liveClassId']): string {
-  return lc.meetingUrl ?? `${process.env.CLIENT_URL ?? 'http://localhost:3000'}/live-classes`
+  return lc.meetingUrl
+    ?? `${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/live-classes/${lc.id}/watch`
 }
 
+function fmtFull(d: Date): string {
+  return d.toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })
+}
+
+function fmtTime(d: Date): string {
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
+/**
+ * Dispatch one reminder:
+ *   1. In-app notification (always)
+ *   2. Email — on failure → extra system notification
+ */
+async function dispatch(
+  userId:       string,
+  sessionTitle: string,
+  sessionStart: Date,
+  kind:         'day-before' | 'day-of' | 'pre-session',
+  emailFn:      () => Promise<void>,
+): Promise<void> {
+  const dateLabel = fmtFull(sessionStart)
+  const timeLabel = fmtTime(sessionStart)
+
+  /* ── Notification body by kind ── */
+  const notifBody = {
+    'day-before':  `📅 Reminder: "${sessionTitle}" is tomorrow at ${timeLabel}. Make sure you're ready!`,
+    'day-of':      `⏰ Today's class: "${sessionTitle}" starts at ${timeLabel}. Join on time!`,
+    'pre-session': `🚀 "${sessionTitle}" starts in ~30 minutes. Get ready to join!`,
+  }[kind]
+
+  const notifTitle = {
+    'day-before':  `Class tomorrow: ${sessionTitle}`,
+    'day-of':      `Class today: ${sessionTitle} at ${timeLabel}`,
+    'pre-session': `Starting soon: ${sessionTitle}`,
+  }[kind]
+
+  /* 1. In-app notification — always fires */
+  await notifSvc.create(userId, {
+    kind:  'class-reminder',
+    title: notifTitle,
+    body:  notifBody,
+    link:  '/class-bookings',
+  }).catch(err => logger.error({ err, userId, kind }, '[Reminder] Failed to create in-app notification'))
+
+  /* 2. Email — failure creates a system notification instead of silently dropping */
+  try {
+    await emailFn()
+  } catch (err) {
+    logger.error({ err, userId, sessionTitle, kind }, '[Reminder] Email delivery failed')
+    await notifSvc.create(userId, {
+      kind:  'system',
+      title: 'Reminder email could not be sent',
+      body:  `We tried to email you about "${sessionTitle}" (${dateLabel}) but delivery failed. Check your Class Schedule to stay on track.`,
+      link:  '/class-bookings',
+    }).catch(() => {/* truly non-fatal */})
+  }
+}
+
+/* ── Day-before job ──────────────────────────────────── */
 async function runDayBeforeReminders(): Promise<void> {
   try {
     const { ClassBookingModel } = await import('@/models/schema.ts')
-    const now   = new Date()
-    const from  = new Date(now.getTime() + 23 * 60 * 60 * 1000)   // 23h from now
-    const to    = new Date(now.getTime() + 25 * 60 * 60 * 1000)   // 25h from now
+    const now  = new Date()
+    const from = new Date(now.getTime() + 23 * 60 * 60 * 1000)
+    const to   = new Date(now.getTime() + 25 * 60 * 60 * 1000)
 
     const bookings = await ClassBookingModel.find({
       status: 'booked',
       reminderDayBeforeSent: false,
     })
-      .populate<{ userId: { name: string; email: string } }>('userId', 'name email')
-      .populate<{ liveClassId: BookingWithRefs['liveClassId'] }>('liveClassId', 'title scheduledStart meetingUrl muxPlaybackId')
-      .lean({ virtuals: true }) as unknown as BookingWithRefs[]
-
-    const due = bookings.filter(b => {
-      const start = new Date(b.liveClassId.scheduledStart)
-      return start >= from && start <= to
-    })
-
-    for (const b of due) {
-      const dateStr = new Date(b.liveClassId.scheduledStart).toLocaleString()
-      await sendSessionLinkReminder(
-        b.userId.email,
-        b.userId.name,
-        b.liveClassId.title,
-        dateStr,
-        getJoinUrl(b.liveClassId),
-      ).catch(e => console.error('[Reminder] day-before email failed:', e))
-      await ClassBookingModel.findByIdAndUpdate(b._id, { reminderDayBeforeSent: true })
-    }
-    if (due.length) console.log(`[Reminders] Day-before: sent ${due.length} emails`)
-  } catch (e) {
-    console.error('[Reminders] day-before job error:', e)
-  }
-}
-
-async function runDayOfReminders(): Promise<void> {
-  try {
-    const { ClassBookingModel } = await import('@/models/schema.ts')
-    const now   = new Date()
-    const start = new Date(now)
-    start.setHours(0, 0, 0, 0)
-    const end   = new Date(now)
-    end.setHours(23, 59, 59, 999)
-
-    const bookings = await ClassBookingModel.find({
-      status: 'booked',
-      reminderDayOfSent: false,
-    })
-      .populate<{ userId: { name: string; email: string } }>('userId', 'name email')
-      .populate<{ liveClassId: BookingWithRefs['liveClassId'] }>('liveClassId', 'title scheduledStart meetingUrl muxPlaybackId')
-      .lean({ virtuals: true }) as unknown as BookingWithRefs[]
-
-    const due = bookings.filter(b => {
-      const s = new Date(b.liveClassId.scheduledStart)
-      return s >= start && s <= end
-    })
-
-    for (const b of due) {
-      const timeStr = new Date(b.liveClassId.scheduledStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      await sendDayOfReminder(
-        b.userId.email,
-        b.userId.name,
-        b.liveClassId.title,
-        timeStr,
-        getJoinUrl(b.liveClassId),
-      ).catch(e => console.error('[Reminder] day-of email failed:', e))
-      await ClassBookingModel.findByIdAndUpdate(b._id, { reminderDayOfSent: true })
-    }
-    if (due.length) console.log(`[Reminders] Day-of: sent ${due.length} emails`)
-  } catch (e) {
-    console.error('[Reminders] day-of job error:', e)
-  }
-}
-
-async function runPreSessionReminders(): Promise<void> {
-  try {
-    const { ClassBookingModel } = await import('@/models/schema.ts')
-    const now  = new Date()
-    const from = new Date(now.getTime() + 25 * 60 * 1000)   // 25min from now
-    const to   = new Date(now.getTime() + 35 * 60 * 1000)   // 35min from now
-
-    const bookings = await ClassBookingModel.find({
-      status: 'booked',
-      reminderPreSessionSent: false,
-    })
-      .populate<{ userId: { name: string; email: string } }>('userId', 'name email')
-      .populate<{ liveClassId: BookingWithRefs['liveClassId'] }>('liveClassId', 'title scheduledStart meetingUrl muxPlaybackId')
+      .populate<{ userId: BookingWithRefs['userId'] }>('userId', 'name email')
+      .populate<{ liveClassId: BookingWithRefs['liveClassId'] }>('liveClassId', 'id title scheduledStart meetingUrl muxPlaybackId')
       .lean({ virtuals: true }) as unknown as BookingWithRefs[]
 
     const due = bookings.filter(b => {
@@ -131,30 +129,111 @@ async function runPreSessionReminders(): Promise<void> {
     })
 
     for (const b of due) {
-      await sendPreSessionReminder(
-        b.userId.email,
-        b.userId.name,
-        b.liveClassId.title,
-        30,
-        getJoinUrl(b.liveClassId),
-      ).catch(e => console.error('[Reminder] pre-session email failed:', e))
-      await ClassBookingModel.findByIdAndUpdate(b._id, { reminderPreSessionSent: true })
+      const userId   = b.userId.id ?? b.userId._id?.toString()
+      const start    = new Date(b.liveClassId.scheduledStart)
+      const joinUrl  = getJoinUrl(b.liveClassId)
+
+      await dispatch(userId, b.liveClassId.title, start, 'day-before', () =>
+        sendSessionLinkReminder(b.userId.email, b.userId.name, b.liveClassId.title, fmtFull(start), joinUrl),
+      )
+
+      await ClassBookingModel.findByIdAndUpdate(b._id, { reminderDayBeforeSent: true })
     }
-    if (due.length) console.log(`[Reminders] Pre-session: sent ${due.length} emails`)
-  } catch (e) {
-    console.error('[Reminders] pre-session job error:', e)
+
+    if (due.length) logger.info(`[Reminders] Day-before: dispatched ${due.length} reminders`)
+  } catch (err) {
+    logger.error({ err }, '[Reminders] day-before job error')
   }
 }
 
+/* ── Day-of job ─────────────────────────────────────── */
+async function runDayOfReminders(): Promise<void> {
+  try {
+    const { ClassBookingModel } = await import('@/models/schema.ts')
+    const now   = new Date()
+    const start = new Date(now); start.setHours(0, 0, 0, 0)
+    const end   = new Date(now); end.setHours(23, 59, 59, 999)
+
+    const bookings = await ClassBookingModel.find({
+      status: 'booked',
+      reminderDayOfSent: false,
+    })
+      .populate<{ userId: BookingWithRefs['userId'] }>('userId', 'name email')
+      .populate<{ liveClassId: BookingWithRefs['liveClassId'] }>('liveClassId', 'id title scheduledStart meetingUrl muxPlaybackId')
+      .lean({ virtuals: true }) as unknown as BookingWithRefs[]
+
+    const due = bookings.filter(b => {
+      const s = new Date(b.liveClassId.scheduledStart)
+      return s >= start && s <= end
+    })
+
+    for (const b of due) {
+      const userId  = b.userId.id ?? b.userId._id?.toString()
+      const classAt = new Date(b.liveClassId.scheduledStart)
+      const joinUrl = getJoinUrl(b.liveClassId)
+
+      await dispatch(userId, b.liveClassId.title, classAt, 'day-of', () =>
+        sendDayOfReminder(b.userId.email, b.userId.name, b.liveClassId.title, fmtTime(classAt), joinUrl),
+      )
+
+      await ClassBookingModel.findByIdAndUpdate(b._id, { reminderDayOfSent: true })
+    }
+
+    if (due.length) logger.info(`[Reminders] Day-of: dispatched ${due.length} reminders`)
+  } catch (err) {
+    logger.error({ err }, '[Reminders] day-of job error')
+  }
+}
+
+/* ── Pre-session job (30 min) ────────────────────────── */
+async function runPreSessionReminders(): Promise<void> {
+  try {
+    const { ClassBookingModel } = await import('@/models/schema.ts')
+    const now  = new Date()
+    const from = new Date(now.getTime() + 25 * 60 * 1000)
+    const to   = new Date(now.getTime() + 35 * 60 * 1000)
+
+    const bookings = await ClassBookingModel.find({
+      status: 'booked',
+      reminderPreSessionSent: false,
+    })
+      .populate<{ userId: BookingWithRefs['userId'] }>('userId', 'name email')
+      .populate<{ liveClassId: BookingWithRefs['liveClassId'] }>('liveClassId', 'id title scheduledStart meetingUrl muxPlaybackId')
+      .lean({ virtuals: true }) as unknown as BookingWithRefs[]
+
+    const due = bookings.filter(b => {
+      const s = new Date(b.liveClassId.scheduledStart)
+      return s >= from && s <= to
+    })
+
+    for (const b of due) {
+      const userId  = b.userId.id ?? b.userId._id?.toString()
+      const classAt = new Date(b.liveClassId.scheduledStart)
+      const joinUrl = getJoinUrl(b.liveClassId)
+
+      await dispatch(userId, b.liveClassId.title, classAt, 'pre-session', () =>
+        sendPreSessionReminder(b.userId.email, b.userId.name, b.liveClassId.title, 30, joinUrl),
+      )
+
+      await ClassBookingModel.findByIdAndUpdate(b._id, { reminderPreSessionSent: true })
+    }
+
+    if (due.length) logger.info(`[Reminders] Pre-session: dispatched ${due.length} reminders`)
+  } catch (err) {
+    logger.error({ err }, '[Reminders] pre-session job error')
+  }
+}
+
+/* ── Entry point ─────────────────────────────────────── */
 export function startReminderJobs(): void {
-  // Every hour: day-before reminders
+  // Every hour at :00 — day-before reminders (23–25 h window)
   cron.schedule('0 * * * *', runDayBeforeReminders)
 
-  // Every day at 7am: day-of reminders
+  // Every day at 7:00am — day-of reminders
   cron.schedule('0 7 * * *', runDayOfReminders)
 
-  // Every hour: pre-session reminders
+  // Every hour at :30 — pre-session reminders (25–35 min window)
   cron.schedule('30 * * * *', runPreSessionReminders)
 
-  console.log('[Reminders] Cron jobs scheduled')
+  logger.info('[Reminders] Cron jobs scheduled')
 }

@@ -185,11 +185,13 @@ router.delete('/reviews/:id', requireAdmin, audit('review.delete', 'Review', r =
 
 /* ─── Sections + Lessons (admin + own-course instructor) ─── */
 const sectionCreateSchema = z.object({
-  title: z.string().min(1).max(255).trim(),
+  title:       z.string().min(1).max(255).trim(),
+  description: z.string().max(1000).optional(),
 })
 const sectionUpdateSchema = z.object({
-  title: z.string().min(1).max(255).trim().optional(),
-  order: z.coerce.number().int().min(0).optional(),
+  title:       z.string().min(1).max(255).trim().optional(),
+  description: z.string().max(1000).optional(),
+  order:       z.coerce.number().int().min(0).optional(),
 })
 const reorderSchema = z.object({
   ids: z.array(z.string().min(1)).min(1),

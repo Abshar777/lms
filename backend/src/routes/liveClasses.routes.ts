@@ -13,20 +13,37 @@ function sendSuccess(res: Response, data: unknown, message = 'OK', status = 200)
   res.status(status).json({ success: true, data, message })
 }
 
-/* ── GET /live-classes — all sessions available to this student ─────────────────
-   Returns live classes for batches the student belongs to, sorted by scheduledStart.
+/* ── GET /live-classes — all sessions visible to this student ──────────────────
+   Shows ALL live classes from batches the student belongs to (visibility gate).
+   Booking is separately gated by course enrollment in the POST /bookings route.
+   Each class has `isEnrolled: boolean` so the UI can show "Purchase to book" vs "Book".
    Optionally filter by ?status=scheduled|live|ended
 ──────────────────────────────────────────────────────────────────────────────── */
 router.get('/', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { BatchModel, LiveClassModel } = await import('@/models/schema.ts')
+    const { BatchModel, LiveClassModel, EnrollmentModel } = await import('@/models/schema.ts')
     const { Types } = await import('mongoose')
     const userId = req.user!.id
     const status = String(req.query['status'] ?? '')
 
-    // Find all batches this student is in
+    // Find ALL batches this student is in (no enrollment filter — just membership)
     const batches = await BatchModel.find({ studentIds: new Types.ObjectId(userId) }).lean()
     const batchIds = batches.map((b: any) => b._id)
+
+    if (batchIds.length === 0) return sendSuccess(res, [])
+
+    // Find the student's active enrollments to mark isEnrolled on each class
+    const enrollments = await EnrollmentModel.find(
+      { userId: new Types.ObjectId(userId), status: 'active' },
+      { courseId: 1 },
+    ).lean()
+    const enrolledCourseIds = new Set(enrollments.map((e: any) => String(e.courseId)))
+
+    // Build a map of batchId → courseId for quick lookup
+    const batchCourseMap = new Map<string, string | null>()
+    for (const b of batches as any[]) {
+      batchCourseMap.set(String(b._id), b.courseId ? String(b.courseId) : null)
+    }
 
     const filter: Record<string, any> = { batchId: { $in: batchIds } }
     if (status && status !== 'all') filter['status'] = status
@@ -37,7 +54,16 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
       .sort({ scheduledStart: 1 })
       .lean({ virtuals: true })
 
-    sendSuccess(res, classes)
+    // Annotate each class with isEnrolled:
+    //  true  → student can book (batch has no course, OR student is enrolled)
+    //  false → student must purchase first
+    const annotated = (classes as any[]).map(c => {
+      const courseId = batchCourseMap.get(String(c.batchId))
+      const isEnrolled = !courseId || enrolledCourseIds.has(courseId)
+      return { ...c, isEnrolled }
+    })
+
+    sendSuccess(res, annotated)
   } catch (err) { next(err) }
 })
 

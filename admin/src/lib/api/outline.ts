@@ -4,12 +4,13 @@ import { api } from '@/lib/axios'
 
 /* ─── Types ───────────────────────────────────────── */
 export interface AdminSection {
-  id:        string
-  courseId:  string
-  title:     string
-  order:     number
-  createdAt: string
-  updatedAt: string
+  id:           string
+  courseId:     string
+  title:        string
+  description?: string
+  order:        number
+  createdAt:    string
+  updatedAt:    string
 }
 
 export interface AdminLesson {
@@ -85,10 +86,10 @@ export function useCourseOutline(courseId: string) {
 export function useCreateSection(courseId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (title: string) => {
+    mutationFn: async (payload: { title: string; description?: string }) => {
       const res = await api.post<{ success: true; data: AdminSection }>(
         `/admin/courses/${courseId}/sections`,
-        { title },
+        payload,
       )
       return res.data.data
     },
@@ -99,9 +100,9 @@ export function useCreateSection(courseId: string) {
 export function useUpdateSection(courseId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, title }: { id: string; title: string }) => {
+    mutationFn: async ({ id, ...dto }: { id: string; title?: string; description?: string }) => {
       const res = await api.patch<{ success: true; data: AdminSection }>(
-        `/admin/sections/${id}`, { title },
+        `/admin/sections/${id}`, dto,
       )
       return res.data.data
     },

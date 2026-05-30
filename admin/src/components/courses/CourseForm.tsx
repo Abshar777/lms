@@ -8,13 +8,20 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import {
   BookOpen, DollarSign, Settings, Tag, Image, Link as LinkIcon,
-  Loader2, ArrowLeft, Check, AlertCircle, ChevronDown,
+  Loader2, ArrowLeft, Check, AlertCircle, ChevronDown, Layers,
 } from 'lucide-react'
+import dynamic from 'next/dynamic'
 import { useCreateCourse, useUpdateCourse } from '@/lib/api/courses'
 import { useCategories } from '@/lib/api/categories'
 import { useToast } from '@/store/ui.store'
 import { MediaUploadField } from '@/components/ui/MediaUploadField'
 import type { Course, CourseFormValues } from '@/types/index'
+
+/* Lazy-loaded so it gets its own webpack chunk and doesn't bloat the form chunk */
+const ModulesSection = dynamic(
+  () => import('@/components/courses/ModulesSection').then(m => ({ default: m.ModulesSection })),
+  { ssr: false },
+)
 
 /* ── Zod schema ─────────────────────────────────────────────── */
 const schema = z.object({
@@ -35,7 +42,7 @@ const schema = z.object({
 type Values = z.infer<typeof schema>
 
 /* ── Tab config ─────────────────────────────────────────────── */
-const TABS = [
+const TABS_BASE = [
   { id: 'basics',  label: 'Basics',   icon: BookOpen },
   { id: 'media',   label: 'Media',    icon: Image },
   { id: 'pricing', label: 'Pricing',  icon: DollarSign },
@@ -43,7 +50,12 @@ const TABS = [
   { id: 'publish', label: 'Publish',  icon: Settings },
 ] as const
 
-type TabId = typeof TABS[number]['id']
+const TABS_EDIT = [
+  ...TABS_BASE,
+  { id: 'modules', label: 'Modules',  icon: Layers },
+] as const
+
+type TabId = typeof TABS_EDIT[number]['id']
 
 /* ── Field wrapper ───────────────────────────────────────────── */
 function Field({ label, error, children, hint }: { label: string; error?: string; children: React.ReactNode; hint?: string }) {
@@ -151,14 +163,16 @@ export function CourseForm({ course }: CourseFormProps) {
       if (isEditing && course) {
         await updateMutation.mutateAsync({ id: course.id, data })
         toast.success('Course updated')
+        setSavedSuccess(true)
+        setTimeout(() => { router.push('/courses') }, 800)
       } else {
-        await createMutation.mutateAsync(data as CourseFormValues)
-        toast.success('Course created')
+        const created = await createMutation.mutateAsync(data as CourseFormValues)
+        toast.success('Course created — now add your modules!')
+        setSavedSuccess(true)
+        setTimeout(() => {
+          router.push(created?.id ? `/courses/${created.id}/edit` : '/courses')
+        }, 800)
       }
-      setSavedSuccess(true)
-      setTimeout(() => {
-        router.push('/courses')
-      }, 800)
     } catch (err: any) {
       const msg = err?.response?.data?.error?.message
         ?? err?.response?.data?.error?.details?.[0]?.message
@@ -174,36 +188,50 @@ export function CourseForm({ course }: CourseFormProps) {
     publish: !!(errors.status),
   }
 
-  return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      {/* ── Tab nav ──────────────────────────────────── */}
-      <div className="mb-6 flex items-center gap-1 overflow-x-auto rounded-2xl p-1"
-        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
-        {TABS.map(tab => {
-          const Icon    = tab.icon
-          const active  = activeTab === tab.id
-          const hasErr  = tabErrors[tab.id]
-          return (
-            <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
-              className="relative flex flex-shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all"
-              style={active
-                ? { background: 'rgba(255,107,26,0.16)', color: '#FF6B1A' }
-                : { color: 'rgba(255,255,255,0.45)' }}>
-              <Icon size={14} />
-              {tab.label}
-              {hasErr && (
-                <span className="ml-0.5 h-1.5 w-1.5 rounded-full" style={{ background: '#EF4444' }} />
-              )}
-              {active && (
-                <motion.div layoutId="tab-indicator" className="absolute inset-0 rounded-xl"
-                  style={{ background: 'rgba(255,107,26,0.14)' }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }} />
-              )}
-            </button>
-          )
-        })}
-      </div>
+  /* ── Shared tab nav (outside any form) ──────────── */
+  const tabNav = (
+    <div className="mb-6 flex items-center gap-1 overflow-x-auto rounded-2xl p-1"
+      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+      {(isEditing ? TABS_EDIT : TABS_BASE).map(tab => {
+        const Icon   = tab.icon
+        const active = activeTab === tab.id
+        const hasErr = tabErrors[tab.id as TabId]
+        return (
+          <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
+            className="relative flex flex-shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all"
+            style={active
+              ? { background: 'rgba(255,107,26,0.16)', color: '#FF6B1A' }
+              : { color: 'rgba(255,255,255,0.45)' }}>
+            <Icon size={14} />
+            {tab.label}
+            {hasErr && (
+              <span className="ml-0.5 h-1.5 w-1.5 rounded-full" style={{ background: '#EF4444' }} />
+            )}
+            {active && (
+              <motion.div layoutId="tab-indicator" className="absolute inset-0 rounded-xl"
+                style={{ background: 'rgba(255,107,26,0.14)' }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }} />
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
 
+  /* ── Modules panel — completely outside any form ─ */
+  if (activeTab === 'modules' && course) {
+    return (
+      <>
+        {tabNav}
+        <ModulesSection courseId={course.id} />
+      </>
+    )
+  }
+
+  return (
+    <>
+      {tabNav}
+      <form onSubmit={handleSubmit(onSubmit)}>
       {/* ── Tab panels ───────────────────────────────── */}
       <div className="rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
         <AnimatePresence mode="wait">
@@ -418,6 +446,7 @@ export function CourseForm({ course }: CourseFormProps) {
               })}
             </motion.div>
           )}
+
         </AnimatePresence>
       </div>
 
@@ -440,9 +469,9 @@ export function CourseForm({ course }: CourseFormProps) {
         </button>
 
         <div className="flex items-center gap-3">
-          {/* Tab nav shortcuts */}
+          {/* Tab nav dot shortcuts */}
           <div className="hidden items-center gap-1 sm:flex">
-            {TABS.map((tab, i) => (
+            {(isEditing ? TABS_EDIT : TABS_BASE).map((tab) => (
               <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
                 className="flex h-1.5 rounded-full transition-all"
                 style={{ width: activeTab === tab.id ? 16 : 6, background: activeTab === tab.id ? '#FF6B1A' : 'rgba(255,255,255,0.15)' }} />
@@ -462,6 +491,7 @@ export function CourseForm({ course }: CourseFormProps) {
           </motion.button>
         </div>
       </div>
-    </form>
+      </form>
+    </>
   )
 }

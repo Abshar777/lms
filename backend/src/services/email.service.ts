@@ -427,6 +427,36 @@ export async function sendCancelledNotification(
   await sender.send({ to, subject, html, text: `${sessionTitle} on ${date} has been cancelled.` })
 }
 
+export async function sendBookingCancelledByStudent(
+  to: string,
+  name: string,
+  sessionTitle: string,
+  date: string,
+): Promise<void> {
+  const subject = `Booking cancelled: ${sessionTitle}`
+  const html = wrap(subject, `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">Booking cancelled</h2>
+    <p>Hi ${escapeHtml(name)}, your booking for <strong>${escapeHtml(sessionTitle)}</strong> has been successfully cancelled.</p>
+    <table cellpadding="0" cellspacing="0" style="margin:18px 0;background:#F4F5F8;border-radius:12px;padding:16px;width:100%">
+      <tr><td style="font-size:14px;color:#374151;padding:4px 0">
+        <strong>Session:</strong> ${escapeHtml(sessionTitle)}
+      </td></tr>
+      <tr><td style="font-size:14px;color:#374151;padding:4px 0">
+        <strong>Scheduled for:</strong> ${escapeHtml(date)}
+      </td></tr>
+    </table>
+    <p>Your seat has been released. You can book a different time slot from the Class Schedule page.</p>
+    <p style="margin:24px 0">
+      <a href="${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/class-bookings"
+        style="display:inline-block;background:#F3F4F6;color:#374151;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
+        View Class Schedule →
+      </a>
+    </p>
+    <p style="font-size:12px;color:#9CA3AF">If you didn't request this cancellation, please contact the admin team.</p>
+  `)
+  await sender.send({ to, subject, html, text: `Your booking for ${sessionTitle} on ${date} has been cancelled. Book again: ${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/class-bookings` })
+}
+
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]!))
 }

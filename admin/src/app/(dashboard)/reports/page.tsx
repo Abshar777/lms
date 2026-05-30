@@ -275,7 +275,7 @@ export default function ReportsPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {performanceRows.map((p, i) => (
-              <motion.div key={p.batch.id ?? p.batch._id ?? i}
+              <motion.div key={(p.batch as any).id ?? (p.batch as any)._id ?? i}
                 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.04 }}
                 className="rounded-2xl bg-white p-4 flex items-center gap-4"
@@ -341,7 +341,7 @@ export default function ReportsPage() {
                   const pct   = row.total > 0 ? Math.round((row.attended / row.total) * 100) : 0
                   const color = pct >= 80 ? '#10B981' : pct >= 50 ? '#F59E0B' : '#EF4444'
                   return (
-                    <motion.tr key={row.user.id ?? row.user._id ?? i}
+                    <motion.tr key={(row.user as any).id ?? (row.user as any)._id ?? i}
                       initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                       transition={{ delay: i * 0.02 }}
                       className="transition-colors hover:bg-gray-50"

@@ -7,7 +7,6 @@ import { use } from 'react'
 import { useCourse } from '@/lib/api/courses'
 import { CourseForm } from '@/components/courses/CourseForm'
 import { LiveClassesSection } from '@/components/courses/LiveClassesSection'
-import { CourseOutlineEditor } from '@/components/courses/CourseOutlineEditor'
 import { useLiveClassesForCourse } from '@/lib/api/liveClasses'
 
 /* ── Live alert banner ───────────────────────────────── */
@@ -118,13 +117,6 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.06, type: 'spring', stiffness: 260, damping: 26 }}>
         <CourseForm course={course} />
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.10, type: 'spring', stiffness: 260, damping: 26 }}>
-        <CourseOutlineEditor courseId={course.id} />
       </motion.div>
 
       <motion.div

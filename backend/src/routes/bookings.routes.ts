@@ -4,13 +4,21 @@
  * POST   /bookings              — book a live-class session
  * GET    /bookings/me           — list my bookings (upcoming + past)
  * DELETE /bookings/:id          — cancel a booking
+ *
+ * Notifications (Phase 5):
+ *   - In-app notification is always created (booking-confirmed / booking-cancelled)
+ *   - Confirmation / cancellation email is sent non-blocking
+ *   - If email delivery fails, a second 'system' notification is created so the
+ *     student sees the failure inside the app
  */
 import { Router, type Request, type Response, type NextFunction } from 'express'
 import { z } from 'zod'
 import { authenticate } from '@/middleware/auth.middleware.ts'
 import { validate } from '@/middleware/validate.middleware.ts'
+import { NotificationService } from '@/services/notification.service.ts'
 
 const router = Router()
+const notifSvc = new NotificationService()
 
 /* ── Validation ─────────────────────────────── */
 const createBookingSchema = z.object({
@@ -28,10 +36,79 @@ function sendSuccess(res: Response, data: unknown, message = 'OK', status = 200)
   res.status(status).json({ success: true, data, message })
 }
 
+function fmtDate(iso: string | Date): string {
+  return new Date(iso).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })
+}
+
+/* ── Fire-and-forget: notify + email on booking created ── */
+async function afterBookingCreated(
+  userId: string,
+  userEmail: string,
+  userName: string,
+  sessionTitle: string,
+  sessionStart: string | Date,
+  joinUrl: string,
+): Promise<void> {
+  const dateLabel = fmtDate(sessionStart)
+
+  /* 1. In-app notification — always */
+  await notifSvc.create(userId, {
+    kind:  'booking-confirmed',
+    title: `Booking confirmed: ${sessionTitle}`,
+    body:  `Your seat is confirmed for ${sessionTitle} on ${dateLabel}.`,
+    link:  '/class-bookings',
+  })
+
+  /* 2. Confirmation email — if it fails, add a system notification */
+  try {
+    const { sendBookingConfirmation } = await import('@/services/email.service.ts')
+    await sendBookingConfirmation(userEmail, userName, sessionTitle, dateLabel, joinUrl)
+  } catch {
+    await notifSvc.create(userId, {
+      kind:  'system',
+      title: 'Booking confirmation email failed',
+      body:  'We could not send your confirmation email, but your booking is confirmed. Check your Class Schedule.',
+      link:  '/class-bookings',
+    }).catch(() => {/* truly non-fatal */})
+  }
+}
+
+/* ── Fire-and-forget: notify + email on booking cancelled ── */
+async function afterBookingCancelled(
+  userId: string,
+  userEmail: string,
+  userName: string,
+  sessionTitle: string,
+  sessionStart: string | Date,
+): Promise<void> {
+  const dateLabel = fmtDate(sessionStart)
+
+  /* 1. In-app notification — always */
+  await notifSvc.create(userId, {
+    kind:  'booking-cancelled',
+    title: `Booking cancelled: ${sessionTitle}`,
+    body:  `Your booking for ${sessionTitle} on ${dateLabel} has been cancelled.`,
+    link:  '/class-bookings',
+  })
+
+  /* 2. Cancellation email — if it fails, add a system notification */
+  try {
+    const { sendBookingCancelledByStudent } = await import('@/services/email.service.ts')
+    await sendBookingCancelledByStudent(userEmail, userName, sessionTitle, dateLabel)
+  } catch {
+    await notifSvc.create(userId, {
+      kind:  'system',
+      title: 'Cancellation email failed',
+      body:  'We could not send your cancellation confirmation email. Your booking has still been cancelled successfully.',
+      link:  '/class-bookings',
+    }).catch(() => {/* truly non-fatal */})
+  }
+}
+
 /* ── POST /bookings ─────────────────────────── */
 router.post('/', authenticate, validate(createBookingSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { ClassBookingModel, LiveClassModel, BatchModel, EnrollmentModel } =
+    const { ClassBookingModel, LiveClassModel, BatchModel, EnrollmentModel, UserModel } =
       await import('@/models/schema.ts')
     const { Types } = await import('mongoose')
 
@@ -80,7 +157,7 @@ router.post('/', authenticate, validate(createBookingSchema), async (req: Reques
       }
     }
 
-    /* 2× attendance cap — count sessions where student was attended for this liveClassId */
+    /* 2× attendance cap */
     const attendedCount = await ClassBookingModel.countDocuments({
       userId: new Types.ObjectId(userId),
       liveClassId: new Types.ObjectId(liveClassId),
@@ -107,6 +184,7 @@ router.post('/', authenticate, validate(createBookingSchema), async (req: Reques
       liveClassId: new Types.ObjectId(liveClassId),
     }).lean()
 
+    let bookingDoc
     if (existing) {
       if (existing.status === 'cancelled') {
         /* Re-book after cancel */
@@ -116,47 +194,49 @@ router.post('/', authenticate, validate(createBookingSchema), async (req: Reques
           cancelledAt: undefined,
         })
         await LiveClassModel.findByIdAndUpdate(liveClassId, { $inc: { bookedCount: 1 } })
-        const updated = await ClassBookingModel.findById(existing._id).lean({ virtuals: true })
-        sendSuccess(res, updated, 'Booking created', 201); return
+        bookingDoc = await ClassBookingModel.findById(existing._id).lean({ virtuals: true })
+        sendSuccess(res, bookingDoc, 'Booking created', 201)
+      } else {
+        res.status(409).json({ success: false, error: { code: 'ALREADY_BOOKED', message: 'You already have a booking for this session' } }); return
       }
-      res.status(409).json({ success: false, error: { code: 'ALREADY_BOOKED', message: 'You already have a booking for this session' } }); return
+    } else {
+      /* Create booking + increment bookedCount atomically */
+      const [booking] = await Promise.all([
+        ClassBookingModel.create({
+          userId:      new Types.ObjectId(userId),
+          liveClassId: new Types.ObjectId(liveClassId),
+          batchId:     session.batchId,
+          status:      'booked',
+          bookedAt:    new Date(),
+        }),
+        LiveClassModel.findByIdAndUpdate(liveClassId, { $inc: { bookedCount: 1 } }),
+      ])
+
+      bookingDoc = await booking.populate([
+        { path: 'liveClassId', select: 'id title scheduledStart durationMins meetingUrl muxPlaybackId type' },
+        { path: 'batchId',     select: 'id name' },
+      ])
+
+      sendSuccess(res, bookingDoc, 'Booking created', 201)
     }
 
-    /* Create booking + increment bookedCount atomically */
-    const [booking] = await Promise.all([
-      ClassBookingModel.create({
-        userId:      new Types.ObjectId(userId),
-        liveClassId: new Types.ObjectId(liveClassId),
-        batchId:     session.batchId,
-        status:      'booked',
-        bookedAt:    new Date(),
-      }),
-      LiveClassModel.findByIdAndUpdate(liveClassId, { $inc: { bookedCount: 1 } }),
-    ])
-
-    const populated = await booking.populate([
-      { path: 'liveClassId', select: 'id title scheduledStart durationMins meetingUrl muxPlaybackId' },
-      { path: 'batchId',     select: 'id name' },
-    ])
-
-    /* Send booking confirmation email (non-blocking) */
-    const { UserModel } = await import('@/models/schema.ts')
+    /* ── Post-booking: in-app notification + email (non-blocking) ── */
     UserModel.findById(userId).then(user => {
-      if (user?.email) {
-        const lc = populated.get('liveClassId') as any
-        import('@/services/email.service.ts').then(({ sendBookingConfirmation }) => {
-          sendBookingConfirmation(
-            user.email,
-            user.name,
-            lc?.title ?? 'Session',
-            lc?.scheduledStart ? new Date(lc.scheduledStart).toLocaleString() : 'TBD',
-            lc?.meetingUrl ?? `${process.env.CLIENT_URL ?? 'http://localhost:3000'}/live-classes`,
-          ).catch(e => console.error('[Booking] confirmation email failed:', e))
-        })
-      }
+      if (!user) return
+      const lc = session  // use already-fetched session for title/start
+      const joinUrl = (lc as any).meetingUrl
+        ?? `${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/live-classes/${liveClassId}/watch`
+
+      afterBookingCreated(
+        userId,
+        user.email,
+        user.name,
+        lc.title,
+        lc.scheduledStart,
+        joinUrl,
+      ).catch(() => {/* non-fatal */})
     }).catch(() => {/* non-fatal */})
 
-    sendSuccess(res, populated, 'Booking created', 201)
   } catch (err: any) {
     if (err.code === 11000) {
       res.status(409).json({ success: false, error: { code: 'ALREADY_BOOKED', message: 'You already have a booking for this session' } }); return
@@ -197,21 +277,44 @@ router.get('/me', authenticate, validate(bookingQuerySchema, 'query'), async (re
 /* ── DELETE /bookings/:id ───────────────────── */
 router.delete('/:id', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { ClassBookingModel, LiveClassModel } = await import('@/models/schema.ts')
+    const { ClassBookingModel, LiveClassModel, UserModel } = await import('@/models/schema.ts')
     const userId = req.user!.id
     const id = String(req.params['id'] ?? '')
-    const booking = await ClassBookingModel.findOne({ _id: id, userId }).lean()
+
+    const booking = await ClassBookingModel.findOne({ _id: id, userId })
+      .populate('liveClassId', 'title scheduledStart meetingUrl type')
+      .lean({ virtuals: true })
+
     if (!booking) {
       res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Booking not found' } }); return
     }
     if (booking.status !== 'booked') {
       res.status(400).json({ success: false, error: { code: 'CANNOT_CANCEL', message: 'Only active bookings can be cancelled' } }); return
     }
+
     await Promise.all([
       ClassBookingModel.findByIdAndUpdate(id, { status: 'cancelled', cancelledAt: new Date() }),
       LiveClassModel.findByIdAndUpdate(booking.liveClassId, { $inc: { bookedCount: -1 } }),
     ])
+
     sendSuccess(res, null, 'Booking cancelled')
+
+    /* ── Post-cancel: in-app notification + email (non-blocking) ── */
+    const lc = booking.liveClassId as any
+    const sessionTitle = lc?.title ?? 'Session'
+    const sessionStart = lc?.scheduledStart ?? new Date().toISOString()
+
+    UserModel.findById(userId).then(user => {
+      if (!user) return
+      afterBookingCancelled(
+        userId,
+        user.email,
+        user.name,
+        sessionTitle,
+        sessionStart,
+      ).catch(() => {/* non-fatal */})
+    }).catch(() => {/* non-fatal */})
+
   } catch (err) { next(err) }
 })
 

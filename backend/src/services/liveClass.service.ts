@@ -273,6 +273,7 @@ export class LiveClassService {
   /* ── Student watch access ─────────────────────────── */
   async getWatchAccess(id: string, userId: string): Promise<{
     type:          'external' | 'internal'
+    title:         string
     status:        string
     meetingUrl?:   string
     playbackUrl?:  string
@@ -313,9 +314,10 @@ export class LiveClassService {
 
     if (live.type === 'external') {
       return {
-        type:       'external',
-        status:     live.status,
-        meetingUrl: live.meetingUrl,
+        type:        'external',
+        title:       live.title,
+        status:      live.status,
+        meetingUrl:  live.meetingUrl,
         viewerCount: 0,
       }
     }
@@ -323,6 +325,7 @@ export class LiveClassService {
     /* Internal (Mux) */
     return {
       type:        'internal',
+      title:       live.title,
       status:      live.status,
       playbackUrl: live.muxPlaybackId
         ? muxSvc.buildPlaybackUrl(live.muxPlaybackId)

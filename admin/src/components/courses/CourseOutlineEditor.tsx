@@ -95,7 +95,7 @@ export function CourseOutlineEditor({ courseId }: { courseId: string }) {
     const t = newSection.trim()
     if (!t) return
     try {
-      await createSection.mutateAsync(t)
+      await createSection.mutateAsync({ title: t })
       setNewSection('')
       setAddingSection(false)
       toast.success('Section added')

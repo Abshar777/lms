@@ -14,7 +14,7 @@ import { useCreateInstructor } from '@/lib/api/instructors'
 import { useCourses } from '@/lib/api/courses'
 import { useCourseOutline } from '@/lib/api/outline'
 
-/* ── Types ────────────────────────────────────────── */
+/* ── Types ──────────────────────────────────────────------ */
 interface CourseState {
   blockedLessons: Set<string>
   expanded: boolean

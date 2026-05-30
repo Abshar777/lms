@@ -240,19 +240,21 @@ export const CourseModel = mongoose.model<ICourse>('Course', CourseSchema)
    SECTION  (course chapter)
 ───────────────────────────────────────────────────── */
 export interface ISection extends Document {
-  id:        string
-  courseId:  Types.ObjectId
-  title:     string
-  order:     number
-  createdAt: Date
-  updatedAt: Date
+  id:           string
+  courseId:     Types.ObjectId
+  title:        string
+  description?: string
+  order:        number
+  createdAt:    Date
+  updatedAt:    Date
 }
 
 const SectionSchema = new Schema<ISection>(
   {
-    courseId: { type: Schema.Types.ObjectId, ref: 'Course', required: true },
-    title:    { type: String, required: true, trim: true, maxlength: 255 },
-    order:    { type: Number, default: 0 },
+    courseId:    { type: Schema.Types.ObjectId, ref: 'Course', required: true },
+    title:       { type: String, required: true, trim: true, maxlength: 255 },
+    description: { type: String, default: '', maxlength: 1000 },
+    order:       { type: Number, default: 0 },
   },
   baseSchemaOptions,
 )
@@ -427,6 +429,9 @@ export type NotificationKind =
   | 'review-posted'
   | 'live-class-scheduled'
   | 'achievement'
+  | 'booking-confirmed'
+  | 'booking-cancelled'
+  | 'class-reminder'
   | 'system'
 
 export interface INotification extends Document {
@@ -444,7 +449,7 @@ export interface INotification extends Document {
 const NotificationSchema = new Schema<INotification>(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    kind:   { type: String, enum: ['enrollment','lesson-complete','course-complete','review-posted','live-class-scheduled','achievement','system'], required: true },
+    kind:   { type: String, enum: ['enrollment','lesson-complete','course-complete','review-posted','live-class-scheduled','achievement','booking-confirmed','booking-cancelled','class-reminder','system'], required: true },
     title:  { type: String, required: true, maxlength: 255 },
     body:   { type: String, maxlength: 1000 },
     link:   { type: String, maxlength: 1024 },
