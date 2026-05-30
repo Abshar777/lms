@@ -66,7 +66,7 @@ export class LiveClassService {
     // 1. Course-based sessions (from enrollments)
     const enrollments = await this.enrollRepo.listForUser(userId)
     const courseIds = enrollments
-      .map(e => (typeof e.courseId === 'object' ? (e.courseId as { _id?: unknown })._id ?? null : e.courseId))
+      .map(e => (e.courseId && typeof e.courseId === 'object' ? (e.courseId as { _id?: unknown })._id ?? null : e.courseId))
       .filter(Boolean) as Array<string | Types.ObjectId>
     const courseSessions = courseIds.length > 0
       ? await this.liveRepo.listUpcomingForCourses(courseIds, limit)
