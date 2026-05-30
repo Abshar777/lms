@@ -7,6 +7,7 @@ import { ClientTopbar } from '@/components/layout/ClientTopbar'
 import { RightSidebar, RightSidebarToggle } from '@/components/layout/RightSidebar'
 import { VerifyEmailBanner } from '@/components/auth/VerifyEmailBanner'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
+import { Toaster } from '@/components/ui/Toaster'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { rightPanelOpen } = useUIStore()
@@ -32,6 +33,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <RightSidebar />
       <RightSidebarToggle />
       <InstallPrompt />
+      <Toaster />
     </div>
   )
 }

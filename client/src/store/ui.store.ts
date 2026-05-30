@@ -3,6 +3,14 @@ import { persist } from 'zustand/middleware'
 
 type NavLayout = 'sidebar' | 'topbar'
 
+export type ToastKind = 'success' | 'error' | 'info'
+export interface Toast {
+  id:     string
+  kind:   ToastKind
+  title:  string
+  body?:  string
+}
+
 interface UIState {
   sidebarCollapsed: boolean
   toggleSidebar:    () => void
@@ -16,6 +24,11 @@ interface UIState {
   rightPanelOpen:   boolean
   toggleRightPanel: () => void
   setRightPanel:    (v: boolean) => void
+
+  /* Toasts */
+  toasts:    Toast[]
+  pushToast: (t: Omit<Toast, 'id'>) => void
+  popToast:  (id: string) => void
 }
 
 export const useUIStore = create<UIState>()(
@@ -32,6 +45,13 @@ export const useUIStore = create<UIState>()(
       rightPanelOpen:   true,
       toggleRightPanel: () => set(s => ({ rightPanelOpen: !s.rightPanelOpen })),
       setRightPanel:    (v) => set({ rightPanelOpen: v }),
+
+      toasts:    [],
+      pushToast: (t) => {
+        const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+        set(s => ({ toasts: [...s.toasts, { ...t, id }] }))
+      },
+      popToast: (id) => set(s => ({ toasts: s.toasts.filter(t => t.id !== id) })),
     }),
     {
       name: 'lms-client-ui',
@@ -43,3 +63,13 @@ export const useUIStore = create<UIState>()(
     },
   ),
 )
+
+/* Convenience hook — useToast().success("Done!") */
+export function useToast() {
+  const push = useUIStore(s => s.pushToast)
+  return {
+    success: (title: string, body?: string) => push({ kind: 'success', title, body }),
+    error:   (title: string, body?: string) => push({ kind: 'error',   title, body }),
+    info:    (title: string, body?: string) => push({ kind: 'info',    title, body }),
+  }
+}

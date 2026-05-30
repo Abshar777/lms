@@ -113,29 +113,59 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
 
   if (!data) return null
 
-  /* ── External type — just redirect info ── */
+  /* ── External type — meeting link + homework sidebar ── */
   if (data.type === 'external' && data.meetingUrl) {
     return (
-      <div className="mx-auto max-w-xl py-20 text-center">
-        <div className="flex h-16 w-16 mx-auto mb-4 items-center justify-center rounded-3xl"
-          style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.18)' }}>
-          <ExternalLink size={24} style={{ color: '#6366F1' }} />
-        </div>
-        <p className="text-lg font-bold" style={{ color: '#0D0F1A' }}>This is an external live class</p>
-        <p className="mt-2 text-sm" style={{ color: '#6B7280' }}>
-          This session is hosted on an external platform. Click the button below to join.
-        </p>
-        <a href={data.meetingUrl} target="_blank" rel="noreferrer noopener"
-          className="mt-6 inline-flex items-center gap-2 rounded-2xl px-6 py-3 text-sm font-bold text-white"
-          style={{ background: 'linear-gradient(135deg,#6366F1,#818CF8)', boxShadow: '0 4px 14px rgba(99,102,241,0.30)' }}>
-          <ExternalLink size={14} />Open external link
-        </a>
-        <div className="mt-4">
-          <Link href="/live-classes"
-            className="text-sm font-semibold transition-opacity hover:opacity-70"
-            style={{ color: '#9CA3AF' }}>
-            ← Back to Live Classes
-          </Link>
+      <div className="mx-auto max-w-5xl">
+        <Link href="/live-classes"
+          className="mb-5 inline-flex items-center gap-1.5 text-sm font-semibold transition-opacity hover:opacity-70"
+          style={{ color: '#9CA3AF' }}>
+          <ChevronLeft size={14} />Live Classes
+        </Link>
+
+        <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+          {/* ── Left: external join panel ── */}
+          <div className="flex flex-col items-center justify-center rounded-2xl py-16 text-center"
+            style={{ background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.12)' }}>
+            <div className="flex h-16 w-16 items-center justify-center rounded-3xl"
+              style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.18)' }}>
+              <ExternalLink size={24} style={{ color: '#6366F1' }} />
+            </div>
+            <p className="mt-4 text-lg font-bold" style={{ color: '#0D0F1A' }}>External live class</p>
+            <p className="mt-2 max-w-xs text-sm" style={{ color: '#6B7280' }}>
+              This session is hosted on an external platform. Click below to join.
+            </p>
+            <a href={data.meetingUrl} target="_blank" rel="noreferrer noopener"
+              className="mt-6 inline-flex items-center gap-2 rounded-2xl px-6 py-3 text-sm font-bold text-white"
+              style={{ background: 'linear-gradient(135deg,#6366F1,#818CF8)', boxShadow: '0 4px 14px rgba(99,102,241,0.30)' }}>
+              <ExternalLink size={14} />Join Session
+            </a>
+            <StatusBadge status={data.status} />
+          </div>
+
+          {/* ── Right: homework + info ── */}
+          <div className="flex flex-col gap-4">
+            <div className="rounded-2xl p-4"
+              style={{ background: 'white', border: '1px solid #E5E7EB' }}>
+              <h2 className="text-sm font-bold" style={{ color: '#0D0F1A' }}>About this session</h2>
+              <div className="mt-2 flex items-center gap-2 text-xs" style={{ color: '#6B7280' }}>
+                <BookOpen size={12} />
+                <span>External · {data.status}</span>
+              </div>
+            </div>
+
+            <SessionHomework sessionId={id} />
+
+            {data.status === 'ended' && (
+              <SessionFeedback sessionId={id} sessionTitle={data.title} />
+            )}
+
+            <Link href="/live-classes"
+              className="flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold transition-colors hover:opacity-70"
+              style={{ background: '#F3F4F6', color: '#374151' }}>
+              <ChevronLeft size={13} />All live classes
+            </Link>
+          </div>
         </div>
       </div>
     )
@@ -172,7 +202,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                 streamType={isLiveNow ? 'live' : 'on-demand'}
                 src={streamUrl}
                 metadata={{
-                  video_title: `Live class`,
+                  video_title: data.title ?? 'Live class',
                   viewer_user_id: user?.id ?? 'anonymous',
                 }}
                 autoPlay={isLiveNow}

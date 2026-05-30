@@ -36,12 +36,19 @@ export interface LiveClass {
   sessionCapacity: number
   bookedCount:     number
 
+  /**
+   * Set by GET /live-classes — true when the student is enrolled in the linked course
+   * (or the batch has no course requirement). False = student must purchase to book.
+   */
+  isEnrolled?:    boolean
+
   createdAt:      string
   updatedAt:      string
 }
 
 export interface WatchAccess {
   type:          LiveClassType
+  title:         string
   status:        LiveClassStatus
   meetingUrl?:   string      // external only
   playbackUrl?:  string      // internal only
@@ -90,11 +97,19 @@ export const liveClassKeys = {
 
 /* ── Hooks ───────────────────────────────────────────── */
 
+/** Normalize lean Mongoose docs that have `_id` but no `id` */
+function normalizeLiveClass(c: any): LiveClass {
+  return { ...c, id: c.id ?? c._id }
+}
+
 /* GET /live-classes — all sessions for the student's batches */
 export function useMyBatchLiveClasses(status: string = 'all') {
   return useQuery({
     queryKey:        liveClassKeys.myBatch(status),
-    queryFn:         () => apiGet<LiveClass[]>('/live-classes', status !== 'all' ? { status } : {}),
+    queryFn:         async () => {
+      const list = await apiGet<any[]>('/live-classes', status !== 'all' ? { status } : {})
+      return list.map(normalizeLiveClass) as LiveClass[]
+    },
     staleTime:       15_000,
     refetchInterval: 30_000,
   })

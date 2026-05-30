@@ -30,6 +30,18 @@ export const bookingKeys = {
   all:    ['bookings'] as const,
 }
 
+/** Normalize a raw booking doc — maps `_id → id` on the doc and its nested objects */
+function normalizeBooking(b: any): MyBooking {
+  const lc = b.liveClassId
+  const ba = b.batchId
+  return {
+    ...b,
+    id:          b.id          ?? b._id,
+    liveClassId: lc ? { ...lc, id: lc.id ?? lc._id } : lc,
+    batchId:     ba ? { ...ba, id: ba.id ?? ba._id }  : ba,
+  }
+}
+
 /* ── My bookings ─────────────────────────────────────── */
 export function useMyBookings(params: {
   status?:   BookingStatus
@@ -41,10 +53,10 @@ export function useMyBookings(params: {
     queryFn:  async () => {
       const p: Record<string, any> = { ...params }
       Object.keys(p).forEach(k => (p[k] == null || p[k] === '') && delete p[k])
-      const res = await api.get<{ success: true; data: MyBooking[]; meta: any }>(
+      const res = await api.get<{ success: true; data: any[]; meta: any }>(
         '/bookings/me', { params: p },
       )
-      return { docs: res.data.data, meta: res.data.meta }
+      return { docs: res.data.data.map(normalizeBooking) as MyBooking[], meta: res.data.meta }
     },
     staleTime: 30_000,
   })

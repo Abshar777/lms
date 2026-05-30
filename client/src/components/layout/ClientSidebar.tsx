@@ -5,12 +5,13 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   BookOpen, GraduationCap, Trophy,
-  Settings, LogOut, Flame, Map, X, Video,
+  Settings, LogOut, Flame, Map, X, Video, CalendarDays,
 } from 'lucide-react'
 import { useUIStore } from '@/store/ui.store'
 
 const navItems = [
   { label: 'My Learning',    href: '/my-learning',    icon: GraduationCap },
+  { label: 'Class Schedule', href: '/class-bookings', icon: CalendarDays },
   { label: 'My Classes',     href: '/my-bookings',    icon: Video },
   { label: 'Catalog',        href: '/courses',         icon: BookOpen },
   { label: 'Learning Paths', href: '/learning-paths',  icon: Map },

@@ -7,7 +7,7 @@ import Link from 'next/link'
 import {
   Search, Bell, X, MessageSquare, BookOpen,
   GraduationCap, Heart, Sparkles, Trophy,
-  Settings, Clock, Star, Users, Video, Flame, Menu, ShoppingCart, Map,
+  Settings, Clock, Star, Users, Video, Flame, Menu, ShoppingCart, Map, CalendarDays,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
@@ -24,16 +24,18 @@ import { useIsMobile } from '@/hooks/useIsMobile'
 
 /* Nav tabs shown when sidebar layout is active (minimal — sidebar handles main nav) */
 const SIDEBAR_TABS = [
-  { label: 'My Learning', href: '/my-learning', icon: GraduationCap },
-  { label: 'Catalog', href: '/courses', icon: BookOpen },
-  { label: 'Live', href: '/live-classes', icon: Video },
+  { label: 'My Learning', href: '/my-learning',    icon: GraduationCap },
+  { label: 'Schedule',    href: '/class-bookings', icon: CalendarDays },
+  { label: 'Catalog',     href: '/courses',         icon: BookOpen },
+  { label: 'Live',        href: '/live-classes',    icon: Video },
   { label: 'Learning Paths', href: '/learning-paths', icon: Map },
-  { label: 'Favorites', href: '/favorites', icon: Heart, badge: 1 },
+  { label: 'Favorites',   href: '/favorites',       icon: Heart, badge: 1 },
 ]
 
 /* Nav tabs shown when topbar-only layout is active (full navigation) */
 const TOPBAR_TABS = [
   { label: 'My Learning',    href: '/my-learning',    icon: GraduationCap },
+  { label: 'Class Schedule', href: '/class-bookings', icon: CalendarDays },
   { label: 'Catalog',        href: '/courses',         icon: BookOpen },
   { label: 'Learning Paths', href: '/learning-paths',  icon: Map },
   { label: 'Live Classes',   href: '/live-classes',    icon: Video },
