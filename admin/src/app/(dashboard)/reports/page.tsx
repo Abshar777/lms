@@ -13,7 +13,7 @@ import { apiGet } from '@/lib/axios'
 
 /* ── Types ─────────────────────────────────────────────── */
 interface AttendanceRow {
-  user:     { id: string; name: string; email: string }
+  user:     { id: string; name: string; email: string , _id?:string}
   total:    number
   attended: number
   missed:   number
@@ -21,7 +21,7 @@ interface AttendanceRow {
 }
 
 interface MentorScheduleRow {
-  mentor:         { id: string; name: string; email: string }
+  mentor:         { id: string; name: string; email: string , _id?:string}
   assigned:       number
   conducted:      number
   cancelled:      number
@@ -29,7 +29,7 @@ interface MentorScheduleRow {
 }
 
 interface BatchPerformance {
-  batch:          { id: string; name: string; status: string }
+  batch:          { id: string; name: string; status: string , _id?:string}
   sessions:       number
   totalBookings:  number
   attended:       number
