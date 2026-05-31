@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   ChevronLeft, ChevronRight, Calendar, Clock, Users,
   ExternalLink, Radio, CheckCircle2, Loader2, Video,
-  BookOpen, AlertCircle, User, X, CalendarDays, Filter,
+  BookOpen, AlertCircle, User, X, CalendarDays, Filter, Search,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useToast } from '@/store/ui.store'
@@ -119,12 +119,13 @@ function getSlotStatus(
    TYPES
 ───────────────────────────────────────────────────────── */
 interface ClassGroup {
-  title:        string
-  instructor:   { id: string; name: string; avatarUrl?: string } | null
-  slots:        LiveClass[]
-  bookedSlot:   LiveClass | undefined
-  courseSlug?:  string
-  courseTitle?: string
+  title:         string
+  instructor:    { id: string; name: string; avatarUrl?: string } | null
+  slots:         LiveClass[]
+  bookedSlot:    LiveClass | undefined
+  courseSlug?:   string
+  courseTitle?:  string
+  moduleTitle?:  string
 }
 
 interface DateSection {
@@ -367,14 +368,12 @@ function SlotChip({ lc, status, isSelected, onClick }: {
         </span>
       </div>
 
-      <div className="mb-1 flex items-center gap-1">
+      <div className="mb-2 flex items-center gap-1">
         <Clock size={10} style={{ color: '#9CA3AF' }} />
         <span className="text-[13px] font-bold leading-none" style={{ color: '#111827' }}>
           {fmtTime(lc.scheduledStart)}
         </span>
       </div>
-
-      <span className="mb-2 text-[10px]" style={{ color: '#9CA3AF' }}>{fmtDuration(lc.durationMins)}</span>
 
       <div className="flex items-center gap-1">
         {status === 'live' && (
@@ -412,7 +411,7 @@ function SlotChip({ lc, status, isSelected, onClick }: {
 function ClassCard({ group, bookingMap, onClick }: {
   group: ClassGroup; bookingMap: Map<string, MyBooking>; onClick: () => void
 }) {
-  const { slots, bookedSlot, instructor } = group
+  const { slots, bookedSlot, instructor, courseTitle, moduleTitle } = group
   const hasLive = slots.some(s => s.status === 'live')
 
   const nextSlot =
@@ -481,11 +480,30 @@ function ClassCard({ group, bookingMap, onClick }: {
 
       {/* Instructor */}
       {instructor && (
-        <p className="mb-3 flex min-w-0 items-center gap-1 text-[11px]" style={{ color: '#9CA3AF' }}>
+        <p className="mb-1 flex min-w-0 items-center gap-1 text-[11px]" style={{ color: '#9CA3AF' }}>
           <User size={9} className="flex-shrink-0" />
           <span className="truncate">{instructor.name}</span>
         </p>
       )}
+
+      {/* Course */}
+      {courseTitle && (
+        <p className="mb-1 flex min-w-0 items-center gap-1 text-[11px]" style={{ color: '#9CA3AF' }}>
+          <BookOpen size={9} className="flex-shrink-0" />
+          <span className="truncate">{courseTitle}</span>
+        </p>
+      )}
+
+      {/* Module */}
+      {moduleTitle && (
+        <p className="mb-3 flex min-w-0 items-center gap-1 text-[11px]" style={{ color: '#FF6B1A' }}>
+          <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: '#FF6B1A' }} />
+          <span className="truncate">{moduleTitle}</span>
+        </p>
+      )}
+
+      {/* Spacer when no module (keeps footer alignment) */}
+      {!moduleTitle && <div className="mb-3" />}
 
       {/* Footer */}
       <div className="mt-auto flex flex-col gap-1 pt-3" style={{ borderTop: '1px solid #F3F4F6' }}>
@@ -862,6 +880,7 @@ export default function ClassBookingsPage() {
   const calendarRef = useRef<HTMLDivElement>(null)
 
   /* ── Filter state ── */
+  const [search,           setSearch]           = useState('')
   const [filterCourse,     setFilterCourse]     = useState('')
   const [filterModule,     setFilterModule]      = useState('')
   const [filterInstructor, setFilterInstructor] = useState('')
@@ -924,18 +943,30 @@ export default function ClassBookingsPage() {
     return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name))
   }, [allClasses])
 
-  /* ── Apply course/module/instructor filters ── */
+  /* ── Apply search + course/module/instructor filters ── */
   const filteredClasses = useMemo(() => {
+    const q = search.trim().toLowerCase()
     return allClasses.filter(lc => {
-      if (filterCourse     && lc.course?.id    !== filterCourse)                                             return false
+      if (filterCourse && lc.course?.id !== filterCourse) return false
       if (filterModule) {
         const secId = typeof lc.sectionId === 'object' ? lc.sectionId?.id : lc.sectionId
         if (secId !== filterModule) return false
       }
-      if (filterInstructor && lc.instructor?.id !== filterInstructor)                                        return false
+      if (filterInstructor && lc.instructor?.id !== filterInstructor) return false
+      if (q) {
+        const sec = lc.sectionId
+        const moduleTitle = typeof sec === 'object' && sec ? (sec as any).title ?? '' : ''
+        const haystack = [
+          lc.title,
+          lc.instructor?.name ?? '',
+          lc.course?.title    ?? '',
+          moduleTitle,
+        ].join(' ').toLowerCase()
+        if (!haystack.includes(q)) return false
+      }
       return true
     })
-  }, [allClasses, filterCourse, filterModule, filterInstructor])
+  }, [allClasses, search, filterCourse, filterModule, filterInstructor])
 
   /* ── Apply date range ── */
   const rangeEndInclusive = useMemo(() => {
@@ -965,12 +996,14 @@ export default function ClassBookingsPage() {
     map.forEach((slots, title) => {
       slots.sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime())
 
-      const instr      = slots[0].instructor ?? null
-      const bookedSlot = slots.find(s => bookingMap.get(s.id)?.status === 'booked')
+      const instr       = slots[0].instructor ?? null
+      const bookedSlot  = slots.find(s => bookingMap.get(s.id)?.status === 'booked')
       const courseTitle = slots[0].course?.title
       const courseSlug  = slots[0].course?.slug
+      const sec         = slots[0].sectionId
+      const moduleTitle = typeof sec === 'object' && sec ? sec.title : undefined
 
-      result.push({ title, instructor: instr, slots, bookedSlot, courseSlug, courseTitle })
+      result.push({ title, instructor: instr, slots, bookedSlot, courseSlug, courseTitle, moduleTitle })
     })
 
     result.sort((a, b) => {
@@ -1072,9 +1105,8 @@ export default function ClassBookingsPage() {
     setRangeEnd(addDays(rangeEnd,   dir * span))
   }
 
-  const hasFilters = !!(filterCourse || filterModule || filterInstructor)
+  const hasFilters = !!(search || filterCourse || filterModule || filterInstructor)
   const isLoading  = loadingClasses || loadingBookings
-  const showFilters = availableCourses.length > 1 || availableInstructors.length > 1
 
   const selectStyle = (active: boolean) => ({
     background: active ? 'rgba(255,107,26,0.07)' : 'white',
@@ -1158,56 +1190,77 @@ export default function ClassBookingsPage() {
       </motion.div>
 
       {/* ── Filters ── */}
-      {showFilters && (
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <Filter size={12} style={{ color: '#9CA3AF' }} />
-
-          {availableCourses.length > 1 && (
-            <select value={filterCourse}
-              onChange={e => { setFilterCourse(e.target.value); setFilterModule('') }}
-              className="rounded-xl px-3 py-1.5 text-xs font-medium outline-none cursor-pointer"
-              style={selectStyle(!!filterCourse)}>
-              <option value="">All courses</option>
-              {availableCourses.map(c => (
-                <option key={c.id} value={c.id}>{c.title}</option>
-              ))}
-            </select>
-          )}
-
-          {availableModules.length > 0 && (
-            <select value={filterModule}
-              onChange={e => setFilterModule(e.target.value)}
-              className="rounded-xl px-3 py-1.5 text-xs font-medium outline-none cursor-pointer"
-              style={selectStyle(!!filterModule)}>
-              <option value="">All modules</option>
-              {availableModules.map(m => (
-                <option key={m.id} value={m.id}>{m.title}</option>
-              ))}
-            </select>
-          )}
-
-          {availableInstructors.length > 1 && (
-            <select value={filterInstructor}
-              onChange={e => setFilterInstructor(e.target.value)}
-              className="rounded-xl px-3 py-1.5 text-xs font-medium outline-none cursor-pointer"
-              style={selectStyle(!!filterInstructor)}>
-              <option value="">All instructors</option>
-              {availableInstructors.map(i => (
-                <option key={i.id} value={i.id}>{i.name}</option>
-              ))}
-            </select>
-          )}
-
-          {hasFilters && (
-            <button type="button"
-              onClick={() => { setFilterCourse(''); setFilterModule(''); setFilterInstructor('') }}
-              className="text-xs font-medium transition-colors hover:text-red-500"
-              style={{ color: '#EF4444' }}>
-              × Clear filters
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {/* Search input */}
+        <div className="relative flex-1 min-w-[180px] max-w-xs">
+          <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ color: search ? '#FF6B1A' : '#9CA3AF' }} />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search classes…"
+            className="w-full rounded-xl py-1.5 pl-8 pr-3 text-xs font-medium outline-none"
+            style={{
+              background: search ? 'rgba(255,107,26,0.06)' : 'white',
+              color:      '#374151',
+              border:     `1px solid ${search ? 'rgba(255,107,26,0.30)' : '#E5E7EB'}`,
+            }}
+          />
+          {search && (
+            <button type="button" onClick={() => setSearch('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 flex h-4 w-4 items-center justify-center rounded-full hover:bg-gray-100">
+              <X size={9} style={{ color: '#9CA3AF' }} />
             </button>
           )}
         </div>
-      )}
+
+        <Filter size={12} style={{ color: '#9CA3AF' }} className="shrink-0" />
+
+        {/* Course filter */}
+        <select value={filterCourse}
+          onChange={e => { setFilterCourse(e.target.value); setFilterModule('') }}
+          className="rounded-xl px-3 py-1.5 text-xs font-medium outline-none cursor-pointer"
+          style={selectStyle(!!filterCourse)}>
+          <option value="">All courses</option>
+          {availableCourses.map(c => (
+            <option key={c.id} value={c.id}>{c.title}</option>
+          ))}
+        </select>
+
+        {/* Module filter — only when a course is selected and has sections */}
+        {availableModules.length > 0 && (
+          <select value={filterModule}
+            onChange={e => setFilterModule(e.target.value)}
+            className="rounded-xl px-3 py-1.5 text-xs font-medium outline-none cursor-pointer"
+            style={selectStyle(!!filterModule)}>
+            <option value="">All modules</option>
+            {availableModules.map(m => (
+              <option key={m.id} value={m.id}>{m.title}</option>
+            ))}
+          </select>
+        )}
+
+        {/* Instructor filter */}
+        <select value={filterInstructor}
+          onChange={e => setFilterInstructor(e.target.value)}
+          className="rounded-xl px-3 py-1.5 text-xs font-medium outline-none cursor-pointer"
+          style={selectStyle(!!filterInstructor)}>
+          <option value="">All instructors</option>
+          {availableInstructors.map(i => (
+            <option key={i.id} value={i.id}>{i.name}</option>
+          ))}
+        </select>
+
+        {hasFilters && (
+          <button type="button"
+            onClick={() => { setSearch(''); setFilterCourse(''); setFilterModule(''); setFilterInstructor('') }}
+            className="shrink-0 text-xs font-medium transition-colors hover:opacity-80"
+            style={{ color: '#EF4444' }}>
+            × Clear
+          </button>
+        )}
+      </div>
 
       {/* ── Loading ── */}
       {isLoading && (
@@ -1224,7 +1277,7 @@ export default function ClassBookingsPage() {
 
           <AnimatePresence mode="wait">
             <motion.div
-              key={`${rangeStart.toISOString()}-${filterCourse}-${filterModule}-${filterInstructor}`}
+              key={`${rangeStart.toISOString()}-${search}-${filterCourse}-${filterModule}-${filterInstructor}`}
               initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.16 }}
             >
@@ -1251,7 +1304,7 @@ export default function ClassBookingsPage() {
                     <>
                       <p className="font-bold" style={{ color: '#111827' }}>No classes match your filters</p>
                       <button type="button"
-                        onClick={() => { setFilterCourse(''); setFilterModule(''); setFilterInstructor('') }}
+                        onClick={() => { setSearch(''); setFilterCourse(''); setFilterModule(''); setFilterInstructor('') }}
                         className="rounded-xl px-4 py-2 text-sm font-semibold"
                         style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.20)' }}>
                         Clear filters

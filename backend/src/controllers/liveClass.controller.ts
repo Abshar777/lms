@@ -182,6 +182,9 @@ export class LiveClassController {
       if (typeof dto['status']          === 'string')  data.status          = dto['status'] as any
       if (typeof dto['sessionCapacity'] === 'number')  data.sessionCapacity = dto['sessionCapacity']
       if (typeof dto['mentorNotes']     === 'string')  data.mentorNotes     = dto['mentorNotes']
+      if (typeof dto['instructorId']    === 'string')  data.instructorId    = dto['instructorId']
+      if (typeof dto['courseId']        === 'string')  data.courseId        = dto['courseId']
+      if (typeof dto['sectionId']       === 'string')  data.sectionId       = dto['sectionId']
 
       /* Snapshot old session BEFORE update for notification comparison */
       const { LiveClassModel, ClassBookingModel, UserModel } = await import('@/models/schema.ts')

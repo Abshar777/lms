@@ -7,13 +7,15 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Video, Radio, Calendar, Clock, Users, Loader2,
   AlertCircle, Tv2, ExternalLink, BookOpen, Star,
-  ChevronRight, PlayCircle, Eye, CalendarDays, Pencil, Search, X, Plus,
-  Link as LinkIcon,
+  ChevronRight, PlayCircle, CalendarDays, Pencil, Search, X, Plus,
+  Link as LinkIcon, LayoutList, CalendarRange, ChevronLeft, GraduationCap,
+  UserCheck,
 } from 'lucide-react'
 import { useAllLiveClasses, useCreateLiveClass, type LiveClass, type LiveClassType } from '@/lib/api/liveClasses'
 import { useCourses } from '@/lib/api/courses'
 import { useCourseOutline } from '@/lib/api/outline'
 import { useUsers } from '@/lib/api/users'
+import { useCurrentUser } from '@/lib/api/user'
 import { EditLiveClassModal } from '@/components/live-classes/EditLiveClassModal'
 
 /* ── Helpers ─────────────────────────────────────────── */
@@ -127,189 +129,337 @@ function StatsBar({ items }: { items: LiveClass[] }) {
   )
 }
 
-/* ── Single class row card ───────────────────────────── */
-function ClassCard({ live, index }: { live: LiveClass; index: number }) {
-  const router     = useRouter()
-  const isLiveNow  = live.status === 'live'
+/* ── Table row ───────────────────────────────────────── */
+function TableRow({ live, index, showInstructor }: { live: LiveClass; index: number; showInstructor: boolean }) {
+  const router      = useRouter()
+  const isLiveNow   = live.status === 'live'
   const isScheduled = live.status === 'scheduled'
-  const isEnded    = live.status === 'ended'
+  const isEnded     = live.status === 'ended'
   const isCancelled = live.status === 'cancelled'
-  const isInternal = live.type === 'internal'
+  const isInternal  = live.type === 'internal'
   const [editOpen, setEditOpen] = useState(false)
 
-  const borderColor = isLiveNow ? 'rgba(239,68,68,0.30)' : 'rgba(255,255,255,0.06)'
+  const fillPct = live.sessionCapacity > 0 ? Math.min(100, (live.bookedCount / live.sessionCapacity) * 100) : 0
+  const barColor = fillPct >= 90 ? '#EF4444' : fillPct >= 70 ? '#F59E0B' : '#22C55E'
+
+  const sectionTitle = typeof live.sectionId === 'object' ? live.sectionId?.title : undefined
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.03, type: 'spring', stiffness: 300, damping: 28 }}
-      className="flex items-center gap-4 rounded-2xl p-4"
-      style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${borderColor}` }}>
+    <>
+      <tr
+        className="transition-colors hover:bg-white/[0.03]"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
 
-      {/* Icon */}
-      <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl"
-        style={{
-          background: isLiveNow ? 'rgba(239,68,68,0.12)' : isInternal ? 'rgba(255,107,26,0.10)' : 'rgba(99,102,241,0.10)',
-          border: `1px solid ${isLiveNow ? 'rgba(239,68,68,0.25)' : isInternal ? 'rgba(255,107,26,0.20)' : 'rgba(99,102,241,0.20)'}`,
-        }}>
-        {isLiveNow
-          ? <motion.div animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1.4, repeat: Infinity }}>
-              <Radio size={16} style={{ color: '#EF4444' }} />
-            </motion.div>
-          : isInternal
-          ? <Tv2 size={16} style={{ color: isCancelled ? 'rgba(255,255,255,0.2)' : '#FF6B1A' }} />
-          : <ExternalLink size={16} style={{ color: isCancelled ? 'rgba(255,255,255,0.2)' : '#818CF8' }} />}
-      </div>
-
-      {/* Info */}
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {/* Status badge */}
-          {isLiveNow && (
-            <motion.span animate={{ opacity: [1, 0.5, 1] }} transition={{ duration: 1.4, repeat: Infinity }}
-              className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white"
-              style={{ background: '#EF4444' }}>
-              <span className="h-1 w-1 rounded-full bg-white" />LIVE
-            </motion.span>
-          )}
-          {isEnded && live.recordingUrl && (
-            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest"
-              style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E' }}>
-              <BookOpen size={8} />REC
+        {/* Session */}
+        <td className="px-4 py-3">
+          <div className="flex flex-col gap-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {/* Status badge */}
+              {isLiveNow && (
+                <motion.span
+                  animate={{ opacity: [1, 0.5, 1] }}
+                  transition={{ duration: 1.4, repeat: Infinity }}
+                  className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white"
+                  style={{ background: '#EF4444' }}>
+                  <span className="h-1 w-1 rounded-full bg-white" />LIVE
+                </motion.span>
+              )}
+              {isEnded && (
+                <span className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest"
+                  style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.35)' }}>
+                  Ended
+                </span>
+              )}
+              {isCancelled && (
+                <span className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest"
+                  style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.3)' }}>
+                  Cancelled
+                </span>
+              )}
+              {isScheduled && (
+                <span className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
+                  style={{ background: 'rgba(255,107,26,0.12)', color: '#FF6B1A' }}>
+                  {fmtCountdown(live.scheduledStart)}
+                </span>
+              )}
+              {/* Type badge */}
+              <span className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
+                style={{
+                  background: isInternal ? 'rgba(255,107,26,0.10)' : 'rgba(99,102,241,0.10)',
+                  color:      isInternal ? '#FF6B1A' : '#818CF8',
+                }}>
+                {isInternal ? 'In-App' : 'External'}
+              </span>
+            </div>
+            <span className={`text-sm font-semibold text-white leading-tight max-w-[220px] truncate ${isCancelled ? 'line-through opacity-40' : ''}`}>
+              {live.title}
             </span>
-          )}
-          {isCancelled && (
-            <span className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest"
-              style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.3)' }}>
-              Cancelled
-            </span>
-          )}
-          {/* Type badge */}
-          <span className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
-            style={{
-              background: isInternal ? 'rgba(255,107,26,0.10)' : 'rgba(99,102,241,0.10)',
-              color:      isInternal ? '#FF6B1A' : '#818CF8',
-            }}>
-            {isInternal ? 'In-App' : 'External'}
-          </span>
-          <p className={`truncate text-sm font-semibold text-white ${isCancelled ? 'line-through opacity-40' : ''}`}>
-            {live.title}
-          </p>
-        </div>
+          </div>
+        </td>
 
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs"
-          style={{ color: 'rgba(255,255,255,0.35)' }}>
-          {/* Course */}
-          {live.course && (
+        {/* Course */}
+        <td className="px-4 py-3 text-sm">
+          {live.course
+            ? <span className="flex items-center gap-1.5" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                <BookOpen size={12} className="flex-shrink-0" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                <span className="max-w-[160px] truncate">{live.course.title}</span>
+              </span>
+            : <span style={{ color: 'rgba(255,255,255,0.2)' }}>—</span>
+          }
+        </td>
+
+        {/* Module */}
+        <td className="px-4 py-3 text-sm">
+          {sectionTitle
+            ? <span className="text-[11px] font-semibold" style={{ color: '#FF6B1A' }}>{sectionTitle}</span>
+            : <span style={{ color: 'rgba(255,255,255,0.2)' }}>—</span>
+          }
+        </td>
+
+        {/* Instructor — conditional */}
+        {showInstructor && (
+          <td className="px-4 py-3 text-sm">
+            <span className="flex items-center gap-1.5" style={{ color: 'rgba(255,255,255,0.55)' }}>
+              <GraduationCap size={12} className="flex-shrink-0" style={{ color: 'rgba(255,255,255,0.3)' }} />
+              <span className="max-w-[120px] truncate">{live.instructor?.name ?? '—'}</span>
+            </span>
+          </td>
+        )}
+
+        {/* Date & Time */}
+        <td className="px-4 py-3 text-sm whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.55)' }}>
+          <div className="flex flex-col gap-0.5">
             <span className="flex items-center gap-1">
-              <BookOpen size={10} />
-              <span className="max-w-[180px] truncate">{live.course.title}</span>
+              <Calendar size={11} style={{ color: 'rgba(255,255,255,0.3)' }} />
+              {fmtDate(live.scheduledStart)}
             </span>
-          )}
-          {/* Date + time */}
-          <span className="flex items-center gap-1">
-            <Calendar size={10} />{fmtDate(live.scheduledStart)} · {fmtTime(live.scheduledStart)}
-          </span>
-          {/* Duration */}
-          <span className="flex items-center gap-1">
-            <Clock size={10} />{fmtDuration(live.durationMins)}
-          </span>
-          {/* Countdown for upcoming */}
-          {isScheduled && (
-            <span style={{ color: '#FF6B1A', fontWeight: 600 }}>{fmtCountdown(live.scheduledStart)}</span>
-          )}
-          {/* Viewers for live */}
-          {isLiveNow && (
-            <span className="flex items-center gap-1 font-semibold" style={{ color: '#EF4444' }}>
-              <Users size={10} />{live.viewerCount.toLocaleString()} watching
+            <span className="flex items-center gap-1 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              <Clock size={10} />
+              {fmtTime(live.scheduledStart)} · {fmtDuration(live.durationMins)}
             </span>
-          )}
-        </div>
-      </div>
+          </div>
+        </td>
 
-      {/* Actions */}
-      <div className="flex flex-shrink-0 items-center gap-2">
-        {/* Internal live → Monitor */}
-        {isInternal && isLiveNow && (
-          <button
-            onClick={() => router.push(`/live-classes/${live.id}/monitor`)}
-            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-white transition-all hover:brightness-110"
-            style={{ background: 'linear-gradient(135deg,#EF4444,#DC2626)', boxShadow: '0 3px 12px rgba(239,68,68,0.30)' }}>
-            <Radio size={11} />Monitor
-          </button>
-        )}
-        {/* Internal upcoming → Go to monitor (to go live) */}
-        {isInternal && isScheduled && (
-          <button
-            onClick={() => router.push(`/live-classes/${live.id}/monitor`)}
-            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all hover:brightness-110"
-            style={{ background: 'rgba(255,107,26,0.12)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.22)' }}>
-            <PlayCircle size={11} />Go Live
-          </button>
-        )}
-        {/* Internal ended → View recording */}
-        {isInternal && isEnded && live.recordingUrl && (
-          <a href={live.recordingUrl} target="_blank" rel="noreferrer"
-            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all hover:brightness-110"
-            style={{ background: 'rgba(34,197,94,0.10)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.20)' }}>
-            <BookOpen size={11} />Recording
-          </a>
-        )}
-        {/* External live → open link */}
-        {!isInternal && isLiveNow && live.meetingUrl && (
-          <a href={live.meetingUrl} target="_blank" rel="noreferrer"
-            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-white transition-all hover:brightness-110"
-            style={{ background: '#EF4444' }}>
-            <ExternalLink size={11} />Join
-          </a>
-        )}
-        {/* Homework — available for ended/live sessions */}
-        {(live.status === 'ended' || live.status === 'live') && (
-          <Link href={`/live-classes/${live.id}/homework`}
-            className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[10px] font-semibold transition-colors hover:bg-white/10"
-            style={{ color: 'rgba(251,191,36,0.8)', border: '1px solid rgba(251,191,36,0.20)' }}
-            title="Homework">
-            <BookOpen size={10} /><span>Homework</span>
-          </Link>
-        )}
-        {live.status === 'ended' && (
-          <Link href={`/live-classes/${live.id}/feedback`}
-            className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[10px] font-semibold transition-colors hover:bg-white/10"
-            style={{ color: 'rgba(245,158,11,0.85)', border: '1px solid rgba(245,158,11,0.20)' }}
-            title="Student Feedback">
-            <Star size={10} /><span>Feedback</span>
-          </Link>
-        )}
-        {/* Edit */}
+        {/* Seats */}
+        <td className="px-4 py-3 text-sm">
+          <div className="flex flex-col gap-1 min-w-[80px]">
+            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>
+              {live.bookedCount} / {live.sessionCapacity}
+            </span>
+            <div className="h-1 w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+              <div
+                className="h-full rounded-full transition-all"
+                style={{ width: `${fillPct}%`, background: barColor }}
+              />
+            </div>
+          </div>
+        </td>
+
+        {/* Actions */}
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-1">
+            {/* Attendance */}
+            <Link
+              href={`/live-classes/${live.id}/attendance`}
+              className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/10"
+              style={{ color: 'rgba(255,255,255,0.4)' }}
+              title="Attendance">
+              <UserCheck size={13} />
+            </Link>
+
+            {/* Monitor / Go Live — internal + live or scheduled only */}
+            {isInternal && (isLiveNow || isScheduled) && (
+              <button
+                onClick={() => router.push(`/live-classes/${live.id}/monitor`)}
+                className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/10"
+                style={{ color: isLiveNow ? '#EF4444' : '#FF6B1A' }}
+                title={isLiveNow ? 'Monitor' : 'Go Live'}>
+                {isLiveNow ? <Radio size={13} /> : <PlayCircle size={13} />}
+              </button>
+            )}
+
+            {/* Edit */}
+            <button
+              onClick={() => setEditOpen(true)}
+              className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/10"
+              style={{ color: 'rgba(255,255,255,0.4)' }}
+              title="Edit session">
+              <Pencil size={12} />
+            </button>
+
+            {/* Course link */}
+            {live.course && (
+              <Link
+                href={`/courses/${typeof live.course === 'object' ? live.course.id : live.courseId}/edit`}
+                className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/10"
+                style={{ color: 'rgba(255,255,255,0.25)' }}
+                title="Open course">
+                <ChevronRight size={13} />
+              </Link>
+            )}
+          </div>
+
+          <AnimatePresence>
+            {editOpen && (
+              <EditLiveClassModal
+                live={live}
+                onClose={() => setEditOpen(false)}
+                onSuccess={() => setEditOpen(false)}
+              />
+            )}
+          </AnimatePresence>
+        </td>
+      </tr>
+    </>
+  )
+}
+
+/* ── Calendar view ───────────────────────────────────── */
+function getMonday(d: Date): Date {
+  const date = new Date(d)
+  const day  = date.getDay()
+  const diff = (day === 0 ? -6 : 1 - day)
+  date.setDate(date.getDate() + diff)
+  date.setHours(0, 0, 0, 0)
+  return date
+}
+
+function CalendarView({ items, onSlotClick }: { items: LiveClass[]; onSlotClick: (date: Date) => void }) {
+  const [weekStart, setWeekStart] = useState<Date>(() => getMonday(new Date()))
+  const [editLive, setEditLive] = useState<LiveClass | null>(null)
+
+  const weekDays = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(weekStart)
+      d.setDate(weekStart.getDate() + i)
+      return d
+    })
+  }, [weekStart])
+
+  const dayAbbrs = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const prevWeek = () => {
+    const d = new Date(weekStart)
+    d.setDate(d.getDate() - 7)
+    setWeekStart(d)
+  }
+  const nextWeek = () => {
+    const d = new Date(weekStart)
+    d.setDate(d.getDate() + 7)
+    setWeekStart(d)
+  }
+  const goToday = () => setWeekStart(getMonday(new Date()))
+
+  const sunday = weekDays[6]!
+  const weekLabel = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+
+  const getSessionsForDay = (day: Date) =>
+    items.filter(l => new Date(l.scheduledStart).toDateString() === day.toDateString())
+
+  const chipColor = (status: LiveClass['status']) => {
+    if (status === 'live')      return { bg: 'rgba(239,68,68,0.18)', color: '#EF4444', border: 'rgba(239,68,68,0.30)' }
+    if (status === 'scheduled') return { bg: 'rgba(255,107,26,0.15)', color: '#FF6B1A', border: 'rgba(255,107,26,0.28)' }
+    if (status === 'ended')     return { bg: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.35)', border: 'rgba(255,255,255,0.08)' }
+    /* cancelled */             return { bg: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.2)', border: 'rgba(255,255,255,0.06)' }
+  }
+
+  return (
+    <div>
+      {/* Week navigation */}
+      <div className="mb-4 flex items-center gap-3">
         <button
-          onClick={() => setEditOpen(true)}
+          onClick={prevWeek}
           className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-white/10"
-          style={{ color: 'rgba(255,255,255,0.4)' }}
-          title="Edit session">
-          <Pencil size={13} />
+          style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <ChevronLeft size={14} />
         </button>
-        {/* Course link */}
-        {live.course && (
-          <Link href={`/courses/${typeof live.course === 'object' ? live.course.id : live.courseId}/edit`}
-            className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-white/10"
-            style={{ color: 'rgba(255,255,255,0.25)' }}
-            title="Open course">
-            <ChevronRight size={14} />
-          </Link>
-        )}
+        <span className="text-sm font-semibold text-white/70">Week of {weekLabel}</span>
+        <button
+          onClick={nextWeek}
+          className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-white/10"
+          style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <ChevronRight size={14} />
+        </button>
+        <button
+          onClick={goToday}
+          className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-white/10"
+          style={{ color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          Today
+        </button>
       </div>
 
-      {/* Edit modal — scoped to this card */}
+      {/* 7-column grid */}
+      <div className="grid grid-cols-7 gap-2">
+        {weekDays.map((day, di) => {
+          const isToday = day.toDateString() === today.toDateString()
+          const sessions = getSessionsForDay(day)
+
+          return (
+            <div
+              key={di}
+              onClick={() => onSlotClick(day)}
+              className="rounded-xl overflow-hidden cursor-pointer transition-colors"
+              style={{
+                background: isToday ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.025)',
+                border: isToday ? '1px solid rgba(255,107,26,0.25)' : '1px solid rgba(255,255,255,0.07)',
+                minHeight: 140,
+              }}>
+
+              {/* Day header */}
+              <div
+                className="px-2 py-2 text-center"
+                style={{
+                  background: isToday ? 'rgba(255,107,26,0.12)' : 'rgba(255,255,255,0.025)',
+                  borderBottom: '1px solid rgba(255,255,255,0.05)',
+                }}>
+                <p className="text-[10px] font-bold uppercase tracking-widest"
+                  style={{ color: isToday ? '#FF6B1A' : 'rgba(255,255,255,0.35)' }}>
+                  {dayAbbrs[di]}
+                </p>
+                <p className="text-lg font-bold leading-tight"
+                  style={{ color: isToday ? '#FF6B1A' : 'rgba(255,255,255,0.7)' }}>
+                  {day.getDate()}
+                </p>
+              </div>
+
+              {/* Session chips */}
+              <div className="p-1.5 space-y-1" onClick={e => e.stopPropagation()}>
+                {sessions.map(s => {
+                  const c = chipColor(s.status)
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => setEditLive(s)}
+                      className="w-full text-left rounded-lg px-2 py-1 transition-all hover:brightness-110"
+                      style={{ background: c.bg, border: `1px solid ${c.border}` }}>
+                      <p className="text-[10px] font-semibold leading-none truncate" style={{ color: c.color }}>
+                        {fmtTime(s.scheduledStart)}
+                      </p>
+                      <p className="mt-0.5 text-[10px] leading-tight truncate" style={{ color: c.color, opacity: 0.8 }}>
+                        {s.title}
+                      </p>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
       <AnimatePresence>
-        {editOpen && (
+        {editLive && (
           <EditLiveClassModal
-            live={live}
-            onClose={() => setEditOpen(false)}
-            onSuccess={() => setEditOpen(false)}
+            live={editLive}
+            onClose={() => setEditLive(null)}
+            onSuccess={() => setEditLive(null)}
           />
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   )
 }
 
@@ -321,15 +471,16 @@ function QuickCreateModal({ onClose, onSuccess }: { onClose: () => void; onSucce
   const { data: instructorsData } = useUsers('instructor', { per_page: 200 })
   const instructors = instructorsData?.docs ?? []
 
-  const [courseId,     setCourseId]     = useState(courses[0]?.id ?? '')
-  const [title,        setTitle]        = useState('')
-  const [start,        setStart]        = useState('')
-  const [durationMins, setDurationMins] = useState(60)
-  const [type,         setType]         = useState<LiveClassType>('external')
-  const [meetingUrl,   setMeetingUrl]   = useState('')
-  const [sectionId,    setSectionId]    = useState('')
-  const [instructorId, setInstructorId] = useState('')
-  const [error,        setError]        = useState<string | null>(null)
+  const [courseId,        setCourseId]        = useState(courses[0]?.id ?? '')
+  const [title,           setTitle]           = useState('')
+  const [start,           setStart]           = useState('')
+  const [durationMins,    setDurationMins]    = useState(60)
+  const [sessionCapacity, setSessionCapacity] = useState<number | ''>(500)
+  const [type,            setType]            = useState<LiveClassType>('external')
+  const [meetingUrl,      setMeetingUrl]      = useState('')
+  const [sectionId,       setSectionId]       = useState('')
+  const [instructorId,    setInstructorId]    = useState('')
+  const [error,           setError]           = useState<string | null>(null)
 
   const { data: outline } = useCourseOutline(courseId)
   const sections = outline?.sections ?? []
@@ -345,13 +496,14 @@ function QuickCreateModal({ onClose, onSuccess }: { onClose: () => void; onSucce
     try {
       await createMutation.mutateAsync({
         courseId,
-        title:          title.trim(),
-        scheduledStart: new Date(start).toISOString(),
+        title:           title.trim(),
+        scheduledStart:  new Date(start).toISOString(),
         durationMins,
+        sessionCapacity: sessionCapacity !== '' ? sessionCapacity : undefined,
         type,
-        meetingUrl:    type === 'external' ? meetingUrl.trim() || undefined : undefined,
-        sectionId:     sectionId || undefined,
-        instructorId:  instructorId || undefined,
+        meetingUrl:      type === 'external' ? meetingUrl.trim() || undefined : undefined,
+        sectionId:       sectionId || undefined,
+        instructorId:    instructorId || undefined,
       })
       onSuccess()
     } catch (err: any) {
@@ -413,7 +565,7 @@ function QuickCreateModal({ onClose, onSuccess }: { onClose: () => void; onSucce
                         border:     `1px solid ${t === 'internal' ? 'rgba(255,107,26,0.35)' : 'rgba(99,102,241,0.35)'}` }
                     : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)',
                         border: '1px solid rgba(255,255,255,0.08)' }}>
-                  {t === 'internal' ? <Eye size={11} /> : <ExternalLink size={11} />}
+                  {t === 'internal' ? <ExternalLink size={11} /> : <ExternalLink size={11} />}
                   {t === 'internal' ? 'In-App Stream' : 'External Link'}
                 </button>
               ))}
@@ -425,8 +577,8 @@ function QuickCreateModal({ onClose, onSuccess }: { onClose: () => void; onSucce
             placeholder="Session title…"
             className={base} style={iStyle} />
 
-          {/* Start + Duration */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Start + Duration + Max seats */}
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
                 style={{ color: 'rgba(255,255,255,0.35)' }}>Start time</label>
@@ -438,6 +590,15 @@ function QuickCreateModal({ onClose, onSuccess }: { onClose: () => void; onSucce
                 style={{ color: 'rgba(255,255,255,0.35)' }}>Duration (mins)</label>
               <input type="number" min={5} max={600} step={5} value={durationMins}
                 onChange={e => setDurationMins(Number(e.target.value))}
+                className={base} style={iStyle} />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+                style={{ color: 'rgba(255,255,255,0.35)' }}>Max seats</label>
+              <input type="number" min={1} max={10000} step={1}
+                value={sessionCapacity}
+                onChange={e => setSessionCapacity(e.target.value === '' ? '' : Number(e.target.value))}
+                placeholder="1000"
                 className={base} style={iStyle} />
             </div>
           </div>
@@ -467,17 +628,15 @@ function QuickCreateModal({ onClose, onSuccess }: { onClose: () => void; onSucce
           )}
 
           {/* Instructor */}
-          {instructors.length > 0 && (
-            <div>
-              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
-                style={{ color: 'rgba(255,255,255,0.35)' }}>Instructor (optional)</label>
-              <select value={instructorId} onChange={e => setInstructorId(e.target.value)}
-                className={base} style={{ ...iStyle, color: instructorId ? 'white' : 'rgba(255,255,255,0.3)' }}>
-                <option value="">Default (current user)</option>
-                {instructors.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-              </select>
-            </div>
-          )}
+          <div>
+            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: 'rgba(255,255,255,0.35)' }}>Instructor</label>
+            <select value={instructorId} onChange={e => setInstructorId(e.target.value)}
+              className={base} style={{ ...iStyle, color: instructorId ? 'white' : 'rgba(255,255,255,0.3)' }}>
+              <option value="">Default (current user)</option>
+              {instructors.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+            </select>
+          </div>
 
           {error && (
             <p className="flex items-center gap-1.5 text-xs" style={{ color: '#F87171' }}>
@@ -512,6 +671,10 @@ export default function LiveClassesPage() {
   const [courseFilter,  setCourseFilter]  = useState('')
   const [search,        setSearch]        = useState('')
   const [createOpen,    setCreateOpen]    = useState(false)
+  const [view,          setView]          = useState<'table' | 'calendar'>('table')
+
+  const { data: me } = useCurrentUser()
+  const isInstructor = me?.role === 'instructor'
 
   const { data: rawItems = [], isLoading, isError } = useAllLiveClasses(activeFilter)
   const { data: coursesData } = useCourses({ per_page: 200 })
@@ -520,7 +683,7 @@ export default function LiveClassesPage() {
   /* For stats bar, always use the full unfiltered list */
   const { data: allItems = [] } = useAllLiveClasses('all')
 
-  /* Apply type + course + search filters client-side */
+  /* Apply type + course + search + instructor filters client-side */
   const items = useMemo(() => {
     let list = rawItems
     if (typeFilter !== 'all') list = list.filter(l => l.type === typeFilter)
@@ -537,8 +700,14 @@ export default function LiveClassesPage() {
         (typeof l.course === 'object' && l.course?.title?.toLowerCase().includes(q))
       )
     }
+    if (isInstructor && me?.id) {
+      list = list.filter(l => {
+        const instrId = typeof l.instructor === 'object' ? l.instructor?.id : l.instructorId
+        return instrId === me.id
+      })
+    }
     return list
-  }, [rawItems, typeFilter, courseFilter, search])
+  }, [rawItems, typeFilter, courseFilter, search, isInstructor, me?.id])
 
   /* Group by date */
   const grouped = useMemo(() => {
@@ -554,8 +723,16 @@ export default function LiveClassesPage() {
 
   const liveNowCount = allItems.filter(l => l.status === 'live').length
 
+  /* Open the quick-create modal pre-filled with a date when user clicks an empty calendar slot */
+  const handleCalendarSlotClick = (_date: Date) => {
+    setCreateOpen(true)
+  }
+
+  /* Table column count depends on showInstructor */
+  const colSpan = isInstructor ? 6 : 7
+
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-6xl">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
         className="mb-6 flex items-center gap-4">
@@ -565,10 +742,10 @@ export default function LiveClassesPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-            Live Classes
+            {isInstructor ? 'My Live Classes' : 'Live Classes'}
           </h1>
           <p className="mt-0.5 text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
-            All sessions across every course
+            {isInstructor ? 'Your scheduled sessions' : 'All sessions across every course'}
           </p>
         </div>
 
@@ -582,12 +759,27 @@ export default function LiveClassesPage() {
             style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
             <Plus size={14} />New Session
           </motion.button>
-          {/* Timetable button */}
-          <Link href="/live-classes/timetable"
-            className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition-colors hover:bg-white/10"
-            style={{ color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.10)' }}>
-            <CalendarDays size={14} />Timetable
-          </Link>
+
+          {/* View toggle */}
+          <div className="flex items-center rounded-xl overflow-hidden"
+            style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
+            <button
+              onClick={() => setView('table')}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-colors"
+              style={view === 'table'
+                ? { background: 'rgba(255,255,255,0.10)', color: 'white' }
+                : { background: 'transparent', color: 'rgba(255,255,255,0.40)' }}>
+              <LayoutList size={13} />Table
+            </button>
+            <button
+              onClick={() => setView('calendar')}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-colors"
+              style={view === 'calendar'
+                ? { background: 'rgba(255,255,255,0.10)', color: 'white' }
+                : { background: 'transparent', color: 'rgba(255,255,255,0.40)' }}>
+              <CalendarRange size={13} />Calendar
+            </button>
+          </div>
 
           {/* Live now badge */}
           {liveNowCount > 0 && (
@@ -693,81 +885,106 @@ export default function LiveClassesPage() {
         )}
       </div>
 
-      {/* Content */}
-      <AnimatePresence mode="wait">
-        {isLoading && (
-          <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="flex items-center justify-center gap-2 py-20 text-sm"
-            style={{ color: 'rgba(255,255,255,0.3)' }}>
-            <Loader2 size={16} className="animate-spin" />Loading sessions…
-          </motion.div>
-        )}
+      {/* Calendar view */}
+      {view === 'calendar' && (
+        <CalendarView items={items} onSlotClick={handleCalendarSlotClick} />
+      )}
 
-        {isError && (
-          <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="flex flex-col items-center gap-3 py-16 text-center">
-            <AlertCircle size={28} style={{ color: '#EF4444' }} />
-            <p className="text-sm font-semibold text-white">Couldn&apos;t load live classes</p>
-          </motion.div>
-        )}
+      {/* Table view */}
+      {view === 'table' && (
+        <AnimatePresence mode="wait">
+          {isLoading && (
+            <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="flex items-center justify-center gap-2 py-20 text-sm"
+              style={{ color: 'rgba(255,255,255,0.3)' }}>
+              <Loader2 size={16} className="animate-spin" />Loading sessions…
+            </motion.div>
+          )}
 
-        {!isLoading && !isError && items.length === 0 && (
-          <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="flex flex-col items-center gap-4 py-20 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-3xl"
-              style={{ background: 'rgba(255,107,26,0.08)', border: '1px solid rgba(255,107,26,0.15)' }}>
-              <Video size={26} style={{ color: '#FF6B1A' }} />
-            </div>
-            <div>
-              <p className="text-base font-bold text-white">No sessions found</p>
-              <p className="mt-1 text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                {activeFilter === 'all'
-                  ? 'Create a live class inside any course to get started.'
-                  : activeFilter === 'live'      ? 'No streams are live right now.'
-                  : activeFilter === 'scheduled' ? 'No upcoming sessions scheduled.'
-                  : activeFilter === 'ended'     ? 'No ended sessions yet.'
-                  : activeFilter === 'cancelled' ? 'No cancelled sessions.'
-                  : 'No sessions found.'}
-              </p>
-            </div>
-          </motion.div>
-        )}
+          {isError && (
+            <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="flex flex-col items-center gap-3 py-16 text-center">
+              <AlertCircle size={28} style={{ color: '#EF4444' }} />
+              <p className="text-sm font-semibold text-white">Couldn&apos;t load live classes</p>
+            </motion.div>
+          )}
 
-        {!isLoading && !isError && grouped.length > 0 && (
-          <motion.div key="list" className="space-y-6">
-            {grouped.map((group, gi) => (
-              <motion.div key={group.key}
-                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: gi * 0.05 }}>
-                {/* Date label */}
-                <div className="mb-3 flex items-center gap-2">
-                  <div className="flex h-6 items-center gap-1.5 rounded-xl px-3"
-                    style={{
-                      background: group.list.some(l => l.status === 'live') ? 'rgba(239,68,68,0.10)' : 'rgba(255,255,255,0.05)',
-                      border:     group.list.some(l => l.status === 'live') ? '1px solid rgba(239,68,68,0.22)' : '1px solid rgba(255,255,255,0.08)',
-                    }}>
-                    <Calendar size={10} style={{ color: group.list.some(l => l.status === 'live') ? '#EF4444' : 'rgba(255,255,255,0.4)' }} />
-                    <span className="text-[10px] font-bold"
-                      style={{ color: group.list.some(l => l.status === 'live') ? '#EF4444' : 'rgba(255,255,255,0.4)' }}>
-                      {group.label}
-                    </span>
-                  </div>
-                  <div className="h-px flex-1" style={{ background: 'rgba(255,255,255,0.06)' }} />
-                  <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.2)' }}>
-                    {group.list.length} {group.list.length === 1 ? 'session' : 'sessions'}
-                  </span>
+          {!isLoading && !isError && items.length === 0 && (
+            <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="flex flex-col items-center gap-4 py-20 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-3xl"
+                style={{ background: 'rgba(255,107,26,0.08)', border: '1px solid rgba(255,107,26,0.15)' }}>
+                <Video size={26} style={{ color: '#FF6B1A' }} />
+              </div>
+              <div>
+                <p className="text-base font-bold text-white">No sessions found</p>
+                <p className="mt-1 text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  {activeFilter === 'all'
+                    ? 'Create a live class inside any course to get started.'
+                    : activeFilter === 'live'      ? 'No streams are live right now.'
+                    : activeFilter === 'scheduled' ? 'No upcoming sessions scheduled.'
+                    : activeFilter === 'ended'     ? 'No ended sessions yet.'
+                    : activeFilter === 'cancelled' ? 'No cancelled sessions.'
+                    : 'No sessions found.'}
+                </p>
+              </div>
+            </motion.div>
+          )}
+
+          {!isLoading && !isError && grouped.length > 0 && (
+            <motion.div key="table" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <div className="overflow-hidden rounded-2xl" style={{ border: '1px solid rgba(255,255,255,0.07)' }}>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[720px]">
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.02)' }}>
+                        <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>Session</th>
+                        <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>Course</th>
+                        <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>Module</th>
+                        {!isInstructor && (
+                          <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>Instructor</th>
+                        )}
+                        <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>Date & Time</th>
+                        <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>Seats</th>
+                        <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {grouped.map(group => (
+                        <React.Fragment key={group.key}>
+                          {/* Date divider row */}
+                          <tr>
+                            <td colSpan={colSpan} style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.05)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                              <div className="flex items-center gap-2 px-4 py-2">
+                                <Calendar size={11} style={{ color: 'rgba(255,255,255,0.35)' }} />
+                                <span className="text-[11px] font-bold" style={{ color: 'rgba(255,255,255,0.40)' }}>
+                                  {group.label}
+                                </span>
+                                <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.2)' }}>
+                                  · {group.list.length} {group.list.length === 1 ? 'session' : 'sessions'}
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                          {/* Session rows */}
+                          {group.list.map((live, i) => (
+                            <TableRow
+                              key={live.id}
+                              live={live}
+                              index={i}
+                              showInstructor={!isInstructor}
+                            />
+                          ))}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-
-                <div className="space-y-2.5">
-                  {group.list.map((live, i) => (
-                    <ClassCard key={live.id} live={live} index={gi * 10 + i} />
-                  ))}
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
 
       {/* Quick create modal */}
       <AnimatePresence>

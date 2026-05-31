@@ -1,0 +1,133 @@
+'use client'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { api } from '@/lib/axios'
+import { useRouter } from 'next/navigation'
+
+/* ── Types ──────────────────────────────────────────────── */
+
+export const PERMISSION_RESOURCES = [
+  'users', 'courses', 'live-classes', 'bookings',
+  'orders', 'categories', 'coupons', 'reviews', 'reports', 'roles',
+] as const
+
+export type PermissionResource = typeof PERMISSION_RESOURCES[number]
+
+export interface ResourcePermission {
+  resource:    PermissionResource
+  create:      boolean
+  read:        boolean
+  update:      boolean
+  delete:      boolean
+  list:        boolean
+  list_basic:  boolean
+  impersonate: boolean
+}
+
+export interface Role {
+  id:           string
+  name:         string
+  description?: string
+  isSystem:     boolean
+  permissions:  ResourcePermission[]
+  createdAt:    string
+  updatedAt:    string
+}
+
+/* ── Query keys ─────────────────────────────────────────── */
+
+export const roleKeys = {
+  all: ['admin', 'roles'] as const,
+}
+
+/* ── Hooks ──────────────────────────────────────────────── */
+
+export function useRoles() {
+  return useQuery({
+    queryKey: roleKeys.all,
+    queryFn: async () => {
+      const res = await api.get<{ success: true; data: Role[] }>('/admin/roles')
+      return res.data.data
+    },
+    staleTime: 30_000,
+  })
+}
+
+export function useCreateRole() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (dto: { name: string; description?: string }) => {
+      const res = await api.post<{ success: true; data: Role }>('/admin/roles', dto)
+      return res.data.data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: roleKeys.all }),
+  })
+}
+
+export function useUpdateRole() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...dto }: { id: string; name?: string; description?: string }) => {
+      const res = await api.patch<{ success: true; data: Role }>(`/admin/roles/${id}`, dto)
+      return res.data.data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: roleKeys.all }),
+  })
+}
+
+export function useUpdatePermissions() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, permissions }: { id: string; permissions: Partial<ResourcePermission>[] }) => {
+      const res = await api.patch<{ success: true; data: Role }>(
+        `/admin/roles/${id}/permissions`, { permissions },
+      )
+      return res.data.data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: roleKeys.all }),
+  })
+}
+
+export function useDeleteRole() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/admin/roles/${id}`)
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: roleKeys.all })
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] })
+    },
+  })
+}
+
+export function useAssignRole() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ userId, roleId }: { userId: string; roleId: string | null }) => {
+      const res = await api.patch<{ success: true; data: { userId: string; roleId: string | null } }>(
+        `/admin/users/${userId}/assign-role`, { roleId },
+      )
+      return res.data.data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'users'] }),
+  })
+}
+
+export function useImpersonate() {
+  const router = useRouter()
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await api.post<{
+        success: true
+        data: { token: string; user: { id: string; name: string; email: string; role: string } }
+      }>(`/admin/users/${userId}/impersonate`)
+      return res.data.data
+    },
+    onSuccess: (data) => {
+      /* Open the client portal with the impersonation token as a query param.
+         The client portal should read `?impersonate=<token>` and set the session. */
+      const clientUrl = process.env.NEXT_PUBLIC_CLIENT_URL ?? 'http://localhost:3000'
+      window.open(`${clientUrl}?impersonate=${data.token}`, '_blank')
+    },
+  })
+}

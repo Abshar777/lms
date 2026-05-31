@@ -444,11 +444,27 @@ export class LiveClassService {
     status:          'scheduled' | 'live' | 'ended' | 'cancelled'
     sessionCapacity: number
     mentorNotes:     string
+    instructorId:    string
+    courseId:        string
+    sectionId:       string
   }>): Promise<ILiveClass> {
     if (!Types.ObjectId.isValid(id)) {
       throw new LiveClassError('INVALID_ID', 'Invalid id', 400)
     }
-    const updated = await this.liveRepo.updateByIdPopulated(id, input as Partial<ILiveClass>)
+    const patch: Partial<ILiveClass> = { ...(input as any) }
+    if (input.instructorId != null) {
+      if (!Types.ObjectId.isValid(input.instructorId)) throw new LiveClassError('INVALID_ID', 'Invalid instructorId', 400)
+      patch.instructorId = new Types.ObjectId(input.instructorId) as any
+    }
+    if (input.courseId != null) {
+      if (!Types.ObjectId.isValid(input.courseId)) throw new LiveClassError('INVALID_ID', 'Invalid courseId', 400)
+      patch.courseId = new Types.ObjectId(input.courseId) as any
+    }
+    if (input.sectionId != null) {
+      if (!Types.ObjectId.isValid(input.sectionId)) throw new LiveClassError('INVALID_ID', 'Invalid sectionId', 400)
+      patch.sectionId = new Types.ObjectId(input.sectionId) as any
+    }
+    const updated = await this.liveRepo.updateByIdPopulated(id, patch)
     if (!updated) throw new LiveClassError('LIVE_CLASS_NOT_FOUND', 'Live class not found', 404)
     return updated
   }

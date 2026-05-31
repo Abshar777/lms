@@ -62,6 +62,9 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
     if (!s) return ''
     return typeof s === 'object' ? (s.id ?? '') : s
   })
+  const [sessionCapacity, setSessionCapacity] = useState<number | ''>(
+    (live as any).sessionCapacity ?? 500,
+  )
   const [error,         setError]         = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -80,16 +83,17 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
       await updateMutation.mutateAsync({
         id:   live.id,
         data: {
-          title:          title.trim(),
-          description:    description.trim() || undefined,
-          scheduledStart: new Date(start).toISOString(),
+          title:           title.trim(),
+          description:     description.trim() || undefined,
+          scheduledStart:  new Date(start).toISOString(),
           durationMins,
           type,
-          meetingUrl:     type === 'external' ? meetingUrl.trim() || undefined : undefined,
+          meetingUrl:      type === 'external' ? meetingUrl.trim() || undefined : undefined,
           status,
-          instructorId:   instructorId || undefined,
-          courseId:       activeCourseId !== originalCourseId ? activeCourseId : undefined,
-          sectionId:      sectionId || undefined,
+          instructorId:    instructorId || undefined,
+          courseId:        activeCourseId !== originalCourseId ? activeCourseId : undefined,
+          sectionId:       sectionId || undefined,
+          sessionCapacity: sessionCapacity !== '' ? sessionCapacity : undefined,
         },
       })
       onSuccess()
@@ -210,8 +214,8 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
               className={base} style={iStyle} />
           </div>
 
-          {/* Date + Duration */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Date + Duration + Capacity */}
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
                 style={{ color: 'rgba(255,255,255,0.35)' }}>Start time</label>
@@ -223,6 +227,15 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
                 style={{ color: 'rgba(255,255,255,0.35)' }}>Duration (mins)</label>
               <input type="number" min={5} max={600} step={5}
                 value={durationMins} onChange={e => setDurationMins(Number(e.target.value))}
+                className={base} style={iStyle} />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+                style={{ color: 'rgba(255,255,255,0.35)' }}>Max seats</label>
+              <input type="number" min={1} max={10000} step={1}
+                value={sessionCapacity}
+                onChange={e => setSessionCapacity(e.target.value === '' ? '' : Number(e.target.value))}
+                placeholder="500"
                 className={base} style={iStyle} />
             </div>
           </div>
@@ -288,19 +301,17 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
           )}
 
           {/* Instructor */}
-          {instructors.length > 0 && (
-            <div>
-              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
-                style={{ color: 'rgba(255,255,255,0.35)' }}>Instructor</label>
-              <select value={instructorId} onChange={e => setInstructorId(e.target.value)}
-                className={base} style={{ ...iStyle, color: instructorId ? 'white' : 'rgba(255,255,255,0.3)' }}>
-                <option value="">Default (current user)</option>
-                {instructors.map(i => (
-                  <option key={i.id} value={i.id}>{i.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div>
+            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: 'rgba(255,255,255,0.35)' }}>Instructor</label>
+            <select value={instructorId} onChange={e => setInstructorId(e.target.value)}
+              className={base} style={{ ...iStyle, color: instructorId ? 'white' : 'rgba(255,255,255,0.3)' }}>
+              <option value="">Default (current user)</option>
+              {instructors.map(i => (
+                <option key={i.id} value={i.id}>{i.name}</option>
+              ))}
+            </select>
+          </div>
 
           {error && (
             <p className="flex items-center gap-1.5 text-xs" style={{ color: '#F87171' }}>

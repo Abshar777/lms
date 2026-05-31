@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { AdminController } from '@/controllers/admin.controller.ts'
 import { AuthController } from '@/controllers/auth.controller.ts'
 import { LiveClassController } from '@/controllers/liveClass.controller.ts'
+import { RolesController } from '@/controllers/roles.controller.ts'
 import { authenticateAdmin, requireRole, requireAdmin } from '@/middleware/auth.middleware.ts'
 import { validate } from '@/middleware/validate.middleware.ts'
 import { QuizService } from '@/services/quiz.service.ts'
@@ -19,6 +20,7 @@ const router     = Router()
 const ctrl       = new AdminController()
 const live       = new LiveClassController()
 const authCtrl   = new AuthController()
+const roleCtrl   = new RolesController()
 const quizSvc    = new QuizService()
 const assignSvc  = new AssignmentService()
 const sectionSvc = new SectionService()
@@ -72,7 +74,7 @@ const categoryUpdateSchema = categoryCreateSchema.partial()
 
 const usersQuerySchema = z.object({
   page:     z.coerce.number().int().min(1).default(1),
-  per_page: z.coerce.number().int().min(1).max(100).default(20),
+  per_page: z.coerce.number().int().min(1).max(500).default(20),
   role:     z.enum(['student', 'instructor', 'admin']).default('student'),
   search:   z.string().trim().optional(),
 })
@@ -147,7 +149,21 @@ const userCreateSchema = z.object({
   })).optional(),
 })
 
-router.get  ('/users',          requireAdmin, validate(usersQuerySchema, 'query'), ctrl.listUsers)
+router.get  ('/users',
+  requireRole('admin', 'instructor'),
+  validate(usersQuerySchema, 'query'),
+  /* Instructors may only list other instructors (for selects/dropdowns). */
+  (req: Request, res: Response, next: NextFunction) => {
+    if (req.user!.role === 'instructor') {
+      const q = req.query as Record<string, string>
+      if (q['role'] !== 'instructor') {
+        res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Instructors can only query the instructor list.' } })
+        return
+      }
+    }
+    next()
+  },
+  ctrl.listUsers)
 /* Admins can create any role; instructors can only create students. */
 router.post ('/users',          validate(userCreateSchema), audit('user.create', 'User'),
   async (req, res, next) => {
@@ -190,6 +206,102 @@ router.post ('/users',          validate(userCreateSchema), audit('user.create',
   },
 )
 router.patch('/users/:id',      requireAdmin, validate(userUpdateSchema), audit('user.roleChange', 'User', r => String(r.params['id'] ?? '')), ctrl.updateUser)
+
+/* GET /admin/users/:id/enrollments — list a student's course enrollments */
+router.get('/users/:id/enrollments', requireAdmin,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { EnrollmentModel } = await import('@/models/schema.ts')
+      const { Types } = await import('mongoose')
+      if (!Types.ObjectId.isValid(req.params['id'] as string)) {
+        res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid user ID' } })
+        return
+      }
+      const enrollments = await EnrollmentModel.find({ userId: new Types.ObjectId(req.params['id'] as string) })
+        .populate('courseId', 'id title thumbnailUrl')
+        .lean({ virtuals: true })
+      sendSuccess(res, enrollments)
+    } catch (err) { next(err) }
+  },
+)
+
+/* POST /admin/users/:id/enrollments — enroll student in a course */
+const enrollCreateSchema = z.object({ courseId: z.string().min(1) })
+
+router.post('/users/:id/enrollments', requireAdmin, validate(enrollCreateSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { EnrollmentModel } = await import('@/models/schema.ts')
+      const { Types } = await import('mongoose')
+      const userId   = req.params['id'] as string
+      const courseId = (req.body as { courseId: string }).courseId
+      if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(courseId)) {
+        res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid ID' } })
+        return
+      }
+      /* Admin override — bypass published/paid checks; idempotent */
+      const existing = await EnrollmentModel.findOne({
+        userId:   new Types.ObjectId(userId),
+        courseId: new Types.ObjectId(courseId),
+      }).populate('courseId', 'id title thumbnailUrl').lean({ virtuals: true })
+      if (existing) {
+        sendSuccess(res, existing, 'Already enrolled')
+        return
+      }
+      const doc = await EnrollmentModel.create({
+        userId:   new Types.ObjectId(userId),
+        courseId: new Types.ObjectId(courseId),
+      })
+      const populated = await EnrollmentModel.findById(doc._id)
+        .populate('courseId', 'id title thumbnailUrl')
+        .lean({ virtuals: true })
+      sendSuccess(res, populated, 'Enrolled', 201)
+    } catch (err) { next(err) }
+  },
+)
+
+/* DELETE /admin/enrollments/:id — remove an enrollment */
+router.delete('/enrollments/:id', requireAdmin,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { EnrollmentModel } = await import('@/models/schema.ts')
+      const deleted = await EnrollmentModel.findByIdAndDelete(req.params['id'])
+      if (!deleted) {
+        res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Enrollment not found' } })
+        return
+      }
+      sendSuccess(res, null, 'Enrollment removed')
+    } catch (err) { next(err) }
+  },
+)
+
+/* PATCH /admin/enrollments/:id — update blocked lessons for one enrollment */
+const enrollmentUpdateSchema = z.object({
+  blockedLessons: z.array(z.string()),
+})
+
+router.patch('/enrollments/:id', requireAdmin, validate(enrollmentUpdateSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { EnrollmentModel } = await import('@/models/schema.ts')
+      const { Types } = await import('mongoose')
+      const { blockedLessons } = req.body as { blockedLessons: string[] }
+      const blockedObjectIds = blockedLessons
+        .filter((id: string) => Types.ObjectId.isValid(id))
+        .map((id: string) => new Types.ObjectId(id))
+      const enrollment = await EnrollmentModel.findByIdAndUpdate(
+        req.params['id'],
+        { blockedLessons: blockedObjectIds },
+        { new: true },
+      ).populate('courseId', 'id title thumbnailUrl').lean({ virtuals: true })
+      if (!enrollment) {
+        res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Enrollment not found' } })
+        return
+      }
+      sendSuccess(res, enrollment)
+    } catch (err) { next(err) }
+  },
+)
 
 /* ─── Reviews (admin-only) ────────────────────────── */
 router.get   ('/reviews',     requireAdmin, ctrl.listReviews)
@@ -873,5 +985,41 @@ router.get('/live-classes/:id/feedback', authenticateAdmin, requireRole('admin',
     res.json({ success: true, data: { feedbacks: docs, averageRating: avg ? Math.round(avg * 10) / 10 : null, count: docs.length } })
   } catch (err) { next(err) }
 })
+
+/* ── Roles & Permissions ──────────────────────────────────────────────── */
+
+const roleCreateSchema = z.object({
+  name:        z.string().min(1).max(80).trim(),
+  description: z.string().max(500).optional(),
+})
+
+const roleUpdateSchema = roleCreateSchema.partial()
+
+const resourcePermissionSchema = z.object({
+  resource:    z.string(),
+  create:      z.boolean().optional(),
+  read:        z.boolean().optional(),
+  update:      z.boolean().optional(),
+  delete:      z.boolean().optional(),
+  list:        z.boolean().optional(),
+  list_basic:  z.boolean().optional(),
+  impersonate: z.boolean().optional(),
+})
+
+const permissionsBodySchema = z.object({
+  permissions: z.array(resourcePermissionSchema),
+})
+
+const assignRoleSchema = z.object({
+  roleId: z.string().nullable(),
+})
+
+router.get   ('/roles',                      requireAdmin, roleCtrl.list)
+router.post  ('/roles',                      requireAdmin, validate(roleCreateSchema), roleCtrl.create)
+router.patch ('/roles/:id',                  requireAdmin, validate(roleUpdateSchema), roleCtrl.update)
+router.patch ('/roles/:id/permissions',      requireAdmin, validate(permissionsBodySchema), roleCtrl.updatePermissions)
+router.delete('/roles/:id',                  requireAdmin, roleCtrl.delete)
+router.patch ('/users/:userId/assign-role',  requireAdmin, validate(assignRoleSchema), roleCtrl.assignRole)
+router.post  ('/users/:userId/impersonate',  requireAdmin, roleCtrl.impersonate)
 
 export default router

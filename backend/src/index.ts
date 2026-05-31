@@ -4,10 +4,14 @@ import { env } from '@/config/env.ts'
 import { connectDatabase, disconnectDatabase } from '@/config/database.ts'
 import { logger } from '@/utils/logger.ts'
 import { startReminderJobs } from '@/jobs/reminders.job.ts'
+import { seedDefaultRoles } from '@/utils/seedRoles.ts'
 
 async function bootstrap() {
   /* 1. Connect to MongoDB before accepting traffic */
   await connectDatabase()
+
+  /* 1a. Ensure system roles exist (idempotent — skips existing) */
+  await seedDefaultRoles()
 
   /* 2. Start HTTP server */
   const server = app.listen(env.PORT, () => {

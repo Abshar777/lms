@@ -94,15 +94,16 @@ export function useStreamCredentials(id: string | undefined) {
 }
 
 export interface CreateLiveClassInput {
-  courseId:        string
-  title:           string
-  description?:    string
-  scheduledStart:  string       // ISO
-  durationMins:    number
-  type:            LiveClassType
-  meetingUrl?:     string       // required when type=external
-  sectionId?:      string       // optional course module/section link
-  instructorId?:   string       // optional override; defaults to current user
+  courseId:         string
+  title:            string
+  description?:     string
+  scheduledStart:   string       // ISO
+  durationMins:     number
+  type:             LiveClassType
+  meetingUrl?:      string       // required when type=external
+  sectionId?:       string       // optional course module/section link
+  instructorId?:    string       // optional override; defaults to current user
+  sessionCapacity?: number       // max bookings; defaults to 1000 (unlimited)
 }
 
 export interface UpdateLiveClassInput {

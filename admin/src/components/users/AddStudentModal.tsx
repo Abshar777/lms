@@ -58,77 +58,94 @@ const inputStyle = (hasError?: boolean): React.CSSProperties =>
     ? { background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)' }
     : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }
 
-/* ── Course outline sub-component ─────────────────── */
+/* ── Course outline sub-component — section-level toggle ── */
 function CourseOutlinePanel({
   courseId,
-  blockedLessons,
-  onToggleLesson,
+  blockedSections,
+  onToggle,
+  onBlockAll,
+  onAllowAll,
 }: {
-  courseId:       string
-  blockedLessons: Set<string>
-  onToggleLesson: (lessonId: string) => void
+  courseId:        string
+  blockedSections: Set<string>
+  onToggle:        (sectionId: string) => void
+  onBlockAll:      (sectionIds: string[]) => void
+  onAllowAll:      () => void
 }) {
   const { data: outline, isLoading } = useCourseOutline(courseId)
 
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 py-3 px-4 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
-        <Loader2 size={11} className="animate-spin" />Loading curriculum…
+        <Loader2 size={11} className="animate-spin" />Loading modules…
       </div>
     )
   }
 
-  if (!outline || outline.sections.length === 0) {
-    return (
-      <p className="py-3 px-4 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>No curriculum added yet.</p>
-    )
+  const sections = outline?.sections ?? []
+
+  if (sections.length === 0) {
+    return <p className="py-3 px-4 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>No modules added yet.</p>
   }
 
+  const allBlocked  = sections.every(s => blockedSections.has(s.id))
+  const noneBlocked = sections.every(s => !blockedSections.has(s.id))
+
   return (
-    <div className="px-3 pb-3 space-y-2">
-      {outline.sections.map(section => {
-        const sectionLessons = outline.lessons.filter(l => l.sectionId === section.id)
-        if (sectionLessons.length === 0) return null
+    <div className="px-3 pb-3 pt-2 space-y-1.5">
+      {/* Allow all / Block all */}
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.25)' }}>
+          Module access
+        </span>
+        <div className="flex items-center gap-1.5">
+          <button type="button" onClick={onAllowAll} disabled={noneBlocked}
+            className="rounded-md px-2 py-0.5 text-[10px] font-semibold transition-all disabled:opacity-30 hover:brightness-110"
+            style={{ background: 'rgba(16,185,129,0.12)', color: '#10B981', border: '1px solid rgba(16,185,129,0.25)' }}>
+            Allow all
+          </button>
+          <button type="button" onClick={() => onBlockAll(sections.map(s => s.id))} disabled={allBlocked}
+            className="rounded-md px-2 py-0.5 text-[10px] font-semibold transition-all disabled:opacity-30 hover:brightness-110"
+            style={{ background: 'rgba(239,68,68,0.10)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.22)' }}>
+            Block all
+          </button>
+        </div>
+      </div>
+
+      {sections.map(section => {
+        const isBlocked = blockedSections.has(section.id)
         return (
-          <div key={section.id}>
-            <p className="text-[10px] font-bold uppercase tracking-wide mb-1.5 px-1"
-              style={{ color: 'rgba(255,255,255,0.4)' }}>{section.title}</p>
-            <div className="space-y-1">
-              {sectionLessons.map(lesson => {
-                const isBlocked = blockedLessons.has(lesson.id)
-                return (
-                  <button
-                    key={lesson.id}
-                    type="button"
-                    onClick={() => onToggleLesson(lesson.id)}
-                    className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-white/10"
-                    style={{
-                      background: isBlocked ? 'rgba(239,68,68,0.08)' : undefined,
-                      border: isBlocked ? '1px solid rgba(239,68,68,0.18)' : '1px solid transparent',
-                    }}
-                  >
-                    <div
-                      className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded"
-                      style={{
-                        background: isBlocked ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.10)',
-                        border: isBlocked ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(16,185,129,0.3)',
-                      }}
-                    >
-                      {isBlocked
-                        ? <Lock size={10} style={{ color: '#EF4444' }} />
-                        : <Unlock size={10} style={{ color: '#10B981' }} />}
-                    </div>
-                    <span className="flex-1 truncate" style={{ color: isBlocked ? '#F87171' : 'rgba(255,255,255,0.75)' }}>
-                      {lesson.title}
-                    </span>
-                    <span className="flex-shrink-0 text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                      {isBlocked ? 'Blocked' : 'Allowed'}
-                    </span>
-                  </button>
-                )
-              })}
+          <button
+            key={section.id}
+            type="button"
+            onClick={() => onToggle(section.id)}
+            className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs transition-all hover:brightness-110"
+            style={{
+              background: isBlocked ? 'rgba(239,68,68,0.07)' : 'rgba(16,185,129,0.05)',
+              border:     isBlocked ? '1px solid rgba(239,68,68,0.20)' : '1px solid rgba(16,185,129,0.15)',
+            }}
+          >
+            <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded"
+              style={{
+                background: isBlocked ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.12)',
+                border:     isBlocked ? '1px solid rgba(239,68,68,0.35)' : '1px solid rgba(16,185,129,0.35)',
+              }}>
+              {isBlocked
+                ? <Lock size={10} style={{ color: '#EF4444' }} />
+                : <Unlock size={10} style={{ color: '#10B981' }} />}
             </div>
-          </div>
+            <span className="flex-1 truncate font-medium"
+              style={{ color: isBlocked ? '#F87171' : 'rgba(255,255,255,0.8)' }}>
+              {section.title}
+            </span>
+            <span className="flex-shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold"
+              style={{
+                background: isBlocked ? 'rgba(239,68,68,0.10)' : 'rgba(16,185,129,0.10)',
+                color:      isBlocked ? '#EF4444' : '#10B981',
+              }}>
+              {isBlocked ? 'Blocked' : 'Allowed'}
+            </span>
+          </button>
         )
       })}
     </div>
@@ -182,15 +199,33 @@ export function AddStudentModal({ open, onClose }: Props) {
     })
   }, [])
 
-  /* Toggle lesson blocking within a course */
-  const toggleLesson = useCallback((courseId: string, lessonId: string) => {
+  /* Toggle a single section blocked/allowed */
+  const toggleSection = useCallback((courseId: string, sectionId: string) => {
     setBlockState(prev => {
       const course = prev[courseId]
       if (!course) return prev
       const next = new Set(course.blockedLessons)
-      if (next.has(lessonId)) next.delete(lessonId)
-      else next.add(lessonId)
+      if (next.has(sectionId)) next.delete(sectionId)
+      else next.add(sectionId)
       return { ...prev, [courseId]: { ...course, blockedLessons: next } }
+    })
+  }, [])
+
+  /* Block all sections in a course */
+  const blockAll = useCallback((courseId: string, sectionIds: string[]) => {
+    setBlockState(prev => {
+      const course = prev[courseId]
+      if (!course) return prev
+      return { ...prev, [courseId]: { ...course, blockedLessons: new Set(sectionIds) } }
+    })
+  }, [])
+
+  /* Allow all sections in a course */
+  const allowAll = useCallback((courseId: string) => {
+    setBlockState(prev => {
+      const course = prev[courseId]
+      if (!course) return prev
+      return { ...prev, [courseId]: { ...course, blockedLessons: new Set() } }
     })
   }, [])
 
@@ -391,7 +426,7 @@ export function AddStudentModal({ open, onClose }: Props) {
                       </AnimatePresence>
 
                       <p className="mb-3 text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                        Select which courses to enroll this student in. Click a course's curriculum to block specific lessons.
+                        Select which courses to enroll this student in. Expand a course to block access to specific modules.
                       </p>
 
                       {coursesLoading ? (
@@ -407,7 +442,7 @@ export function AddStudentModal({ open, onClose }: Props) {
                           {coursesData?.docs.map(course => {
                             const state = blockState[course.id]
                             const isSelected = !!state
-                            const blockedCount = state?.blockedLessons.size ?? 0
+                            const hasRestrictions = (state?.blockedLessons.size ?? 0) > 0
 
                             return (
                               <div key={course.id}
@@ -444,9 +479,9 @@ export function AddStudentModal({ open, onClose }: Props) {
                                     <p className="truncate text-xs font-semibold text-white">
                                       {course.title}
                                     </p>
-                                    {blockedCount > 0 && (
+                                    {hasRestrictions && (
                                       <p className="text-[10px]" style={{ color: '#F87171' }}>
-                                        {blockedCount} lesson{blockedCount > 1 ? 's' : ''} blocked
+                                        Some modules blocked
                                       </p>
                                     )}
                                   </div>
@@ -479,8 +514,10 @@ export function AddStudentModal({ open, onClose }: Props) {
                                     >
                                       <CourseOutlinePanel
                                         courseId={course.id}
-                                        blockedLessons={state.blockedLessons}
-                                        onToggleLesson={(lessonId) => toggleLesson(course.id, lessonId)}
+                                        blockedSections={state.blockedLessons}
+                                        onToggle={(sectionId) => toggleSection(course.id, sectionId)}
+                                        onBlockAll={(sectionIds) => blockAll(course.id, sectionIds)}
+                                        onAllowAll={() => allowAll(course.id)}
                                       />
                                     </motion.div>
                                   )}

@@ -282,15 +282,16 @@ function QuickCreateModal({
   const courses     = coursesData?.docs ?? []
   const instructors = instructorsData?.docs ?? []
 
-  const [courseId,      setCourseId]      = useState('')
-  const [sectionId,     setSectionId]     = useState('')
-  const [title,         setTitle]         = useState('')
-  const [start,         setStart]         = useState(draft.dateISO)
-  const [durationMins,  setDurationMins]  = useState(60)
-  const [type,          setType]          = useState<LiveClassType>('external')
-  const [meetingUrl,    setMeetingUrl]    = useState('')
-  const [instructorId,  setInstructorId]  = useState('')
-  const [error,         setError]         = useState<string | null>(null)
+  const [courseId,        setCourseId]        = useState('')
+  const [sectionId,       setSectionId]       = useState('')
+  const [title,           setTitle]           = useState('')
+  const [start,           setStart]           = useState(draft.dateISO)
+  const [durationMins,    setDurationMins]    = useState(60)
+  const [sessionCapacity, setSessionCapacity] = useState<number | ''>(500)
+  const [type,            setType]            = useState<LiveClassType>('external')
+  const [meetingUrl,      setMeetingUrl]      = useState('')
+  const [instructorId,    setInstructorId]    = useState('')
+  const [error,           setError]           = useState<string | null>(null)
 
   const { data: outline } = useCourseOutline(courseId)
   const sections = outline?.sections ?? []
@@ -306,13 +307,14 @@ function QuickCreateModal({
     try {
       await createMutation.mutateAsync({
         courseId,
-        title:          title.trim(),
-        scheduledStart: new Date(start).toISOString(),
+        title:           title.trim(),
+        scheduledStart:  new Date(start).toISOString(),
         durationMins,
+        sessionCapacity: sessionCapacity !== '' ? sessionCapacity : undefined,
         type,
-        meetingUrl:     type === 'external' ? meetingUrl.trim() : undefined,
-        sectionId:      sectionId || undefined,
-        instructorId:   instructorId || undefined,
+        meetingUrl:      type === 'external' ? meetingUrl.trim() : undefined,
+        sectionId:       sectionId || undefined,
+        instructorId:    instructorId || undefined,
       })
       onSuccess()
     } catch (err: any) {
@@ -414,8 +416,8 @@ function QuickCreateModal({
               className={base} style={iStyle} />
           </div>
 
-          {/* Date + Duration */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Date + Duration + Max seats */}
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
                 style={{ color: 'rgba(255,255,255,0.35)' }}>Start time</label>
@@ -429,6 +431,16 @@ function QuickCreateModal({
               <input
                 type="number" min={5} max={600} step={5}
                 value={durationMins} onChange={e => setDurationMins(Number(e.target.value))}
+                className={base} style={iStyle} />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+                style={{ color: 'rgba(255,255,255,0.35)' }}>Max seats</label>
+              <input
+                type="number" min={1} max={10000} step={1}
+                value={sessionCapacity}
+                onChange={e => setSessionCapacity(e.target.value === '' ? '' : Number(e.target.value))}
+                placeholder="1000"
                 className={base} style={iStyle} />
             </div>
           </div>
@@ -467,20 +479,18 @@ function QuickCreateModal({
           )}
 
           {/* Instructor */}
-          {instructors.length > 0 && (
-            <div>
-              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
-                style={{ color: 'rgba(255,255,255,0.35)' }}>Instructor (optional)</label>
-              <select value={instructorId} onChange={e => setInstructorId(e.target.value)}
-                className={`${base} cursor-pointer`}
-                style={{ ...iStyle, color: instructorId ? 'white' : 'rgba(255,255,255,0.3)' }}>
-                <option value="">Default (you)</option>
-                {instructors.map(i => (
-                  <option key={i.id} value={i.id}>{i.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div>
+            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: 'rgba(255,255,255,0.35)' }}>Instructor</label>
+            <select value={instructorId} onChange={e => setInstructorId(e.target.value)}
+              className={`${base} cursor-pointer`}
+              style={{ ...iStyle, color: instructorId ? 'white' : 'rgba(255,255,255,0.3)' }}>
+              <option value="">Default (you)</option>
+              {instructors.map(i => (
+                <option key={i.id} value={i.id}>{i.name}</option>
+              ))}
+            </select>
+          </div>
 
           {error && (
             <p className="flex items-center gap-1.5 text-xs" style={{ color: '#F87171' }}>

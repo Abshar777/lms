@@ -46,6 +46,8 @@ export interface IUser extends Document {
   /* Two-factor authentication (TOTP) */
   twoFactorEnabled: boolean
   twoFactorSecret?: string   // base32-encoded TOTP secret; select:false
+  /* Custom role (fine-grained permissions) */
+  customRoleId?: Types.ObjectId
   /* Meta */
   lastLoginAt?:  Date
   createdAt:     Date
@@ -70,6 +72,7 @@ const UserSchema = new Schema<IUser>(
     lockedUntil:  { type: Date },
     twoFactorEnabled: { type: Boolean, default: false },
     twoFactorSecret:  { type: String, select: false },
+    customRoleId:     { type: Schema.Types.ObjectId, ref: 'Role' },
     lastLoginAt:  { type: Date },
   },
   baseSchemaOptions,
@@ -78,6 +81,62 @@ const UserSchema = new Schema<IUser>(
 UserSchema.index({ provider: 1, providerId: 1 })
 
 export const UserModel = mongoose.model<IUser>('User', UserSchema)
+
+/* ─────────────────────────────────────────────────────
+   ROLE  (custom roles with fine-grained permission matrix)
+───────────────────────────────────────────────────── */
+export const PERMISSION_RESOURCES = [
+  'users', 'courses', 'live-classes', 'bookings',
+  'orders', 'categories', 'coupons', 'reviews', 'reports', 'roles',
+] as const
+export type PermissionResource = typeof PERMISSION_RESOURCES[number]
+
+export interface IResourcePermission {
+  resource:    string
+  create:      boolean
+  read:        boolean
+  update:      boolean
+  delete:      boolean
+  list:        boolean
+  list_basic:  boolean
+  impersonate: boolean    // meaningful for 'users' resource only
+}
+
+export interface IRole extends Document {
+  id:           string
+  name:         string
+  description?: string
+  isSystem:     boolean   // system roles cannot be deleted
+  permissions:  IResourcePermission[]
+  createdAt:    Date
+  updatedAt:    Date
+}
+
+const ResourcePermissionSchema = new Schema<IResourcePermission>(
+  {
+    resource:    { type: String, required: true },
+    create:      { type: Boolean, default: false },
+    read:        { type: Boolean, default: false },
+    update:      { type: Boolean, default: false },
+    delete:      { type: Boolean, default: false },
+    list:        { type: Boolean, default: false },
+    list_basic:  { type: Boolean, default: false },
+    impersonate: { type: Boolean, default: false },
+  },
+  { _id: false },
+)
+
+const RoleSchema = new Schema<IRole>(
+  {
+    name:        { type: String, required: true, unique: true, trim: true, maxlength: 80 },
+    description: { type: String, maxlength: 500 },
+    isSystem:    { type: Boolean, default: false },
+    permissions: { type: [ResourcePermissionSchema], default: [] },
+  },
+  baseSchemaOptions,
+)
+
+export const RoleModel = mongoose.model<IRole>('Role', RoleSchema)
 
 /* ─────────────────────────────────────────────────────
    REFRESH TOKEN

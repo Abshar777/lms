@@ -431,26 +431,28 @@ function CreateForm({
   courseId: string
   pending:  boolean
   onSubmit: (data: {
-    courseId:       string
-    title:          string
-    description?:   string
-    scheduledStart: string
-    durationMins:   number
-    type:           LiveClassType
-    meetingUrl?:    string
-    sectionId?:     string
-    instructorId?:  string
+    courseId:         string
+    title:            string
+    description?:     string
+    scheduledStart:   string
+    durationMins:     number
+    sessionCapacity?: number
+    type:             LiveClassType
+    meetingUrl?:      string
+    sectionId?:       string
+    instructorId?:    string
   }) => Promise<void>
   error: string | null
 }) {
-  const [type,         setType]        = useState<LiveClassType>('external')
-  const [title,        setTitle]       = useState('')
-  const [description,  setDescription] = useState('')
-  const [start,        setStart]       = useState('')
-  const [durationMins, setDurationMins] = useState(60)
-  const [meetingUrl,   setMeetingUrl]  = useState('')
-  const [sectionId,    setSectionId]   = useState('')
-  const [instructorId, setInstructorId] = useState('')
+  const [type,            setType]            = useState<LiveClassType>('external')
+  const [title,           setTitle]           = useState('')
+  const [description,     setDescription]     = useState('')
+  const [start,           setStart]           = useState('')
+  const [durationMins,    setDurationMins]    = useState(60)
+  const [sessionCapacity, setSessionCapacity] = useState<number | ''>(500)
+  const [meetingUrl,      setMeetingUrl]      = useState('')
+  const [sectionId,       setSectionId]       = useState('')
+  const [instructorId,    setInstructorId]    = useState('')
 
   const { data: outline } = useCourseOutline(courseId)
   const sections = outline?.sections ?? []
@@ -466,16 +468,17 @@ function CreateForm({
     await onSubmit({
       courseId,
       title,
-      description:    description || undefined,
-      scheduledStart: iso,
+      description:     description || undefined,
+      scheduledStart:  iso,
       durationMins,
+      sessionCapacity: sessionCapacity !== '' ? sessionCapacity : undefined,
       type,
-      meetingUrl:     type === 'external' ? meetingUrl : undefined,
-      sectionId:      sectionId || undefined,
-      instructorId:   instructorId || undefined,
+      meetingUrl:      type === 'external' ? meetingUrl : undefined,
+      sectionId:       sectionId || undefined,
+      instructorId:    instructorId || undefined,
     })
     setTitle(''); setDescription(''); setStart(''); setMeetingUrl('')
-    setDurationMins(60); setSectionId(''); setInstructorId('')
+    setDurationMins(60); setSessionCapacity(500); setSectionId(''); setInstructorId('')
   }
 
   const inputStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' } as const
@@ -522,12 +525,18 @@ function CreateForm({
           placeholder="Short description (optional)"
           className={base} style={inputStyle} />
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr]">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr_1fr]">
           <input value={start} onChange={e => setStart(e.target.value)} type="datetime-local" required
             className={base} style={inputStyle} />
           <input value={durationMins} onChange={e => setDurationMins(Number(e.target.value))}
             type="number" min={5} max={600} step={5}
             placeholder="Duration (mins)"
+            className={base} style={inputStyle} />
+          <input
+            value={sessionCapacity}
+            onChange={e => setSessionCapacity(e.target.value === '' ? '' : Number(e.target.value))}
+            type="number" min={1} max={10000} step={1}
+            placeholder="Max seats"
             className={base} style={inputStyle} />
         </div>
 
@@ -558,19 +567,17 @@ function CreateForm({
         )}
 
         {/* Instructor */}
-        {instructors.length > 0 && (
-          <div>
-            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
-              style={{ color: 'rgba(255,255,255,0.35)' }}>Instructor (optional)</label>
-            <select value={instructorId} onChange={e => setInstructorId(e.target.value)}
-              className={base} style={{ ...inputStyle, color: instructorId ? 'white' : 'rgba(255,255,255,0.3)' }}>
-              <option value="">Default (you)</option>
-              {instructors.map(i => (
-                <option key={i.id} value={i.id}>{i.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div>
+          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+            style={{ color: 'rgba(255,255,255,0.35)' }}>Instructor</label>
+          <select value={instructorId} onChange={e => setInstructorId(e.target.value)}
+            className={base} style={{ ...inputStyle, color: instructorId ? 'white' : 'rgba(255,255,255,0.3)' }}>
+            <option value="">Default (you)</option>
+            {instructors.map(i => (
+              <option key={i.id} value={i.id}>{i.name}</option>
+            ))}
+          </select>
+        </div>
 
         {error && (
           <p className="flex items-center gap-1.5 text-xs" style={{ color: '#F87171' }}>
