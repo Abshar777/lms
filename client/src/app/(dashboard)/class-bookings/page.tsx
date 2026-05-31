@@ -70,7 +70,7 @@ function fmtDuration(mins: number): string {
 ───────────────────────────────────────────────────────── */
 type SlotStatus =
   | 'live' | 'booked' | 'bookable' | 'full' | 'locked'
-  | 'not-enrolled' | 'attended' | 'missed' | 'cancelled' | 'ended'
+  | 'not-enrolled' | 'not-in-batch' | 'attended' | 'missed' | 'cancelled' | 'ended'
 
 function getSlotStatus(
   lc: LiveClass,
@@ -85,6 +85,9 @@ function getSlotStatus(
     return 'ended'
   }
   if (lc.status === 'live') return 'live'
+  // Not in the batch at all — student needs admin to add them
+  if (lc.isInBatch === false) return 'not-in-batch'
+  // In batch but hasn't purchased the linked course
   if (lc.isEnrolled === false) return 'not-enrolled'
   if (booking) {
     if (booking.status === 'booked')    return 'booked'
@@ -110,6 +113,7 @@ interface ClassGroup {
   slots:            LiveClass[]
   bookedSlot:       LiveClass | undefined
   requiresPurchase: boolean
+  notInBatch:       boolean   // all slots have isInBatch === false
   courseSlug?:      string
   courseTitle?:     string
 }
@@ -131,6 +135,7 @@ function SlotChip({ lc, status, isSelected, onClick }: {
     full:           { border: '#E5E7EB', bg: '#F9FAFB', label: '#9CA3AF' },
     locked:         { border: '#E5E7EB', bg: '#F9FAFB', label: '#9CA3AF' },
     'not-enrolled': { border: '#C084FC', bg: 'rgba(192,132,252,0.05)', label: '#9333EA' },
+    'not-in-batch': { border: '#E5E7EB', bg: '#F9FAFB',               label: '#9CA3AF' },
     attended:       { border: '#3B82F6', bg: 'rgba(59,130,246,0.05)',  label: '#3B82F6' },
     missed:         { border: '#F59E0B', bg: 'rgba(245,158,11,0.05)',  label: '#F59E0B' },
     cancelled:      { border: '#E5E7EB', bg: '#F9FAFB', label: '#D1D5DB' },
@@ -146,6 +151,7 @@ function SlotChip({ lc, status, isSelected, onClick }: {
     full:           'Full',
     locked:         '—',
     'not-enrolled': '🔒 Purchase',
+    'not-in-batch': '🔒 Restricted',
     attended:       '✓ Attended',
     missed:         'Missed',
     cancelled:      'Cancelled',
@@ -235,17 +241,22 @@ function ClassCard({ group, bookingMap, onClick }: {
     getSlotStatus(s, bookingMap.get(s.id), false) === 'bookable'
   ).length
 
-  type CardState = 'live' | 'booked' | 'open' | 'locked'
+  // Use the pre-computed notInBatch from the group
+  const notInBatch = group.notInBatch
+
+  type CardState = 'live' | 'booked' | 'open' | 'locked' | 'restricted'
   const state: CardState =
-    hasLive          ? 'live'   :
-    bookedSlot       ? 'booked' :
-    requiresPurchase ? 'locked' : 'open'
+    hasLive          ? 'live'       :
+    bookedSlot       ? 'booked'     :
+    notInBatch       ? 'restricted' :
+    requiresPurchase ? 'locked'     : 'open'
 
   const pal: Record<CardState, { border: string; iconBg: string; iconColor: string }> = {
-    live:   { border: 'rgba(239,68,68,0.22)',  iconBg: 'rgba(239,68,68,0.10)',  iconColor: '#EF4444' },
-    booked: { border: 'rgba(16,185,129,0.22)', iconBg: 'rgba(16,185,129,0.10)', iconColor: '#10B981' },
-    open:   { border: '#E5E7EB',               iconBg: 'rgba(255,107,26,0.08)', iconColor: '#FF6B1A' },
-    locked: { border: '#E5E7EB',               iconBg: 'rgba(147,51,234,0.08)', iconColor: '#9333EA' },
+    live:       { border: 'rgba(239,68,68,0.22)',  iconBg: 'rgba(239,68,68,0.10)',  iconColor: '#EF4444' },
+    booked:     { border: 'rgba(16,185,129,0.22)', iconBg: 'rgba(16,185,129,0.10)', iconColor: '#10B981' },
+    open:       { border: '#E5E7EB',               iconBg: 'rgba(255,107,26,0.08)', iconColor: '#FF6B1A' },
+    locked:     { border: '#E5E7EB',               iconBg: 'rgba(147,51,234,0.08)', iconColor: '#9333EA' },
+    restricted: { border: '#E5E7EB',               iconBg: 'rgba(156,163,175,0.10)', iconColor: '#9CA3AF' },
   }
   const p = pal[state]
 
@@ -263,8 +274,9 @@ function ClassCard({ group, bookingMap, onClick }: {
         <div className="flex h-8 w-8 items-center justify-center rounded-xl flex-shrink-0" style={{ background: p.iconBg }}>
           {hasLive          ? <Radio        size={15} style={{ color: p.iconColor }} />
            : bookedSlot     ? <CheckCircle2 size={15} style={{ color: p.iconColor }} />
-           : requiresPurchase ? <Lock       size={15} style={{ color: p.iconColor }} />
-           :                   <BookOpen   size={15} style={{ color: p.iconColor }} />}
+           : notInBatch     ? <Lock        size={15} style={{ color: p.iconColor }} />
+           : requiresPurchase ? <Lock      size={15} style={{ color: p.iconColor }} />
+           :                   <BookOpen  size={15} style={{ color: p.iconColor }} />}
         </div>
 
         {hasLive ? (
@@ -277,6 +289,11 @@ function ClassCard({ group, bookingMap, onClick }: {
           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
             style={{ background: 'rgba(16,185,129,0.10)', color: '#10B981' }}>
             BOOKED
+          </span>
+        ) : notInBatch ? (
+          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+            style={{ background: 'rgba(156,163,175,0.10)', color: '#9CA3AF' }}>
+            RESTRICTED
           </span>
         ) : requiresPurchase ? (
           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
@@ -341,7 +358,7 @@ interface SlotModalProps {
 }
 
 function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPending, onClose }: SlotModalProps) {
-  const { slots, bookedSlot, instructor, requiresPurchase, courseSlug, courseTitle } = group
+  const { slots, bookedSlot, instructor, requiresPurchase, notInBatch, courseSlug, courseTitle } = group
 
   const defaultId = useMemo(() => {
     if (bookedSlot) return bookedSlot.id
@@ -421,6 +438,8 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
           <p className="text-xs font-semibold mb-3" style={{ color: '#6B7280' }}>
             {bookedSlot
               ? 'Your booking · other available times:'
+              : notInBatch
+              ? 'Available sessions — contact admin to access:'
               : requiresPurchase
               ? 'Available sessions · purchase to unlock:'
               : 'Select a time slot:'}
@@ -517,6 +536,17 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
                         : <X size={11} />}
                       Cancel booking
                     </button>
+                  </div>
+                )}
+
+                {/* NOT IN BATCH */}
+                {selectedStatus === 'not-in-batch' && (
+                  <div className="flex items-start gap-2.5 rounded-2xl px-4 py-3"
+                    style={{ background: 'rgba(156,163,175,0.07)', border: '1px solid #E5E7EB' }}>
+                    <Lock size={14} style={{ color: '#9CA3AF', flexShrink: 0, marginTop: 1 }} />
+                    <span className="text-xs leading-relaxed" style={{ color: '#6B7280' }}>
+                      This class is not available for your account yet. Contact your admin or instructor to be added to this batch.
+                    </span>
                   </div>
                 )}
 
@@ -727,22 +757,28 @@ export default function ClassBookingsPage() {
       const bookedSlot = slots.find(s => bookingMap.get(s.id)?.status === 'booked')
 
       const nonEndedSlots = slots.filter(s => s.status !== 'ended' && s.status !== 'cancelled')
-      const requiresPurchase = nonEndedSlots.length > 0 && nonEndedSlots.every(s => s.isEnrolled === false)
+      // notInBatch: student isn't a member of this batch at all
+      const notInBatchGroup = nonEndedSlots.length > 0 && nonEndedSlots.every(s => s.isInBatch === false)
+      // requiresPurchase: in the batch but hasn't purchased the linked course
+      const requiresPurchase = !notInBatchGroup && nonEndedSlots.length > 0 && nonEndedSlots.every(s => s.isEnrolled === false)
 
       const courseRef  = slots.find(s => s.courseId)?.courseId
       const courseObj  = typeof courseRef === 'object' && courseRef ? (courseRef as any) : null
       const courseSlug  = courseObj?.slug  ?? (typeof courseRef === 'string' ? courseRef : undefined)
       const courseTitle = courseObj?.title ?? undefined
 
-      result.push({ title, instructor: instr, slots, bookedSlot, requiresPurchase, courseSlug, courseTitle })
+      result.push({ title, instructor: instr, slots, bookedSlot, requiresPurchase, notInBatch: notInBatchGroup, courseSlug, courseTitle })
     })
 
     // Enrolled/purchased classes first, then locked ones last
     result.sort((a, b) => {
-      const rank = (g: ClassGroup) =>
-        g.slots.some(s => s.status === 'live') ? 0 :
-        g.bookedSlot                           ? 1 :
-        !g.requiresPurchase                    ? 2 : 3
+      const rank = (g: ClassGroup) => {
+        if (g.slots.some(s => s.status === 'live')) return 0  // live first
+        if (g.bookedSlot)                           return 1  // booked second
+        if (!g.requiresPurchase && !g.notInBatch)   return 2  // open third
+        if (g.requiresPurchase)                     return 3  // needs purchase fourth
+        return 4                                             // not-in-batch last
+      }
       return rank(a) - rank(b)
     })
 
@@ -863,27 +899,40 @@ export default function ClassBookingsPage() {
                   style={{ background: 'rgba(255,107,26,0.08)', border: '1px solid rgba(255,107,26,0.15)' }}>
                   <Calendar size={22} style={{ color: '#FF6B1A' }} />
                 </div>
-                <p className="font-bold" style={{ color: '#111827' }}>No classes this week</p>
-                {(() => {
-                  const futureCount = allClasses.filter(lc => new Date(lc.scheduledStart) >= weekEnd).length
-                  return futureCount > 0 ? (
-                    <div className="flex flex-col items-center gap-2">
-                      <p className="text-sm" style={{ color: '#9CA3AF' }}>No sessions scheduled for this week.</p>
-                      <button
-                        onClick={() => setWeekStart(w => addDays(w, 7))}
-                        className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold"
-                        style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.20)' }}
-                      >
-                        <Calendar size={13} />
-                        {futureCount} upcoming class{futureCount !== 1 ? 'es' : ''} — see next week →
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="text-sm" style={{ color: '#9CA3AF' }}>
-                      {isCurrentWeek ? 'No sessions scheduled for this week. Check back later.' : 'No sessions scheduled for this week.'}
+
+                {/* No batch at all — first-time or unenrolled account */}
+                {allClasses.length === 0 && !isLoading ? (
+                  <>
+                    <p className="font-bold" style={{ color: '#111827' }}>No classes assigned yet</p>
+                    <p className="max-w-xs text-sm" style={{ color: '#9CA3AF' }}>
+                      You haven&apos;t been added to a batch yet. Please contact your admin or instructor to get enrolled.
                     </p>
-                  )
-                })()}
+                  </>
+                ) : (
+                  <>
+                    <p className="font-bold" style={{ color: '#111827' }}>No classes this week</p>
+                    {(() => {
+                      const futureCount = allClasses.filter(lc => new Date(lc.scheduledStart) >= weekEnd).length
+                      return futureCount > 0 ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <p className="text-sm" style={{ color: '#9CA3AF' }}>No sessions scheduled for this week.</p>
+                          <button
+                            onClick={() => setWeekStart(w => addDays(w, 7))}
+                            className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold"
+                            style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.20)' }}
+                          >
+                            <Calendar size={13} />
+                            {futureCount} upcoming class{futureCount !== 1 ? 'es' : ''} — see next week →
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-sm" style={{ color: '#9CA3AF' }}>
+                          {isCurrentWeek ? 'No sessions scheduled for this week. Check back later.' : 'No sessions scheduled for this week.'}
+                        </p>
+                      )
+                    })()}
+                  </>
+                )}
               </motion.div>
             ) : (
               /* ── Class card grid ── */

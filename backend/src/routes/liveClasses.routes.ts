@@ -26,26 +26,26 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
     const userId = req.user!.id
     const status = String(req.query['status'] ?? '')
 
-    // Find ALL batches this student is in (no enrollment filter — just membership)
-    const batches = await BatchModel.find({ studentIds: new Types.ObjectId(userId) }).lean()
-    const batchIds = batches.map((b: any) => b._id)
+    // Find ALL batches this student is in
+    const myBatches = await BatchModel.find({ studentIds: new Types.ObjectId(userId) }).lean()
+    const myBatchIds = new Set(myBatches.map((b: any) => String(b._id)))
 
-    if (batchIds.length === 0) return sendSuccess(res, [])
-
-    // Find the student's active enrollments to mark isEnrolled on each class
+    // Find the student's active course enrollments
     const enrollments = await EnrollmentModel.find(
       { userId: new Types.ObjectId(userId), status: 'active' },
       { courseId: 1 },
     ).lean()
     const enrolledCourseIds = new Set(enrollments.map((e: any) => String(e.courseId)))
 
-    // Build a map of batchId → courseId for quick lookup
+    // Build batchId → courseId map for all batches (not just student's)
+    const allBatches = await BatchModel.find({}, { _id: 1, courseId: 1 }).lean()
     const batchCourseMap = new Map<string, string | null>()
-    for (const b of batches as any[]) {
+    for (const b of allBatches as any[]) {
       batchCourseMap.set(String(b._id), b.courseId ? String(b.courseId) : null)
     }
 
-    const filter: Record<string, any> = { batchId: { $in: batchIds } }
+    // Return ALL scheduled/live/ended classes (not filtered by batch)
+    const filter: Record<string, any> = { batchId: { $exists: true, $ne: null } }
     if (status && status !== 'all') filter['status'] = status
 
     const classes = await LiveClassModel.find(filter)
@@ -54,13 +54,19 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
       .sort({ scheduledStart: 1 })
       .lean({ virtuals: true })
 
-    // Annotate each class with isEnrolled:
-    //  true  → student can book (batch has no course, OR student is enrolled)
-    //  false → student must purchase first
+    // Annotate each class with:
+    //   isInBatch  → student is a member of this class's batch
+    //   isEnrolled → student can book (in batch AND enrolled in linked course, or no course gate)
     const annotated = (classes as any[]).map(c => {
-      const courseId = batchCourseMap.get(String(c.batchId))
-      const isEnrolled = !courseId || enrolledCourseIds.has(courseId)
-      return { ...c, isEnrolled }
+      const isInBatch    = myBatchIds.has(String(c.batchId))
+      const batchCourseId = batchCourseMap.get(String(c.batchId))
+      const classCourseId = c.courseId
+        ? String((c.courseId as any)?._id ?? (c.courseId as any)?.id ?? c.courseId)
+        : null
+      const effectiveCourseId = batchCourseId ?? classCourseId
+      // Can only book if: in the batch AND (no course requirement OR enrolled in course)
+      const isEnrolled = isInBatch && (!effectiveCourseId || enrolledCourseIds.has(effectiveCourseId))
+      return { ...c, isInBatch, isEnrolled }
     })
 
     sendSuccess(res, annotated)

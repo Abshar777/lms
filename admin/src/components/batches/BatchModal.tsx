@@ -175,15 +175,19 @@ export function BatchModal({ open, onClose, editing }: Props) {
       setValue('description', editing.description)
       setValue('maxStudents', editing.maxStudents)
       setValue('status',      editing.status)
-      const mid = typeof editing.mentorId === 'object' ? editing.mentorId.id : editing.mentorId
+      const mid = editing.mentorId && typeof editing.mentorId === 'object'
+        ? ((editing.mentorId as any).id ?? (editing.mentorId as any)._id ?? null)
+        : (editing.mentorId ?? null)
       setMentorId(mid)
       setValue('mentorId', mid)
-      const cid = editing.courseId
-        ? (typeof editing.courseId === 'object' ? (editing.courseId as any).id : editing.courseId)
-        : ''
+      const cid = editing.courseId && typeof editing.courseId === 'object'
+        ? ((editing.courseId as any).id ?? (editing.courseId as any)._id ?? '')
+        : (editing.courseId ?? '')
       setValue('courseId', cid)
       const sids = Array.isArray(editing.studentIds)
-        ? editing.studentIds.map((s: any) => typeof s === 'object' ? s.id : s)
+        ? editing.studentIds.map((s: any) =>
+            s && typeof s === 'object' ? ((s as any).id ?? (s as any)._id) : s
+          ).filter(Boolean)
         : []
       setStudents(sids)
     } else {

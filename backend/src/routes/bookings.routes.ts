@@ -145,11 +145,13 @@ router.post('/', authenticate, validate(createBookingSchema), async (req: Reques
       res.status(403).json({ success: false, error: { code: 'NOT_IN_BATCH', message: 'You are not enrolled in this batch' } }); return
     }
 
-    /* Payment gate — if batch is linked to a course, student must be enrolled */
-    if (batch.courseId) {
+    /* Payment gate — check batch.courseId first, then fall back to session.courseId.
+       This handles cases where the live class has a courseId but its batch does not. */
+    const effectiveCourseId = batch.courseId ?? session.courseId ?? null
+    if (effectiveCourseId) {
       const enrollment = await EnrollmentModel.findOne({
         userId: new Types.ObjectId(userId),
-        courseId: batch.courseId,
+        courseId: effectiveCourseId,
         status: 'active',
       }).lean()
       if (!enrollment) {

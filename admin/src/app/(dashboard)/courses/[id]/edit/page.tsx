@@ -50,7 +50,7 @@ function LiveAlertBanner({ courseId }: { courseId: string }) {
 
 export default function EditCoursePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-  const { data: course, isLoading, isError } = useCourse(id)
+  const { data: course, isLoading, isError, error } = useCourse(id)
 
   if (isLoading) {
     return (
@@ -64,14 +64,24 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
   }
 
   if (isError || !course) {
+    const errCode    = (error as any)?.response?.data?.error?.code
+    const isForbidden = errCode === 'FORBIDDEN' || errCode === 'MISSING_TOKEN' || errCode === 'UNAUTHORIZED'
+    const errMsg     = isForbidden
+      ? 'You don\'t have permission to edit this course. Please log in as an admin.'
+      : 'Course not found'
     return (
       <div className="flex h-[60vh] items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-3 text-center max-w-xs">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl"
             style={{ background: 'rgba(239,68,68,0.12)' }}>
             <AlertCircle size={22} style={{ color: '#EF4444' }} />
           </div>
-          <p className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>Course not found</p>
+          <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.8)' }}>{errMsg}</p>
+          {isForbidden && (
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
+              Admin login: admin@lms.local
+            </p>
+          )}
           <Link href="/courses" className="text-sm font-semibold" style={{ color: '#FF6B1A' }}>
             Back to courses
           </Link>

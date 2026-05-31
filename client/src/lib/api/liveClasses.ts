@@ -37,8 +37,14 @@ export interface LiveClass {
   bookedCount:     number
 
   /**
-   * Set by GET /live-classes — true when the student is enrolled in the linked course
-   * (or the batch has no course requirement). False = student must purchase to book.
+   * Set by GET /live-classes — true when student is a member of this class's batch.
+   * False = visible but must contact admin to join.
+   */
+  isInBatch?:     boolean
+
+  /**
+   * Set by GET /live-classes — true when in the batch AND enrolled in the linked course
+   * (or no course requirement). False = must purchase to book.
    */
   isEnrolled?:    boolean
 
