@@ -14,7 +14,11 @@ import type { TokenPair } from '@/types/index.ts'
 export const ACCESS_COOKIE  = 'lms_at'
 export const REFRESH_COOKIE = 'lms_rt'
 
-const REFRESH_PATH = '/api/v1/auth'
+export const ADMIN_ACCESS_COOKIE  = 'lms_admin_at'
+export const ADMIN_REFRESH_COOKIE = 'lms_admin_rt'
+
+const REFRESH_PATH       = '/api/v1/auth'
+const ADMIN_REFRESH_PATH = '/api/v1/admin/auth'
 
 const isProd = () => env.NODE_ENV === 'production'
 
@@ -57,4 +61,32 @@ export function setAuthCookies(res: Response, tokens: TokenPair): void {
 export function clearAuthCookies(res: Response): void {
   res.clearCookie(ACCESS_COOKIE,  { path: '/',          domain: cookieDomain() })
   res.clearCookie(REFRESH_COOKIE, { path: REFRESH_PATH, domain: cookieDomain() })
+}
+
+/* ── Admin-portal cookies (lms_admin_at / lms_admin_rt) ─────────────────
+   Completely separate from client cookies so both portals can maintain
+   independent sessions on the same browser simultaneously.
+──────────────────────────────────────────────────────────────────────── */
+export function setAdminAuthCookies(res: Response, tokens: TokenPair): void {
+  res.cookie(ADMIN_ACCESS_COOKIE, tokens.access_token, {
+    httpOnly: true,
+    secure:   isProd(),
+    sameSite: 'lax',
+    domain:   cookieDomain(),
+    path:     '/',
+    maxAge:   parseDurationMs(env.JWT_ACCESS_EXPIRES_IN),
+  })
+  res.cookie(ADMIN_REFRESH_COOKIE, tokens.refresh_token, {
+    httpOnly: true,
+    secure:   isProd(),
+    sameSite: 'lax',
+    domain:   cookieDomain(),
+    path:     ADMIN_REFRESH_PATH,
+    maxAge:   parseDurationMs(env.JWT_REFRESH_EXPIRES_IN),
+  })
+}
+
+export function clearAdminAuthCookies(res: Response): void {
+  res.clearCookie(ADMIN_ACCESS_COOKIE,  { path: '/',               domain: cookieDomain() })
+  res.clearCookie(ADMIN_REFRESH_COOKIE, { path: ADMIN_REFRESH_PATH, domain: cookieDomain() })
 }

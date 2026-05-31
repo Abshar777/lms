@@ -1,16 +1,19 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ChevronLeft, ChevronRight, Calendar, Clock, Users,
   Plus, X, Radio, Tv2, ExternalLink, Loader2,
-  AlertCircle, Link as LinkIcon, CalendarDays, Monitor,
+  AlertCircle, Link as LinkIcon, CalendarDays, Monitor, Pencil,
 } from 'lucide-react'
 import { useAllLiveClasses, useCreateLiveClass, type LiveClass, type LiveClassType } from '@/lib/api/liveClasses'
 import { useCourses } from '@/lib/api/courses'
+import { useCourseOutline } from '@/lib/api/outline'
+import { useUsers } from '@/lib/api/users'
+import { EditLiveClassModal } from '@/components/live-classes/EditLiveClassModal'
 
 /* ── Constants ──────────────────────────────────────── */
 const DAY_START_HOUR = 9          // 9 AM
@@ -156,10 +159,11 @@ function EventBlock({
 
 /* ── Event detail popover ──────────────────────────── */
 function EventPopover({
-  live, onClose,
+  live, onClose, onEdit,
 }: {
   live:    LiveClass
   onClose: () => void
+  onEdit:  (l: LiveClass) => void
 }) {
   const router = useRouter()
   const colors = statusColor(live.status)
@@ -167,13 +171,17 @@ function EventPopover({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.96, y: 6 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.96, y: 4 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.55)' }}
       onClick={onClose}
     >
-      <div
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 6 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 4 }}
         onClick={e => e.stopPropagation()}
         className="w-full max-w-sm rounded-2xl p-5 shadow-2xl"
         style={{ background: '#161829', border: '1px solid rgba(255,255,255,0.10)' }}
@@ -231,17 +239,24 @@ function EventPopover({
               {live.status === 'live' ? 'Monitor' : 'Go Live'}
             </button>
           )}
+          {/* Edit button */}
+          <button
+            onClick={() => { onEdit(live); onClose() }}
+            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-white/10"
+            style={{ color: 'rgba(255,255,255,0.65)', border: '1px solid rgba(255,255,255,0.12)' }}>
+            <Pencil size={11} />Edit
+          </button>
           {live.course?.id && (
             <Link
               href={`/courses/${live.course.id}/edit`}
               onClick={onClose}
               className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-white/10"
-              style={{ color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.10)' }}>
-              <ExternalLink size={11} />Open course
+              style={{ color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <ExternalLink size={11} />Course
             </Link>
           )}
         </div>
-      </div>
+      </motion.div>
     </motion.div>
   )
 }
@@ -261,17 +276,24 @@ function QuickCreateModal({
   onSuccess: () => void
 }) {
   const { data: coursesData, isLoading: cLoading } = useCourses({ per_page: 200 })
+  const { data: instructorsData } = useUsers('instructor', { per_page: 200 })
   const createMutation = useCreateLiveClass()
 
-  const [courseId,     setCourseId]     = useState('')
-  const [title,        setTitle]        = useState('')
-  const [start,        setStart]        = useState(draft.dateISO)
-  const [durationMins, setDurationMins] = useState(60)
-  const [type,         setType]         = useState<LiveClassType>('external')
-  const [meetingUrl,   setMeetingUrl]   = useState('')
-  const [error,        setError]        = useState<string | null>(null)
+  const courses     = coursesData?.docs ?? []
+  const instructors = instructorsData?.docs ?? []
 
-  const courses = coursesData?.docs ?? []
+  const [courseId,      setCourseId]      = useState('')
+  const [sectionId,     setSectionId]     = useState('')
+  const [title,         setTitle]         = useState('')
+  const [start,         setStart]         = useState(draft.dateISO)
+  const [durationMins,  setDurationMins]  = useState(60)
+  const [type,          setType]          = useState<LiveClassType>('external')
+  const [meetingUrl,    setMeetingUrl]    = useState('')
+  const [instructorId,  setInstructorId]  = useState('')
+  const [error,         setError]         = useState<string | null>(null)
+
+  const { data: outline } = useCourseOutline(courseId)
+  const sections = outline?.sections ?? []
   const base    = 'w-full rounded-xl px-3 py-2 text-sm text-white outline-none placeholder:text-white/30'
   const iStyle  = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' } as const
 
@@ -289,6 +311,8 @@ function QuickCreateModal({
         durationMins,
         type,
         meetingUrl:     type === 'external' ? meetingUrl.trim() : undefined,
+        sectionId:      sectionId || undefined,
+        instructorId:   instructorId || undefined,
       })
       onSuccess()
     } catch (err: any) {
@@ -349,7 +373,7 @@ function QuickCreateModal({
             ) : (
               <select
                 value={courseId}
-                onChange={e => setCourseId(e.target.value)}
+                onChange={e => { setCourseId(e.target.value); setSectionId('') }}
                 required
                 className={`${base} cursor-pointer`}
                 style={{ ...iStyle, color: courseId ? 'white' : 'rgba(255,255,255,0.3)' }}>
@@ -360,6 +384,24 @@ function QuickCreateModal({
               </select>
             )}
           </div>
+
+          {/* Module (Section) — shown once a course is selected */}
+          {courseId && sections.length > 0 && (
+            <div>
+              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+                style={{ color: 'rgba(255,255,255,0.35)' }}>Module (optional)</label>
+              <select
+                value={sectionId}
+                onChange={e => setSectionId(e.target.value)}
+                className={`${base} cursor-pointer`}
+                style={{ ...iStyle, color: sectionId ? 'white' : 'rgba(255,255,255,0.3)' }}>
+                <option value="">No specific module</option>
+                {sections.map(s => (
+                  <option key={s.id} value={s.id}>{s.title}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Title */}
           <div>
@@ -424,6 +466,22 @@ function QuickCreateModal({
             </div>
           )}
 
+          {/* Instructor */}
+          {instructors.length > 0 && (
+            <div>
+              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+                style={{ color: 'rgba(255,255,255,0.35)' }}>Instructor (optional)</label>
+              <select value={instructorId} onChange={e => setInstructorId(e.target.value)}
+                className={`${base} cursor-pointer`}
+                style={{ ...iStyle, color: instructorId ? 'white' : 'rgba(255,255,255,0.3)' }}>
+                <option value="">Default (you)</option>
+                {instructors.map(i => (
+                  <option key={i.id} value={i.id}>{i.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {error && (
             <p className="flex items-center gap-1.5 text-xs" style={{ color: '#F87171' }}>
               <AlertCircle size={11} />{error}
@@ -446,9 +504,10 @@ function QuickCreateModal({
 /* ── Page ─────────────────────────────────────────── */
 export default function TimetablePage() {
   const today    = new Date()
-  const [weekStart, setWeekStart] = useState(() => getMonday(today))
-  const [selected, setSelected]   = useState<LiveClass | null>(null)
-  const [draft,    setDraft]      = useState<SlotDraft | null>(null)
+  const [weekStart,    setWeekStart]    = useState(() => getMonday(today))
+  const [selected,     setSelected]     = useState<LiveClass | null>(null)
+  const [draft,        setDraft]        = useState<SlotDraft | null>(null)
+  const [editTarget,   setEditTarget]   = useState<LiveClass | null>(null)
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
 
@@ -624,7 +683,7 @@ export default function TimetablePage() {
                       <EventBlock
                         key={live.id}
                         live={live}
-                        onClick={l => { setSelected(l); setDraft(null) }}
+                        onClick={l => { setSelected(l); setDraft(null); setEditTarget(null) }}
                       />
                     ))}
 
@@ -649,7 +708,12 @@ export default function TimetablePage() {
       {/* ── Modals ── */}
       <AnimatePresence>
         {selected && (
-          <EventPopover key="popover" live={selected} onClose={() => setSelected(null)} />
+          <EventPopover
+            key="popover"
+            live={selected}
+            onClose={() => setSelected(null)}
+            onEdit={l => { setSelected(null); setEditTarget(l) }}
+          />
         )}
         {draft && (
           <QuickCreateModal
@@ -658,6 +722,14 @@ export default function TimetablePage() {
             weekDays={weekDays}
             onClose={() => setDraft(null)}
             onSuccess={() => setDraft(null)}
+          />
+        )}
+        {editTarget && (
+          <EditLiveClassModal
+            key="edit"
+            live={editTarget}
+            onClose={() => setEditTarget(null)}
+            onSuccess={() => setEditTarget(null)}
           />
         )}
       </AnimatePresence>

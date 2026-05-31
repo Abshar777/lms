@@ -24,7 +24,7 @@ export function useCurrentUser() {
   return useQuery({
     queryKey: userKeys.me,
     queryFn:  async () => {
-      const data = await apiGet<{ user: CurrentAdmin }>('/auth/me')
+      const data = await apiGet<{ user: CurrentAdmin }>('/admin/auth/me')
       return data.user
     },
     retry: false,
@@ -33,5 +33,5 @@ export function useCurrentUser() {
 }
 
 export function logout(): Promise<void> {
-  return api.post('/auth/logout').then(() => {/* no-op */}).catch(() => {/* best-effort */})
+  return api.post('/admin/auth/logout').then(() => {/* no-op */}).catch(() => {/* best-effort */})
 }

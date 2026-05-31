@@ -4,7 +4,9 @@ import type { NextRequest } from 'next/server'
 /**
  * Admin middleware — cookie-based auth guard.
  *
- * The backend sets an httpOnly `lms_at` cookie on login/refresh.
+ * The backend sets an httpOnly `lms_admin_at` cookie on admin login.
+ * This is separate from the client-portal `lms_at` cookie so both portals
+ * can maintain independent sessions on the same browser simultaneously.
  * Middleware only checks presence (not validity — that's the API's job).
  * Protected pages → redirect to /login when cookie is absent.
  * /login → redirect to / when cookie is present (already signed in).
@@ -17,7 +19,7 @@ export function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
-  const hasToken = !!req.cookies.get('lms_at')?.value
+  const hasToken = !!req.cookies.get('lms_admin_at')?.value
 
   /* Already logged-in users visiting /login → dashboard */
   if (pathname === '/login' && hasToken) {

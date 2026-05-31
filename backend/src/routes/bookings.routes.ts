@@ -108,7 +108,7 @@ async function afterBookingCancelled(
 /* ── POST /bookings ─────────────────────────── */
 router.post('/', authenticate, validate(createBookingSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { ClassBookingModel, LiveClassModel, BatchModel, EnrollmentModel, UserModel } =
+    const { ClassBookingModel, LiveClassModel, EnrollmentModel, UserModel } =
       await import('@/models/schema.ts')
     const { Types } = await import('mongoose')
 
@@ -128,34 +128,15 @@ router.post('/', authenticate, validate(createBookingSchema), async (req: Reques
       res.status(400).json({ success: false, error: { code: 'SESSION_UNAVAILABLE', message: 'Session is no longer available for booking' } }); return
     }
 
-    /* Session must be linked to a batch */
-    if (!session.batchId) {
-      res.status(400).json({ success: false, error: { code: 'NO_BATCH', message: 'This session is not part of a batch' } }); return
-    }
-
-    /* Student must be in the batch */
-    const batch = await BatchModel.findById(session.batchId).lean()
-    if (!batch) {
-      res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Batch not found' } }); return
-    }
-    const inBatch = (batch.studentIds as any[]).some(
-      (id: any) => id.toString() === userId,
-    )
-    if (!inBatch) {
-      res.status(403).json({ success: false, error: { code: 'NOT_IN_BATCH', message: 'You are not enrolled in this batch' } }); return
-    }
-
-    /* Payment gate — check batch.courseId first, then fall back to session.courseId.
-       This handles cases where the live class has a courseId but its batch does not. */
-    const effectiveCourseId = batch.courseId ?? session.courseId ?? null
-    if (effectiveCourseId) {
+    /* Enrollment gate — student must be enrolled in the session's course */
+    if (session.courseId) {
       const enrollment = await EnrollmentModel.findOne({
-        userId: new Types.ObjectId(userId),
-        courseId: effectiveCourseId,
-        status: 'active',
+        userId:   new Types.ObjectId(userId),
+        courseId: session.courseId,
+        status:   'active',
       }).lean()
       if (!enrollment) {
-        res.status(403).json({ success: false, error: { code: 'NOT_ENROLLED', message: 'You must be enrolled in the linked course to book sessions' } }); return
+        res.status(403).json({ success: false, error: { code: 'NOT_ENROLLED', message: 'You must be enrolled in this course to book the session' } }); return
       }
     }
 
@@ -207,7 +188,6 @@ router.post('/', authenticate, validate(createBookingSchema), async (req: Reques
         ClassBookingModel.create({
           userId:      new Types.ObjectId(userId),
           liveClassId: new Types.ObjectId(liveClassId),
-          batchId:     session.batchId,
           status:      'booked',
           bookedAt:    new Date(),
         }),
@@ -216,7 +196,6 @@ router.post('/', authenticate, validate(createBookingSchema), async (req: Reques
 
       bookingDoc = await booking.populate([
         { path: 'liveClassId', select: 'id title scheduledStart durationMins meetingUrl muxPlaybackId type' },
-        { path: 'batchId',     select: 'id name' },
       ])
 
       sendSuccess(res, bookingDoc, 'Booking created', 201)
@@ -262,7 +241,6 @@ router.get('/me', authenticate, validate(bookingQuerySchema, 'query'), async (re
     const [docs, total] = await Promise.all([
       ClassBookingModel.find(filter)
         .populate('liveClassId', 'id title scheduledStart durationMins status meetingUrl muxPlaybackId type')
-        .populate('batchId', 'id name')
         .sort({ bookedAt: -1 })
         .skip(skip).limit(per_page)
         .lean({ virtuals: true }),

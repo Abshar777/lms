@@ -13,60 +13,44 @@ function sendSuccess(res: Response, data: unknown, message = 'OK', status = 200)
   res.status(status).json({ success: true, data, message })
 }
 
-/* ── GET /live-classes — all sessions visible to this student ──────────────────
-   Shows ALL live classes from batches the student belongs to (visibility gate).
-   Booking is separately gated by course enrollment in the POST /bookings route.
-   Each class has `isEnrolled: boolean` so the UI can show "Purchase to book" vs "Book".
-   Optionally filter by ?status=scheduled|live|ended
+/* ── GET /live-classes — ALL sessions visible to logged-in students ────────────
+   Returns every live class (no enrollment filter) so students can browse what's
+   coming up. Each session is annotated with `isEnrolled: boolean` so the UI can
+   show a "Purchase to join" prompt instead of the join button for non-enrolled users.
+   Optionally filter by ?status=scheduled|live|ended|all
 ──────────────────────────────────────────────────────────────────────────────── */
 router.get('/', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { BatchModel, LiveClassModel, EnrollmentModel } = await import('@/models/schema.ts')
+    const { LiveClassModel, EnrollmentModel } = await import('@/models/schema.ts')
     const { Types } = await import('mongoose')
     const userId = req.user!.id
     const status = String(req.query['status'] ?? '')
 
-    // Find ALL batches this student is in
-    const myBatches = await BatchModel.find({ studentIds: new Types.ObjectId(userId) }).lean()
-    const myBatchIds = new Set(myBatches.map((b: any) => String(b._id)))
-
-    // Find the student's active course enrollments
+    // Find which courses this student has purchased
     const enrollments = await EnrollmentModel.find(
       { userId: new Types.ObjectId(userId), status: 'active' },
       { courseId: 1 },
     ).lean()
     const enrolledCourseIds = new Set(enrollments.map((e: any) => String(e.courseId)))
 
-    // Build batchId → courseId map for all batches (not just student's)
-    const allBatches = await BatchModel.find({}, { _id: 1, courseId: 1 }).lean()
-    const batchCourseMap = new Map<string, string | null>()
-    for (const b of allBatches as any[]) {
-      batchCourseMap.set(String(b._id), b.courseId ? String(b.courseId) : null)
-    }
-
-    // Return ALL scheduled/live/ended classes (not filtered by batch)
-    const filter: Record<string, any> = { batchId: { $exists: true, $ne: null } }
+    // Return ALL sessions — no enrollment filter
+    const filter: Record<string, any> = {}
     if (status && status !== 'all') filter['status'] = status
 
     const classes = await LiveClassModel.find(filter)
       .populate('instructorId', 'id name avatarUrl')
       .populate('courseId', 'id title slug thumbnailUrl')
+      .populate('sectionId', 'id title')
       .sort({ scheduledStart: 1 })
       .lean({ virtuals: true })
 
-    // Annotate each class with:
-    //   isInBatch  → student is a member of this class's batch
-    //   isEnrolled → student can book (in batch AND enrolled in linked course, or no course gate)
+    // Annotate each session with isEnrolled so the UI can show lock/purchase prompts
     const annotated = (classes as any[]).map(c => {
-      const isInBatch    = myBatchIds.has(String(c.batchId))
-      const batchCourseId = batchCourseMap.get(String(c.batchId))
-      const classCourseId = c.courseId
+      const courseId = c.courseId
         ? String((c.courseId as any)?._id ?? (c.courseId as any)?.id ?? c.courseId)
         : null
-      const effectiveCourseId = batchCourseId ?? classCourseId
-      // Can only book if: in the batch AND (no course requirement OR enrolled in course)
-      const isEnrolled = isInBatch && (!effectiveCourseId || enrolledCourseIds.has(effectiveCourseId))
-      return { ...c, isInBatch, isEnrolled }
+      const isEnrolled = courseId ? enrolledCourseIds.has(courseId) : false
+      return { ...c, id: c.id ?? String(c._id), isEnrolled }
     })
 
     sendSuccess(res, annotated)

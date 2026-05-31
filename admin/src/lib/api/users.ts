@@ -38,13 +38,13 @@ export function useUsers(role: 'student' | 'instructor' | 'admin', params: {
   })
 }
 
-/* ─── Update user (role / isActive / isVerified) ─── */
+/* ─── Update user (role / isActive / isVerified / name / email) ─── */
 export function useUpdateUser() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({
       id, ...dto
-    }: { id: string; role?: AdminUser['role']; isActive?: boolean; isVerified?: boolean }) => {
+    }: { id: string; role?: AdminUser['role']; isActive?: boolean; isVerified?: boolean; name?: string; email?: string }) => {
       const res = await api.patch<{ success: true; data: AdminUser }>(`/admin/users/${id}`, dto)
       return res.data.data
     },

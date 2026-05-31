@@ -31,22 +31,18 @@ export interface LiveClass {
   startedAt?:     string
   endedAt?:       string
 
-  /* Batch scheduling */
-  batchId?:        string | { id: string; name: string }
+  /* Module link */
+  sectionId?: string | { id: string; title: string }
+
+  /* Capacity */
   sessionCapacity: number
   bookedCount:     number
 
   /**
-   * Set by GET /live-classes — true when student is a member of this class's batch.
-   * False = visible but must contact admin to join.
+   * Annotated by the backend — true when the logged-in student has an active
+   * enrollment in this session's course. False = show "Purchase to join" prompt.
    */
-  isInBatch?:     boolean
-
-  /**
-   * Set by GET /live-classes — true when in the batch AND enrolled in the linked course
-   * (or no course requirement). False = must purchase to book.
-   */
-  isEnrolled?:    boolean
+  isEnrolled?: boolean
 
   createdAt:      string
   updatedAt:      string
@@ -96,22 +92,47 @@ export function fmtCountdown(startIso: string, now: number): string {
 /* ── Query keys ──────────────────────────────────────── */
 export const liveClassKeys = {
   forCourse:   (slug: string)   => ['live-classes', 'course', slug]     as const,
-  myBatch:     (status: string) => ['live-classes', 'my-batch', status] as const,
   upcoming:    ['live-classes', 'upcoming']                              as const,
   watch:       (id: string)     => ['live-classes', id, 'watch']        as const,
 }
 
 /* ── Hooks ───────────────────────────────────────────── */
 
-/** Normalize lean Mongoose docs that have `_id` but no `id` */
+/** Normalize lean Mongoose docs — remaps populated ObjectId fields into typed sub-objects */
 function normalizeLiveClass(c: any): LiveClass {
-  return { ...c, id: c.id ?? c._id }
+  const courseRaw = c.courseId
+  const course: LiveClass['course'] =
+    typeof courseRaw === 'object' && courseRaw
+      ? { id: courseRaw.id ?? String(courseRaw._id ?? ''), title: courseRaw.title ?? '', slug: courseRaw.slug ?? '', thumbnailUrl: courseRaw.thumbnailUrl }
+      : (c.course ?? undefined)
+
+  const instrRaw = c.instructorId
+  const instructor: LiveClass['instructor'] =
+    typeof instrRaw === 'object' && instrRaw
+      ? { id: instrRaw.id ?? String(instrRaw._id ?? ''), name: instrRaw.name ?? '', avatarUrl: instrRaw.avatarUrl }
+      : (c.instructor ?? undefined)
+
+  const secRaw = c.sectionId
+  const sectionId: LiveClass['sectionId'] =
+    typeof secRaw === 'object' && secRaw
+      ? { id: secRaw.id ?? String(secRaw._id ?? ''), title: secRaw.title ?? '' }
+      : (secRaw ?? undefined)
+
+  return {
+    ...c,
+    id:           c.id ?? String(c._id ?? ''),
+    courseId:     typeof courseRaw === 'object' && courseRaw ? (courseRaw.id ?? String(courseRaw._id ?? '')) : (courseRaw ?? ''),
+    course,
+    instructorId: typeof instrRaw === 'object' && instrRaw ? (instrRaw.id ?? String(instrRaw._id ?? '')) : (instrRaw ?? ''),
+    instructor,
+    sectionId,
+  }
 }
 
-/* GET /live-classes — all sessions for the student's batches */
-export function useMyBatchLiveClasses(status: string = 'all') {
+/* GET /live-classes — all sessions available to the student */
+export function useAllLiveClasses(status: string = 'all') {
   return useQuery({
-    queryKey:        liveClassKeys.myBatch(status),
+    queryKey:        ['live-classes', 'all', status],
     queryFn:         async () => {
       const list = await apiGet<any[]>('/live-classes', status !== 'all' ? { status } : {})
       return list.map(normalizeLiveClass) as LiveClass[]

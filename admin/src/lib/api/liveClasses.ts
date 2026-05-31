@@ -32,8 +32,8 @@ export interface LiveClass {
   startedAt?:     string
   endedAt?:       string
 
-  /* Batch scheduling */
-  batchId?:        string | { id: string; name: string }
+  /* Module link */
+  sectionId?:      string | { id: string; title: string }
   sessionCapacity: number
   bookedCount:     number
 
@@ -101,22 +101,23 @@ export interface CreateLiveClassInput {
   durationMins:    number
   type:            LiveClassType
   meetingUrl?:     string       // required when type=external
-  batchId?:        string
-  sessionCapacity?: number
+  sectionId?:      string       // optional course module/section link
+  instructorId?:   string       // optional override; defaults to current user
 }
 
 export interface UpdateLiveClassInput {
   courseId?:        string
+  sectionId?:       string
   title?:           string
   description?:     string
   scheduledStart?:  string
   durationMins?:    number
   type?:            LiveClassType
   meetingUrl?:      string
-  batchId?:         string | null
   sessionCapacity?: number
   status?:          LiveClassStatus
   mentorNotes?:     string
+  instructorId?:    string
 }
 
 /* ── Availability types ─────────────────────── */
@@ -137,8 +138,15 @@ export type BookingStatus = 'booked' | 'attended' | 'missed' | 'cancelled'
 export interface ClassBooking {
   id:          string
   userId:      { id: string; name: string; email: string; avatarUrl?: string }
-  liveClassId: { id: string; title: string; scheduledStart: string; durationMins: number }
-  batchId:     { id: string; name: string }
+  liveClassId: {
+    id:           string
+    title:        string
+    scheduledStart: string
+    durationMins: number
+    courseId?:    { id: string; title: string }
+    sectionId?:   { id: string; title: string }
+    instructorId?: { id: string; name: string; avatarUrl?: string }
+  }
   status:      BookingStatus
   bookedAt:    string
   cancelledAt?: string
@@ -293,17 +301,32 @@ const bookingKeys = {
   list: (p: object) => ['admin', 'bookings', p] as const,
 }
 
+export interface BookingMeta {
+  page:        number
+  per_page:    number
+  total_count: number
+  total_pages: number
+}
+
 export function useAdminBookings(params: {
-  liveClassId?: string
-  batchId?:     string
-  userId?:      string
-  status?:      BookingStatus
-  page?:        number
-  per_page?:    number
+  liveClassId?:  string
+  userId?:       string
+  status?:       BookingStatus
+  instructorId?: string
+  courseId?:     string
+  dateFrom?:     string   // ISO date "YYYY-MM-DD"
+  dateTo?:       string   // ISO date "YYYY-MM-DD"
+  page?:         number
+  per_page?:     number
 } = {}) {
   return useQuery({
     queryKey: bookingKeys.list(params),
-    queryFn:  () => apiGet<ClassBooking[]>('/admin/bookings', params),
+    queryFn:  async () => {
+      const res = await api.get<{ success: true; data: ClassBooking[]; meta: BookingMeta }>(
+        '/admin/bookings', { params },
+      )
+      return { docs: res.data.data, meta: res.data.meta }
+    },
     staleTime: 30_000,
   })
 }

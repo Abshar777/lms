@@ -1,16 +1,17 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ChevronLeft, ChevronRight, Calendar, Clock, Users,
   ExternalLink, Radio, CheckCircle2, Loader2, Video,
-  BookOpen, AlertCircle, User, X, CalendarDays, Lock, ShoppingCart,
+  BookOpen, AlertCircle, User, X, CalendarDays, Filter,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useToast } from '@/store/ui.store'
-import { useMyBatchLiveClasses, type LiveClass } from '@/lib/api/liveClasses'
+import { useAllLiveClasses, type LiveClass } from '@/lib/api/liveClasses'
 import { useMyBookings, useCreateBooking, useCancelBooking, type MyBooking } from '@/lib/api/bookings'
+import { useCourses, useCourse } from '@/lib/api/courses'
 
 /* ─────────────────────────────────────────────────────────
    DATE HELPERS
@@ -32,7 +33,15 @@ function addDays(date: Date, n: number): Date {
 }
 
 function isSameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth()    === b.getMonth()    &&
+    a.getDate()     === b.getDate()
+  )
+}
+
+function toDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function fmtTime(iso: string): string {
@@ -50,18 +59,24 @@ function fmtShortSlot(iso: string): string {
   return `${DAY_ABBR[d.getDay()]} ${d.getDate()}, ${fmtTime(iso)}`
 }
 
-function fmtWeekRange(mon: Date): string {
-  const sun  = addDays(mon, 6)
+function fmtDateRange(start: Date, end: Date): string {
   const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
-  if (mon.getMonth() === sun.getMonth()) {
-    return `${mon.toLocaleDateString('en-US', { month: 'long' })} ${mon.getDate()} – ${sun.getDate()}, ${sun.getFullYear()}`
+  if (isSameDay(start, end)) {
+    return start.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
   }
-  return `${mon.toLocaleDateString('en-US', opts)} – ${sun.toLocaleDateString('en-US', { ...opts, year: 'numeric' })}`
+  if (start.getFullYear() === end.getFullYear()) {
+    if (start.getMonth() === end.getMonth()) {
+      return `${start.toLocaleDateString('en-US', { month: 'long' })} ${start.getDate()} – ${end.getDate()}, ${end.getFullYear()}`
+    }
+    return `${start.toLocaleDateString('en-US', opts)} – ${end.toLocaleDateString('en-US', { ...opts, year: 'numeric' })}`
+  }
+  return `${start.toLocaleDateString('en-US', { ...opts, year: 'numeric' })} – ${end.toLocaleDateString('en-US', { ...opts, year: 'numeric' })}`
 }
 
 function fmtDuration(mins: number): string {
   if (mins < 60) return `${mins}m`
-  const h = Math.floor(mins / 60); const m = mins % 60
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
   return m ? `${h}h ${m}m` : `${h}h`
 }
 
@@ -70,7 +85,7 @@ function fmtDuration(mins: number): string {
 ───────────────────────────────────────────────────────── */
 type SlotStatus =
   | 'live' | 'booked' | 'bookable' | 'full' | 'locked'
-  | 'not-enrolled' | 'not-in-batch' | 'attended' | 'missed' | 'cancelled' | 'ended'
+  | 'attended' | 'missed' | 'cancelled' | 'ended'
 
 function getSlotStatus(
   lc: LiveClass,
@@ -85,10 +100,6 @@ function getSlotStatus(
     return 'ended'
   }
   if (lc.status === 'live') return 'live'
-  // Not in the batch at all — student needs admin to add them
-  if (lc.isInBatch === false) return 'not-in-batch'
-  // In batch but hasn't purchased the linked course
-  if (lc.isEnrolled === false) return 'not-enrolled'
   if (booking) {
     if (booking.status === 'booked')    return 'booked'
     if (booking.status === 'attended')  return 'attended'
@@ -108,14 +119,189 @@ function getSlotStatus(
    TYPES
 ───────────────────────────────────────────────────────── */
 interface ClassGroup {
-  title:            string
-  instructor:       { id: string; name: string; avatarUrl?: string } | null
-  slots:            LiveClass[]
-  bookedSlot:       LiveClass | undefined
-  requiresPurchase: boolean
-  notInBatch:       boolean   // all slots have isInBatch === false
-  courseSlug?:      string
-  courseTitle?:     string
+  title:        string
+  instructor:   { id: string; name: string; avatarUrl?: string } | null
+  slots:        LiveClass[]
+  bookedSlot:   LiveClass | undefined
+  courseSlug?:  string
+  courseTitle?: string
+}
+
+interface DateSection {
+  dateKey:   string   // "2025-06-02"
+  dateLabel: string   // "Monday, Jun 2"
+  isToday:   boolean
+  groups:    ClassGroup[]
+}
+
+interface GroupKey {
+  title:   string
+  dateKey: string
+}
+
+/* ─────────────────────────────────────────────────────────
+   MINI CALENDAR  (inline date-range picker)
+───────────────────────────────────────────────────────── */
+function MiniCalendar({
+  rangeStart, rangeEnd, onRangeChange, onClose,
+}: {
+  rangeStart: Date
+  rangeEnd:   Date
+  onRangeChange: (start: Date, end: Date) => void
+  onClose:    () => void
+}) {
+  const [month,  setMonth]  = useState(() => new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1))
+  const [anchor, setAnchor] = useState<Date | null>(null)
+  const [hover,  setHover]  = useState<Date | null>(null)
+
+  const today        = new Date()
+  const firstDay     = new Date(month.getFullYear(), month.getMonth(), 1).getDay()
+  const daysInMonth  = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate()
+
+  const cells: (Date | null)[] = []
+  for (let i = 0; i < firstDay; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push(new Date(month.getFullYear(), month.getMonth(), d))
+  }
+
+  const handleDay = (day: Date) => {
+    if (!anchor) {
+      setAnchor(day)
+    } else {
+      const [s, e] = day < anchor ? [day, anchor] : [anchor, day]
+      onRangeChange(s, e)
+      setAnchor(null)
+      setHover(null)
+      onClose()
+    }
+  }
+
+  const previewEnd = anchor ? (hover ?? anchor) : null
+
+  function inRange(day: Date): boolean {
+    if (anchor && previewEnd) {
+      const [s, e] = previewEnd < anchor ? [previewEnd, anchor] : [anchor, previewEnd]
+      return day > s && day < e
+    }
+    return day > rangeStart && day < rangeEnd
+  }
+
+  function isEndpoint(day: Date): boolean {
+    if (anchor) {
+      return isSameDay(day, anchor) || (previewEnd ? isSameDay(day, previewEnd) : false)
+    }
+    return isSameDay(day, rangeStart) || isSameDay(day, rangeEnd)
+  }
+
+  const presets: { label: string; fn: () => void }[] = [
+    {
+      label: 'This week',
+      fn: () => {
+        const m = getMondayOfWeek(new Date())
+        onRangeChange(m, addDays(m, 6))
+        onClose()
+      },
+    },
+    {
+      label: 'Next 7 days',
+      fn: () => {
+        const t = new Date(); t.setHours(0, 0, 0, 0)
+        onRangeChange(t, addDays(t, 6))
+        onClose()
+      },
+    },
+    {
+      label: 'This month',
+      fn: () => {
+        const t = new Date()
+        const s = new Date(t.getFullYear(), t.getMonth(), 1)
+        const e = new Date(t.getFullYear(), t.getMonth() + 1, 0)
+        onRangeChange(s, e)
+        onClose()
+      },
+    },
+  ]
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -6, scale: 0.97 }}
+      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+      className="absolute right-0 top-full mt-2 z-30 w-72 rounded-2xl bg-white p-4 shadow-xl"
+      style={{ border: '1px solid #E5E7EB' }}
+    >
+      {/* Month navigation */}
+      <div className="mb-3 flex items-center justify-between">
+        <button type="button"
+          onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
+          className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-gray-100">
+          <ChevronLeft size={14} style={{ color: '#6B7280' }} />
+        </button>
+        <span className="text-sm font-bold"
+          style={{ color: '#111827', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+          {month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+        </span>
+        <button type="button"
+          onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
+          className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-gray-100">
+          <ChevronRight size={14} style={{ color: '#6B7280' }} />
+        </button>
+      </div>
+
+      {/* Day-of-week headers */}
+      <div className="mb-1 grid grid-cols-7">
+        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
+          <div key={d} className="py-1 text-center text-[10px] font-bold" style={{ color: '#9CA3AF' }}>{d}</div>
+        ))}
+      </div>
+
+      {/* Day cells */}
+      <div className="grid grid-cols-7">
+        {cells.map((day, i) => {
+          if (!day) return <div key={`e-${i}`} className="h-7" />
+          const endpoint = isEndpoint(day)
+          const range    = inRange(day)
+          const tod      = isSameDay(day, today)
+          return (
+            <button key={day.toISOString()} type="button"
+              onClick={() => handleDay(day)}
+              onMouseEnter={() => anchor && setHover(day)}
+              onMouseLeave={() => anchor && setHover(null)}
+              className="flex h-7 w-full items-center justify-center text-xs font-medium transition-all"
+              style={{
+                background:   endpoint ? '#FF6B1A' : range ? 'rgba(255,107,26,0.10)' : 'transparent',
+                color:        endpoint ? 'white'   : tod   ? '#FF6B1A'               : '#374151',
+                borderRadius: '6px',
+                fontWeight:   tod && !endpoint ? 700 : 500,
+              }}>
+              {day.getDate()}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Hint */}
+      <p className="my-2 text-center text-[10px]" style={{ color: '#9CA3AF' }}>
+        {anchor ? 'Now click an end date' : 'Click a start date'}
+      </p>
+
+      {/* Quick presets */}
+      <div className="flex flex-wrap gap-1.5">
+        {presets.map(p => (
+          <button key={p.label} type="button" onClick={p.fn}
+            className="rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors hover:brightness-95"
+            style={{
+              background: 'rgba(255,107,26,0.06)',
+              color:      '#FF6B1A',
+              border:     '1px solid rgba(255,107,26,0.15)',
+            }}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+    </motion.div>
+  )
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -126,36 +312,32 @@ function SlotChip({ lc, status, isSelected, onClick }: {
 }) {
   const d       = new Date(lc.scheduledStart)
   const isToday = isSameDay(d, new Date())
-  const clickable = ['bookable', 'live', 'booked', 'attended', 'ended', 'not-enrolled'].includes(status)
+  const clickable = ['bookable', 'live', 'booked', 'attended', 'ended'].includes(status)
 
   const colors: Record<SlotStatus, { border: string; bg: string; label: string }> = {
-    booked:         { border: '#10B981', bg: 'rgba(16,185,129,0.06)',  label: '#10B981' },
-    live:           { border: '#EF4444', bg: 'rgba(239,68,68,0.06)',   label: '#EF4444' },
-    bookable:       { border: isSelected ? '#FF6B1A' : '#E5E7EB', bg: isSelected ? 'rgba(255,107,26,0.05)' : 'white', label: '#FF6B1A' },
-    full:           { border: '#E5E7EB', bg: '#F9FAFB', label: '#9CA3AF' },
-    locked:         { border: '#E5E7EB', bg: '#F9FAFB', label: '#9CA3AF' },
-    'not-enrolled': { border: '#C084FC', bg: 'rgba(192,132,252,0.05)', label: '#9333EA' },
-    'not-in-batch': { border: '#E5E7EB', bg: '#F9FAFB',               label: '#9CA3AF' },
-    attended:       { border: '#3B82F6', bg: 'rgba(59,130,246,0.05)',  label: '#3B82F6' },
-    missed:         { border: '#F59E0B', bg: 'rgba(245,158,11,0.05)',  label: '#F59E0B' },
-    cancelled:      { border: '#E5E7EB', bg: '#F9FAFB', label: '#D1D5DB' },
-    ended:          { border: '#E5E7EB', bg: '#F9FAFB', label: '#9CA3AF' },
+    booked:    { border: '#10B981', bg: 'rgba(16,185,129,0.06)',  label: '#10B981' },
+    live:      { border: '#EF4444', bg: 'rgba(239,68,68,0.06)',   label: '#EF4444' },
+    bookable:  { border: isSelected ? '#FF6B1A' : '#E5E7EB', bg: isSelected ? 'rgba(255,107,26,0.05)' : 'white', label: '#FF6B1A' },
+    full:      { border: '#E5E7EB', bg: '#F9FAFB', label: '#9CA3AF' },
+    locked:    { border: '#E5E7EB', bg: '#F9FAFB', label: '#9CA3AF' },
+    attended:  { border: '#3B82F6', bg: 'rgba(59,130,246,0.05)',  label: '#3B82F6' },
+    missed:    { border: '#F59E0B', bg: 'rgba(245,158,11,0.05)',  label: '#F59E0B' },
+    cancelled: { border: '#E5E7EB', bg: '#F9FAFB', label: '#D1D5DB' },
+    ended:     { border: '#E5E7EB', bg: '#F9FAFB', label: '#9CA3AF' },
   }
   const c      = colors[status]
   const capPct = lc.sessionCapacity > 0 ? Math.min(100, (lc.bookedCount / lc.sessionCapacity) * 100) : 0
 
   const statusLabel: Record<SlotStatus, string> = {
-    live:           '🔴 LIVE',
-    booked:         '✓ Booked',
-    bookable:       lc.sessionCapacity > 0 ? `${lc.sessionCapacity - lc.bookedCount} left` : '∞ left',
-    full:           'Full',
-    locked:         '—',
-    'not-enrolled': '🔒 Purchase',
-    'not-in-batch': '🔒 Restricted',
-    attended:       '✓ Attended',
-    missed:         'Missed',
-    cancelled:      'Cancelled',
-    ended:          'Ended',
+    live:      '🔴 LIVE',
+    booked:    '✓ Booked',
+    bookable:  lc.sessionCapacity > 0 ? `${lc.sessionCapacity - lc.bookedCount} left` : 'Open',
+    full:      'Full',
+    locked:    '—',
+    attended:  '✓ Attended',
+    missed:    'Missed',
+    cancelled: 'Cancelled',
+    ended:     'Ended',
   }
 
   return (
@@ -197,7 +379,7 @@ function SlotChip({ lc, status, isSelected, onClick }: {
       <div className="flex items-center gap-1">
         {status === 'live' && (
           <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.2, repeat: Infinity }}
-            className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: '#EF4444' }} />
+            className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: '#EF4444' }} />
         )}
         {status === 'booked' && <CheckCircle2 size={9} style={{ color: '#10B981' }} strokeWidth={3} />}
         <span className="text-[9px] font-bold" style={{ color: c.label }}>{statusLabel[status]}</span>
@@ -206,12 +388,13 @@ function SlotChip({ lc, status, isSelected, onClick }: {
       {lc.sessionCapacity > 0 && ['bookable', 'booked', 'full', 'live'].includes(status) && (
         <div className="mt-2">
           <div className="h-1 overflow-hidden rounded-full" style={{ background: '#F3F4F6' }}>
-            <motion.div initial={{ width: 0 }} animate={{ width: `${capPct}%` }} transition={{ duration: 0.5, ease: 'easeOut' }}
+            <motion.div initial={{ width: 0 }} animate={{ width: `${capPct}%` }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
               className="h-full rounded-full"
               style={{ background: capPct >= 100 ? '#EF4444' : capPct >= 80 ? '#F59E0B' : '#10B981' }} />
           </div>
           <span className="mt-0.5 text-[9px]" style={{ color: '#D1D5DB' }}>
-            <Users size={7} className="inline mr-0.5" />{lc.bookedCount}/{lc.sessionCapacity}
+            <Users size={7} className="mr-0.5 inline" />{lc.bookedCount}/{lc.sessionCapacity}
           </span>
         </div>
       )}
@@ -224,12 +407,12 @@ function SlotChip({ lc, status, isSelected, onClick }: {
 }
 
 /* ─────────────────────────────────────────────────────────
-   COMPACT CLASS CARD  (grid item — opens modal on click)
+   CLASS CARD  (grid item — opens modal on click)
 ───────────────────────────────────────────────────────── */
 function ClassCard({ group, bookingMap, onClick }: {
   group: ClassGroup; bookingMap: Map<string, MyBooking>; onClick: () => void
 }) {
-  const { slots, bookedSlot, instructor, requiresPurchase } = group
+  const { slots, bookedSlot, instructor } = group
   const hasLive = slots.some(s => s.status === 'live')
 
   const nextSlot =
@@ -241,22 +424,15 @@ function ClassCard({ group, bookingMap, onClick }: {
     getSlotStatus(s, bookingMap.get(s.id), false) === 'bookable'
   ).length
 
-  // Use the pre-computed notInBatch from the group
-  const notInBatch = group.notInBatch
-
-  type CardState = 'live' | 'booked' | 'open' | 'locked' | 'restricted'
+  type CardState = 'live' | 'booked' | 'open'
   const state: CardState =
-    hasLive          ? 'live'       :
-    bookedSlot       ? 'booked'     :
-    notInBatch       ? 'restricted' :
-    requiresPurchase ? 'locked'     : 'open'
+    hasLive    ? 'live'   :
+    bookedSlot ? 'booked' : 'open'
 
   const pal: Record<CardState, { border: string; iconBg: string; iconColor: string }> = {
-    live:       { border: 'rgba(239,68,68,0.22)',  iconBg: 'rgba(239,68,68,0.10)',  iconColor: '#EF4444' },
-    booked:     { border: 'rgba(16,185,129,0.22)', iconBg: 'rgba(16,185,129,0.10)', iconColor: '#10B981' },
-    open:       { border: '#E5E7EB',               iconBg: 'rgba(255,107,26,0.08)', iconColor: '#FF6B1A' },
-    locked:     { border: '#E5E7EB',               iconBg: 'rgba(147,51,234,0.08)', iconColor: '#9333EA' },
-    restricted: { border: '#E5E7EB',               iconBg: 'rgba(156,163,175,0.10)', iconColor: '#9CA3AF' },
+    live:   { border: 'rgba(239,68,68,0.22)',  iconBg: 'rgba(239,68,68,0.10)',  iconColor: '#EF4444' },
+    booked: { border: 'rgba(16,185,129,0.22)', iconBg: 'rgba(16,185,129,0.10)', iconColor: '#10B981' },
+    open:   { border: '#E5E7EB',               iconBg: 'rgba(255,107,26,0.08)', iconColor: '#FF6B1A' },
   }
   const p = pal[state]
 
@@ -266,42 +442,31 @@ function ClassCard({ group, bookingMap, onClick }: {
       onClick={onClick}
       whileHover={{ y: -3, boxShadow: '0 10px 28px rgba(0,0,0,0.09)' }}
       whileTap={{ scale: 0.97 }}
-      className="flex flex-col rounded-2xl bg-white p-4 text-left w-full"
-      style={{ border: `1px solid ${p.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.04)', opacity: state === 'locked' ? 0.72 : 1 }}
+      className="flex w-full flex-col rounded-2xl bg-white p-4 text-left"
+      style={{ border: `1px solid ${p.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
     >
       {/* Top row: icon + pill */}
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl flex-shrink-0" style={{ background: p.iconBg }}>
-          {hasLive          ? <Radio        size={15} style={{ color: p.iconColor }} />
-           : bookedSlot     ? <CheckCircle2 size={15} style={{ color: p.iconColor }} />
-           : notInBatch     ? <Lock        size={15} style={{ color: p.iconColor }} />
-           : requiresPurchase ? <Lock      size={15} style={{ color: p.iconColor }} />
-           :                   <BookOpen  size={15} style={{ color: p.iconColor }} />}
+      <div className="mb-3 flex items-start justify-between">
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl"
+          style={{ background: p.iconBg }}>
+          {hasLive     ? <Radio        size={15} style={{ color: p.iconColor }} />
+           : bookedSlot ? <CheckCircle2 size={15} style={{ color: p.iconColor }} />
+           :              <BookOpen    size={15} style={{ color: p.iconColor }} />}
         </div>
 
         {hasLive ? (
           <motion.span animate={{ opacity: [1, 0.45, 1] }} transition={{ duration: 1.4, repeat: Infinity }}
-            className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+            className="rounded-full px-1.5 py-0.5 text-[9px] font-bold"
             style={{ background: 'rgba(239,68,68,0.10)', color: '#EF4444' }}>
             LIVE
           </motion.span>
         ) : bookedSlot ? (
-          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+          <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold"
             style={{ background: 'rgba(16,185,129,0.10)', color: '#10B981' }}>
             BOOKED
           </span>
-        ) : notInBatch ? (
-          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-            style={{ background: 'rgba(156,163,175,0.10)', color: '#9CA3AF' }}>
-            RESTRICTED
-          </span>
-        ) : requiresPurchase ? (
-          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-            style={{ background: 'rgba(147,51,234,0.08)', color: '#9333EA' }}>
-            LOCKED
-          </span>
         ) : bookableCount > 0 ? (
-          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+          <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold"
             style={{ background: 'rgba(255,107,26,0.08)', color: '#FF6B1A' }}>
             {bookableCount} open
           </span>
@@ -309,25 +474,25 @@ function ClassCard({ group, bookingMap, onClick }: {
       </div>
 
       {/* Title */}
-      <h3 className="text-sm font-bold leading-snug line-clamp-2 mb-1"
+      <h3 className="mb-1 line-clamp-2 text-sm font-bold leading-snug"
         style={{ color: '#111827', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
         {group.title}
       </h3>
 
       {/* Instructor */}
       {instructor && (
-        <p className="flex items-center gap-1 text-[11px] mb-3 min-w-0" style={{ color: '#9CA3AF' }}>
+        <p className="mb-3 flex min-w-0 items-center gap-1 text-[11px]" style={{ color: '#9CA3AF' }}>
           <User size={9} className="flex-shrink-0" />
           <span className="truncate">{instructor.name}</span>
         </p>
       )}
 
       {/* Footer */}
-      <div className="mt-auto pt-3 flex flex-col gap-1" style={{ borderTop: '1px solid #F3F4F6' }}>
+      <div className="mt-auto flex flex-col gap-1 pt-3" style={{ borderTop: '1px solid #F3F4F6' }}>
         {nextSlot && (
           <div className="flex items-center gap-1.5">
             <Clock size={10} style={{ color: state === 'booked' ? '#10B981' : '#9CA3AF' }} />
-            <span className="text-[11px] font-medium truncate"
+            <span className="truncate text-[11px] font-medium"
               style={{ color: state === 'booked' ? '#10B981' : '#374151' }}>
               {fmtShortSlot(nextSlot.scheduledStart)}
             </span>
@@ -336,7 +501,7 @@ function ClassCard({ group, bookingMap, onClick }: {
         <div className="flex items-center gap-1">
           <CalendarDays size={9} style={{ color: '#D1D5DB' }} />
           <span className="text-[10px]" style={{ color: '#D1D5DB' }}>
-            {slots.length} slot{slots.length !== 1 ? 's' : ''} this week
+            {slots.length} slot{slots.length !== 1 ? 's' : ''}
           </span>
         </div>
       </div>
@@ -345,7 +510,7 @@ function ClassCard({ group, bookingMap, onClick }: {
 }
 
 /* ─────────────────────────────────────────────────────────
-   SLOT MODAL  (bottom-sheet on mobile, centered on desktop)
+   SLOT MODAL
 ───────────────────────────────────────────────────────── */
 interface SlotModalProps {
   group:         ClassGroup
@@ -358,7 +523,7 @@ interface SlotModalProps {
 }
 
 function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPending, onClose }: SlotModalProps) {
-  const { slots, bookedSlot, instructor, requiresPurchase, notInBatch, courseSlug, courseTitle } = group
+  const { slots, bookedSlot, instructor, courseTitle } = group
 
   const defaultId = useMemo(() => {
     if (bookedSlot) return bookedSlot.id
@@ -371,11 +536,17 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
 
   const [selectedId, setSelectedId] = useState<string | null>(defaultId)
 
+  /* Tick every 30 s so the 5-min link gate updates without a full page reload */
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(id)
+  }, [])
+
   useEffect(() => {
     if (bookedSlot) setSelectedId(bookedSlot.id)
   }, [bookedSlot?.id])
 
-  // Close on Escape
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', h)
@@ -389,8 +560,7 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
     : null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         transition={{ duration: 0.18 }}
@@ -398,51 +568,55 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
         onClick={onClose}
       />
 
-      {/* Sheet */}
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 40 }}
         transition={{ type: 'spring', stiffness: 380, damping: 32 }}
         onClick={e => e.stopPropagation()}
-        className="relative w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl bg-white"
+        className="relative w-full rounded-t-3xl bg-white sm:max-w-md sm:rounded-3xl"
         style={{ boxShadow: '0 -8px 40px rgba(0,0,0,0.14)', maxHeight: '88vh', overflowY: 'auto' }}
       >
-        {/* Drag handle — mobile only */}
-        <div className="flex sm:hidden justify-center pt-3 pb-1">
+        <div className="flex justify-center pb-1 pt-3 sm:hidden">
           <div className="h-1 w-9 rounded-full" style={{ background: '#E5E7EB' }} />
         </div>
 
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-4"
+        <div className="flex items-start justify-between gap-3 px-5 pb-4 pt-4"
           style={{ borderBottom: '1px solid #F3F4F6' }}>
           <div className="min-w-0">
-            <h2 className="font-bold text-base leading-snug"
+            <h2 className="text-base font-bold leading-snug"
               style={{ color: '#111827', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
               {group.title}
             </h2>
             {instructor && (
-              <p className="flex items-center gap-1 text-xs mt-0.5" style={{ color: '#9CA3AF' }}>
+              <p className="mt-0.5 flex items-center gap-1 text-xs" style={{ color: '#9CA3AF' }}>
                 <User size={10} />{instructor.name}
               </p>
             )}
+            {courseTitle && (
+              <p className="mt-0.5 flex items-center gap-1 text-[11px]" style={{ color: '#9CA3AF' }}>
+                <BookOpen size={9} />{courseTitle}
+              </p>
+            )}
+            {(() => {
+              const sec = slots[0]?.sectionId
+              const secTitle = sec && typeof sec === 'object' ? sec.title : null
+              return secTitle ? (
+                <p className="mt-0.5 flex items-center gap-1 text-[11px]" style={{ color: '#D1D5DB' }}>
+                  <span style={{ color: '#FF6B1A', fontWeight: 600 }}>·</span>{secTitle}
+                </p>
+              ) : null
+            })()}
           </div>
           <button type="button" onClick={onClose}
-            className="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-xl transition-colors hover:bg-gray-100">
+            className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-xl transition-colors hover:bg-gray-100">
             <X size={15} style={{ color: '#6B7280' }} />
           </button>
         </div>
 
-        {/* Slot picker */}
-        <div className="px-5 pt-4 pb-3">
-          <p className="text-xs font-semibold mb-3" style={{ color: '#6B7280' }}>
-            {bookedSlot
-              ? 'Your booking · other available times:'
-              : notInBatch
-              ? 'Available sessions — contact admin to access:'
-              : requiresPurchase
-              ? 'Available sessions · purchase to unlock:'
-              : 'Select a time slot:'}
+        <div className="px-5 pb-3 pt-4">
+          <p className="mb-3 text-xs font-semibold" style={{ color: '#6B7280' }}>
+            {bookedSlot ? 'Your booking · other available times:' : 'Select a time slot:'}
           </p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {slots.map(lc => {
@@ -459,7 +633,6 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
           </div>
         </div>
 
-        {/* Action area */}
         <div className="px-5 pb-6 pt-2">
           <AnimatePresence>
             {selectedSlot && selectedStatus && (
@@ -468,7 +641,6 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
                 initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.14 }}
               >
-                {/* BOOKABLE */}
                 {selectedStatus === 'bookable' && (
                   <motion.button type="button"
                     whileHover={{ scale: 1.01, boxShadow: '0 6px 20px rgba(255,107,26,0.35)' }}
@@ -483,7 +655,6 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
                   </motion.button>
                 )}
 
-                {/* LIVE */}
                 {selectedStatus === 'live' && (
                   <div className="flex flex-col gap-2">
                     {selectedSlot.type === 'internal' && (
@@ -507,8 +678,11 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
                   </div>
                 )}
 
-                {/* BOOKED */}
-                {selectedStatus === 'booked' && selectedBooking && (
+                {selectedStatus === 'booked' && selectedBooking && (() => {
+                  const msUntil   = new Date(selectedSlot.scheduledStart).getTime() - now
+                  const linkReady = msUntil <= 5 * 60_000   // ≤ 5 min before start
+                  const minsLeft  = Math.max(0, Math.ceil(msUntil / 60_000))
+                  return (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 rounded-2xl px-4 py-2.5"
                       style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)' }}>
@@ -517,7 +691,7 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
                         Booked · {fmtSlotLabel(selectedSlot.scheduledStart, selectedSlot.durationMins)}
                       </p>
                     </div>
-                    {selectedSlot.meetingUrl && (
+                    {selectedSlot.meetingUrl && linkReady && (
                       <a href={selectedSlot.meetingUrl} target="_blank" rel="noreferrer">
                         <button type="button"
                           className="flex w-full items-center justify-center gap-2 rounded-2xl py-2.5 text-sm font-semibold"
@@ -525,6 +699,15 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
                           <ExternalLink size={13} /> Get Class Link
                         </button>
                       </a>
+                    )}
+                    {selectedSlot.meetingUrl && !linkReady && (
+                      <div className="flex items-center gap-2 rounded-2xl px-4 py-2.5"
+                        style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
+                        <Clock size={13} style={{ color: '#9CA3AF' }} />
+                        <p className="text-[11px]" style={{ color: '#6B7280' }}>
+                          Class link unlocks <strong>{minsLeft > 60 ? `${Math.ceil(minsLeft/60)}h ${minsLeft%60}m` : `${minsLeft} min`}</strong> before start
+                        </p>
+                      </div>
                     )}
                     <button type="button"
                       onClick={() => onCancel(selectedBooking.id, fmtShortSlot(selectedSlot.scheduledStart))}
@@ -537,43 +720,9 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
                       Cancel booking
                     </button>
                   </div>
-                )}
+                  )
+                })()}
 
-                {/* NOT IN BATCH */}
-                {selectedStatus === 'not-in-batch' && (
-                  <div className="flex items-start gap-2.5 rounded-2xl px-4 py-3"
-                    style={{ background: 'rgba(156,163,175,0.07)', border: '1px solid #E5E7EB' }}>
-                    <Lock size={14} style={{ color: '#9CA3AF', flexShrink: 0, marginTop: 1 }} />
-                    <span className="text-xs leading-relaxed" style={{ color: '#6B7280' }}>
-                      This class is not available for your account yet. Contact your admin or instructor to be added to this batch.
-                    </span>
-                  </div>
-                )}
-
-                {/* NOT ENROLLED */}
-                {selectedStatus === 'not-enrolled' && (
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-start gap-2.5 rounded-2xl px-4 py-3"
-                      style={{ background: 'rgba(147,51,234,0.05)', border: '1px solid rgba(147,51,234,0.20)' }}>
-                      <Lock size={14} style={{ color: '#9333EA', flexShrink: 0, marginTop: 1 }} />
-                      <span className="text-xs leading-relaxed" style={{ color: '#6B21A8' }}>
-                        Purchase this course to book live class sessions.
-                      </span>
-                    </div>
-                    {courseSlug && (
-                      <Link href={`/courses/${courseSlug}`}>
-                        <button type="button"
-                          className="flex w-full items-center justify-center gap-2 rounded-2xl py-2.5 text-sm font-bold text-white"
-                          style={{ background: 'linear-gradient(135deg,#9333EA,#A855F7)', boxShadow: '0 4px 14px rgba(147,51,234,0.28)' }}>
-                          <ShoppingCart size={13} />
-                          {courseTitle ? `Get ${courseTitle}` : 'View Course'}
-                        </button>
-                      </Link>
-                    )}
-                  </div>
-                )}
-
-                {/* FULL */}
                 {selectedStatus === 'full' && (
                   <div className="flex items-center justify-center gap-2 rounded-2xl py-3 text-sm"
                     style={{ background: '#F9FAFB', color: '#9CA3AF', border: '1px solid #E5E7EB' }}>
@@ -581,7 +730,6 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
                   </div>
                 )}
 
-                {/* LOCKED */}
                 {selectedStatus === 'locked' && (
                   <div className="flex items-center gap-2 rounded-2xl px-4 py-3"
                     style={{ background: '#FFF7ED', border: '1px solid rgba(245,158,11,0.25)' }}>
@@ -592,7 +740,6 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
                   </div>
                 )}
 
-                {/* ATTENDED */}
                 {selectedStatus === 'attended' && (
                   <div className="flex items-center justify-center gap-2 rounded-2xl py-3 text-sm"
                     style={{ background: 'rgba(59,130,246,0.07)', color: '#2563EB', border: '1px solid rgba(59,130,246,0.18)' }}>
@@ -600,7 +747,6 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
                   </div>
                 )}
 
-                {/* MISSED */}
                 {selectedStatus === 'missed' && (
                   <div className="flex items-center justify-center gap-2 rounded-2xl py-3 text-sm"
                     style={{ background: 'rgba(245,158,11,0.07)', color: '#92400E', border: '1px solid rgba(245,158,11,0.20)' }}>
@@ -608,7 +754,6 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
                   </div>
                 )}
 
-                {/* ENDED */}
                 {selectedStatus === 'ended' && selectedSlot.recordingUrl && (
                   <a href={selectedSlot.recordingUrl} target="_blank" rel="noreferrer">
                     <button type="button"
@@ -634,21 +779,23 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
 }
 
 /* ─────────────────────────────────────────────────────────
-   WEEK SUMMARY STRIP
+   GLOBAL STATS  (counts across ALL classes, not date-filtered)
 ───────────────────────────────────────────────────────── */
-function WeekSummary({ groups, bookingMap }: { groups: ClassGroup[]; bookingMap: Map<string, MyBooking> }) {
-  const liveNow   = groups.reduce((s, g) => s + g.slots.filter(l => l.status === 'live').length, 0)
-  const booked    = groups.filter(g => !!g.bookedSlot).length
-  const available = groups.reduce((s, g) => {
-    if (g.bookedSlot) return s
-    return s + g.slots.filter(l => getSlotStatus(l, bookingMap.get(l.id), false) === 'bookable').length
-  }, 0)
+function GlobalStats({ allClasses, bookingMap }: {
+  allClasses: LiveClass[]
+  bookingMap: Map<string, MyBooking>
+}) {
+  const liveNow   = allClasses.filter(lc => lc.status === 'live').length
+  const myBooked  = Array.from(bookingMap.values()).filter(b => b.status === 'booked').length
+  const openSlots = allClasses.filter(lc =>
+    getSlotStatus(lc, bookingMap.get(lc.id), false) === 'bookable'
+  ).length
 
   const pills = [
-    { label: 'Classes',    value: groups.length, color: '#374151', bg: '#F9FAFB',                  border: '#E5E7EB' },
-    { label: 'Live Now',   value: liveNow,        color: '#EF4444', bg: 'rgba(239,68,68,0.05)',      border: 'rgba(239,68,68,0.15)' },
-    { label: 'Booked',     value: booked,         color: '#10B981', bg: 'rgba(16,185,129,0.05)',     border: 'rgba(16,185,129,0.15)' },
-    { label: 'Open Slots', value: available,      color: '#FF6B1A', bg: 'rgba(255,107,26,0.05)',     border: 'rgba(255,107,26,0.15)' },
+    { label: 'Total Classes', value: allClasses.length, color: '#374151', bg: '#F9FAFB',               border: '#E5E7EB' },
+    { label: 'Live Now',      value: liveNow,            color: '#EF4444', bg: 'rgba(239,68,68,0.05)',  border: 'rgba(239,68,68,0.15)' },
+    { label: 'My Bookings',   value: myBooked,           color: '#10B981', bg: 'rgba(16,185,129,0.05)', border: 'rgba(16,185,129,0.15)' },
+    { label: 'Open Slots',    value: openSlots,          color: '#FF6B1A', bg: 'rgba(255,107,26,0.05)', border: 'rgba(255,107,26,0.15)' },
   ]
 
   return (
@@ -687,7 +834,8 @@ function ContactAdminModal({ onClose }: { onClose: () => void }) {
           style={{ background: 'rgba(255,107,26,0.08)', border: '1px solid rgba(255,107,26,0.20)' }}>
           <AlertCircle size={24} style={{ color: '#FF6B1A' }} />
         </div>
-        <h3 className="mb-2 text-lg font-bold" style={{ fontFamily: 'Bricolage Grotesque, sans-serif', color: '#111827' }}>
+        <h3 className="mb-2 text-lg font-bold"
+          style={{ fontFamily: 'Bricolage Grotesque, sans-serif', color: '#111827' }}>
           Attendance Limit Reached
         </h3>
         <p className="mb-5 text-sm leading-relaxed" style={{ color: '#6B7280' }}>
@@ -707,14 +855,26 @@ function ContactAdminModal({ onClose }: { onClose: () => void }) {
    MAIN PAGE
 ───────────────────────────────────────────────────────── */
 export default function ClassBookingsPage() {
-  const [weekStart,       setWeekStart]       = useState<Date>(() => getMondayOfWeek(new Date()))
-  const [openGroupTitle,  setOpenGroupTitle]   = useState<string | null>(null)
-  const [showContactAdmin, setShowContactAdmin] = useState(false)
-  const [bookPending,     setBookPending]      = useState<Set<string>>(new Set())
-  const [cancelPending,   setCancelPending]    = useState<Set<string>>(new Set())
+  /* ── Date range state ── */
+  const [rangeStart, setRangeStart] = useState<Date>(() => getMondayOfWeek(new Date()))
+  const [rangeEnd,   setRangeEnd]   = useState<Date>(() => addDays(getMondayOfWeek(new Date()), 6))
+  const [showCalendar, setShowCalendar] = useState(false)
+  const calendarRef = useRef<HTMLDivElement>(null)
+
+  /* ── Filter state ── */
+  const [filterCourse,     setFilterCourse]     = useState('')
+  const [filterModule,     setFilterModule]      = useState('')
+  const [filterInstructor, setFilterInstructor] = useState('')
+
+  /* ── Modal state ── */
+  const [openGroupKey,      setOpenGroupKey]      = useState<GroupKey | null>(null)
+  const [showContactAdmin,  setShowContactAdmin]  = useState(false)
+  const [bookPending,       setBookPending]        = useState<Set<string>>(new Set())
+  const [cancelPending,     setCancelPending]      = useState<Set<string>>(new Set())
   const toast = useToast()
 
-  const { data: allClasses = [], isLoading: loadingClasses } = useMyBatchLiveClasses('all')
+  /* ── Data ── */
+  const { data: allClasses = [], isLoading: loadingClasses } = useAllLiveClasses()
   const { data: bookingsData, isLoading: loadingBookings }   = useMyBookings({ per_page: 100 })
   const myBookings: MyBooking[] = bookingsData?.docs ?? []
 
@@ -729,18 +889,73 @@ export default function ClassBookingsPage() {
     return m
   }, [myBookings])
 
-  const weekEnd    = useMemo(() => addDays(weekStart, 7), [weekStart])
-  const weekClasses = useMemo(() =>
-    allClasses.filter(lc => {
+  /* ── Close calendar on outside click ── */
+  useEffect(() => {
+    if (!showCalendar) return
+    const h = (e: MouseEvent) => {
+      if (calendarRef.current && !calendarRef.current.contains(e.target as Node)) {
+        setShowCalendar(false)
+      }
+    }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [showCalendar])
+
+  /* ── Filter options — courses + modules from dedicated APIs ── */
+  const { data: coursesData }   = useCourses({ per_page: 200 })
+  const availableCourses        = coursesData?.docs ?? []
+
+  // When a course is selected, look up its slug so we can fetch its sections
+  const selectedCourseSlug = useMemo(
+    () => availableCourses.find(c => c.id === filterCourse)?.slug ?? '',
+    [availableCourses, filterCourse],
+  )
+  const { data: courseDetail } = useCourse(selectedCourseSlug)
+  const availableModules       = courseDetail?.sections ?? []
+
+  // Instructors derived from (now-normalized) live class data
+  const availableInstructors = useMemo(() => {
+    const seen = new Map<string, { id: string; name: string }>()
+    allClasses.forEach(lc => {
+      const id   = lc.instructor?.id
+      const name = lc.instructor?.name
+      if (id && name && !seen.has(id)) seen.set(id, { id, name })
+    })
+    return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [allClasses])
+
+  /* ── Apply course/module/instructor filters ── */
+  const filteredClasses = useMemo(() => {
+    return allClasses.filter(lc => {
+      if (filterCourse     && lc.course?.id    !== filterCourse)                                             return false
+      if (filterModule) {
+        const secId = typeof lc.sectionId === 'object' ? lc.sectionId?.id : lc.sectionId
+        if (secId !== filterModule) return false
+      }
+      if (filterInstructor && lc.instructor?.id !== filterInstructor)                                        return false
+      return true
+    })
+  }, [allClasses, filterCourse, filterModule, filterInstructor])
+
+  /* ── Apply date range ── */
+  const rangeEndInclusive = useMemo(() => {
+    const d = new Date(rangeEnd)
+    d.setHours(23, 59, 59, 999)
+    return d
+  }, [rangeEnd])
+
+  const windowClasses = useMemo(() =>
+    filteredClasses.filter(lc => {
       const d = new Date(lc.scheduledStart)
-      return d >= weekStart && d < weekEnd
+      return d >= rangeStart && d <= rangeEndInclusive
     }),
-    [allClasses, weekStart, weekEnd]
+    [filteredClasses, rangeStart, rangeEndInclusive]
   )
 
-  const groups = useMemo((): ClassGroup[] => {
+  /* ── Group windowClasses by title ── */
+  const allGroups = useMemo((): ClassGroup[] => {
     const map = new Map<string, LiveClass[]>()
-    weekClasses.forEach(lc => {
+    windowClasses.forEach(lc => {
       const key = lc.title.trim()
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(lc)
@@ -750,44 +965,68 @@ export default function ClassBookingsPage() {
     map.forEach((slots, title) => {
       slots.sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime())
 
-      const instr = typeof slots[0].instructorId === 'object' && slots[0].instructorId
-        ? (slots[0].instructorId as any)
-        : null
-
+      const instr      = slots[0].instructor ?? null
       const bookedSlot = slots.find(s => bookingMap.get(s.id)?.status === 'booked')
+      const courseTitle = slots[0].course?.title
+      const courseSlug  = slots[0].course?.slug
 
-      const nonEndedSlots = slots.filter(s => s.status !== 'ended' && s.status !== 'cancelled')
-      // notInBatch: student isn't a member of this batch at all
-      const notInBatchGroup = nonEndedSlots.length > 0 && nonEndedSlots.every(s => s.isInBatch === false)
-      // requiresPurchase: in the batch but hasn't purchased the linked course
-      const requiresPurchase = !notInBatchGroup && nonEndedSlots.length > 0 && nonEndedSlots.every(s => s.isEnrolled === false)
-
-      const courseRef  = slots.find(s => s.courseId)?.courseId
-      const courseObj  = typeof courseRef === 'object' && courseRef ? (courseRef as any) : null
-      const courseSlug  = courseObj?.slug  ?? (typeof courseRef === 'string' ? courseRef : undefined)
-      const courseTitle = courseObj?.title ?? undefined
-
-      result.push({ title, instructor: instr, slots, bookedSlot, requiresPurchase, notInBatch: notInBatchGroup, courseSlug, courseTitle })
+      result.push({ title, instructor: instr, slots, bookedSlot, courseSlug, courseTitle })
     })
 
-    // Enrolled/purchased classes first, then locked ones last
     result.sort((a, b) => {
       const rank = (g: ClassGroup) => {
-        if (g.slots.some(s => s.status === 'live')) return 0  // live first
-        if (g.bookedSlot)                           return 1  // booked second
-        if (!g.requiresPurchase && !g.notInBatch)   return 2  // open third
-        if (g.requiresPurchase)                     return 3  // needs purchase fourth
-        return 4                                             // not-in-batch last
+        if (g.slots.some(s => s.status === 'live')) return 0
+        if (g.bookedSlot)                           return 1
+        return 2
       }
       return rank(a) - rank(b)
     })
 
     return result
-  }, [weekClasses, bookingMap])
+  }, [windowClasses, bookingMap])
 
-  // Always derive open group from fresh groups (so bookingMap updates flow in)
-  const openGroup = openGroupTitle ? (groups.find(g => g.title === openGroupTitle) ?? null) : null
+  /* ── Organize groups into date sections ── */
+  const dateSections = useMemo((): DateSection[] => {
+    const byDate = new Map<string, ClassGroup[]>()
+    const today  = new Date()
 
+    allGroups.forEach(group => {
+      const firstSlot = group.slots
+        .filter(s => {
+          const d = new Date(s.scheduledStart)
+          return d >= rangeStart && d <= rangeEndInclusive
+        })
+        .sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime())[0]
+
+      if (!firstSlot) return
+
+      const dk = toDateKey(new Date(firstSlot.scheduledStart))
+      if (!byDate.has(dk)) byDate.set(dk, [])
+      byDate.get(dk)!.push(group)
+    })
+
+    return Array.from(byDate.keys())
+      .sort()
+      .map(dk => {
+        const [y, mo, d] = dk.split('-').map(Number)
+        const date = new Date(y, mo - 1, d)
+        return {
+          dateKey:   dk,
+          dateLabel: date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }),
+          isToday:   isSameDay(date, today),
+          groups:    byDate.get(dk)!,
+        }
+      })
+  }, [allGroups, rangeStart, rangeEndInclusive])
+
+  /* ── Re-derive open group from fresh data so bookingMap updates flow in ── */
+  const openGroup = useMemo(() => {
+    if (!openGroupKey) return null
+    const section = dateSections.find(s => s.dateKey === openGroupKey.dateKey)
+    return section?.groups.find(g => g.title === openGroupKey.title) ?? null
+  }, [openGroupKey, dateSections])
+
+  /* ── Mutations ── */
   const createBooking = useCreateBooking()
   const cancelBooking = useCancelBooking()
 
@@ -796,13 +1035,13 @@ export default function ClassBookingsPage() {
     try {
       await createBooking.mutateAsync(liveClassId)
       toast.success('Seat booked!')
-      setOpenGroupTitle(null)    // close modal on success
+      setOpenGroupKey(null)
     } catch (err: any) {
       const code = err?.response?.data?.error?.code
       if (code === 'CONTACT_ADMIN')    { setShowContactAdmin(true) }
       else if (code === 'SESSION_FULL')    { toast.error('This slot is full.') }
       else if (code === 'ALREADY_BOOKED') { toast.info('You already have a booking for this slot.') }
-      else if (code === 'NOT_IN_BATCH')   { toast.error('You are not enrolled in this batch.') }
+      else if (code === 'NOT_ENROLLED')   { toast.error('You must be enrolled in this course to book.') }
       else { toast.error(err?.response?.data?.error?.message ?? 'Could not book seat.') }
     } finally {
       setBookPending(prev => { const s = new Set(prev); s.delete(liveClassId); return s })
@@ -821,8 +1060,27 @@ export default function ClassBookingsPage() {
     }
   }
 
-  const isLoading     = loadingClasses || loadingBookings
-  const isCurrentWeek = isSameDay(weekStart, getMondayOfWeek(new Date()))
+  /* ── Helpers ── */
+  const isCurrentWeek = (
+    isSameDay(rangeStart, getMondayOfWeek(new Date())) &&
+    isSameDay(rangeEnd,   addDays(getMondayOfWeek(new Date()), 6))
+  )
+
+  function shiftRange(dir: 1 | -1) {
+    const span = Math.round((rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000) + 1
+    setRangeStart(addDays(rangeStart, dir * span))
+    setRangeEnd(addDays(rangeEnd,   dir * span))
+  }
+
+  const hasFilters = !!(filterCourse || filterModule || filterInstructor)
+  const isLoading  = loadingClasses || loadingBookings
+  const showFilters = availableCourses.length > 1 || availableInstructors.length > 1
+
+  const selectStyle = (active: boolean) => ({
+    background: active ? 'rgba(255,107,26,0.07)' : 'white',
+    color:      active ? '#FF6B1A'                : '#6B7280',
+    border:     `1px solid ${active ? 'rgba(255,107,26,0.25)' : '#E5E7EB'}`,
+  })
 
   return (
     <div className="mx-auto max-w-4xl pb-16">
@@ -831,45 +1089,125 @@ export default function ClassBookingsPage() {
       <motion.div
         initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 280, damping: 26 }}
-        className="mb-6 flex flex-wrap items-end justify-between gap-4"
+        className="mb-5 flex flex-wrap items-end justify-between gap-4"
       >
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: '#111827', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+          <h1 className="text-2xl font-bold"
+            style={{ color: '#111827', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
             Class Schedule
           </h1>
-          <p className="mt-0.5 text-sm" style={{ color: '#9CA3AF' }}>{fmtWeekRange(weekStart)}</p>
+          <p className="mt-0.5 text-sm" style={{ color: '#9CA3AF' }}>
+            {fmtDateRange(rangeStart, rangeEnd)}
+          </p>
         </div>
 
-        {/* Week navigation */}
-        <div className="flex items-center gap-2">
+        {/* Date range navigation */}
+        <div className="relative flex items-center gap-2" ref={calendarRef}>
           {!isCurrentWeek && (
             <button type="button"
-              onClick={() => setWeekStart(getMondayOfWeek(new Date()))}
+              onClick={() => {
+                const m = getMondayOfWeek(new Date())
+                setRangeStart(m)
+                setRangeEnd(addDays(m, 6))
+              }}
               className="rounded-xl px-3 py-2 text-xs font-semibold transition-all hover:brightness-105"
               style={{ background: 'rgba(255,107,26,0.08)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.20)' }}>
-              Today
+              This week
             </button>
           )}
+
           <div className="flex items-center gap-1 rounded-2xl p-1"
             style={{ background: 'white', border: '1px solid #E5E7EB' }}>
-            <button type="button" onClick={() => setWeekStart(d => addDays(d, -7))}
+            <button type="button" onClick={() => shiftRange(-1)}
               className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-gray-100"
               style={{ color: '#6B7280' }}>
               <ChevronLeft size={15} />
             </button>
-            <span className="px-2 text-xs font-semibold whitespace-nowrap" style={{ color: '#374151' }}>
-              {weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              {' '}–{' '}
-              {addDays(weekStart, 6).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-            </span>
-            <button type="button" onClick={() => setWeekStart(d => addDays(d, 7))}
+
+            <button type="button"
+              onClick={() => setShowCalendar(v => !v)}
+              className="flex items-center gap-1.5 rounded-xl px-2 py-1 transition-colors hover:bg-gray-50"
+              style={{ color: '#374151' }}>
+              <Calendar size={12} style={{ color: showCalendar ? '#FF6B1A' : '#9CA3AF' }} />
+              <span className="whitespace-nowrap text-xs font-semibold">
+                {rangeStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                {' – '}
+                {rangeEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </span>
+            </button>
+
+            <button type="button" onClick={() => shiftRange(1)}
               className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-gray-100"
               style={{ color: '#6B7280' }}>
               <ChevronRight size={15} />
             </button>
           </div>
+
+          {/* Inline calendar dropdown */}
+          <AnimatePresence>
+            {showCalendar && (
+              <MiniCalendar
+                rangeStart={rangeStart}
+                rangeEnd={rangeEnd}
+                onRangeChange={(s, e) => { setRangeStart(s); setRangeEnd(e) }}
+                onClose={() => setShowCalendar(false)}
+              />
+            )}
+          </AnimatePresence>
         </div>
       </motion.div>
+
+      {/* ── Filters ── */}
+      {showFilters && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <Filter size={12} style={{ color: '#9CA3AF' }} />
+
+          {availableCourses.length > 1 && (
+            <select value={filterCourse}
+              onChange={e => { setFilterCourse(e.target.value); setFilterModule('') }}
+              className="rounded-xl px-3 py-1.5 text-xs font-medium outline-none cursor-pointer"
+              style={selectStyle(!!filterCourse)}>
+              <option value="">All courses</option>
+              {availableCourses.map(c => (
+                <option key={c.id} value={c.id}>{c.title}</option>
+              ))}
+            </select>
+          )}
+
+          {availableModules.length > 0 && (
+            <select value={filterModule}
+              onChange={e => setFilterModule(e.target.value)}
+              className="rounded-xl px-3 py-1.5 text-xs font-medium outline-none cursor-pointer"
+              style={selectStyle(!!filterModule)}>
+              <option value="">All modules</option>
+              {availableModules.map(m => (
+                <option key={m.id} value={m.id}>{m.title}</option>
+              ))}
+            </select>
+          )}
+
+          {availableInstructors.length > 1 && (
+            <select value={filterInstructor}
+              onChange={e => setFilterInstructor(e.target.value)}
+              className="rounded-xl px-3 py-1.5 text-xs font-medium outline-none cursor-pointer"
+              style={selectStyle(!!filterInstructor)}>
+              <option value="">All instructors</option>
+              {availableInstructors.map(i => (
+                <option key={i.id} value={i.id}>{i.name}</option>
+              ))}
+            </select>
+          )}
+
+          {hasFilters && (
+            <button type="button"
+              onClick={() => { setFilterCourse(''); setFilterModule(''); setFilterInstructor('') }}
+              className="text-xs font-medium transition-colors hover:text-red-500"
+              style={{ color: '#EF4444' }}>
+              × Clear filters
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Loading ── */}
       {isLoading && (
@@ -880,92 +1218,133 @@ export default function ClassBookingsPage() {
       )}
 
       {!isLoading && (
-        <AnimatePresence>
-          <motion.div
-            key={weekStart.toISOString()}
-            initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.16 }}
-          >
-            <WeekSummary groups={groups} bookingMap={bookingMap} />
+        <>
+          {/* Global stats — always based on all classes, not filtered by date */}
+          <GlobalStats allClasses={allClasses} bookingMap={bookingMap} />
 
-            {/* Empty state */}
-            {groups.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col items-center gap-3 rounded-3xl py-16 text-center bg-white"
-                style={{ border: '1px solid #E5E7EB' }}
-              >
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl"
-                  style={{ background: 'rgba(255,107,26,0.08)', border: '1px solid rgba(255,107,26,0.15)' }}>
-                  <Calendar size={22} style={{ color: '#FF6B1A' }} />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`${rangeStart.toISOString()}-${filterCourse}-${filterModule}-${filterInstructor}`}
+              initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.16 }}
+            >
+              {/* ── Empty state ── */}
+              {dateSections.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                  className="flex flex-col items-center gap-3 rounded-3xl bg-white py-16 text-center"
+                  style={{ border: '1px solid #E5E7EB' }}
+                >
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl"
+                    style={{ background: 'rgba(255,107,26,0.08)', border: '1px solid rgba(255,107,26,0.15)' }}>
+                    <Calendar size={22} style={{ color: '#FF6B1A' }} />
+                  </div>
+
+                  {allClasses.length === 0 ? (
+                    <>
+                      <p className="font-bold" style={{ color: '#111827' }}>No upcoming classes</p>
+                      <p className="max-w-xs text-sm" style={{ color: '#9CA3AF' }}>
+                        Enroll in a course to see your live class schedule here.
+                      </p>
+                    </>
+                  ) : hasFilters ? (
+                    <>
+                      <p className="font-bold" style={{ color: '#111827' }}>No classes match your filters</p>
+                      <button type="button"
+                        onClick={() => { setFilterCourse(''); setFilterModule(''); setFilterInstructor('') }}
+                        className="rounded-xl px-4 py-2 text-sm font-semibold"
+                        style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.20)' }}>
+                        Clear filters
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-bold" style={{ color: '#111827' }}>No classes in this period</p>
+                      {(() => {
+                        const futureCount = filteredClasses.filter(lc => new Date(lc.scheduledStart) > rangeEndInclusive).length
+                        return futureCount > 0 ? (
+                          <div className="flex flex-col items-center gap-2">
+                            <p className="text-sm" style={{ color: '#9CA3AF' }}>No sessions in the selected date range.</p>
+                            <button type="button"
+                              onClick={() => shiftRange(1)}
+                              className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold"
+                              style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.20)' }}>
+                              <Calendar size={13} />
+                              {futureCount} upcoming — go forward →
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-sm" style={{ color: '#9CA3AF' }}>
+                            No sessions scheduled for this period.
+                          </p>
+                        )
+                      })()}
+                    </>
+                  )}
+                </motion.div>
+              ) : (
+                /* ── Date-grouped class sections ── */
+                <div className="space-y-6">
+                  {dateSections.map((section, si) => (
+                    <motion.div key={section.dateKey}
+                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: si * 0.05, type: 'spring', stiffness: 300, damping: 28 }}>
+
+                      {/* Date heading */}
+                      <div className="mb-3 flex items-center gap-3">
+                        <span
+                          className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold"
+                          style={{
+                            background: section.isToday ? 'rgba(255,107,26,0.08)' : '#F9FAFB',
+                            color:      section.isToday ? '#FF6B1A'                : '#6B7280',
+                            border:     `1px solid ${section.isToday ? 'rgba(255,107,26,0.20)' : '#E5E7EB'}`,
+                          }}>
+                          {section.isToday && (
+                            <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: '#FF6B1A' }} />
+                          )}
+                          {section.dateLabel}
+                        </span>
+                        <div className="h-px flex-1" style={{ background: '#F3F4F6' }} />
+                        <span className="text-[11px]" style={{ color: '#D1D5DB' }}>
+                          {section.groups.length} class{section.groups.length !== 1 ? 'es' : ''}
+                        </span>
+                      </div>
+
+                      {/* Class cards for this date */}
+                      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                        {section.groups.map((group, i) => (
+                          <motion.div key={group.title}
+                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: si * 0.05 + i * 0.04, type: 'spring', stiffness: 300, damping: 28 }}>
+                            <ClassCard
+                              group={group}
+                              bookingMap={bookingMap}
+                              onClick={() => setOpenGroupKey({ title: group.title, dateKey: section.dateKey })}
+                            />
+                          </motion.div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
-
-                {/* No batch at all — first-time or unenrolled account */}
-                {allClasses.length === 0 && !isLoading ? (
-                  <>
-                    <p className="font-bold" style={{ color: '#111827' }}>No classes assigned yet</p>
-                    <p className="max-w-xs text-sm" style={{ color: '#9CA3AF' }}>
-                      You haven&apos;t been added to a batch yet. Please contact your admin or instructor to get enrolled.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="font-bold" style={{ color: '#111827' }}>No classes this week</p>
-                    {(() => {
-                      const futureCount = allClasses.filter(lc => new Date(lc.scheduledStart) >= weekEnd).length
-                      return futureCount > 0 ? (
-                        <div className="flex flex-col items-center gap-2">
-                          <p className="text-sm" style={{ color: '#9CA3AF' }}>No sessions scheduled for this week.</p>
-                          <button
-                            onClick={() => setWeekStart(w => addDays(w, 7))}
-                            className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold"
-                            style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.20)' }}
-                          >
-                            <Calendar size={13} />
-                            {futureCount} upcoming class{futureCount !== 1 ? 'es' : ''} — see next week →
-                          </button>
-                        </div>
-                      ) : (
-                        <p className="text-sm" style={{ color: '#9CA3AF' }}>
-                          {isCurrentWeek ? 'No sessions scheduled for this week. Check back later.' : 'No sessions scheduled for this week.'}
-                        </p>
-                      )
-                    })()}
-                  </>
-                )}
-              </motion.div>
-            ) : (
-              /* ── Class card grid ── */
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                {groups.map((group, i) => (
-                  <motion.div key={group.title}
-                    initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05, type: 'spring', stiffness: 300, damping: 28 }}>
-                    <ClassCard
-                      group={group}
-                      bookingMap={bookingMap}
-                      onClick={() => setOpenGroupTitle(group.title)}
-                    />
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </>
       )}
 
       {/* ── Slot modal ── */}
       <AnimatePresence>
         {openGroup && (
           <SlotModal
-            key={openGroup.title}
+            key={openGroupKey!.title + ':' + openGroupKey!.dateKey}
             group={openGroup}
             bookingMap={bookingMap}
             onBook={handleBook}
             onCancel={handleCancel}
             bookPending={bookPending}
             cancelPending={cancelPending}
-            onClose={() => setOpenGroupTitle(null)}
+            onClose={() => setOpenGroupKey(null)}
           />
         )}
       </AnimatePresence>

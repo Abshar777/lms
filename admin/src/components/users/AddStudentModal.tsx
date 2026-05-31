@@ -36,12 +36,13 @@ type AccountValues = z.infer<typeof accountSchema>
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="mb-1.5 block text-xs font-semibold" style={{ color: '#4B5563' }}>{label}</label>
+      <label className="mb-1.5 block text-xs font-semibold"
+        style={{ color: 'rgba(255,255,255,0.5)' }}>{label}</label>
       {children}
       <AnimatePresence>
         {error && (
           <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className="mt-1 flex items-center gap-1 text-xs text-red-500">
+            className="mt-1 flex items-center gap-1 text-xs" style={{ color: '#F87171' }}>
             <AlertCircle size={10} />{error}
           </motion.p>
         )}
@@ -50,12 +51,12 @@ function Field({ label, error, children }: { label: string; error?: string; chil
   )
 }
 
-const inputCls = (hasError?: boolean) =>
-  `w-full rounded-xl py-2.5 pl-9 pr-4 text-sm outline-none transition-all placeholder:text-gray-300 ${
-    hasError
-      ? 'border border-red-300 bg-red-50 text-gray-800'
-      : 'border border-[#E4E7ED] bg-[#F8F9FB] text-gray-800 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100'
-  }`
+const inputCls = 'w-full rounded-xl py-2.5 pl-9 pr-4 text-sm text-white outline-none transition-all placeholder:text-white/30'
+
+const inputStyle = (hasError?: boolean): React.CSSProperties =>
+  hasError
+    ? { background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)' }
+    : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }
 
 /* ── Course outline sub-component ─────────────────── */
 function CourseOutlinePanel({
@@ -71,7 +72,7 @@ function CourseOutlinePanel({
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 py-3 px-4 text-xs" style={{ color: '#9CA3AF' }}>
+      <div className="flex items-center gap-2 py-3 px-4 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
         <Loader2 size={11} className="animate-spin" />Loading curriculum…
       </div>
     )
@@ -79,7 +80,7 @@ function CourseOutlinePanel({
 
   if (!outline || outline.sections.length === 0) {
     return (
-      <p className="py-3 px-4 text-xs" style={{ color: '#9CA3AF' }}>No curriculum added yet.</p>
+      <p className="py-3 px-4 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>No curriculum added yet.</p>
     )
   }
 
@@ -91,7 +92,7 @@ function CourseOutlinePanel({
         return (
           <div key={section.id}>
             <p className="text-[10px] font-bold uppercase tracking-wide mb-1.5 px-1"
-              style={{ color: '#6B7280' }}>{section.title}</p>
+              style={{ color: 'rgba(255,255,255,0.4)' }}>{section.title}</p>
             <div className="space-y-1">
               {sectionLessons.map(lesson => {
                 const isBlocked = blockedLessons.has(lesson.id)
@@ -100,10 +101,10 @@ function CourseOutlinePanel({
                     key={lesson.id}
                     type="button"
                     onClick={() => onToggleLesson(lesson.id)}
-                    className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-gray-50"
+                    className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-white/10"
                     style={{
-                      background: isBlocked ? 'rgba(239,68,68,0.06)' : undefined,
-                      border: isBlocked ? '1px solid rgba(239,68,68,0.15)' : '1px solid transparent',
+                      background: isBlocked ? 'rgba(239,68,68,0.08)' : undefined,
+                      border: isBlocked ? '1px solid rgba(239,68,68,0.18)' : '1px solid transparent',
                     }}
                   >
                     <div
@@ -117,10 +118,10 @@ function CourseOutlinePanel({
                         ? <Lock size={10} style={{ color: '#EF4444' }} />
                         : <Unlock size={10} style={{ color: '#10B981' }} />}
                     </div>
-                    <span className="flex-1 truncate" style={{ color: isBlocked ? '#EF4444' : '#374151' }}>
+                    <span className="flex-1 truncate" style={{ color: isBlocked ? '#F87171' : 'rgba(255,255,255,0.75)' }}>
                       {lesson.title}
                     </span>
-                    <span className="flex-shrink-0 text-[10px]" style={{ color: '#9CA3AF' }}>
+                    <span className="flex-shrink-0 text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
                       {isBlocked ? 'Blocked' : 'Allowed'}
                     </span>
                   </button>
@@ -254,9 +255,10 @@ export function AddStudentModal({ open, onClose }: Props) {
             initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 16 }}
             transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-            className="overflow-hidden rounded-2xl bg-white shadow-2xl"
+            className="overflow-hidden rounded-2xl shadow-2xl"
             style={{
-              border: '1px solid #E4E7ED',
+              background: '#161829',
+              border: '1px solid rgba(255,255,255,0.10)',
               width: '100%',
               maxWidth: step === 2 ? 580 : 448,
               maxHeight: '90vh',
@@ -266,14 +268,14 @@ export function AddStudentModal({ open, onClose }: Props) {
             onClick={e => e.stopPropagation()}>
 
             {/* ── Header ── */}
-            <div className="flex items-center gap-3 px-6 py-4 flex-shrink-0" style={{ borderBottom: '1px solid #E4E7ED' }}>
+            <div className="flex items-center gap-3 px-6 py-4 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               <div className="flex h-9 w-9 items-center justify-center rounded-xl"
-                style={{ background: 'rgba(47,107,255,0.10)' }}>
-                <Users size={18} style={{ color: '#2F6BFF' }} />
+                style={{ background: 'rgba(47,107,255,0.15)', border: '1px solid rgba(47,107,255,0.25)' }}>
+                <Users size={18} style={{ color: '#5B8FFF' }} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold" style={{ color: '#0D0F1A' }}>Add Student</p>
-                <p className="text-xs" style={{ color: '#9CA3AF' }}>
+                <p className="text-sm font-bold text-white">Add Student</p>
+                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
                   {step === 1 ? 'Step 1 of 2 — Account info' : 'Step 2 of 2 — Course access'}
                 </p>
               </div>
@@ -281,12 +283,12 @@ export function AddStudentModal({ open, onClose }: Props) {
               <div className="flex items-center gap-1.5 mr-2">
                 {[1, 2].map(s => (
                   <div key={s} className="h-1.5 w-6 rounded-full transition-colors"
-                    style={{ background: s <= step ? '#2F6BFF' : '#E4E7ED' }} />
+                    style={{ background: s <= step ? '#2F6BFF' : 'rgba(255,255,255,0.15)' }} />
                 ))}
               </div>
               <button onClick={handleClose}
-                className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-gray-100"
-                style={{ color: '#9CA3AF' }}>
+                className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-white/10"
+                style={{ color: 'rgba(255,255,255,0.4)' }}>
                 <X size={15} />
               </button>
             </div>
@@ -297,11 +299,11 @@ export function AddStudentModal({ open, onClose }: Props) {
                 <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
                   className="flex flex-col items-center gap-3 px-6 py-10">
                   <div className="flex h-14 w-14 items-center justify-center rounded-full"
-                    style={{ background: 'rgba(14,204,142,0.10)' }}>
+                    style={{ background: 'rgba(14,204,142,0.12)', border: '1px solid rgba(14,204,142,0.25)' }}>
                     <CheckCircle2 size={28} style={{ color: '#0ECC8E' }} />
                   </div>
-                  <p className="text-sm font-semibold" style={{ color: '#0D0F1A' }}>Student created!</p>
-                  <p className="text-xs text-center" style={{ color: '#9CA3AF' }}>
+                  <p className="text-sm font-semibold text-white">Student created!</p>
+                  <p className="text-xs text-center" style={{ color: 'rgba(255,255,255,0.4)' }}>
                     {selectedCourseIds.length > 0
                       ? `Enrolled in ${selectedCourseIds.length} course${selectedCourseIds.length > 1 ? 's' : ''}.`
                       : 'They can now log in and browse courses.'}
@@ -324,27 +326,29 @@ export function AddStudentModal({ open, onClose }: Props) {
                     >
                       <Field label="Full name *" error={errors.name?.message}>
                         <div className="relative">
-                          <User size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#D1D5DB' }} />
-                          <input {...register('name')} placeholder="e.g. John Smith" className={inputCls(!!errors.name)} />
+                          <User size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                          <input {...register('name')} placeholder="e.g. John Smith"
+                            className={inputCls} style={inputStyle(!!errors.name)} />
                         </div>
                       </Field>
 
                       <Field label="Email address *" error={errors.email?.message}>
                         <div className="relative">
-                          <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#D1D5DB' }} />
-                          <input {...register('email')} type="email" placeholder="john@example.com" className={inputCls(!!errors.email)} />
+                          <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                          <input {...register('email')} type="email" placeholder="john@example.com"
+                            className={inputCls} style={inputStyle(!!errors.email)} />
                         </div>
                       </Field>
 
                       <Field label="Password *" error={errors.password?.message}>
                         <div className="relative">
-                          <Lock size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#D1D5DB' }} />
+                          <Lock size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(255,255,255,0.3)' }} />
                           <input {...register('password')} type={showPw ? 'text' : 'password'}
                             placeholder="Min. 8 characters"
-                            className={`${inputCls(!!errors.password)} pr-9`} />
+                            className={`${inputCls} pr-9`} style={inputStyle(!!errors.password)} />
                           <button type="button" onClick={() => setShowPw(v => !v)}
                             className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
-                            style={{ color: '#9CA3AF' }}>
+                            style={{ color: 'rgba(255,255,255,0.4)' }}>
                             {showPw ? <EyeOff size={13} /> : <Eye size={13} />}
                           </button>
                         </div>
@@ -352,8 +356,8 @@ export function AddStudentModal({ open, onClose }: Props) {
 
                       <div className="flex items-center justify-end gap-3 pt-1">
                         <button type="button" onClick={handleClose}
-                          className="rounded-xl px-4 py-2.5 text-sm font-medium transition-colors hover:bg-gray-100"
-                          style={{ color: '#4B5563' }}>
+                          className="rounded-xl px-4 py-2.5 text-sm font-medium transition-colors hover:bg-white/10"
+                          style={{ color: 'rgba(255,255,255,0.5)' }}>
                           Cancel
                         </button>
                         <motion.button type="submit"
@@ -386,16 +390,16 @@ export function AddStudentModal({ open, onClose }: Props) {
                         )}
                       </AnimatePresence>
 
-                      <p className="mb-3 text-xs" style={{ color: '#6B7280' }}>
+                      <p className="mb-3 text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
                         Select which courses to enroll this student in. Click a course's curriculum to block specific lessons.
                       </p>
 
                       {coursesLoading ? (
-                        <div className="flex items-center gap-2 py-6 justify-center text-xs" style={{ color: '#9CA3AF' }}>
+                        <div className="flex items-center gap-2 py-6 justify-center text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
                           <Loader2 size={14} className="animate-spin" />Loading courses…
                         </div>
                       ) : (coursesData?.docs.length ?? 0) === 0 ? (
-                        <p className="py-6 text-center text-xs" style={{ color: '#9CA3AF' }}>
+                        <p className="py-6 text-center text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
                           No published courses available.
                         </p>
                       ) : (
@@ -409,8 +413,8 @@ export function AddStudentModal({ open, onClose }: Props) {
                               <div key={course.id}
                                 className="rounded-xl overflow-hidden transition-all"
                                 style={{
-                                  border: isSelected ? '1.5px solid #2F6BFF' : '1.5px solid #E4E7ED',
-                                  background: isSelected ? 'rgba(47,107,255,0.03)' : '#FAFAFA',
+                                  border: isSelected ? '1.5px solid rgba(47,107,255,0.60)' : '1.5px solid rgba(255,255,255,0.08)',
+                                  background: isSelected ? 'rgba(47,107,255,0.08)' : 'rgba(255,255,255,0.03)',
                                 }}>
                                 {/* Course row */}
                                 <div className="flex items-center gap-3 px-3 py-2.5">
@@ -420,8 +424,8 @@ export function AddStudentModal({ open, onClose }: Props) {
                                     onClick={() => toggleCourse(course.id)}
                                     className="flex-shrink-0 flex h-5 w-5 items-center justify-center rounded transition-all"
                                     style={{
-                                      background: isSelected ? '#2F6BFF' : '#fff',
-                                      border: isSelected ? '1.5px solid #2F6BFF' : '1.5px solid #D1D5DB',
+                                      background: isSelected ? '#2F6BFF' : 'rgba(255,255,255,0.06)',
+                                      border: isSelected ? '1.5px solid #2F6BFF' : '1.5px solid rgba(255,255,255,0.18)',
                                     }}
                                   >
                                     {isSelected && <Check size={11} color="#fff" strokeWidth={3} />}
@@ -429,7 +433,7 @@ export function AddStudentModal({ open, onClose }: Props) {
 
                                   {/* Thumbnail */}
                                   <div className="h-8 w-12 flex-shrink-0 overflow-hidden rounded-lg"
-                                    style={{ background: '#E4E7ED' }}>
+                                    style={{ background: 'rgba(255,255,255,0.08)' }}>
                                     {course.thumbnailUrl && (
                                       <img src={course.thumbnailUrl} alt="" className="h-full w-full object-cover" />
                                     )}
@@ -437,11 +441,11 @@ export function AddStudentModal({ open, onClose }: Props) {
 
                                   {/* Info */}
                                   <div className="min-w-0 flex-1">
-                                    <p className="truncate text-xs font-semibold" style={{ color: '#0D0F1A' }}>
+                                    <p className="truncate text-xs font-semibold text-white">
                                       {course.title}
                                     </p>
                                     {blockedCount > 0 && (
-                                      <p className="text-[10px]" style={{ color: '#EF4444' }}>
+                                      <p className="text-[10px]" style={{ color: '#F87171' }}>
                                         {blockedCount} lesson{blockedCount > 1 ? 's' : ''} blocked
                                       </p>
                                     )}
@@ -452,8 +456,8 @@ export function AddStudentModal({ open, onClose }: Props) {
                                     <button
                                       type="button"
                                       onClick={() => toggleExpand(course.id)}
-                                      className="flex-shrink-0 flex h-6 w-6 items-center justify-center rounded-lg transition-colors hover:bg-gray-100"
-                                      style={{ color: '#9CA3AF' }}
+                                      className="flex-shrink-0 flex h-6 w-6 items-center justify-center rounded-lg transition-colors hover:bg-white/10"
+                                      style={{ color: 'rgba(255,255,255,0.4)' }}
                                       title="Toggle curriculum"
                                     >
                                       {state.expanded
@@ -471,7 +475,7 @@ export function AddStudentModal({ open, onClose }: Props) {
                                       animate={{ height: 'auto', opacity: 1 }}
                                       exit={{ height: 0, opacity: 0 }}
                                       transition={{ duration: 0.2 }}
-                                      style={{ overflow: 'hidden', borderTop: '1px solid #E4E7ED' }}
+                                      style={{ overflow: 'hidden', borderTop: '1px solid rgba(255,255,255,0.08)' }}
                                     >
                                       <CourseOutlinePanel
                                         courseId={course.id}
@@ -488,14 +492,15 @@ export function AddStudentModal({ open, onClose }: Props) {
                       )}
 
                       {/* Footer */}
-                      <div className="flex items-center justify-between gap-3 pt-1 sticky bottom-0 bg-white pb-1">
+                      <div className="flex items-center justify-between gap-3 pt-2 sticky bottom-0 pb-1"
+                        style={{ background: '#161829' }}>
                         <button type="button" onClick={() => setStep(1)}
-                          className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors hover:bg-gray-100"
-                          style={{ color: '#4B5563' }}>
+                          className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors hover:bg-white/10"
+                          style={{ color: 'rgba(255,255,255,0.5)' }}>
                           <ArrowLeft size={14} /> Back
                         </button>
                         <div className="flex items-center gap-3">
-                          <span className="text-xs" style={{ color: '#9CA3AF' }}>
+                          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
                             {selectedCourseIds.length === 0
                               ? 'No courses selected'
                               : `${selectedCourseIds.length} course${selectedCourseIds.length > 1 ? 's' : ''} selected`}

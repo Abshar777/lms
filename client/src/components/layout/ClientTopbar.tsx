@@ -27,7 +27,6 @@ const SIDEBAR_TABS = [
   { label: 'My Learning', href: '/my-learning',    icon: GraduationCap },
   { label: 'Schedule',    href: '/class-bookings', icon: CalendarDays },
   { label: 'Catalog',     href: '/courses',         icon: BookOpen },
-  { label: 'Live',        href: '/live-classes',    icon: Video },
   { label: 'Learning Paths', href: '/learning-paths', icon: Map },
   { label: 'Favorites',   href: '/favorites',       icon: Heart, badge: 1 },
 ]
@@ -38,7 +37,6 @@ const TOPBAR_TABS = [
   { label: 'Class Schedule', href: '/class-bookings', icon: CalendarDays },
   { label: 'Catalog',        href: '/courses',         icon: BookOpen },
   { label: 'Learning Paths', href: '/learning-paths',  icon: Map },
-  { label: 'Live Classes',   href: '/live-classes',    icon: Video },
   { label: 'Achievements',   href: '/achievements',    icon: Trophy },
   { label: 'Streaks',        href: '/streaks',         icon: Flame },
   { label: 'Favorites',      href: '/favorites',       icon: Heart, badge: 1 },

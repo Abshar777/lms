@@ -23,6 +23,8 @@ import {
   sendSessionLinkReminder,
   sendDayOfReminder,
   sendPreSessionReminder,
+  sendFiveMinReminder,
+  sendClassStartingReminder,
 } from '@/services/email.service.ts'
 
 const notifSvc = new NotificationService()
@@ -41,6 +43,8 @@ interface BookingWithRefs {
   reminderDayBeforeSent:  boolean
   reminderDayOfSent:      boolean
   reminderPreSessionSent: boolean
+  reminder5MinSent:       boolean
+  reminderAtTimeSent:     boolean
 }
 
 /* ── Helpers ─────────────────────────────────────────── */
@@ -209,10 +213,9 @@ async function runPreSessionReminders(): Promise<void> {
     for (const b of due) {
       const userId  = b.userId.id ?? b.userId._id?.toString()
       const classAt = new Date(b.liveClassId.scheduledStart)
-      const joinUrl = getJoinUrl(b.liveClassId)
 
       await dispatch(userId, b.liveClassId.title, classAt, 'pre-session', () =>
-        sendPreSessionReminder(b.userId.email, b.userId.name, b.liveClassId.title, 30, joinUrl),
+        sendPreSessionReminder(b.userId.email, b.userId.name, b.liveClassId.title, 30),
       )
 
       await ClassBookingModel.findByIdAndUpdate(b._id, { reminderPreSessionSent: true })
@@ -224,6 +227,84 @@ async function runPreSessionReminders(): Promise<void> {
   }
 }
 
+/* ── 5-min job ───────────────────────────────────────── */
+async function runFiveMinReminders(): Promise<void> {
+  try {
+    const { ClassBookingModel } = await import('@/models/schema.ts')
+    const now  = new Date()
+    const from = new Date(now.getTime() + 3 * 60 * 1000)
+    const to   = new Date(now.getTime() + 8 * 60 * 1000)
+
+    const bookings = await ClassBookingModel.find({
+      status: 'booked',
+      reminder5MinSent: false,
+    })
+      .populate<{ userId: BookingWithRefs['userId'] }>('userId', 'name email')
+      .populate<{ liveClassId: BookingWithRefs['liveClassId'] }>('liveClassId', 'id title scheduledStart meetingUrl muxPlaybackId')
+      .lean({ virtuals: true }) as unknown as BookingWithRefs[]
+
+    const due = bookings.filter(b => {
+      const s = new Date(b.liveClassId.scheduledStart)
+      return s >= from && s <= to
+    })
+
+    for (const b of due) {
+      const userId  = b.userId.id ?? b.userId._id?.toString()
+      const classAt = new Date(b.liveClassId.scheduledStart)
+      const joinUrl = getJoinUrl(b.liveClassId)
+
+      await dispatch(userId, b.liveClassId.title, classAt, 'pre-session', () =>
+        sendFiveMinReminder(b.userId.email, b.userId.name, b.liveClassId.title, joinUrl),
+      )
+
+      await ClassBookingModel.findByIdAndUpdate(b._id, { reminder5MinSent: true })
+    }
+
+    if (due.length) logger.info(`[Reminders] 5-min: dispatched ${due.length} reminders`)
+  } catch (err) {
+    logger.error({ err }, '[Reminders] 5-min job error')
+  }
+}
+
+/* ── At-time job ─────────────────────────────────────── */
+async function runAtTimeReminders(): Promise<void> {
+  try {
+    const { ClassBookingModel } = await import('@/models/schema.ts')
+    const now  = new Date()
+    const from = new Date(now.getTime() - 5 * 60 * 1000)   // up to 5 min ago
+    const to   = new Date(now.getTime())                    // up to now
+
+    const bookings = await ClassBookingModel.find({
+      status: 'booked',
+      reminderAtTimeSent: false,
+    })
+      .populate<{ userId: BookingWithRefs['userId'] }>('userId', 'name email')
+      .populate<{ liveClassId: BookingWithRefs['liveClassId'] }>('liveClassId', 'id title scheduledStart meetingUrl muxPlaybackId')
+      .lean({ virtuals: true }) as unknown as BookingWithRefs[]
+
+    const due = bookings.filter(b => {
+      const s = new Date(b.liveClassId.scheduledStart)
+      return s >= from && s <= to
+    })
+
+    for (const b of due) {
+      const userId  = b.userId.id ?? b.userId._id?.toString()
+      const classAt = new Date(b.liveClassId.scheduledStart)
+      const joinUrl = getJoinUrl(b.liveClassId)
+
+      await dispatch(userId, b.liveClassId.title, classAt, 'pre-session', () =>
+        sendClassStartingReminder(b.userId.email, b.userId.name, b.liveClassId.title, joinUrl),
+      )
+
+      await ClassBookingModel.findByIdAndUpdate(b._id, { reminderAtTimeSent: true })
+    }
+
+    if (due.length) logger.info(`[Reminders] At-time: dispatched ${due.length} reminders`)
+  } catch (err) {
+    logger.error({ err }, '[Reminders] at-time job error')
+  }
+}
+
 /* ── Entry point ─────────────────────────────────────── */
 export function startReminderJobs(): void {
   // Every hour at :00 — day-before reminders (23–25 h window)
@@ -232,8 +313,14 @@ export function startReminderJobs(): void {
   // Every day at 7:00am — day-of reminders
   cron.schedule('0 7 * * *', runDayOfReminders)
 
-  // Every hour at :30 — pre-session reminders (25–35 min window)
+  // Every hour at :30 — pre-session reminders (25–35 min window, NO link)
   cron.schedule('30 * * * *', runPreSessionReminders)
+
+  // Every 5 min — 5-min reminder WITH link (3–8 min window)
+  cron.schedule('*/5 * * * *', runFiveMinReminders)
+
+  // Every 5 min — at-time reminder WITH link (0–5 min after start)
+  cron.schedule('*/5 * * * *', runAtTimeReminders)
 
   logger.info('[Reminders] Cron jobs scheduled')
 }

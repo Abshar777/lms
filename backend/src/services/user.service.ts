@@ -27,7 +27,7 @@ export class UserService {
      Deactivation also revokes all refresh tokens for that user. */
   async adminUpdate(
     id: string,
-    dto: { role?: UserRole; isActive?: boolean; isVerified?: boolean },
+    dto: { role?: UserRole; isActive?: boolean; isVerified?: boolean; name?: string; email?: string },
   ): Promise<IUser> {
     if (!Types.ObjectId.isValid(id)) {
       throw new UserError('INVALID_ID', 'Invalid user id', 400)
@@ -36,6 +36,15 @@ export class UserService {
     if (dto.role       !== undefined) update.role       = dto.role
     if (dto.isActive   !== undefined) update.isActive   = dto.isActive
     if (dto.isVerified !== undefined) update.isVerified = dto.isVerified
+    if (dto.name       !== undefined) update.name       = dto.name.trim()
+    if (dto.email      !== undefined) {
+      /* Check for duplicate email, excluding the current user */
+      const existing = await this.repo.findByEmail(dto.email)
+      if (existing && String(existing._id) !== id) {
+        throw new UserError('EMAIL_TAKEN', 'An account with this email already exists.', 409)
+      }
+      update.email = dto.email.toLowerCase().trim()
+    }
 
     if (Object.keys(update).length === 0) {
       throw new UserError('NO_CHANGES', 'No fields to update', 400)

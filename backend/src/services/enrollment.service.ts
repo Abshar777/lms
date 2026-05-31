@@ -55,31 +55,6 @@ export class EnrollmentService {
     const enrollment = await this.enrollRepo.create_({ userId, courseId })
     await this.courseRepo.incrementEnrollment(courseId, 1)
 
-    /* Auto-assign student to any active batch linked to this course (fire-and-forget) */
-    void (async () => {
-      try {
-        const { BatchModel } = await import('@/models/schema.ts')
-        const { Types: T }   = await import('mongoose')
-        const batches = await BatchModel.find({
-          courseId: new T.ObjectId(courseId),
-          status:   'active',
-        }).select('_id name').lean()
-
-        if (batches.length) {
-          await BatchModel.updateMany(
-            { _id: { $in: batches.map(b => b._id) } },
-            { $addToSet: { studentIds: new T.ObjectId(userId) } },
-          )
-          logger.info(
-            { userId, courseId, batches: batches.map(b => b.name) },
-            '🎓 Student auto-assigned to batch(es) on enrollment',
-          )
-        }
-      } catch (err) {
-        logger.warn({ err, userId, courseId }, 'batch auto-assign on enrollment failed')
-      }
-    })()
-
     /* Fire-and-forget in-app notification */
     void this.notifications.create(userId, {
       kind:  'enrollment',

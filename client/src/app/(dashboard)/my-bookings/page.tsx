@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Video, Calendar, Clock, CheckCircle, XCircle, Loader2,
-  X as XIcon, AlertCircle, ExternalLink, Tv2, BookOpen, Users, FileText,
+  X as XIcon, AlertCircle, ExternalLink, Tv2, BookOpen, FileText,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useMyBookings, useCancelBooking, type BookingStatus, type MyBooking } from '@/lib/api/bookings'
@@ -42,7 +42,6 @@ function BookingCard({ booking }: { booking: MyBooking }) {
   const [confirming, setConfirming] = useState(false)
 
   const session   = booking.liveClassId
-  const batch     = booking.batchId
   const isPast    = new Date(session.scheduledStart) < new Date() || session.status === 'ended' || session.status === 'cancelled'
   const isLiveNow = session.status === 'live'
   const isBooked  = booking.status === 'booked'
@@ -96,13 +95,6 @@ function BookingCard({ booking }: { booking: MyBooking }) {
               style={{ background: bg, color }}>
               <StatusIcon size={9} />{label}
             </span>
-            {/* Batch */}
-            {batch && (
-              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                style={{ background: 'rgba(139,92,246,0.08)', color: '#7C3AED' }}>
-                <Users size={9} />{batch.name}
-              </span>
-            )}
           </div>
           <p className="text-sm font-bold truncate" style={{ color: '#0D0F1A' }}>{session.title}</p>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs" style={{ color: '#6B7280' }}>
@@ -232,7 +224,7 @@ export default function MyBookingsPage() {
           </p>
           <p className="text-xs text-center max-w-xs" style={{ color: '#9CA3AF' }}>
             {tab === 'upcoming'
-              ? 'Visit the Live Classes page to book available sessions in your batch.'
+              ? 'Visit the Live Classes page to book available sessions.'
               : 'Your history will appear here once you attend or miss a session.'}
           </p>
         </motion.div>

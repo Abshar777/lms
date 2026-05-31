@@ -4,10 +4,11 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search, Loader2, Mail, Calendar, CheckCircle2, XCircle,
-  ChevronLeft, ChevronRight, MoreHorizontal, ShieldCheck, ShieldOff, ArrowUp, ArrowDown,
+  ChevronLeft, ChevronRight, MoreHorizontal, ShieldCheck, ShieldOff, ArrowUp, ArrowDown, Pencil,
 } from 'lucide-react'
 import { useUsers, useUpdateUser, type AdminUser } from '@/lib/api/users'
 import { useToast } from '@/store/ui.store'
+import { EditStudentModal } from '@/components/users/EditStudentModal'
 
 interface Props {
   role:  'student' | 'instructor'
@@ -100,9 +101,10 @@ export function UserTable({ role, label }: Props) {
 }
 
 function UserRow({ user, index }: { user: AdminUser; index: number }) {
-  const update = useUpdateUser()
-  const toast  = useToast()
-  const [menuOpen, setMenuOpen] = useState(false)
+  const update    = useUpdateUser()
+  const toast     = useToast()
+  const [menuOpen,  setMenuOpen]  = useState(false)
+  const [editOpen,  setEditOpen]  = useState(false)
 
   const setActive = async (active: boolean) => {
     setMenuOpen(false)
@@ -127,6 +129,7 @@ function UserRow({ user, index }: { user: AdminUser; index: number }) {
   }
 
   return (
+    <>
     <motion.tr
       initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.025 }}
       style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
@@ -172,11 +175,19 @@ function UserRow({ user, index }: { user: AdminUser; index: number }) {
         </div>
       </td>
       <td className="px-4 py-3.5 relative">
-        <button onClick={() => setMenuOpen(v => !v)} disabled={update.isPending}
-          className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/05 disabled:opacity-40"
-          style={{ color: 'rgba(255,255,255,0.45)' }}>
-          {update.isPending ? <Loader2 size={12} className="animate-spin" /> : <MoreHorizontal size={13} />}
-        </button>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setEditOpen(true)}
+            className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/05"
+            style={{ color: 'rgba(255,255,255,0.45)' }}
+            title="Edit profile">
+            <Pencil size={12} />
+          </button>
+          <button onClick={() => setMenuOpen(v => !v)} disabled={update.isPending}
+            className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/05 disabled:opacity-40"
+            style={{ color: 'rgba(255,255,255,0.45)' }}>
+            {update.isPending ? <Loader2 size={12} className="animate-spin" /> : <MoreHorizontal size={13} />}
+          </button>
+        </div>
         <AnimatePresence>
           {menuOpen && (
             <>
@@ -210,5 +221,17 @@ function UserRow({ user, index }: { user: AdminUser; index: number }) {
         </AnimatePresence>
       </td>
     </motion.tr>
+
+    {/* Edit modal — rendered outside the <tr> to avoid DOM nesting issues */}
+    <AnimatePresence>
+      {editOpen && (
+        <EditStudentModal
+          user={user}
+          onClose={() => setEditOpen(false)}
+          onSuccess={() => setEditOpen(false)}
+        />
+      )}
+    </AnimatePresence>
+    </>
   )
 }

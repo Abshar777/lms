@@ -6,13 +6,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Video, Radio, Calendar, Clock, Users, Loader2,
   AlertCircle, Tv2, ExternalLink, BookOpen, ChevronRight,
-  GraduationCap, X as XIcon, CheckCircle, Phone,
+  GraduationCap, X as XIcon, Phone, Search,
 } from 'lucide-react'
 import {
   useUpcomingLiveClasses, isLive, isUpcoming, isEnded, hasRecording,
   fmtCountdown, type LiveClass,
 } from '@/lib/api/liveClasses'
-import { useCreateBooking } from '@/lib/api/bookings'
 
 /* ── Helpers ─────────────────────────────────────────── */
 function fmtTime(iso: string) {
@@ -292,67 +291,9 @@ function ContactAdminModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-/* ── Book seat button ─────────────────────────────────── */
-function BookSeatButton({ live, onContactAdmin }: { live: LiveClass; onContactAdmin: () => void }) {
-  const bookMutation = useCreateBooking()
-  const [booked, setBooked] = useState(false)
-
-  if (!live.batchId) return null
-
-  const isFull    = live.bookedCount >= live.sessionCapacity
-  const pct       = live.sessionCapacity > 0
-    ? Math.min(100, Math.round((live.bookedCount / live.sessionCapacity) * 100))
-    : 0
-  const capColor  = isFull ? '#EF4444' : pct >= 80 ? '#F59E0B' : '#10B981'
-
-  if (booked) {
-    return (
-      <div className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold"
-        style={{ background: 'rgba(16,185,129,0.10)', color: '#10B981', border: '1px solid rgba(16,185,129,0.20)' }}>
-        <CheckCircle size={10} />Booked
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex flex-col items-end gap-1">
-      {/* Capacity bar */}
-      {live.sessionCapacity > 0 && (
-        <div className="flex items-center gap-1.5">
-          <div className="h-1 w-14 overflow-hidden rounded-full" style={{ background: '#F3F4F6' }}>
-            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: capColor }} />
-          </div>
-          <span className="text-[9px]" style={{ color: capColor }}>{live.bookedCount}/{live.sessionCapacity}</span>
-        </div>
-      )}
-      <motion.button
-        whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-        disabled={isFull || bookMutation.isPending}
-        onClick={async () => {
-          try {
-            await bookMutation.mutateAsync(live.id)
-            setBooked(true)
-          } catch (err: any) {
-            const code = err?.response?.data?.error?.code
-            if (code === 'CONTACT_ADMIN') { onContactAdmin(); return }
-            if (code === 'ALREADY_BOOKED') { setBooked(true); return }
-          }
-        }}
-        className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold disabled:opacity-50"
-        style={{
-          background: isFull ? 'rgba(239,68,68,0.08)' : 'linear-gradient(135deg,#6366F1,#818CF8)',
-          color:      isFull ? '#EF4444' : 'white',
-          border:     isFull ? '1px solid rgba(239,68,68,0.20)' : 'none',
-        }}>
-        {bookMutation.isPending ? <Loader2 size={9} className="animate-spin" /> : null}
-        {isFull ? 'Full' : 'Book seat'}
-      </motion.button>
-    </div>
-  )
-}
 
 /* ── Immersive session card ──────────────────────────── */
-function SessionCard({ live, index, now, onContactAdmin }: { live: LiveClass; now: number; index: number; onContactAdmin: () => void }) {
+function SessionCard({ live, index, now }: { live: LiveClass; now: number; index: number }) {
   const thumb    = live.thumbnailUrl ?? live.course?.thumbnailUrl
   const gradient = GRADIENTS[index % GRADIENTS.length]!
   const liveNow  = isLive(live)
@@ -450,46 +391,59 @@ function SessionCard({ live, index, now, onContactAdmin }: { live: LiveClass; no
             )}
           </p>
 
-          {/* CTA */}
-          {/* Book seat for batch sessions */}
-          {live.batchId && upcoming && (
-            <BookSeatButton live={live} onContactAdmin={onContactAdmin} />
-          )}
-          {isInt && liveNow && (
-            <Link href={`/live-classes/${live.id}/watch`}>
-              <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-                className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold text-white"
-                style={{ background: 'linear-gradient(135deg,#EF4444,#DC2626)' }}>
-                <Radio size={9} />Watch
-              </motion.button>
-            </Link>
-          )}
-          {isInt && upcoming && !live.batchId && (
-            <Link href={`/live-classes/${live.id}/watch`}>
-              <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-                className="rounded-xl px-3 py-1.5 text-[10px] font-bold"
-                style={{ background: 'rgba(255,107,26,0.09)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.20)' }}>
-                Details
-              </motion.button>
-            </Link>
-          )}
-          {isInt && rec && (
-            <Link href={`/live-classes/${live.id}/watch`}>
-              <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-                className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold"
-                style={{ background: 'rgba(34,197,94,0.10)', color: '#16A34A', border: '1px solid rgba(34,197,94,0.22)' }}>
-                <BookOpen size={9} />Watch
-              </motion.button>
-            </Link>
-          )}
-          {!isInt && live.meetingUrl && (liveNow || upcoming) && !live.batchId && (
-            <a href={live.meetingUrl} target="_blank" rel="noreferrer">
-              <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-                className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold text-white"
-                style={{ background: liveNow ? 'linear-gradient(135deg,#EF4444,#DC2626)' : 'linear-gradient(135deg,#6366F1,#818CF8)' }}>
-                <ExternalLink size={9} />{liveNow ? 'Join' : 'Open'}
-              </motion.button>
-            </a>
+          {/* CTA — locked for non-enrolled users */}
+          {live.isEnrolled === false ? (
+            /* Not purchased — show lock + link to course */
+            live.course?.slug ? (
+              <Link href={`/courses/${live.course.slug}`}>
+                <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                  className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold"
+                  style={{ background: 'rgba(99,102,241,0.09)', color: '#6366F1', border: '1px solid rgba(99,102,241,0.20)' }}>
+                  <XIcon size={9} />Enroll
+                </motion.button>
+              </Link>
+            ) : null
+          ) : (
+            <>
+              {/* Internal — watch / recording */}
+              {isInt && liveNow && (
+                <Link href={`/live-classes/${live.id}/watch`}>
+                  <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                    className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold text-white"
+                    style={{ background: 'linear-gradient(135deg,#EF4444,#DC2626)' }}>
+                    <Radio size={9} />Watch
+                  </motion.button>
+                </Link>
+              )}
+              {isInt && upcoming && (
+                <Link href={`/live-classes/${live.id}/watch`}>
+                  <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                    className="rounded-xl px-3 py-1.5 text-[10px] font-bold"
+                    style={{ background: 'rgba(255,107,26,0.09)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.20)' }}>
+                    Details
+                  </motion.button>
+                </Link>
+              )}
+              {isInt && rec && (
+                <Link href={`/live-classes/${live.id}/watch`}>
+                  <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                    className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold"
+                    style={{ background: 'rgba(34,197,94,0.10)', color: '#16A34A', border: '1px solid rgba(34,197,94,0.22)' }}>
+                    <BookOpen size={9} />Watch
+                  </motion.button>
+                </Link>
+              )}
+              {/* External — gate through watch page so meetingUrl stays protected */}
+              {!isInt && (liveNow || upcoming) && (
+                <Link href={`/live-classes/${live.id}/watch`}>
+                  <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                    className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold text-white"
+                    style={{ background: liveNow ? 'linear-gradient(135deg,#EF4444,#DC2626)' : 'linear-gradient(135deg,#6366F1,#818CF8)' }}>
+                    <ExternalLink size={9} />{liveNow ? 'Join' : 'Open'}
+                  </motion.button>
+                </Link>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -502,6 +456,8 @@ export default function LiveClassesPage() {
   const { data, isLoading, isError } = useUpcomingLiveClasses(50)
   const [now,             setNow]          = useState(() => Date.now())
   const [filter,          setFilter]       = useState<FilterKey>('all')
+  const [typeFilter,      setTypeFilter]   = useState<'all' | 'internal' | 'external'>('all')
+  const [search,          setSearch]       = useState('')
   const [selectedDate,    setSelectedDate] = useState<string | null>(null)
   const [showContactAdmin, setShowContactAdmin] = useState(false)
 
@@ -516,7 +472,7 @@ export default function LiveClassesPage() {
   const upcoming   = useMemo(() => all.filter(l => isUpcoming(l)), [all])
   const recordings = useMemo(() => all.filter(l => hasRecording(l)), [all])
 
-  /* Apply filter + optional date */
+  /* Apply filter + optional date + type + search */
   const filtered = useMemo(() => {
     let list: LiveClass[]
     switch (filter) {
@@ -528,8 +484,18 @@ export default function LiveClassesPage() {
     if (selectedDate) {
       list = list.filter(l => new Date(l.scheduledStart).toDateString() === selectedDate)
     }
+    if (typeFilter !== 'all') {
+      list = list.filter(l => l.type === typeFilter)
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      list = list.filter(l =>
+        l.title.toLowerCase().includes(q) ||
+        l.course?.title?.toLowerCase().includes(q),
+      )
+    }
     return list.sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime())
-  }, [filter, liveNow, upcoming, recordings, selectedDate])
+  }, [filter, liveNow, upcoming, recordings, selectedDate, typeFilter, search])
 
   const filterCounts: Record<FilterKey, number> = {
     all:        liveNow.length + upcoming.length + recordings.length,
@@ -598,7 +564,7 @@ export default function LiveClassesPage() {
             {/* ── Left: filters + cards ── */}
             <div className="flex-1 min-w-0">
               {/* Filter tabs */}
-              <div className="mb-5 flex flex-wrap gap-1.5">
+              <div className="mb-3 flex flex-wrap gap-1.5">
                 {FILTERS.map(f => (
                   <button key={f.key} onClick={() => setFilter(f.key)}
                     className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
@@ -616,6 +582,42 @@ export default function LiveClassesPage() {
                     )}
                   </button>
                 ))}
+              </div>
+
+              {/* Search + type row */}
+              <div className="mb-5 flex flex-wrap items-center gap-2">
+                {/* Search */}
+                <div className="relative flex-1 min-w-[180px]">
+                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }} />
+                  <input
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Search sessions…"
+                    className="w-full rounded-xl py-2 pl-9 pr-8 text-sm outline-none transition-all"
+                    style={{ background: '#fff', border: '1px solid #E4E7ED', color: '#0D0F1A' }}
+                    onFocus={e => { e.currentTarget.style.border = '1px solid #FF6B1A'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.10)' }}
+                    onBlur={e => { e.currentTarget.style.border = '1px solid #E4E7ED'; e.currentTarget.style.boxShadow = 'none' }}
+                  />
+                  {search && (
+                    <button onClick={() => setSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
+                      style={{ color: '#9CA3AF' }}>
+                      <XIcon size={12} />
+                    </button>
+                  )}
+                </div>
+                {/* Type toggle */}
+                <div className="flex gap-1">
+                  {([['all', 'All Types'], ['internal', 'In-App'], ['external', 'External']] as const).map(([val, label]) => (
+                    <button key={val} onClick={() => setTypeFilter(val)}
+                      className="rounded-xl px-3 py-2 text-xs font-semibold transition-all"
+                      style={typeFilter === val
+                        ? { background: '#0D0F1A', color: '#fff' }
+                        : { background: '#fff', color: '#6B7280', border: '1px solid #E4E7ED' }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Cards grid */}
@@ -641,7 +643,7 @@ export default function LiveClassesPage() {
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                     className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {filtered.map((l, i) => (
-                      <SessionCard key={l.id} live={l} index={i} now={now} onContactAdmin={() => setShowContactAdmin(true)} />
+                      <SessionCard key={l.id} live={l} index={i} now={now} />
                     ))}
                   </motion.div>
                 )}

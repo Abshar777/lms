@@ -55,15 +55,7 @@ export function AdminLoginForm() {
       const res = await api.post<{
         success: true
         data: { user: { role: string } }
-      }>('/auth/login', { email, password })
-
-      const role = res.data?.data?.user?.role
-      if (role !== 'admin' && role !== 'instructor') {
-        /* Log out immediately so we don't leave a student cookie */
-        await api.post('/auth/logout').catch(() => {/* best-effort */})
-        setError('This portal is for admins and instructors only.')
-        return
-      }
+      }>('/admin/auth/login', { email, password })
 
       router.replace('/')
       router.refresh()

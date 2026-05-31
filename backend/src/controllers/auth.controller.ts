@@ -5,6 +5,9 @@ import {
   setAuthCookies,
   clearAuthCookies,
   REFRESH_COOKIE,
+  setAdminAuthCookies,
+  clearAdminAuthCookies,
+  ADMIN_REFRESH_COOKIE,
 } from '@/utils/authCookies.ts'
 
 /* ─────────────────────────────────────────────────────
@@ -73,6 +76,40 @@ export class AuthController {
       const rawToken = req.cookies?.[REFRESH_COOKIE]
       if (rawToken) await this.service.logout(rawToken)
       clearAuthCookies(res)
+      sendSuccess(res, null, 'Signed out successfully')
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  /* ── POST /admin/auth/login ─────────────────────────
+     Admin-portal login — sets lms_admin_at / lms_admin_rt
+     cookies only. Client lms_at is left completely untouched
+     so both portals can maintain independent sessions.
+  ──────────────────────────────────────────────────── */
+  adminLogin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { user, tokens } = await this.service.login(req.body, sessionMeta(req))
+      if (user.role === 'student') {
+        res.status(403).json({
+          success: false,
+          error: { code: 'FORBIDDEN', message: 'This portal is for admins and instructors only.' },
+        })
+        return
+      }
+      setAdminAuthCookies(res, tokens)
+      sendSuccess(res, { user }, 'Signed in successfully')
+    } catch (err) {
+      next(err)
+    }
+  }
+
+  /* ── POST /admin/auth/logout ─────────────────────── */
+  adminLogout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const rawToken = req.cookies?.[ADMIN_REFRESH_COOKIE]
+      if (rawToken) await this.service.logout(rawToken)
+      clearAdminAuthCookies(res)
       sendSuccess(res, null, 'Signed out successfully')
     } catch (err) {
       next(err)

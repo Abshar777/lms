@@ -1,15 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Video, Radio, Calendar, Clock, Users, Loader2,
   AlertCircle, Tv2, ExternalLink, BookOpen, Star,
-  ChevronRight, PlayCircle, Eye, CalendarDays, UsersRound,
+  ChevronRight, PlayCircle, Eye, CalendarDays, Pencil, Search, X, Plus,
+  Link as LinkIcon,
 } from 'lucide-react'
-import { useAllLiveClasses, type LiveClass } from '@/lib/api/liveClasses'
+import { useAllLiveClasses, useCreateLiveClass, type LiveClass, type LiveClassType } from '@/lib/api/liveClasses'
+import { useCourses } from '@/lib/api/courses'
+import { useCourseOutline } from '@/lib/api/outline'
+import { useUsers } from '@/lib/api/users'
+import { EditLiveClassModal } from '@/components/live-classes/EditLiveClassModal'
 
 /* ── Helpers ─────────────────────────────────────────── */
 function fmtDate(iso: string): string {
@@ -130,6 +135,7 @@ function ClassCard({ live, index }: { live: LiveClass; index: number }) {
   const isEnded    = live.status === 'ended'
   const isCancelled = live.status === 'cancelled'
   const isInternal = live.type === 'internal'
+  const [editOpen, setEditOpen] = useState(false)
 
   const borderColor = isLiveNow ? 'rgba(239,68,68,0.30)' : 'rgba(255,255,255,0.06)'
 
@@ -186,14 +192,6 @@ function ClassCard({ live, index }: { live: LiveClass; index: number }) {
             }}>
             {isInternal ? 'In-App' : 'External'}
           </span>
-          {/* Batch badge */}
-          {live.batchId && (
-            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
-              style={{ background: 'rgba(139,92,246,0.12)', color: '#A78BFA' }}>
-              <UsersRound size={8} />
-              {typeof live.batchId === 'object' ? live.batchId.name : 'Batch'}
-            </span>
-          )}
           <p className={`truncate text-sm font-semibold text-white ${isCancelled ? 'line-through opacity-40' : ''}`}>
             {live.title}
           </p>
@@ -265,17 +263,8 @@ function ClassCard({ live, index }: { live: LiveClass; index: number }) {
             <ExternalLink size={11} />Join
           </a>
         )}
-        {/* Attendance sheet — only for batch sessions */}
-        {live.batchId && (
-          <Link href={`/live-classes/${live.id}/attendance`}
-            className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[10px] font-semibold transition-colors hover:bg-white/10"
-            style={{ color: 'rgba(167,139,250,0.8)', border: '1px solid rgba(139,92,246,0.20)' }}
-            title="Attendance sheet">
-            <Users size={10} />Attendance
-          </Link>
-        )}
-        {/* Homework — always available for ended/live sessions */}
-        {(live.status === 'ended' || live.status === 'live' || live.batchId) && (
+        {/* Homework — available for ended/live sessions */}
+        {(live.status === 'ended' || live.status === 'live') && (
           <Link href={`/live-classes/${live.id}/homework`}
             className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[10px] font-semibold transition-colors hover:bg-white/10"
             style={{ color: 'rgba(251,191,36,0.8)', border: '1px solid rgba(251,191,36,0.20)' }}
@@ -291,30 +280,268 @@ function ClassCard({ live, index }: { live: LiveClass; index: number }) {
             <Star size={10} /><span>Feedback</span>
           </Link>
         )}
+        {/* Edit */}
+        <button
+          onClick={() => setEditOpen(true)}
+          className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-white/10"
+          style={{ color: 'rgba(255,255,255,0.4)' }}
+          title="Edit session">
+          <Pencil size={13} />
+        </button>
         {/* Course link */}
         {live.course && (
           <Link href={`/courses/${typeof live.course === 'object' ? live.course.id : live.courseId}/edit`}
             className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-white/10"
-            style={{ color: 'rgba(255,255,255,0.3)' }}
+            style={{ color: 'rgba(255,255,255,0.25)' }}
             title="Open course">
             <ChevronRight size={14} />
           </Link>
         )}
       </div>
+
+      {/* Edit modal — scoped to this card */}
+      <AnimatePresence>
+        {editOpen && (
+          <EditLiveClassModal
+            live={live}
+            onClose={() => setEditOpen(false)}
+            onSuccess={() => setEditOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+    </motion.div>
+  )
+}
+
+/* ── Quick create modal ──────────────────────────────── */
+function QuickCreateModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const createMutation = useCreateLiveClass()
+  const { data: coursesData } = useCourses({ per_page: 200 })
+  const courses = coursesData?.docs ?? []
+  const { data: instructorsData } = useUsers('instructor', { per_page: 200 })
+  const instructors = instructorsData?.docs ?? []
+
+  const [courseId,     setCourseId]     = useState(courses[0]?.id ?? '')
+  const [title,        setTitle]        = useState('')
+  const [start,        setStart]        = useState('')
+  const [durationMins, setDurationMins] = useState(60)
+  const [type,         setType]         = useState<LiveClassType>('external')
+  const [meetingUrl,   setMeetingUrl]   = useState('')
+  const [sectionId,    setSectionId]    = useState('')
+  const [instructorId, setInstructorId] = useState('')
+  const [error,        setError]        = useState<string | null>(null)
+
+  const { data: outline } = useCourseOutline(courseId)
+  const sections = outline?.sections ?? []
+
+  const handleCourseChange = (id: string) => { setCourseId(id); setSectionId('') }
+
+  const base   = 'w-full rounded-xl px-3 py-2 text-sm text-white outline-none placeholder:text-white/30'
+  const iStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' } as const
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    try {
+      await createMutation.mutateAsync({
+        courseId,
+        title:          title.trim(),
+        scheduledStart: new Date(start).toISOString(),
+        durationMins,
+        type,
+        meetingUrl:    type === 'external' ? meetingUrl.trim() || undefined : undefined,
+        sectionId:     sectionId || undefined,
+        instructorId:  instructorId || undefined,
+      })
+      onSuccess()
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.error?.message
+        ?? err?.response?.data?.error?.details?.[0]?.message
+        ?? 'Could not create session.',
+      )
+    }
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.65)' }}
+      onClick={onClose}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+        onClick={e => e.stopPropagation()}
+        className="w-full max-w-md rounded-2xl p-6 shadow-2xl overflow-y-auto"
+        style={{ background: '#161829', border: '1px solid rgba(255,255,255,0.10)', maxHeight: '90vh' }}>
+
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+            New Session
+          </h2>
+          <button onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-white/10"
+            style={{ color: 'rgba(255,255,255,0.4)' }}>
+            <X size={15} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-3">
+          {/* Course */}
+          <div>
+            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: 'rgba(255,255,255,0.35)' }}>Course</label>
+            <select value={courseId} onChange={e => handleCourseChange(e.target.value)} required
+              className={base} style={{ ...iStyle, color: courseId ? 'white' : 'rgba(255,255,255,0.3)' }}>
+              <option value="">Select a course…</option>
+              {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+            </select>
+          </div>
+
+          {/* Type */}
+          <div>
+            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: 'rgba(255,255,255,0.35)' }}>Type</label>
+            <div className="flex gap-2">
+              {(['external', 'internal'] as const).map(t => (
+                <button key={t} type="button" onClick={() => setType(t)}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all"
+                  style={type === t
+                    ? { background: t === 'internal' ? 'rgba(255,107,26,0.20)' : 'rgba(99,102,241,0.20)',
+                        color:      t === 'internal' ? '#FF6B1A' : '#818CF8',
+                        border:     `1px solid ${t === 'internal' ? 'rgba(255,107,26,0.35)' : 'rgba(99,102,241,0.35)'}` }
+                    : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)',
+                        border: '1px solid rgba(255,255,255,0.08)' }}>
+                  {t === 'internal' ? <Eye size={11} /> : <ExternalLink size={11} />}
+                  {t === 'internal' ? 'In-App Stream' : 'External Link'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Title */}
+          <input value={title} onChange={e => setTitle(e.target.value)} required minLength={3} maxLength={255}
+            placeholder="Session title…"
+            className={base} style={iStyle} />
+
+          {/* Start + Duration */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+                style={{ color: 'rgba(255,255,255,0.35)' }}>Start time</label>
+              <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)} required
+                className={base} style={iStyle} />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+                style={{ color: 'rgba(255,255,255,0.35)' }}>Duration (mins)</label>
+              <input type="number" min={5} max={600} step={5} value={durationMins}
+                onChange={e => setDurationMins(Number(e.target.value))}
+                className={base} style={iStyle} />
+            </div>
+          </div>
+
+          {/* Meeting URL — external only */}
+          {type === 'external' && (
+            <div className="relative">
+              <LinkIcon size={13} className="absolute left-3 top-1/2 -translate-y-1/2"
+                style={{ color: 'rgba(255,255,255,0.35)' }} />
+              <input value={meetingUrl} onChange={e => setMeetingUrl(e.target.value)}
+                type="url" placeholder="https://zoom.us/j/…"
+                className={`${base} pl-9`} style={iStyle} />
+            </div>
+          )}
+
+          {/* Module */}
+          {sections.length > 0 && (
+            <div>
+              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+                style={{ color: 'rgba(255,255,255,0.35)' }}>Module (optional)</label>
+              <select value={sectionId} onChange={e => setSectionId(e.target.value)}
+                className={base} style={{ ...iStyle, color: sectionId ? 'white' : 'rgba(255,255,255,0.3)' }}>
+                <option value="">No specific module</option>
+                {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* Instructor */}
+          {instructors.length > 0 && (
+            <div>
+              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+                style={{ color: 'rgba(255,255,255,0.35)' }}>Instructor (optional)</label>
+              <select value={instructorId} onChange={e => setInstructorId(e.target.value)}
+                className={base} style={{ ...iStyle, color: instructorId ? 'white' : 'rgba(255,255,255,0.3)' }}>
+                <option value="">Default (current user)</option>
+                {instructors.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+              </select>
+            </div>
+          )}
+
+          {error && (
+            <p className="flex items-center gap-1.5 text-xs" style={{ color: '#F87171' }}>
+              <AlertCircle size={11} />{error}
+            </p>
+          )}
+
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button type="button" onClick={onClose}
+              className="rounded-xl px-4 py-2 text-sm font-medium transition-colors hover:bg-white/10"
+              style={{ color: 'rgba(255,255,255,0.5)' }}>
+              Cancel
+            </button>
+            <button type="submit" disabled={createMutation.isPending}
+              className="flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold text-white disabled:opacity-60 transition-all hover:brightness-110"
+              style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+              {createMutation.isPending
+                ? <><Loader2 size={14} className="animate-spin" />Creating…</>
+                : 'Create session'}
+            </button>
+          </div>
+        </form>
+      </motion.div>
     </motion.div>
   )
 }
 
 /* ── Page ────────────────────────────────────────────── */
 export default function LiveClassesPage() {
-  const [activeFilter, setActiveFilter] = useState<FilterKey>('all')
-  const { data: items = [], isLoading, isError } = useAllLiveClasses(activeFilter)
+  const [activeFilter,  setActiveFilter]  = useState<FilterKey>('all')
+  const [typeFilter,    setTypeFilter]    = useState<'all' | 'internal' | 'external'>('all')
+  const [courseFilter,  setCourseFilter]  = useState('')
+  const [search,        setSearch]        = useState('')
+  const [createOpen,    setCreateOpen]    = useState(false)
+
+  const { data: rawItems = [], isLoading, isError } = useAllLiveClasses(activeFilter)
+  const { data: coursesData } = useCourses({ per_page: 200 })
+  const courses = coursesData?.docs ?? []
 
   /* For stats bar, always use the full unfiltered list */
   const { data: allItems = [] } = useAllLiveClasses('all')
 
+  /* Apply type + course + search filters client-side */
+  const items = useMemo(() => {
+    let list = rawItems
+    if (typeFilter !== 'all') list = list.filter(l => l.type === typeFilter)
+    if (courseFilter) {
+      list = list.filter(l => {
+        const cId = typeof l.course === 'object' ? l.course?.id : l.courseId
+        return cId === courseFilter
+      })
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      list = list.filter(l =>
+        l.title.toLowerCase().includes(q) ||
+        (typeof l.course === 'object' && l.course?.title?.toLowerCase().includes(q))
+      )
+    }
+    return list
+  }, [rawItems, typeFilter, courseFilter, search])
+
   /* Group by date */
-  const grouped = (() => {
+  const grouped = useMemo(() => {
     const map = new Map<string, LiveClass[]>()
     for (const item of items) {
       const key = new Date(item.scheduledStart).toDateString()
@@ -323,7 +550,7 @@ export default function LiveClassesPage() {
     }
     return Array.from(map.entries())
       .map(([key, list]) => ({ key, label: fmtDate(list[0]!.scheduledStart), list }))
-  })()
+  }, [items])
 
   const liveNowCount = allItems.filter(l => l.status === 'live').length
 
@@ -346,6 +573,15 @@ export default function LiveClassesPage() {
         </div>
 
         <div className="ml-auto flex items-center gap-3">
+          {/* New session */}
+          <motion.button
+            onClick={() => setCreateOpen(true)}
+            whileHover={{ y: -1, boxShadow: '0 6px 20px rgba(255,107,26,0.28)' }}
+            whileTap={{ scale: 0.97 }}
+            className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-white"
+            style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+            <Plus size={14} />New Session
+          </motion.button>
           {/* Timetable button */}
           <Link href="/live-classes/timetable"
             className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition-colors hover:bg-white/10"
@@ -372,26 +608,89 @@ export default function LiveClassesPage() {
       {/* Stats */}
       <StatsBar items={allItems} />
 
-      {/* Filter tabs */}
-      <div className="mb-5 flex flex-wrap gap-1.5">
-        {FILTERS.map(f => (
-          <button
-            key={f.key}
-            onClick={() => setActiveFilter(f.key)}
-            className="rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all"
-            style={activeFilter === f.key
-              ? { background: 'rgba(255,107,26,0.18)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.30)' }
-              : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            {f.label}
-            {f.key === 'live' && liveNowCount > 0 && (
-              <motion.span animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1.4, repeat: Infinity }}
-                className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white"
-                style={{ background: '#EF4444' }}>
-                {liveNowCount}
-              </motion.span>
-            )}
+      {/* Filter row */}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        {/* Status tabs */}
+        <div className="flex flex-wrap gap-1.5">
+          {FILTERS.map(f => (
+            <button
+              key={f.key}
+              onClick={() => setActiveFilter(f.key)}
+              className="rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all"
+              style={activeFilter === f.key
+                ? { background: 'rgba(255,107,26,0.18)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.30)' }
+                : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              {f.label}
+              {f.key === 'live' && liveNowCount > 0 && (
+                <motion.span animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1.4, repeat: Infinity }}
+                  className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                  style={{ background: '#EF4444' }}>
+                  {liveNowCount}
+                </motion.span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Course filter */}
+        {courses.length > 0 && (
+          <select
+            value={courseFilter}
+            onChange={e => setCourseFilter(e.target.value)}
+            className="rounded-xl px-3 py-1.5 text-xs font-semibold outline-none transition-all"
+            style={{
+              background: courseFilter ? 'rgba(255,107,26,0.12)' : 'rgba(255,255,255,0.04)',
+              border: courseFilter ? '1px solid rgba(255,107,26,0.25)' : '1px solid rgba(255,255,255,0.07)',
+              color: courseFilter ? '#FF6B1A' : 'rgba(255,255,255,0.45)',
+            }}>
+            <option value="">All courses</option>
+            {courses.map(c => (
+              <option key={c.id} value={c.id}>{c.title}</option>
+            ))}
+          </select>
+        )}
+
+        {/* Type filter */}
+        <div className="flex gap-1">
+          {([['all','All'],['internal','In-App'],['external','External']] as const).map(([k, label]) => (
+            <button key={k} onClick={() => setTypeFilter(k)}
+              className="rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all"
+              style={typeFilter === k
+                ? k === 'internal'
+                  ? { background: 'rgba(255,107,26,0.15)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.25)' }
+                  : k === 'external'
+                  ? { background: 'rgba(99,102,241,0.15)', color: '#818CF8', border: '1px solid rgba(99,102,241,0.25)' }
+                  : { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.65)', border: '1px solid rgba(255,255,255,0.12)' }
+                : { background: 'transparent', color: 'rgba(255,255,255,0.30)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              {k === 'internal' && <Tv2 className="mr-1 inline-block" size={9} />}
+              {k === 'external' && <ExternalLink className="mr-1 inline-block" size={9} />}
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Search bar */}
+      <div className="relative mb-5">
+        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+          style={{ color: 'rgba(255,255,255,0.3)' }} />
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search sessions or courses…"
+          className="w-full rounded-xl py-2 pl-9 pr-8 text-sm text-white outline-none placeholder:text-white/25"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+        />
+        {search && (
+          <button onClick={() => setSearch('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
+            style={{ color: 'rgba(255,255,255,0.4)' }}>
+            <X size={13} />
           </button>
-        ))}
+        )}
       </div>
 
       {/* Content */}
@@ -467,6 +766,16 @@ export default function LiveClassesPage() {
               </motion.div>
             ))}
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Quick create modal */}
+      <AnimatePresence>
+        {createOpen && (
+          <QuickCreateModal
+            onClose={() => setCreateOpen(false)}
+            onSuccess={() => setCreateOpen(false)}
+          />
         )}
       </AnimatePresence>
     </div>

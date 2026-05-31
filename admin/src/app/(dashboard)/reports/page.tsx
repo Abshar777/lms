@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   BarChart3, Users, CheckCircle, XCircle, Loader2, Download, Calendar,
-  TrendingUp, UsersRound, UserCheck,
+  TrendingUp, UserCheck,
 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { useCurrentUser } from '@/lib/api/user'
@@ -28,22 +28,12 @@ interface MentorScheduleRow {
   completionPct:  number
 }
 
-interface BatchPerformance {
-  batch:          { id: string; name: string; status: string , _id?:string}
-  sessions:       number
-  totalBookings:  number
-  attended:       number
-  attendanceRate: number
-  activeStudents: number
-}
-
 /* ── Hooks ─────────────────────────────────────────────── */
-function useAttendanceReport(batchId: string, from: string, to: string) {
+function useAttendanceReport(from: string, to: string) {
   return useQuery({
-    queryKey: ['admin', 'reports', 'attendance', { batchId, from, to }],
+    queryKey: ['admin', 'reports', 'attendance', { from, to }],
     queryFn:  () => {
       const params: Record<string, string> = {}
-      if (batchId) params.batchId = batchId
       if (from) params.from = from
       if (to)   params.to   = to
       return apiGet<AttendanceRow[]>('/admin/reports/attendance', params as any)
@@ -66,17 +56,6 @@ function useMentorScheduleReport(mentorId: string, from: string, to: string) {
   })
 }
 
-function useBatchPerformance(batchId: string) {
-  return useQuery({
-    queryKey: ['admin', 'reports', 'batch-performance', batchId],
-    queryFn:  () => {
-      const params: Record<string, string> = {}
-      if (batchId) params.batchId = batchId
-      return apiGet<BatchPerformance[]>('/admin/reports/batch-performance', params as any)
-    },
-    staleTime: 60_000,
-  })
-}
 
 /* ── CSV export ────────────────────────────────────────── */
 function downloadCsv(rows: AttendanceRow[]) {
@@ -134,17 +113,14 @@ function RateRing({ pct, size = 52 }: { pct: number; size?: number }) {
 export default function ReportsPage() {
   const { data: me } = useCurrentUser()
 
-  const [batchId,  setBatchId]  = useState('')
   const [mentorId, setMentorId] = useState('')
   const [from,     setFrom]     = useState('')
   const [to,       setTo]       = useState('')
 
-  const attendance     = useAttendanceReport(batchId, from, to)
-  const performance    = useBatchPerformance(batchId)
+  const attendance     = useAttendanceReport(from, to)
   const mentorSchedule = useMentorScheduleReport(mentorId, from, to)
 
   const attendanceRows     = Array.isArray(attendance.data)     ? attendance.data     : []
-  const performanceRows    = Array.isArray(performance.data)    ? performance.data    : []
   const mentorScheduleRows = Array.isArray(mentorSchedule.data) ? mentorSchedule.data : []
 
   const inputBase  = 'rounded-xl border border-[#E4E7ED] bg-white px-3 py-2 text-sm outline-none focus:border-[#FF6B1A] focus:ring-2 focus:ring-orange-100'
@@ -166,8 +142,8 @@ export default function ReportsPage() {
           className={inputBase} style={{ color: '#0D0F1A' }} title="From date" />
         <input type="date" value={to} onChange={e => setTo(e.target.value)}
           className={inputBase} style={{ color: '#0D0F1A' }} title="To date" />
-        {(from || to || batchId || mentorId) && (
-          <button onClick={() => { setFrom(''); setTo(''); setBatchId(''); setMentorId('') }}
+        {(from || to || mentorId) && (
+          <button onClick={() => { setFrom(''); setTo(''); setMentorId('') }}
             className="rounded-xl border border-[#E4E7ED] bg-white px-3 py-2 text-sm text-[#6B7280] hover:bg-gray-50">
             Clear filters
           </button>
@@ -257,43 +233,6 @@ export default function ReportsPage() {
         )}
       </section>
 
-      {/* ── Batch Performance ─────────────────────────────── */}
-      <section className="mb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <UsersRound size={16} style={{ color: '#FF6B1A' }} />
-          <h2 className="text-base font-bold" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-            Batch Performance
-          </h2>
-        </div>
-
-        {performance.isLoading ? (
-          <div className="flex h-24 items-center justify-center gap-2 text-sm" style={{ color: '#9CA3AF' }}>
-            <Loader2 size={15} className="animate-spin" /><span>Loading…</span>
-          </div>
-        ) : performanceRows.length === 0 ? (
-          <p className="text-sm py-8 text-center" style={{ color: '#9CA3AF' }}>No batch data yet</p>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {performanceRows.map((p, i) => (
-              <motion.div key={(p.batch as any).id ?? (p.batch as any)._id ?? i}
-                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
-                className="rounded-2xl bg-white p-4 flex items-center gap-4"
-                style={{ border: '1px solid #E4E7ED' }}>
-                <RateRing pct={p.attendanceRate} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold truncate" style={{ color: '#0D0F1A' }}>{p.batch.name}</p>
-                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]" style={{ color: '#6B7280' }}>
-                    <span className="flex items-center gap-1"><Calendar size={10} /><span>{p.sessions} sessions</span></span>
-                    <span className="flex items-center gap-1"><Users size={10} /><span>{p.activeStudents} students</span></span>
-                    <span className="flex items-center gap-1"><TrendingUp size={10} /><span>{p.totalBookings} bookings</span></span>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </section>
 
       {/* ── Attendance Report ──────────────────────────────── */}
       <section>

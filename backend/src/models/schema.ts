@@ -526,8 +526,9 @@ export interface ILiveClass extends Document {
   startedAt?:     Date
   endedAt?:       Date
 
-  /* Batch scheduling (Phase 2) */
-  batchId?:          Types.ObjectId   // links session to a batch
+  /* Module (section) link — optional, associates session with a course section */
+  sectionId?:        Types.ObjectId
+
   sessionCapacity:   number           // max bookings (default 30)
   bookedCount:       number           // denormalised, incremented on booking
 
@@ -557,8 +558,8 @@ const LiveClassSchema = new Schema<ILiveClass>(
     viewerCount:       { type: Number, default: 0 },
     startedAt:         { type: Date },
     endedAt:           { type: Date },
-    // Batch scheduling
-    batchId:           { type: Schema.Types.ObjectId, ref: 'Batch' },
+    // Module link
+    sectionId:         { type: Schema.Types.ObjectId, ref: 'Section' },
     sessionCapacity:   { type: Number, default: 30, min: 1, max: 500 },
     bookedCount:       { type: Number, default: 0, min: 0 },
   },
@@ -568,7 +569,6 @@ const LiveClassSchema = new Schema<ILiveClass>(
 LiveClassSchema.index({ courseId: 1, scheduledStart: 1 })
 LiveClassSchema.index({ scheduledStart: 1 })
 LiveClassSchema.index({ muxLiveStreamId: 1 }, { sparse: true })
-LiveClassSchema.index({ batchId: 1 }, { sparse: true })
 
 export const LiveClassModel = mongoose.model<ILiveClass>('LiveClass', LiveClassSchema)
 
@@ -1153,7 +1153,6 @@ export type AuditAction =
   | 'category.create' | 'category.update' | 'category.delete'
   | 'bulk.publish'    | 'bulk.archive'    | 'bulk.delete'
   | 'course.import'   | 'course.export'
-  | 'batch.create'    | 'batch.update'    | 'batch.delete'
 
 export interface IAuditLog extends Document {
   id:         string
@@ -1191,42 +1190,6 @@ AuditLogSchema.index({ entity: 1, entityId: 1 })
 
 export const AuditLogModel = mongoose.model<IAuditLog>('AuditLog', AuditLogSchema)
 
-/* ─────────────────────────────────────────────────────
-   BATCH  — cohort of students assigned to a mentor
-───────────────────────────────────────────────────── */
-export type BatchStatus = 'active' | 'archived'
-
-export interface IBatch extends Document {
-  id:          string
-  name:        string
-  description: string
-  mentorId:    Types.ObjectId
-  studentIds:  Types.ObjectId[]
-  courseId?:   Types.ObjectId
-  maxStudents: number
-  status:      BatchStatus
-  createdAt:   Date
-  updatedAt:   Date
-}
-
-const BatchSchema = new Schema<IBatch>(
-  {
-    name:        { type: String, required: true, trim: true, maxlength: 120 },
-    description: { type: String, default: '', maxlength: 2000 },
-    mentorId:    { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    studentIds:  [{ type: Schema.Types.ObjectId, ref: 'User' }],
-    courseId:    { type: Schema.Types.ObjectId, ref: 'Course' },
-    maxStudents: { type: Number, default: 30, min: 1, max: 500 },
-    status:      { type: String, enum: ['active', 'archived'], default: 'active' },
-  },
-  baseSchemaOptions,
-)
-
-BatchSchema.index({ mentorId: 1 })
-BatchSchema.index({ studentIds: 1 })
-BatchSchema.index({ status: 1 })
-
-export const BatchModel = mongoose.model<IBatch>('Batch', BatchSchema)
 
 /* ─────────────────────────────────────────────────────
    MENTOR AVAILABILITY — weekly recurring time slots
@@ -1276,14 +1239,15 @@ export interface IClassBooking extends Document {
   id:          string
   userId:      Types.ObjectId
   liveClassId: Types.ObjectId
-  batchId:     Types.ObjectId
   status:      BookingStatus
   bookedAt:    Date
   cancelledAt?: Date
   // Reminder flags
   reminderDayBeforeSent:  boolean
   reminderDayOfSent:      boolean
-  reminderPreSessionSent: boolean
+  reminderPreSessionSent: boolean   // 30-min reminder (no link)
+  reminder5MinSent:       boolean   // 5-min reminder (with link)
+  reminderAtTimeSent:     boolean   // at-time reminder (with link)
   createdAt:   Date
   updatedAt:   Date
 }
@@ -1292,13 +1256,14 @@ const ClassBookingSchema = new Schema<IClassBooking>(
   {
     userId:      { type: Schema.Types.ObjectId, ref: 'User',      required: true },
     liveClassId: { type: Schema.Types.ObjectId, ref: 'LiveClass', required: true },
-    batchId:     { type: Schema.Types.ObjectId, ref: 'Batch',     required: true },
     status:      { type: String, enum: ['booked', 'attended', 'missed', 'cancelled'], default: 'booked' },
     bookedAt:    { type: Date, default: Date.now },
     cancelledAt: { type: Date },
     reminderDayBeforeSent:  { type: Boolean, default: false },
     reminderDayOfSent:      { type: Boolean, default: false },
     reminderPreSessionSent: { type: Boolean, default: false },
+    reminder5MinSent:       { type: Boolean, default: false },
+    reminderAtTimeSent:     { type: Boolean, default: false },
   },
   baseSchemaOptions,
 )
@@ -1306,7 +1271,6 @@ const ClassBookingSchema = new Schema<IClassBooking>(
 // Prevent duplicate bookings; allow re-booking after cancel via the application layer
 ClassBookingSchema.index({ userId: 1, liveClassId: 1 }, { unique: true })
 ClassBookingSchema.index({ liveClassId: 1 })
-ClassBookingSchema.index({ batchId: 1 })
 ClassBookingSchema.index({ userId: 1, status: 1 })
 
 export const ClassBookingModel = mongoose.model<IClassBooking>('ClassBooking', ClassBookingSchema)

@@ -47,8 +47,19 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
   const onSubmit = async (data: LoginValues) => {
     setServerError(null)
     try {
-      await api.post('/auth/login', { email: data.email, password: data.password })
-      // Backend sets httpOnly lms_at + lms_rt cookies on success
+      const res = await api.post<{ success: true; data: { user: { role: string } } }>(
+        '/auth/login',
+        { email: data.email, password: data.password },
+      )
+      // Backend sets httpOnly lms_at + lms_rt cookies on success.
+      // Block admin/instructor accounts — they should use the admin panel.
+      const role = res.data?.data?.user?.role
+      if (role === 'admin' || role === 'instructor') {
+        // Clear the cookie we just set
+        await api.post('/auth/logout').catch(() => {})
+        setServerError('This is the student portal. Please sign in at the admin panel instead.')
+        return
+      }
       const from = new URLSearchParams(window.location.search).get('from')
       window.location.href = from && from.startsWith('/') ? from : '/my-learning'
     } catch (err: any) {

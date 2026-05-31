@@ -1,20 +1,22 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Video, Plus, Trash2, Calendar, Clock, Link as LinkIcon,
   Loader2, X, AlertCircle, CheckCircle2, Radio, Zap,
   ExternalLink, Tv2, Copy, Eye, EyeOff, PlayCircle, Square,
-  BookOpen, Monitor,
+  BookOpen, Monitor, Pencil, Search, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import {
   useLiveClassesForCourse, useCreateLiveClass, useDeleteLiveClass,
   useUpdateLiveClass, useStartLiveStream, useEndLiveStream, useStreamCredentials,
   type LiveClass, type LiveClassType, type LiveClassStatus,
 } from '@/lib/api/liveClasses'
-import { useBatches } from '@/lib/api/batches'
+import { useCourseOutline } from '@/lib/api/outline'
+import { useUsers } from '@/lib/api/users'
+import { EditLiveClassModal } from '@/components/live-classes/EditLiveClassModal'
 
 /* ── Helpers ──────────────────────────────────────────── */
 function fmtDateTime(iso: string): string {
@@ -138,6 +140,7 @@ function LiveRow({
   const [confirming,    setConfirming]    = useState<'cancel' | 'delete' | null>(null)
   const [showCreds,     setShowCreds]     = useState(false)
   const [startError,    setStartError]    = useState<string | null>(null)
+  const [editOpen,      setEditOpen]      = useState(false)
   const updateMutation  = useUpdateLiveClass(courseId)
   const startMutation   = useStartLiveStream(courseId)
   const endMutation     = useEndLiveStream(courseId)
@@ -193,13 +196,6 @@ function LiveRow({
               }}>
               {isInternal ? 'In-App' : 'External'}
             </span>
-            {/* Batch badge */}
-            {live.batchId && (
-              <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
-                style={{ background: 'rgba(139,92,246,0.12)', color: '#A78BFA' }}>
-                {typeof live.batchId === 'object' ? live.batchId.name : 'Batch'}
-              </span>
-            )}
             <p className={`truncate text-sm font-semibold ${isCancelled ? 'line-through opacity-50' : ''}`}
               style={{ color: 'white' }}>
               {live.title}
@@ -367,6 +363,15 @@ function LiveRow({
             )
           )}
 
+          {/* Edit */}
+          <button
+            onClick={() => setEditOpen(true)}
+            className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/10"
+            style={{ color: 'rgba(255,255,255,0.45)' }}
+            title="Edit session">
+            <Pencil size={11} />
+          </button>
+
           {/* Delete */}
           {confirming === 'delete' ? (
             <button
@@ -404,6 +409,17 @@ function LiveRow({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Edit modal */}
+      <AnimatePresence>
+        {editOpen && (
+          <EditLiveClassModal
+            live={live}
+            onClose={() => setEditOpen(false)}
+            onSuccess={() => setEditOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }
@@ -415,29 +431,32 @@ function CreateForm({
   courseId: string
   pending:  boolean
   onSubmit: (data: {
-    courseId:        string
-    title:           string
-    description?:    string
-    scheduledStart:  string
-    durationMins:    number
-    type:            LiveClassType
-    meetingUrl?:     string
-    batchId?:        string
-    sessionCapacity?: number
+    courseId:       string
+    title:          string
+    description?:   string
+    scheduledStart: string
+    durationMins:   number
+    type:           LiveClassType
+    meetingUrl?:    string
+    sectionId?:     string
+    instructorId?:  string
   }) => Promise<void>
   error: string | null
 }) {
-  const [type,            setType]           = useState<LiveClassType>('external')
-  const [title,           setTitle]          = useState('')
-  const [description,     setDescription]    = useState('')
-  const [start,           setStart]          = useState('')
-  const [durationMins,    setDurationMins]   = useState(60)
-  const [meetingUrl,      setMeetingUrl]     = useState('')
-  const [batchId,         setBatchId]        = useState('')
-  const [sessionCapacity, setSessionCapacity] = useState(30)
+  const [type,         setType]        = useState<LiveClassType>('external')
+  const [title,        setTitle]       = useState('')
+  const [description,  setDescription] = useState('')
+  const [start,        setStart]       = useState('')
+  const [durationMins, setDurationMins] = useState(60)
+  const [meetingUrl,   setMeetingUrl]  = useState('')
+  const [sectionId,    setSectionId]   = useState('')
+  const [instructorId, setInstructorId] = useState('')
 
-  const { data: batchData } = useBatches({ status: 'active', per_page: 100 })
-  const batches = batchData?.docs ?? []
+  const { data: outline } = useCourseOutline(courseId)
+  const sections = outline?.sections ?? []
+
+  const { data: instructorsData } = useUsers('instructor', { per_page: 200 })
+  const instructors = instructorsData?.docs ?? []
 
   const handle = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -447,16 +466,16 @@ function CreateForm({
     await onSubmit({
       courseId,
       title,
-      description:     description || undefined,
-      scheduledStart:  iso,
+      description:    description || undefined,
+      scheduledStart: iso,
       durationMins,
       type,
-      meetingUrl:      type === 'external' ? meetingUrl : undefined,
-      batchId:         batchId || undefined,
-      sessionCapacity: sessionCapacity || 30,
+      meetingUrl:     type === 'external' ? meetingUrl : undefined,
+      sectionId:      sectionId || undefined,
+      instructorId:   instructorId || undefined,
     })
-    setTitle(''); setDescription(''); setStart(''); setMeetingUrl(''); setDurationMins(60)
-    setBatchId(''); setSessionCapacity(30)
+    setTitle(''); setDescription(''); setStart(''); setMeetingUrl('')
+    setDurationMins(60); setSectionId(''); setInstructorId('')
   }
 
   const inputStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' } as const
@@ -512,21 +531,20 @@ function CreateForm({
             className={base} style={inputStyle} />
         </div>
 
-        {/* Batch + capacity */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr]">
-          <select value={batchId} onChange={e => setBatchId(e.target.value)}
-            className={base} style={{ ...inputStyle, color: batchId ? 'white' : 'rgba(255,255,255,0.3)' }}>
-            <option value="">No batch (open session)</option>
-            {batches.map(b => (
-              <option key={b.id} value={b.id}>{b.name}</option>
-            ))}
-          </select>
-          <input value={sessionCapacity} onChange={e => setSessionCapacity(Number(e.target.value))}
-            type="number" min={1} max={500}
-            placeholder="Max seats"
-            title="Session capacity (max bookings)"
-            className={base} style={inputStyle} />
-        </div>
+        {/* Module (Section) */}
+        {sections.length > 0 && (
+          <div>
+            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: 'rgba(255,255,255,0.35)' }}>Module (optional)</label>
+            <select value={sectionId} onChange={e => setSectionId(e.target.value)}
+              className={base} style={{ ...inputStyle, color: sectionId ? 'white' : 'rgba(255,255,255,0.3)' }}>
+              <option value="">No specific module</option>
+              {sections.map(s => (
+                <option key={s.id} value={s.id}>{s.title}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Meeting URL — only for external */}
         {type === 'external' && (
@@ -536,6 +554,21 @@ function CreateForm({
             <input value={meetingUrl} onChange={e => setMeetingUrl(e.target.value)} type="url" required maxLength={2048}
               placeholder="https://zoom.us/j/123456789"
               className={`${base} pl-9`} style={inputStyle} />
+          </div>
+        )}
+
+        {/* Instructor */}
+        {instructors.length > 0 && (
+          <div>
+            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: 'rgba(255,255,255,0.35)' }}>Instructor (optional)</label>
+            <select value={instructorId} onChange={e => setInstructorId(e.target.value)}
+              className={base} style={{ ...inputStyle, color: instructorId ? 'white' : 'rgba(255,255,255,0.3)' }}>
+              <option value="">Default (you)</option>
+              {instructors.map(i => (
+                <option key={i.id} value={i.id}>{i.name}</option>
+              ))}
+            </select>
           </div>
         )}
 
@@ -562,19 +595,50 @@ function CreateForm({
 /* ── Section ──────────────────────────────────────────── */
 interface Props { courseId: string }
 
+const STATUS_FILTERS = [
+  { key: 'all',       label: 'All' },
+  { key: 'live',      label: 'Live' },
+  { key: 'scheduled', label: 'Upcoming' },
+  { key: 'ended',     label: 'Ended' },
+  { key: 'cancelled', label: 'Cancelled' },
+] as const
+
+const PAGE_SIZE = 8
+
 export function LiveClassesSection({ courseId }: Props) {
   const { data: items, isLoading }   = useLiveClassesForCourse(courseId)
   const createMutation               = useCreateLiveClass()
   const [showForm, setShowForm]      = useState(false)
   const [error,    setError]         = useState<string | null>(null)
+  const [search,   setSearch]        = useState('')
+  const [statusFilter, setStatusFilter] = useState<typeof STATUS_FILTERS[number]['key']>('all')
+  const [page,     setPage]          = useState(1)
 
-  const upcoming = (items ?? []).filter(l => l.status === 'scheduled' || l.status === 'live')
-  const past     = (items ?? []).filter(l => l.status === 'ended' || l.status === 'cancelled')
+  const filtered = useMemo(() => {
+    let list = items ?? []
+    if (statusFilter !== 'all') list = list.filter(l => l.status === statusFilter)
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      list = list.filter(l => l.title.toLowerCase().includes(q))
+    }
+    return list
+  }, [items, statusFilter, search])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePage   = Math.min(page, totalPages)
+  const paged      = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+
+  const upcoming = paged.filter(l => l.status === 'scheduled' || l.status === 'live')
+  const past     = paged.filter(l => l.status === 'ended' || l.status === 'cancelled')
+
+  const handleSearchChange = (v: string) => { setSearch(v); setPage(1) }
+  const handleStatusChange = (v: typeof STATUS_FILTERS[number]['key']) => { setStatusFilter(v); setPage(1) }
 
   return (
     <section className="mt-6 rounded-2xl p-5 space-y-4"
       style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
 
+      {/* Header row */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Video size={14} style={{ color: '#FF6B1A' }} />
@@ -594,6 +658,41 @@ export function LiveClassesSection({ courseId }: Props) {
           {showForm ? <><X size={12} />Cancel</> : <><Plus size={12} />New session</>}
         </button>
       </div>
+
+      {/* Search + status filter */}
+      {(items?.length ?? 0) > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[160px]">
+            <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: 'rgba(255,255,255,0.3)' }} />
+            <input
+              value={search}
+              onChange={e => handleSearchChange(e.target.value)}
+              placeholder="Search sessions…"
+              className="w-full rounded-xl py-1.5 pl-7 pr-7 text-xs text-white outline-none placeholder:text-white/25"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+            />
+            {search && (
+              <button onClick={() => handleSearchChange('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
+                style={{ color: 'rgba(255,255,255,0.4)' }}>
+                <X size={11} />
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {STATUS_FILTERS.map(f => (
+              <button key={f.key} onClick={() => handleStatusChange(f.key)}
+                className="rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all"
+                style={statusFilter === f.key
+                  ? { background: 'rgba(255,107,26,0.18)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.30)' }
+                  : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.40)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <AnimatePresence>
         {showForm && (
@@ -623,9 +722,11 @@ export function LiveClassesSection({ courseId }: Props) {
         </div>
       )}
 
-      {!isLoading && items?.length === 0 && !showForm && (
+      {!isLoading && filtered.length === 0 && !showForm && (
         <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
-          No live classes scheduled yet. Click <span className="text-white font-semibold">New session</span> to add one.
+          {search || statusFilter !== 'all'
+            ? 'No sessions match your filters.'
+            : <>No live classes scheduled yet. Click <span className="text-white font-semibold">New session</span> to add one.</>}
         </p>
       )}
 
@@ -645,6 +746,31 @@ export function LiveClassesSection({ courseId }: Props) {
             style={{ color: 'rgba(255,255,255,0.35)' }}>Past & Cancelled</p>
           <div className="space-y-2">
             {past.map(l => <LiveRow key={l.id} live={l} courseId={courseId} />)}
+          </div>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            {filtered.length} session{filtered.length !== 1 ? 's' : ''} · page {safePage} of {totalPages}
+          </span>
+          <div className="flex gap-1">
+            <button
+              disabled={safePage <= 1}
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors disabled:opacity-30 hover:bg-white/10"
+              style={{ color: 'rgba(255,255,255,0.6)' }}>
+              <ChevronLeft size={13} />
+            </button>
+            <button
+              disabled={safePage >= totalPages}
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors disabled:opacity-30 hover:bg-white/10"
+              style={{ color: 'rgba(255,255,255,0.6)' }}>
+              <ChevronRight size={13} />
+            </button>
           </div>
         </div>
       )}

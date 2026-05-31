@@ -11,7 +11,7 @@ function toDTO(doc: any) {
   const j              = doc.toJSON ? doc.toJSON() : doc
   const courseRef      = j.courseId
   const instructorRef  = j.instructorId
-  const batchRef       = j.batchId
+  const sectionRef     = j.sectionId
   const isInternal     = j.type === 'internal'
 
   return {
@@ -45,10 +45,12 @@ function toDTO(doc: any) {
     startedAt:      j.startedAt,
     endedAt:        j.endedAt,
 
-    /* Batch / capacity fields (Phase 2–3) */
-    batchId:         batchRef
-                       ? (isPopulated(batchRef) ? batchRef : String(batchRef))
+    /* Module link */
+    sectionId:       sectionRef
+                       ? (isPopulated(sectionRef) ? sectionRef.id : String(sectionRef))
                        : undefined,
+    section:         isPopulated(sectionRef) ? sectionRef : undefined,
+
     sessionCapacity: j.sessionCapacity ?? 30,
     bookedCount:     j.bookedCount     ?? 0,
 
@@ -148,7 +150,7 @@ export class LiveClassController {
         type?:           'external' | 'internal'
         meetingUrl?:     string
         instructorId?:   string
-        batchId?:        string
+        sectionId?:      string
         sessionCapacity?: number
       }
       const live = await this.service.create({
@@ -160,7 +162,7 @@ export class LiveClassController {
         durationMins:    dto.durationMins,
         type:            dto.type ?? 'external',
         meetingUrl:      dto.meetingUrl,
-        batchId:         dto.batchId,
+        sectionId:       dto.sectionId,
         sessionCapacity: dto.sessionCapacity,
       })
       sendSuccess(res, toDTO(live), 'Live class scheduled', 201)
@@ -178,8 +180,6 @@ export class LiveClassController {
       if (typeof dto['durationMins']    === 'number')  data.durationMins    = dto['durationMins']
       if (typeof dto['meetingUrl']      === 'string')  data.meetingUrl      = dto['meetingUrl']
       if (typeof dto['status']          === 'string')  data.status          = dto['status'] as any
-      if (typeof dto['batchId']         === 'string')  data.batchId         = dto['batchId']
-      if (dto['batchId'] === null)                      data.batchId         = null
       if (typeof dto['sessionCapacity'] === 'number')  data.sessionCapacity = dto['sessionCapacity']
       if (typeof dto['mentorNotes']     === 'string')  data.mentorNotes     = dto['mentorNotes']
 

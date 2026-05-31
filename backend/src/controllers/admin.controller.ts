@@ -213,7 +213,7 @@ export class AdminController {
   updateUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const id = String(req.params['id'] ?? '')
-      const dto = req.body as { role?: UserRole; isActive?: boolean; isVerified?: boolean }
+      const dto = req.body as { role?: UserRole; isActive?: boolean; isVerified?: boolean; name?: string; email?: string }
       const user = await this.userService.adminUpdate(id, dto)
       sendSuccess(res, user, 'User updated')
     } catch (err) { next(err) }

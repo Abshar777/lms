@@ -31,20 +31,17 @@ export class LiveClassRepository extends BaseRepository<ILiveClass> {
       .exec()
   }
 
-  /* Upcoming sessions in a set of batches (used for batch student feed) */
-  async listUpcomingForBatches(batchIds: Array<string | Types.ObjectId>, limit = 50): Promise<ILiveClass[]> {
-    if (batchIds.length === 0) return []
+  /* All upcoming/live sessions across every course — no enrollment filter */
+  async listAllUpcoming(limit = 50): Promise<ILiveClass[]> {
     return LiveClassModel
       .find({
-        batchId: { $in: batchIds },
-        status:  { $in: ['scheduled', 'live'] },
+        status: { $in: ['scheduled', 'live'] },
         scheduledStart: { $gte: new Date(Date.now() - 60 * 60_000) },
       })
       .sort({ scheduledStart: 1 })
       .limit(limit)
       .populate('courseId',     'title slug thumbnailUrl')
       .populate('instructorId', 'name avatarUrl')
-      .populate('batchId',      'name')
       .exec()
   }
 

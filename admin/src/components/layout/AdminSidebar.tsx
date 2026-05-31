@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, BookOpen, Users, GraduationCap,
   Tag, Star, Settings, ChevronLeft, LogOut, X,
-  ShoppingBag, Ticket, Map, ClipboardList, Video, UsersRound, CalendarDays, BarChart3,
+  ShoppingBag, Ticket, Map, ClipboardList, Video, CalendarDays, BarChart3,
 } from 'lucide-react'
 import { useUIStore } from '@/store/ui.store'
 import { useAllLiveClasses } from '@/lib/api/liveClasses'
@@ -19,7 +19,7 @@ const adminNavItems = [
   { label: 'Courses',        href: '/courses',           icon: BookOpen },
   { label: 'Learning Paths', href: '/learning-paths',   icon: Map },
   { label: 'Live Classes',   href: '/live-classes',     icon: Video },
-  { label: 'Batches',        href: '/batches',           icon: UsersRound },
+  { label: 'Bookings',       href: '/bookings',          icon: CalendarDays },
   { label: 'Students',       href: '/students',          icon: Users },
   { label: 'Instructors',    href: '/instructors',       icon: GraduationCap },
   { label: 'Categories',     href: '/categories',        icon: Tag },
@@ -34,7 +34,7 @@ const adminNavItems = [
 const instructorNavItems = [
   { label: 'My Courses',    href: '/courses',            icon: BookOpen },
   { label: 'Live Classes',  href: '/live-classes',       icon: Video },
-  { label: 'My Batches',    href: '/batches',            icon: UsersRound },
+  { label: 'Bookings',      href: '/bookings',           icon: CalendarDays },
   { label: 'Availability',  href: '/availability',       icon: CalendarDays },
   { label: 'Students',      href: '/students',            icon: Users },
   { label: 'Instructors',   href: '/instructors',        icon: GraduationCap },

@@ -19,10 +19,6 @@ export interface MyBooking {
     muxPlaybackId?: string
     type:           string
   }
-  batchId: {
-    id:   string
-    name: string
-  }
 }
 
 export const bookingKeys = {
@@ -33,12 +29,10 @@ export const bookingKeys = {
 /** Normalize a raw booking doc — maps `_id → id` on the doc and its nested objects */
 function normalizeBooking(b: any): MyBooking {
   const lc = b.liveClassId
-  const ba = b.batchId
   return {
     ...b,
-    id:          b.id          ?? b._id,
+    id:          b.id ?? b._id,
     liveClassId: lc ? { ...lc, id: lc.id ?? lc._id } : lc,
-    batchId:     ba ? { ...ba, id: ba.id ?? ba._id }  : ba,
   }
 }
 
