@@ -3,13 +3,15 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   Search, BookOpen, Star, Users, Clock, X,
   ChevronDown, SlidersHorizontal, Sparkles,
-  Play, ShoppingCart, Check,
+  Play, ShoppingCart, Check, Loader2,
 } from 'lucide-react'
 import { useCourses } from '@/lib/api/courses'
 import { useCategories } from '@/lib/api/categories'
+import { useMyEnrollments, useEnroll } from '@/lib/api/enrollments'
 import { useUIStore } from '@/store/ui.store'
 import { FavoriteButton } from '@/components/courses/FavoriteButton'
 import { useCartStore } from '@/store/cart.store'
@@ -410,14 +412,39 @@ export default function CoursesPage() {
 
 /* ── Material card ────────────────────────────────────── */
 function MaterialCard({ course }: { course: Course }) {
+  const router     = useRouter()
   const addToCart  = useCartStore(s => s.addItem)
   const isInCart   = useCartStore(s => s.isInCart)
   const inCart     = isInCart(course.id)
   const isFree     = course.isFree || !course.price || course.price === 0
 
-  const handleCart = (e: React.MouseEvent) => {
+  const { data: enrollments } = useMyEnrollments()
+  const enroll = useEnroll()
+  const isEnrolled = enrollments?.some(e => {
+    const cid = typeof e.courseId === 'string' ? e.courseId : e.courseId?.id
+    return cid === course.id
+  }) ?? false
+
+  /* Free → enroll (never cart). Paid → cart. Already enrolled → open course. */
+  const handleAction = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+
+    if (isEnrolled) {
+      router.push(`/courses/${course.slug}`)
+      return
+    }
+
+    if (isFree) {
+      try {
+        await enroll.mutateAsync(course.id)
+        router.push(`/courses/${course.slug}`)
+      } catch {
+        /* error surfaced on the course detail page */
+      }
+      return
+    }
+
     addToCart({
       id:             course.id,
       slug:           course.slug,
@@ -544,19 +571,24 @@ function MaterialCard({ course }: { course: Course }) {
             <motion.button
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
-              onClick={handleCart}
-              className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-bold whitespace-nowrap transition-all"
-              style={inCart
+              onClick={handleAction}
+              disabled={enroll.isPending}
+              className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-bold whitespace-nowrap transition-all disabled:opacity-70"
+              style={(isEnrolled || (!isFree && inCart))
                 ? { background: '#F0FDF4', color: '#16A34A', border: '1px solid rgba(34,197,94,0.28)' }
                 : isFree
                   ? { background: 'linear-gradient(135deg, #22C55E, #16A34A)', color: 'white', boxShadow: '0 2px 8px rgba(34,197,94,0.25)' }
                   : { background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)', color: 'white', boxShadow: '0 2px 8px rgba(255,107,26,0.25)' }
               }>
-              {inCart
-                ? <><Check size={10} />Added</>
-                : isFree
-                  ? <><Play size={10} fill="white" />Enroll Free</>
-                  : <><ShoppingCart size={10} />Add to Cart</>
+              {isEnrolled
+                ? <><Check size={10} />Enrolled</>
+                : enroll.isPending
+                  ? <><Loader2 size={10} className="animate-spin" />Enrolling…</>
+                  : isFree
+                    ? <><Play size={10} fill="white" />Enroll Free</>
+                    : inCart
+                      ? <><Check size={10} />Added</>
+                      : <><ShoppingCart size={10} />Add to Cart</>
               }
             </motion.button>
           </div>

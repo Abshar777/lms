@@ -170,11 +170,18 @@ router.post('/', authenticate, validate(createBookingSchema), async (req: Reques
     let bookingDoc
     if (existing) {
       if (existing.status === 'cancelled') {
-        /* Re-book after cancel */
+        /* Re-book after cancel — reset the reminder flags so the re-booked
+         * client gets a fresh set of reminders (otherwise flags left true from
+         * the previous booking cycle would suppress them). */
         await ClassBookingModel.findByIdAndUpdate(existing._id, {
           status: 'booked',
           bookedAt: new Date(),
           cancelledAt: undefined,
+          reminderDayBeforeSent:  false,
+          reminderDayOfSent:      false,
+          reminderPreSessionSent: false,
+          reminder5MinSent:       false,
+          reminderAtTimeSent:     false,
         })
         await LiveClassModel.findByIdAndUpdate(liveClassId, { $inc: { bookedCount: 1 } })
         bookingDoc = await ClassBookingModel.findById(existing._id).lean({ virtuals: true })

@@ -12,6 +12,7 @@ import {
   UserCheck,
 } from 'lucide-react'
 import { useAllLiveClasses, useCreateLiveClass, type LiveClass, type LiveClassType } from '@/lib/api/liveClasses'
+import { datetimeLocalToISO } from '@/lib/timezone'
 import { useCourses } from '@/lib/api/courses'
 import { useCourseOutline } from '@/lib/api/outline'
 import { useUsers } from '@/lib/api/users'
@@ -466,9 +467,9 @@ function CalendarView({ items, onSlotClick }: { items: LiveClass[]; onSlotClick:
 /* ── Quick create modal ──────────────────────────────── */
 function QuickCreateModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const createMutation = useCreateLiveClass()
-  const { data: coursesData } = useCourses({ per_page: 200 })
-  const courses = coursesData?.docs ?? []
-  const { data: instructorsData } = useUsers('instructor', { per_page: 200 })
+  const { data: coursesData,     isLoading: loadingCourses }     = useCourses({ per_page: 200 })
+  const { data: instructorsData, isLoading: loadingInstructors } = useUsers('instructor', { per_page: 200 })
+  const courses     = coursesData?.docs     ?? []
   const instructors = instructorsData?.docs ?? []
 
   const [courseId,        setCourseId]        = useState(courses[0]?.id ?? '')
@@ -487,8 +488,10 @@ function QuickCreateModal({ onClose, onSuccess }: { onClose: () => void; onSucce
 
   const handleCourseChange = (id: string) => { setCourseId(id); setSectionId('') }
 
-  const base   = 'w-full rounded-xl px-3 py-2 text-sm text-white outline-none placeholder:text-white/30'
-  const iStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' } as const
+  const base    = 'w-full rounded-xl px-3 py-2 text-sm text-white outline-none placeholder:text-white/30'
+  const iStyle  = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' } as const
+  /* Selects need a solid dark bg so the browser-native dropdown popup renders dark (not white) */
+  const selStyle = { background: '#1e2035', border: '1px solid rgba(255,255,255,0.12)', color: 'white' } as const
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -497,7 +500,7 @@ function QuickCreateModal({ onClose, onSuccess }: { onClose: () => void; onSucce
       await createMutation.mutateAsync({
         courseId,
         title:           title.trim(),
-        scheduledStart:  new Date(start).toISOString(),
+        scheduledStart:  datetimeLocalToISO(start),
         durationMins,
         sessionCapacity: sessionCapacity !== '' ? sessionCapacity : undefined,
         type,
@@ -545,8 +548,9 @@ function QuickCreateModal({ onClose, onSuccess }: { onClose: () => void; onSucce
             <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
               style={{ color: 'rgba(255,255,255,0.35)' }}>Course</label>
             <select value={courseId} onChange={e => handleCourseChange(e.target.value)} required
-              className={base} style={{ ...iStyle, color: courseId ? 'white' : 'rgba(255,255,255,0.3)' }}>
-              <option value="">Select a course…</option>
+              disabled={loadingCourses}
+              className={base} style={{ ...selStyle, opacity: loadingCourses ? 0.5 : 1 }}>
+              <option value="">{loadingCourses ? 'Loading courses…' : 'Select a course…'}</option>
               {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
             </select>
           </div>
@@ -620,7 +624,7 @@ function QuickCreateModal({ onClose, onSuccess }: { onClose: () => void; onSucce
               <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
                 style={{ color: 'rgba(255,255,255,0.35)' }}>Module (optional)</label>
               <select value={sectionId} onChange={e => setSectionId(e.target.value)}
-                className={base} style={{ ...iStyle, color: sectionId ? 'white' : 'rgba(255,255,255,0.3)' }}>
+                className={base} style={{ ...selStyle }}>
                 <option value="">No specific module</option>
                 {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
               </select>
@@ -632,8 +636,9 @@ function QuickCreateModal({ onClose, onSuccess }: { onClose: () => void; onSucce
             <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
               style={{ color: 'rgba(255,255,255,0.35)' }}>Instructor</label>
             <select value={instructorId} onChange={e => setInstructorId(e.target.value)}
-              className={base} style={{ ...iStyle, color: instructorId ? 'white' : 'rgba(255,255,255,0.3)' }}>
-              <option value="">Default (current user)</option>
+              disabled={loadingInstructors}
+              className={base} style={{ ...selStyle, opacity: loadingInstructors ? 0.5 : 1 }}>
+              <option value="">{loadingInstructors ? 'Loading…' : 'Default (current user)'}</option>
               {instructors.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
             </select>
           </div>
@@ -679,6 +684,8 @@ export default function LiveClassesPage() {
   const { data: rawItems = [], isLoading, isError } = useAllLiveClasses(activeFilter)
   const { data: coursesData } = useCourses({ per_page: 200 })
   const courses = coursesData?.docs ?? []
+  /* Pre-fetch instructors so they're in TanStack cache before the modal mounts */
+  useUsers('instructor', { per_page: 200 })
 
   /* For stats bar, always use the full unfiltered list */
   const { data: allItems = [] } = useAllLiveClasses('all')
@@ -834,9 +841,10 @@ export default function LiveClassesPage() {
             onChange={e => setCourseFilter(e.target.value)}
             className="rounded-xl px-3 py-1.5 text-xs font-semibold outline-none transition-all"
             style={{
-              background: courseFilter ? 'rgba(255,107,26,0.12)' : 'rgba(255,255,255,0.04)',
-              border: courseFilter ? '1px solid rgba(255,107,26,0.25)' : '1px solid rgba(255,255,255,0.07)',
-              color: courseFilter ? '#FF6B1A' : 'rgba(255,255,255,0.45)',
+              /* Solid dark bg so the native dropdown popup renders dark (not white) */
+              background: courseFilter ? '#2a1a0a' : '#1e2035',
+              border: courseFilter ? '1px solid rgba(255,107,26,0.35)' : '1px solid rgba(255,255,255,0.10)',
+              color: courseFilter ? '#FF6B1A' : 'rgba(255,255,255,0.65)',
             }}>
             <option value="">All courses</option>
             {courses.map(c => (

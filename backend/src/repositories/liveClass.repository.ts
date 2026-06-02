@@ -1,6 +1,7 @@
 import { Types } from 'mongoose'
 import { BaseRepository } from './base.repository.ts'
 import { LiveClassModel, type ILiveClass } from '@/models/schema.ts'
+import { resolveLiveStatus, LIVE_LEAD_MS, LIVE_GRACE_MS } from '@/utils/liveStatus.ts'
 
 export class LiveClassRepository extends BaseRepository<ILiveClass> {
   constructor() {
@@ -45,22 +46,57 @@ export class LiveClassRepository extends BaseRepository<ILiveClass> {
       .exec()
   }
 
-  /* Admin global list — all live classes across all courses */
+  /* Admin global list — all live classes across all courses.
+   *
+   * A 'scheduled' session is bucketed by the clock (see utils/liveStatus.ts):
+   *   - LIVE    while within [start - 30m, start + 15m]  (the 45-min window)
+   *   - ENDED   once > 15m past start
+   *   - UPCOMING until 30m before start
+   * The returned `status` reflects this so tabs, counts, and badges all agree.
+   * We do NOT mutate the DB, so internal (Mux) sessions can still be started
+   * late or rescheduled. */
   async listAll(filter: {
     status?: string
     limit?:  number
   } = {}): Promise<ILiveClass[]> {
+    const now      = Date.now()
+    const liveFrom = new Date(now - LIVE_GRACE_MS)  // start ≥ this → not yet past the 15-min grace
+    const liveTo   = new Date(now + LIVE_LEAD_MS)   // start ≤ this → live window has opened (30 min ahead)
     const query: Record<string, unknown> = {}
+
     if (filter.status && filter.status !== 'all') {
-      query['status'] = filter.status
+      if (filter.status === 'live') {
+        query['$or'] = [
+          { status: 'live' },
+          { status: 'scheduled', scheduledStart: { $gte: liveFrom, $lte: liveTo } },
+        ]
+      } else if (filter.status === 'scheduled') {
+        // "Upcoming" = scheduled and the live window hasn't opened yet
+        query['status'] = 'scheduled'
+        query['scheduledStart'] = { $gt: liveTo }
+      } else if (filter.status === 'ended') {
+        query['$or'] = [
+          { status: 'ended' },
+          { status: 'scheduled', scheduledStart: { $lt: liveFrom } },
+        ]
+      } else {
+        query['status'] = filter.status   // 'cancelled'
+      }
     }
-    return LiveClassModel
+
+    const docs = await LiveClassModel
       .find(query)
       .sort({ scheduledStart: -1 })   // newest first
       .limit(filter.limit ?? 100)
       .populate('courseId',     'title slug thumbnailUrl')
       .populate('instructorId', 'name avatarUrl')
       .exec()
+
+    // Reflect the effective (clock-based) status. Not persisted.
+    for (const d of docs) {
+      d.status = resolveLiveStatus(d.status, d.scheduledStart, now) as ILiveClass['status']
+    }
+    return docs
   }
 
   async createOne(data: Partial<ILiveClass>): Promise<ILiveClass> {

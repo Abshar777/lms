@@ -13,13 +13,11 @@ import {
 import { useCourses } from '@/lib/api/courses'
 import { useCourseOutline } from '@/lib/api/outline'
 import { useUsers } from '@/lib/api/users'
+import { isoToDatetimeLocal, datetimeLocalToISO } from '@/lib/timezone'
 
 /* ── Helpers ──────────────────────────────────────────── */
-function toLocalDatetime(iso: string): string {
-  const d   = new Date(iso)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
+/* Picker shows/reads UAE wall-clock (see lib/timezone). */
+const toLocalDatetime = isoToDatetimeLocal
 
 /* ── Props ──────────────────────────────────────────────── */
 interface Props {
@@ -68,8 +66,9 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
   const [error,         setError]         = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  const base   = 'w-full rounded-xl px-3 py-2 text-sm text-white outline-none placeholder:text-white/30'
-  const iStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' } as const
+  const base     = 'w-full rounded-xl px-3 py-2 text-sm text-white outline-none placeholder:text-white/30'
+  const iStyle   = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' } as const
+  const selStyle = { background: '#1e2035', border: '1px solid rgba(255,255,255,0.12)', color: 'white' } as const
 
   const handleCourseChange = (newCourseId: string) => {
     setActiveCourseId(newCourseId)
@@ -85,7 +84,7 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
         data: {
           title:           title.trim(),
           description:     description.trim() || undefined,
-          scheduledStart:  new Date(start).toISOString(),
+          scheduledStart:  datetimeLocalToISO(start),
           durationMins,
           type,
           meetingUrl:      type === 'external' ? meetingUrl.trim() || undefined : undefined,
@@ -188,7 +187,7 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
               <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
                 style={{ color: 'rgba(255,255,255,0.35)' }}>Course</label>
               <select value={activeCourseId} onChange={e => handleCourseChange(e.target.value)}
-                className={base} style={{ ...iStyle, color: activeCourseId ? 'white' : 'rgba(255,255,255,0.3)' }}>
+                className={base} style={{ ...selStyle }}>
                 {courses.map(c => (
                   <option key={c.id} value={c.id}>{c.title}</option>
                 ))}
@@ -277,7 +276,7 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
             <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
               style={{ color: 'rgba(255,255,255,0.35)' }}>Status</label>
             <select value={status} onChange={e => setStatus(e.target.value as LiveClassStatus)}
-              className={base} style={{ ...iStyle, color: 'white' }}>
+              className={base} style={{ ...selStyle }}>
               <option value="scheduled">Scheduled</option>
               <option value="live">Live</option>
               <option value="ended">Ended</option>
@@ -291,7 +290,7 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
               <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
                 style={{ color: 'rgba(255,255,255,0.35)' }}>Module (optional)</label>
               <select value={sectionId} onChange={e => setSectionId(e.target.value)}
-                className={base} style={{ ...iStyle, color: sectionId ? 'white' : 'rgba(255,255,255,0.3)' }}>
+                className={base} style={{ ...selStyle }}>
                 <option value="">No specific module</option>
                 {sections.map(s => (
                   <option key={s.id} value={s.id}>{s.title}</option>
@@ -305,7 +304,7 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
             <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
               style={{ color: 'rgba(255,255,255,0.35)' }}>Instructor</label>
             <select value={instructorId} onChange={e => setInstructorId(e.target.value)}
-              className={base} style={{ ...iStyle, color: instructorId ? 'white' : 'rgba(255,255,255,0.3)' }}>
+              className={base} style={{ ...selStyle }}>
               <option value="">Default (current user)</option>
               {instructors.map(i => (
                 <option key={i.id} value={i.id}>{i.name}</option>

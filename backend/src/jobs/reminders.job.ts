@@ -4,7 +4,7 @@
  * Three tiers of reminders for every booked class slot:
  *   1. Day-before  — sent when session is 23–25 h away   (runs every hour)
  *   2. Day-of      — sent on the morning of the session   (runs daily at 7am)
- *   3. Pre-session — sent when session is 25–35 min away  (runs every hour)
+ *   3. Pre-session — sent when session is 25–35 min away  (runs every 5 min)
  *
  * Each reminder:
  *   a) Creates an in-app notification  (always, even if SMTP is unconfigured)
@@ -70,7 +70,7 @@ async function dispatch(
   userId:       string,
   sessionTitle: string,
   sessionStart: Date,
-  kind:         'day-before' | 'day-of' | 'pre-session',
+  kind:         'day-before' | 'day-of' | 'pre-session' | 'five-min' | 'at-time',
   emailFn:      () => Promise<void>,
 ): Promise<void> {
   const dateLabel = fmtFull(sessionStart)
@@ -81,12 +81,16 @@ async function dispatch(
     'day-before':  `📅 Reminder: "${sessionTitle}" is tomorrow at ${timeLabel}. Make sure you're ready!`,
     'day-of':      `⏰ Today's class: "${sessionTitle}" starts at ${timeLabel}. Join on time!`,
     'pre-session': `🚀 "${sessionTitle}" starts in ~30 minutes. Get ready to join!`,
+    'five-min':    `⏱️ "${sessionTitle}" starts in ~5 minutes. Join now so you're ready!`,
+    'at-time':     `🎯 "${sessionTitle}" is starting now. Join immediately!`,
   }[kind]
 
   const notifTitle = {
     'day-before':  `Class tomorrow: ${sessionTitle}`,
     'day-of':      `Class today: ${sessionTitle} at ${timeLabel}`,
     'pre-session': `Starting soon: ${sessionTitle}`,
+    'five-min':    `Starting in 5 min: ${sessionTitle}`,
+    'at-time':     `Live now: ${sessionTitle}`,
   }[kind]
 
   /* 1. In-app notification — always fires */
@@ -253,7 +257,7 @@ async function runFiveMinReminders(): Promise<void> {
       const classAt = new Date(b.liveClassId.scheduledStart)
       const joinUrl = getJoinUrl(b.liveClassId)
 
-      await dispatch(userId, b.liveClassId.title, classAt, 'pre-session', () =>
+      await dispatch(userId, b.liveClassId.title, classAt, 'five-min', () =>
         sendFiveMinReminder(b.userId.email, b.userId.name, b.liveClassId.title, joinUrl),
       )
 
@@ -292,7 +296,7 @@ async function runAtTimeReminders(): Promise<void> {
       const classAt = new Date(b.liveClassId.scheduledStart)
       const joinUrl = getJoinUrl(b.liveClassId)
 
-      await dispatch(userId, b.liveClassId.title, classAt, 'pre-session', () =>
+      await dispatch(userId, b.liveClassId.title, classAt, 'at-time', () =>
         sendClassStartingReminder(b.userId.email, b.userId.name, b.liveClassId.title, joinUrl),
       )
 
@@ -313,8 +317,10 @@ export function startReminderJobs(): void {
   // Every day at 7:00am — day-of reminders
   cron.schedule('0 7 * * *', runDayOfReminders)
 
-  // Every hour at :30 — pre-session reminders (25–35 min window, NO link)
-  cron.schedule('30 * * * *', runPreSessionReminders)
+  // Every 5 min — pre-session reminders (25–35 min window, NO link).
+  // Must run at the window's resolution; an hourly job would miss most sessions
+  // because the 10-min window rarely lines up with a single :30 run.
+  cron.schedule('*/5 * * * *', runPreSessionReminders)
 
   // Every 5 min — 5-min reminder WITH link (3–8 min window)
   cron.schedule('*/5 * * * *', runFiveMinReminders)

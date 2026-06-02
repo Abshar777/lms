@@ -60,6 +60,8 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
         setServerError('This is the student portal. Please sign in at the admin panel instead.')
         return
       }
+      // Clear any leftover cart from a previous user session before navigating
+      localStorage.removeItem('lms-cart')
       const from = new URLSearchParams(window.location.search).get('from')
       window.location.href = from && from.startsWith('/') ? from : '/my-learning'
     } catch (err: any) {

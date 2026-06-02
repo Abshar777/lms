@@ -12,11 +12,24 @@ import { useToast } from '@/store/ui.store'
 import { useAllLiveClasses, type LiveClass } from '@/lib/api/liveClasses'
 import { useMyBookings, useCreateBooking, useCancelBooking, type MyBooking } from '@/lib/api/bookings'
 import { useCourses, useCourse } from '@/lib/api/courses'
+import { APP_TIMEZONE } from '@/lib/timezone'
 
 /* ─────────────────────────────────────────────────────────
    DATE HELPERS
 ───────────────────────────────────────────────────────── */
-const DAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+/** Weekday + day-of-month for a slot, read in UAE time (e.g. "Mon 5").
+ *  Uses an explicit timeZone because getDay()/getDate() would otherwise
+ *  use the viewer's device timezone and could disagree with the UAE time shown. */
+function zonedDayLabel(iso: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: APP_TIMEZONE,
+    weekday:  'short',
+    day:      'numeric',
+  }).formatToParts(new Date(iso))
+  const weekday = parts.find(p => p.type === 'weekday')?.value ?? ''
+  const day     = parts.find(p => p.type === 'day')?.value ?? ''
+  return `${weekday} ${day}`
+}
 
 function getMondayOfWeek(date: Date): Date {
   const d = new Date(date)
@@ -49,14 +62,12 @@ function fmtTime(iso: string): string {
 }
 
 function fmtSlotLabel(iso: string, durationMins: number): string {
-  const d   = new Date(iso)
-  const end = new Date(d.getTime() + durationMins * 60_000)
-  return `${DAY_ABBR[d.getDay()]} ${d.getDate()} · ${fmtTime(iso)}–${fmtTime(end.toISOString())}`
+  const end = new Date(new Date(iso).getTime() + durationMins * 60_000)
+  return `${zonedDayLabel(iso)} · ${fmtTime(iso)}–${fmtTime(end.toISOString())}`
 }
 
 function fmtShortSlot(iso: string): string {
-  const d = new Date(iso)
-  return `${DAY_ABBR[d.getDay()]} ${d.getDate()}, ${fmtTime(iso)}`
+  return `${zonedDayLabel(iso)}, ${fmtTime(iso)}`
 }
 
 function fmtDateRange(start: Date, end: Date): string {
@@ -87,19 +98,43 @@ type SlotStatus =
   | 'live' | 'booked' | 'bookable' | 'full' | 'locked'
   | 'attended' | 'missed' | 'cancelled' | 'ended'
 
+/** Live-Now window: a session shows as "Live Now" from 30 min before its start
+ *  (when the reminder email goes out) until 15 min after start (the booking cutoff)
+ *  — a 45-minute window. After that it's ended; before it, upcoming. */
+const LIVE_LEAD_MINS     = 30   // minutes before start the session goes "Live Now"
+const BOOKING_GRACE_MINS = 15   // minutes after start that the live window stays open
+
+function isWithinLiveWindow(lc: LiveClass): boolean {
+  const start = new Date(lc.scheduledStart).getTime()
+  const now   = Date.now()
+  return now >= start - LIVE_LEAD_MINS * 60_000 && now <= start + BOOKING_GRACE_MINS * 60_000
+}
+
+function isPastBookingCutoff(lc: LiveClass): boolean {
+  return Date.now() > new Date(lc.scheduledStart).getTime() + BOOKING_GRACE_MINS * 60_000
+}
+
 function getSlotStatus(
   lc: LiveClass,
   booking: MyBooking | undefined,
   hasOtherGroupBooking: boolean,
 ): SlotStatus {
   if (lc.status === 'cancelled') return 'cancelled'
-  if (lc.status === 'ended') {
-    if (!booking)                      return 'ended'
-    if (booking.status === 'attended') return 'attended'
-    if (booking.status === 'missed')   return 'missed'
+
+  const endedStatus = (): SlotStatus => {
+    if (booking?.status === 'attended') return 'attended'
+    if (booking?.status === 'missed')   return 'missed'
     return 'ended'
   }
-  if (lc.status === 'live') return 'live'
+
+  if (lc.status === 'ended') return endedStatus()
+
+  // Live Now: actively streaming, or within the 45-min window (30m before → 15m after start).
+  if (lc.status === 'live' || isWithinLiveWindow(lc)) return 'live'
+
+  // Past the 15-min grace and never went live → ended.
+  if (isPastBookingCutoff(lc)) return endedStatus()
+
   if (booking) {
     if (booking.status === 'booked')    return 'booked'
     if (booking.status === 'attended')  return 'attended'
@@ -364,7 +399,7 @@ function SlotChip({ lc, status, isSelected, onClick }: {
           </span>
         )}
         <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#9CA3AF' }}>
-          {DAY_ABBR[d.getDay()]} {d.getDate()}
+          {zonedDayLabel(lc.scheduledStart)}
         </span>
       </div>
 
@@ -803,7 +838,7 @@ function GlobalStats({ allClasses, bookingMap }: {
   allClasses: LiveClass[]
   bookingMap: Map<string, MyBooking>
 }) {
-  const liveNow   = allClasses.filter(lc => lc.status === 'live').length
+  const liveNow   = allClasses.filter(lc => getSlotStatus(lc, bookingMap.get(lc.id), false) === 'live').length
   const myBooked  = Array.from(bookingMap.values()).filter(b => b.status === 'booked').length
   const openSlots = allClasses.filter(lc =>
     getSlotStatus(lc, bookingMap.get(lc.id), false) === 'bookable'

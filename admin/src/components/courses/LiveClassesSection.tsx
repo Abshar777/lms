@@ -15,6 +15,7 @@ import {
   type LiveClass, type LiveClassType, type LiveClassStatus,
 } from '@/lib/api/liveClasses'
 import { useCourseOutline } from '@/lib/api/outline'
+import { datetimeLocalToISO } from '@/lib/timezone'
 import { useUsers } from '@/lib/api/users'
 import { EditLiveClassModal } from '@/components/live-classes/EditLiveClassModal'
 
@@ -464,7 +465,7 @@ function CreateForm({
     e.preventDefault()
     if (!title || !start) return
     if (type === 'external' && !meetingUrl) return
-    const iso = new Date(start).toISOString()
+    const iso = datetimeLocalToISO(start)
     await onSubmit({
       courseId,
       title,
@@ -482,6 +483,7 @@ function CreateForm({
   }
 
   const inputStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' } as const
+  const selStyle   = { background: '#1e2035', border: '1px solid rgba(255,255,255,0.12)', color: 'white' } as const
   const base = 'w-full rounded-xl px-3 py-2 text-sm text-white outline-none placeholder:text-white/30'
 
   return (
@@ -546,7 +548,7 @@ function CreateForm({
             <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
               style={{ color: 'rgba(255,255,255,0.35)' }}>Module (optional)</label>
             <select value={sectionId} onChange={e => setSectionId(e.target.value)}
-              className={base} style={{ ...inputStyle, color: sectionId ? 'white' : 'rgba(255,255,255,0.3)' }}>
+              className={base} style={{ ...selStyle }}>
               <option value="">No specific module</option>
               {sections.map(s => (
                 <option key={s.id} value={s.id}>{s.title}</option>
@@ -571,7 +573,7 @@ function CreateForm({
           <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
             style={{ color: 'rgba(255,255,255,0.35)' }}>Instructor</label>
           <select value={instructorId} onChange={e => setInstructorId(e.target.value)}
-            className={base} style={{ ...inputStyle, color: instructorId ? 'white' : 'rgba(255,255,255,0.3)' }}>
+            className={base} style={{ ...selStyle }}>
             <option value="">Default (you)</option>
             {instructors.map(i => (
               <option key={i.id} value={i.id}>{i.name}</option>

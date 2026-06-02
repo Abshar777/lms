@@ -12,24 +12,31 @@ import {
   type ClassBooking, type BookingStatus,
 } from '@/lib/api/liveClasses'
 import { useCurrentUser } from '@/lib/api/user'
+import { APP_TIMEZONE } from '@/lib/timezone'
 
 /* ─────────────────────────────────────────────────────────
    HELPERS
 ───────────────────────────────────────────────────────── */
+/** Calendar day (YYYY-MM-DD) of an instant, in UAE time — so bookings group
+ *  by the same day the rest of the app shows, regardless of the operator's device. */
 function toYMD(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: APP_TIMEZONE,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(d)
 }
 
 function fmtHeading(ymd: string): string {
-  const d         = new Date(ymd + 'T00:00:00')
   const today     = toYMD(new Date())
   const tomorrow  = toYMD(new Date(Date.now() + 86_400_000))
   const yesterday = toYMD(new Date(Date.now() - 86_400_000))
   if (ymd === today)     return 'Today'
   if (ymd === tomorrow)  return 'Tomorrow'
   if (ymd === yesterday) return 'Yesterday'
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+  // Render the YMD as-is (noon UTC + explicit UTC formatting) so the timezone
+  // pin can't shift the displayed day off the grouping key.
+  const d = new Date(ymd + 'T12:00:00Z')
+  return d.toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 }
 
 function fmtTime(iso: string): string {

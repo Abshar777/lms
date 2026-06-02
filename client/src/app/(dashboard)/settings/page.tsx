@@ -207,6 +207,8 @@ function SettingsContent() {
 
   const handleLogout = async () => {
     await apiLogout()
+    // Clear cart so the next user starts with a clean state
+    localStorage.removeItem('lms-cart')
     window.location.href = '/login'
   }
 

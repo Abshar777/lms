@@ -97,6 +97,18 @@ Empty strings in `.env` are treated as unset (Zod `opt()` preprocess helper in `
 
 ---
 
+## Timezone — app runs on UAE time (Asia/Dubai, UTC+4)
+
+Timestamps are **stored in UTC** but **displayed in UAE time** everywhere.
+
+- **Backend**: `backend/src/config/timezone.ts` sets `process.env.TZ = 'Asia/Dubai'`; imported **first** in `index.ts`. Affects email/notification time labels, cron schedules (the 7am "day-of" reminder fires at 07:00 Dubai), and day-boundary math.
+- **Frontends**: `client/src/lib/timezone.ts` + `admin/src/lib/timezone.ts` wrap `Date.prototype.toLocale*` and `Intl.DateTimeFormat` to inject `timeZone: 'Asia/Dubai'` when none is given. Imported once in each `app/providers.tsx`. Covers all existing and future date formatting from one place.
+- `Number.prototype.toLocaleString` (counts like "2,998 students") is untouched.
+- To change the zone later, edit `APP_TIMEZONE` in those three files.
+- Known edge: calendar-grid day grouping built from `new Date(y, m, d)` still uses the device's runtime zone (formatting is correct; only day-bucketing near midnight could differ).
+
+---
+
 ## Important Gotchas
 
 1. **Stripe keys as empty string** → Zod rejects. Use `STRIPE_SECRET_KEY=` (blank) which the `opt()` helper converts to `undefined`.

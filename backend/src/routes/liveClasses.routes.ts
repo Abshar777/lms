@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { LiveClassController } from '@/controllers/liveClass.controller.ts'
 import { authenticate } from '@/middleware/auth.middleware.ts'
 import { validate } from '@/middleware/validate.middleware.ts'
+import { resolveLiveStatus } from '@/utils/liveStatus.ts'
 
 const router = Router()
 const ctrl   = new LiveClassController()
@@ -33,25 +34,36 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
     ).lean()
     const enrolledCourseIds = new Set(enrollments.map((e: any) => String(e.courseId)))
 
-    // Return ALL sessions — no enrollment filter
-    const filter: Record<string, any> = {}
-    if (status && status !== 'all') filter['status'] = status
-
-    const classes = await LiveClassModel.find(filter)
+    // Return ALL sessions — effective status is computed from the clock below,
+    // so we must fetch every session rather than filter by raw DB status.
+    const classes = await LiveClassModel.find({})
       .populate('instructorId', 'id name avatarUrl')
       .populate('courseId', 'id title slug thumbnailUrl')
       .populate('sectionId', 'id title')
       .sort({ scheduledStart: 1 })
       .lean({ virtuals: true })
 
-    // Annotate each session with isEnrolled so the UI can show lock/purchase prompts
-    const annotated = (classes as any[]).map(c => {
+    const now = Date.now()
+
+    // Annotate with isEnrolled + the effective (clock-based) status:
+    // a scheduled session reads 'live' within [start-30m, start+15m], 'ended' after.
+    let annotated = (classes as any[]).map(c => {
       const courseId = c.courseId
         ? String((c.courseId as any)?._id ?? (c.courseId as any)?.id ?? c.courseId)
         : null
       const isEnrolled = courseId ? enrolledCourseIds.has(courseId) : false
-      return { ...c, id: c.id ?? String(c._id), isEnrolled }
+      return {
+        ...c,
+        id:         c.id ?? String(c._id),
+        status:     resolveLiveStatus(c.status, c.scheduledStart, now),
+        isEnrolled,
+      }
     })
+
+    // An optional ?status= filter applies to the EFFECTIVE status.
+    if (status && status !== 'all') {
+      annotated = annotated.filter(c => c.status === status)
+    }
 
     sendSuccess(res, annotated)
   } catch (err) { next(err) }

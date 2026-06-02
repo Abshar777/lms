@@ -295,8 +295,9 @@ function QuickCreateModal({
 
   const { data: outline } = useCourseOutline(courseId)
   const sections = outline?.sections ?? []
-  const base    = 'w-full rounded-xl px-3 py-2 text-sm text-white outline-none placeholder:text-white/30'
-  const iStyle  = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' } as const
+  const base     = 'w-full rounded-xl px-3 py-2 text-sm text-white outline-none placeholder:text-white/30'
+  const iStyle   = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' } as const
+  const selStyle = { background: '#1e2035', border: '1px solid rgba(255,255,255,0.12)', color: 'white' } as const
 
   const handle = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -378,7 +379,7 @@ function QuickCreateModal({
                 onChange={e => { setCourseId(e.target.value); setSectionId('') }}
                 required
                 className={`${base} cursor-pointer`}
-                style={{ ...iStyle, color: courseId ? 'white' : 'rgba(255,255,255,0.3)' }}>
+                style={{ ...selStyle }}>
                 <option value="">Select a course…</option>
                 {courses.map(c => (
                   <option key={c.id} value={c.id}>{c.title}</option>
@@ -396,7 +397,7 @@ function QuickCreateModal({
                 value={sectionId}
                 onChange={e => setSectionId(e.target.value)}
                 className={`${base} cursor-pointer`}
-                style={{ ...iStyle, color: sectionId ? 'white' : 'rgba(255,255,255,0.3)' }}>
+                style={{ ...selStyle }}>
                 <option value="">No specific module</option>
                 {sections.map(s => (
                   <option key={s.id} value={s.id}>{s.title}</option>
@@ -484,7 +485,7 @@ function QuickCreateModal({
               style={{ color: 'rgba(255,255,255,0.35)' }}>Instructor</label>
             <select value={instructorId} onChange={e => setInstructorId(e.target.value)}
               className={`${base} cursor-pointer`}
-              style={{ ...iStyle, color: instructorId ? 'white' : 'rgba(255,255,255,0.3)' }}>
+              style={{ ...selStyle }}>
               <option value="">Default (you)</option>
               {instructors.map(i => (
                 <option key={i.id} value={i.id}>{i.name}</option>
