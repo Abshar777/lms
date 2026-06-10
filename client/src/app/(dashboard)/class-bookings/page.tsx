@@ -11,7 +11,7 @@ import Link from 'next/link'
 import { useToast } from '@/store/ui.store'
 import { useAllLiveClasses, type LiveClass } from '@/lib/api/liveClasses'
 import { useMyBookings, useCreateBooking, useCancelBooking, type MyBooking } from '@/lib/api/bookings'
-import { useCourses, useCourse } from '@/lib/api/courses'
+import { useCourse } from '@/lib/api/courses'
 import { APP_TIMEZONE } from '@/lib/timezone'
 import { useServerNow } from '@/hooks/useServerNow'
 
@@ -957,11 +957,21 @@ export default function ClassBookingsPage() {
     return () => document.removeEventListener('mousedown', h)
   }, [showCalendar])
 
-  /* ── Filter options — courses + modules from dedicated APIs ── */
-  const { data: coursesData }   = useCourses({ per_page: 200 })
-  const availableCourses        = coursesData?.docs ?? []
+  /* ── Filter options — courses derived from live class data ──
+     Avoids a separate /courses API call and guarantees that the IDs in the
+     dropdown exactly match lc.courseId used in the filter. */
+  const availableCourses = useMemo(() => {
+    const seen = new Map<string, { id: string; title: string; slug: string }>()
+    allClasses.forEach(lc => {
+      const id    = lc.courseId
+      const title = lc.course?.title
+      const slug  = lc.course?.slug ?? ''
+      if (id && title && !seen.has(id)) seen.set(id, { id, title, slug })
+    })
+    return Array.from(seen.values()).sort((a, b) => a.title.localeCompare(b.title))
+  }, [allClasses])
 
-  // When a course is selected, look up its slug so we can fetch its sections
+  // When a course is selected, find its slug so we can fetch its sections
   const selectedCourseSlug = useMemo(
     () => availableCourses.find(c => c.id === filterCourse)?.slug ?? '',
     [availableCourses, filterCourse],
@@ -984,7 +994,9 @@ export default function ClassBookingsPage() {
   const filteredClasses = useMemo(() => {
     const q = search.trim().toLowerCase()
     return allClasses.filter(lc => {
-      if (filterCourse && lc.course?.id !== filterCourse) return false
+      /* Use lc.courseId (always a plain string after normalization) rather than
+         lc.course?.id — course may be undefined when courseId wasn't populated */
+      if (filterCourse && lc.courseId !== filterCourse) return false
       if (filterModule) {
         const secId = typeof lc.sectionId === 'object' ? lc.sectionId?.id : lc.sectionId
         if (secId !== filterModule) return false
