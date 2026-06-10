@@ -87,7 +87,7 @@ export const UserModel = mongoose.model<IUser>('User', UserSchema)
 ───────────────────────────────────────────────────── */
 export const PERMISSION_RESOURCES = [
   'users', 'courses', 'live-classes', 'bookings',
-  'orders', 'categories', 'coupons', 'reviews', 'reports', 'roles',
+  'orders', 'categories', 'coupons', 'reviews', 'reports', 'roles', 'support',
 ] as const
 export type PermissionResource = typeof PERMISSION_RESOURCES[number]
 
@@ -1430,3 +1430,62 @@ ClassFeedbackSchema.virtual('id').get(function() { return this._id.toString() })
 ClassFeedbackSchema.set('toJSON', { virtuals: true })
 
 export const ClassFeedbackModel = mongoose.model<IClassFeedback>('ClassFeedback', ClassFeedbackSchema)
+
+/* ─────────────────────────────────────────────────────
+   SUPPORT TICKET — client ↔ admin help / complaints
+   A ticket belongs to one user (client) and holds a thread
+   of messages exchanged with the support/admin team.
+───────────────────────────────────────────────────── */
+export type SupportTicketStatus = 'open' | 'pending' | 'resolved' | 'closed'
+export type SupportCategory = 'technical' | 'billing' | 'course' | 'account' | 'other'
+
+export interface ISupportMessage {
+  senderId:   Types.ObjectId
+  senderRole: 'student' | 'instructor' | 'admin'
+  body:       string
+  createdAt:  Date
+}
+
+export interface ISupportTicket extends Document {
+  id:            string
+  userId:        Types.ObjectId          // the client who opened the ticket
+  subject:       string
+  category:      SupportCategory
+  status:        SupportTicketStatus
+  messages:      ISupportMessage[]
+  lastMessageAt: Date
+  lastSenderRole:'student' | 'instructor' | 'admin'
+  userUnread:    boolean                 // client has an unread admin reply
+  adminUnread:   boolean                 // admin has an unread client message
+  createdAt:     Date
+  updatedAt:     Date
+}
+
+const SupportMessageSchema = new Schema<ISupportMessage>(
+  {
+    senderId:   { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    senderRole: { type: String, enum: ['student', 'instructor', 'admin'], required: true },
+    body:       { type: String, required: true, trim: true, maxlength: 5000 },
+    createdAt:  { type: Date, default: Date.now },
+  },
+  { _id: true },
+)
+
+const SupportTicketSchema = new Schema<ISupportTicket>(
+  {
+    userId:         { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    subject:        { type: String, required: true, trim: true, maxlength: 200 },
+    category:       { type: String, enum: ['technical', 'billing', 'course', 'account', 'other'], default: 'other' },
+    status:         { type: String, enum: ['open', 'pending', 'resolved', 'closed'], default: 'open' },
+    messages:       { type: [SupportMessageSchema], default: [] },
+    lastMessageAt:  { type: Date, default: Date.now },
+    lastSenderRole: { type: String, enum: ['student', 'instructor', 'admin'], default: 'student' },
+    userUnread:     { type: Boolean, default: false },
+    adminUnread:    { type: Boolean, default: true },
+  },
+  baseSchemaOptions,
+)
+SupportTicketSchema.index({ userId: 1, lastMessageAt: -1 })
+SupportTicketSchema.index({ status: 1, lastMessageAt: -1 })
+
+export const SupportTicketModel = mongoose.model<ISupportTicket>('SupportTicket', SupportTicketSchema)

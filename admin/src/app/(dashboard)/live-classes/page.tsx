@@ -315,140 +315,267 @@ function TableRow({ live, index, showInstructor }: { live: LiveClass; index: num
   )
 }
 
-/* ── Calendar view ───────────────────────────────────── */
-function getMonday(d: Date): Date {
-  const date = new Date(d)
-  const day  = date.getDay()
-  const diff = (day === 0 ? -6 : 1 - day)
-  date.setDate(date.getDate() + diff)
-  date.setHours(0, 0, 0, 0)
-  return date
-}
-
+/* ── Calendar view — premium monthly grid ─────────────── */
 function CalendarView({ items, onSlotClick }: { items: LiveClass[]; onSlotClick: (date: Date) => void }) {
-  const [weekStart, setWeekStart] = useState<Date>(() => getMonday(new Date()))
-  const [editLive, setEditLive] = useState<LiveClass | null>(null)
+  const todayRef     = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d }, [])
+  const [monthDate,  setMonthDate]  = useState<Date>(() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d })
+  const [editLive,   setEditLive]   = useState<LiveClass | null>(null)
+  const [hoveredDay, setHoveredDay] = useState<string | null>(null)
 
-  const weekDays = useMemo(() => {
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(weekStart)
-      d.setDate(weekStart.getDate() + i)
-      return d
-    })
-  }, [weekStart])
+  const year  = monthDate.getFullYear()
+  const month = monthDate.getMonth()
 
-  const dayAbbrs = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const gridStart = useMemo(() => {
+    const first = new Date(year, month, 1)
+    const d = new Date(first); d.setDate(first.getDate() - first.getDay()); return d
+  }, [year, month])
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const calDays = useMemo(() =>
+    Array.from({ length: 42 }, (_, i) => { const d = new Date(gridStart); d.setDate(gridStart.getDate() + i); return d })
+  , [gridStart])
 
-  const prevWeek = () => {
-    const d = new Date(weekStart)
-    d.setDate(d.getDate() - 7)
-    setWeekStart(d)
-  }
-  const nextWeek = () => {
-    const d = new Date(weekStart)
-    d.setDate(d.getDate() + 7)
-    setWeekStart(d)
-  }
-  const goToday = () => setWeekStart(getMonday(new Date()))
+  const weeks = useMemo(() =>
+    Array.from({ length: 6 }, (_, wi) => calDays.slice(wi * 7, wi * 7 + 7))
+  , [calDays])
 
-  const sunday = weekDays[6]!
-  const weekLabel = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+  const prevMonth = () => { const d = new Date(monthDate); d.setMonth(month - 1); setMonthDate(d) }
+  const nextMonth = () => { const d = new Date(monthDate); d.setMonth(month + 1); setMonthDate(d) }
+  const goToday   = () => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); setMonthDate(d) }
+
+  const monthLabel = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  const monthCount = useMemo(() =>
+    items.filter(l => { const d = new Date(l.scheduledStart); return d.getMonth() === month && d.getFullYear() === year }).length
+  , [items, month, year])
 
   const getSessionsForDay = (day: Date) =>
     items.filter(l => new Date(l.scheduledStart).toDateString() === day.toDateString())
 
-  const chipColor = (status: LiveClass['status']) => {
-    if (status === 'live')      return { bg: 'rgba(239,68,68,0.18)', color: '#EF4444', border: 'rgba(239,68,68,0.30)' }
-    if (status === 'scheduled') return { bg: 'rgba(255,107,26,0.15)', color: '#FF6B1A', border: 'rgba(255,107,26,0.28)' }
-    if (status === 'ended')     return { bg: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.35)', border: 'rgba(255,255,255,0.08)' }
-    /* cancelled */             return { bg: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.2)', border: 'rgba(255,255,255,0.06)' }
+  /* Event pill: separate border sides so left accent never fights the wrapper border */
+  const eventStyle = (status: LiveClass['status']) => {
+    switch (status) {
+      case 'live':
+        return { bg: 'rgba(239,68,68,0.09)', bar: '#EF4444', borderColor: 'rgba(239,68,68,0.20)', text: '#F87171', textMuted: 'rgba(248,113,113,0.60)' }
+      case 'scheduled':
+        return { bg: 'rgba(255,107,26,0.08)', bar: '#FF6B1A', borderColor: 'rgba(255,107,26,0.20)', text: '#FF9C5B', textMuted: 'rgba(255,156,91,0.60)' }
+      case 'ended':
+        return { bg: 'rgba(255,255,255,0.03)', bar: 'rgba(255,255,255,0.25)', borderColor: 'rgba(255,255,255,0.08)', text: 'rgba(255,255,255,0.40)', textMuted: 'rgba(255,255,255,0.22)' }
+      default:
+        return { bg: 'rgba(255,255,255,0.015)', bar: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.06)', text: 'rgba(255,255,255,0.24)', textMuted: 'rgba(255,255,255,0.14)' }
+    }
   }
 
+  const DAY_ABBRS   = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const CELL_BORDER = '1px solid rgba(255,255,255,0.055)'
+  const MAX_VISIBLE = 2
+
   return (
-    <div>
-      {/* Week navigation */}
-      <div className="mb-4 flex items-center gap-3">
-        <button
-          onClick={prevWeek}
-          className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-white/10"
-          style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <ChevronLeft size={14} />
-        </button>
-        <span className="text-sm font-semibold text-white/70">Week of {weekLabel}</span>
-        <button
-          onClick={nextWeek}
-          className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-white/10"
-          style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <ChevronRight size={14} />
-        </button>
-        <button
-          onClick={goToday}
-          className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-white/10"
-          style={{ color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }}>
-          Today
-        </button>
+    <div className="select-none">
+
+      {/* ── Header ─────────────────────────────────────────── */}
+      <div className="mb-6 flex items-start justify-between gap-4">
+
+        {/* Left: month title + count badge + status legend */}
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-baseline gap-3">
+            <h2 className="text-3xl font-bold tracking-tight text-white">{monthLabel}</h2>
+            {monthCount > 0 && (
+              <span className="rounded-full px-2.5 py-0.5 text-xs font-bold"
+                style={{ background: 'rgba(255,107,26,0.14)', color: '#FF8040', border: '1px solid rgba(255,107,26,0.24)' }}>
+                {monthCount} {monthCount === 1 ? 'session' : 'sessions'}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-4">
+            {([
+              { label: 'Live',      dot: '#EF4444' },
+              { label: 'Upcoming',  dot: '#FF6B1A' },
+              { label: 'Ended',     dot: 'rgba(255,255,255,0.30)' },
+              { label: 'Cancelled', dot: 'rgba(255,255,255,0.15)' },
+            ] as const).map(l => (
+              <span key={l.label} className="flex items-center gap-1.5 text-[11px]"
+                style={{ color: 'rgba(255,255,255,0.36)' }}>
+                <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: l.dot }} />
+                {l.label}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Right: nav pill */}
+        <div className="flex items-center gap-1 rounded-xl p-1"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <button onClick={prevMonth}
+            className="flex h-8 w-8 items-center justify-center rounded-lg transition-all hover:bg-white/10"
+            style={{ color: 'rgba(255,255,255,0.55)' }}>
+            <ChevronLeft size={14} />
+          </button>
+          <button onClick={goToday}
+            className="h-8 rounded-lg px-3.5 text-xs font-semibold transition-all hover:bg-white/10"
+            style={{ color: 'rgba(255,255,255,0.65)' }}>
+            Today
+          </button>
+          <button onClick={nextMonth}
+            className="flex h-8 w-8 items-center justify-center rounded-lg transition-all hover:bg-white/10"
+            style={{ color: 'rgba(255,255,255,0.55)' }}>
+            <ChevronRight size={14} />
+          </button>
+        </div>
       </div>
 
-      {/* 7-column grid */}
-      <div className="grid grid-cols-7 gap-2">
-        {weekDays.map((day, di) => {
-          const isToday = day.toDateString() === today.toDateString()
-          const sessions = getSessionsForDay(day)
+      {/* ── Grid ───────────────────────────────────────────── */}
+      <div className="overflow-hidden rounded-2xl"
+        style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(11,13,23,0.70)', backdropFilter: 'blur(6px)' }}>
 
-          return (
-            <div
-              key={di}
-              onClick={() => onSlotClick(day)}
-              className="rounded-xl overflow-hidden cursor-pointer transition-colors"
-              style={{
-                background: isToday ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.025)',
-                border: isToday ? '1px solid rgba(255,107,26,0.25)' : '1px solid rgba(255,255,255,0.07)',
-                minHeight: 140,
-              }}>
-
-              {/* Day header */}
-              <div
-                className="px-2 py-2 text-center"
+        {/* Day-of-week header */}
+        <div className="grid grid-cols-7"
+          style={{ borderBottom: CELL_BORDER, background: 'rgba(255,255,255,0.018)' }}>
+          {DAY_ABBRS.map((d, i) => {
+            const isWknd = i === 0 || i === 6
+            return (
+              <div key={d} className="py-3 text-center"
                 style={{
-                  background: isToday ? 'rgba(255,107,26,0.12)' : 'rgba(255,255,255,0.025)',
-                  borderBottom: '1px solid rgba(255,255,255,0.05)',
+                  borderRight: i < 6 ? CELL_BORDER : 'none',
+                  background: isWknd ? 'rgba(255,255,255,0.007)' : 'transparent',
                 }}>
-                <p className="text-[10px] font-bold uppercase tracking-widest"
-                  style={{ color: isToday ? '#FF6B1A' : 'rgba(255,255,255,0.35)' }}>
-                  {dayAbbrs[di]}
-                </p>
-                <p className="text-lg font-bold leading-tight"
-                  style={{ color: isToday ? '#FF6B1A' : 'rgba(255,255,255,0.7)' }}>
-                  {day.getDate()}
-                </p>
+                <span className="text-[10px] font-bold uppercase tracking-[0.13em]"
+                  style={{ color: isWknd ? 'rgba(255,255,255,0.20)' : 'rgba(255,255,255,0.34)' }}>
+                  {d}
+                </span>
               </div>
+            )
+          })}
+        </div>
 
-              {/* Session chips */}
-              <div className="p-1.5 space-y-1" onClick={e => e.stopPropagation()}>
-                {sessions.map(s => {
-                  const c = chipColor(s.status)
-                  return (
-                    <button
-                      key={s.id}
-                      onClick={() => setEditLive(s)}
-                      className="w-full text-left rounded-lg px-2 py-1 transition-all hover:brightness-110"
-                      style={{ background: c.bg, border: `1px solid ${c.border}` }}>
-                      <p className="text-[10px] font-semibold leading-none truncate" style={{ color: c.color }}>
-                        {fmtTime(s.scheduledStart)}
-                      </p>
-                      <p className="mt-0.5 text-[10px] leading-tight truncate" style={{ color: c.color, opacity: 0.8 }}>
-                        {s.title}
-                      </p>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )
-        })}
+        {/* Week rows */}
+        {weeks.map((week, wi) => (
+          <div key={wi} className="grid grid-cols-7"
+            style={{ borderBottom: wi < 5 ? CELL_BORDER : 'none' }}>
+
+            {week.map((day, di) => {
+              const inMonth   = day.getMonth() === month
+              const isToday   = day.toDateString() === todayRef.toDateString()
+              const isWeekend = di === 0 || di === 6
+              const dayKey    = day.toDateString()
+              const hovered   = hoveredDay === dayKey && inMonth
+              const sessions  = getSessionsForDay(day)
+              const overflow  = sessions.length - MAX_VISIBLE
+
+              /* Inset box-shadow encodes both the hover border glow and today glow without layout shift */
+              const cellShadow = isToday && inMonth
+                ? 'inset 0 0 0 1.5px rgba(255,107,26,0.50), inset 0 0 28px rgba(255,107,26,0.06)'
+                : hovered
+                ? 'inset 0 0 0 1px rgba(255,255,255,0.14), inset 0 0 16px rgba(255,255,255,0.025)'
+                : 'none'
+
+              return (
+                <div key={di}
+                  onMouseEnter={() => setHoveredDay(dayKey)}
+                  onMouseLeave={() => setHoveredDay(null)}
+                  onClick={() => onSlotClick(day)}
+                  className="relative cursor-pointer"
+                  style={{
+                    borderRight: di < 6 ? CELL_BORDER : 'none',
+                    minHeight:   118,
+                    transition:  'background 0.16s ease, box-shadow 0.16s ease',
+                    boxShadow:   cellShadow,
+                    /* Out-of-month: darker overlay so current month pops; no cell-level opacity */
+                    background: !inMonth
+                      ? 'rgba(0,0,0,0.18)'
+                      : isToday
+                      ? 'rgba(255,107,26,0.055)'
+                      : hovered
+                      ? 'rgba(255,255,255,0.028)'
+                      : isWeekend
+                      ? 'rgba(255,255,255,0.007)'
+                      : 'transparent',
+                  }}>
+
+                  {/* Today: thin top accent bar */}
+                  {isToday && inMonth && (
+                    <div className="absolute inset-x-0 top-0 h-[2px] rounded-t-sm"
+                      style={{ background: 'linear-gradient(90deg, #FF6B1A 40%, rgba(255,107,26,0.15))' }} />
+                  )}
+
+                  {/* Day number + hover + button row */}
+                  <div className="flex items-center justify-between px-2.5 pt-2.5 pb-1">
+                    <span
+                      className="inline-flex h-[26px] w-[26px] flex-shrink-0 items-center justify-center rounded-full text-[12px] font-bold leading-none"
+                      style={isToday && inMonth
+                        ? { background: '#FF6B1A', color: '#fff', boxShadow: '0 0 11px rgba(255,107,26,0.55)' }
+                        : inMonth
+                        ? { color: 'rgba(255,255,255,0.72)' }
+                        /* Padding days: muted gray, clearly secondary */
+                        : { color: 'rgba(255,255,255,0.18)' }}>
+                      {day.getDate()}
+                    </span>
+
+                    <AnimatePresence>
+                      {hovered && (
+                        <motion.button
+                          initial={{ opacity: 0, scale: 0.60 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.60 }}
+                          transition={{ duration: 0.10 }}
+                          onClick={e => { e.stopPropagation(); onSlotClick(day) }}
+                          className="flex h-[18px] w-[18px] items-center justify-center rounded-full"
+                          style={{ background: 'rgba(255,107,26,0.18)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.30)' }}>
+                          <Plus size={9} />
+                        </motion.button>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Session pills — max 2 visible, then "+X more" */}
+                  <div className="space-y-[2px] px-1.5 pb-1.5" onClick={e => e.stopPropagation()}>
+                    {sessions.slice(0, MAX_VISIBLE).map(s => {
+                      const es     = eventStyle(s.status)
+                      const isLive = s.status === 'live'
+                      return (
+                        <button key={s.id}
+                          onClick={() => setEditLive(s)}
+                          className="w-full overflow-hidden text-left transition-all hover:brightness-125"
+                          style={{
+                            background:    es.bg,
+                            borderTop:     `1px solid ${es.borderColor}`,
+                            borderRight:   `1px solid ${es.borderColor}`,
+                            borderBottom:  `1px solid ${es.borderColor}`,
+                            borderLeft:    `3px solid ${es.bar}`,
+                            borderRadius:  5,
+                          }}>
+                          <div className="flex items-center gap-1 py-[2.5px] pl-1.5 pr-1.5">
+                            {isLive && (
+                              <motion.span
+                                animate={{ opacity: [1, 0.2, 1] }}
+                                transition={{ duration: 1.1, repeat: Infinity }}
+                                className="h-[5px] w-[5px] flex-shrink-0 rounded-full"
+                                style={{ background: '#EF4444' }} />
+                            )}
+                            <span className="flex-shrink-0 text-[9px] font-bold tabular-nums" style={{ color: es.text }}>
+                              {fmtTime(s.scheduledStart)}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-[9px] leading-tight" style={{ color: es.textMuted }}>
+                              {s.title}
+                            </span>
+                          </div>
+                        </button>
+                      )
+                    })}
+
+                    {overflow > 0 && (
+                      <button
+                        onClick={e => { e.stopPropagation(); onSlotClick(day) }}
+                        className="w-full rounded-[4px] px-1.5 py-[2px] text-left transition-colors hover:bg-white/[0.06]"
+                        style={{ color: 'rgba(255,255,255,0.30)' }}>
+                        <span className="text-[9px] font-semibold">+{overflow} more</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ))}
       </div>
 
       <AnimatePresence>
@@ -677,6 +804,7 @@ export default function LiveClassesPage() {
   const [search,        setSearch]        = useState('')
   const [createOpen,    setCreateOpen]    = useState(false)
   const [view,          setView]          = useState<'table' | 'calendar'>('table')
+  const [mentorFilter,  setMentorFilter]  = useState('')
 
   const { data: me } = useCurrentUser()
   const isInstructor = me?.role === 'instructor'
@@ -685,12 +813,13 @@ export default function LiveClassesPage() {
   const { data: coursesData } = useCourses({ per_page: 200 })
   const courses = coursesData?.docs ?? []
   /* Pre-fetch instructors so they're in TanStack cache before the modal mounts */
-  useUsers('instructor', { per_page: 200 })
+  const { data: instructorsData } = useUsers('instructor', { per_page: 200 })
+  const instructors = instructorsData?.docs ?? []
 
   /* For stats bar, always use the full unfiltered list */
   const { data: allItems = [] } = useAllLiveClasses('all')
 
-  /* Apply type + course + search + instructor filters client-side */
+  /* Apply type + course + search + mentor + instructor filters client-side */
   const items = useMemo(() => {
     let list = rawItems
     if (typeFilter !== 'all') list = list.filter(l => l.type === typeFilter)
@@ -698,6 +827,12 @@ export default function LiveClassesPage() {
       list = list.filter(l => {
         const cId = typeof l.course === 'object' ? l.course?.id : l.courseId
         return cId === courseFilter
+      })
+    }
+    if (mentorFilter) {
+      list = list.filter(l => {
+        const instrId = typeof l.instructor === 'object' ? l.instructor?.id : l.instructorId
+        return instrId === mentorFilter
       })
     }
     if (search.trim()) {
@@ -714,7 +849,7 @@ export default function LiveClassesPage() {
       })
     }
     return list
-  }, [rawItems, typeFilter, courseFilter, search, isInstructor, me?.id])
+  }, [rawItems, typeFilter, courseFilter, mentorFilter, search, isInstructor, me?.id])
 
   /* Group by date */
   const grouped = useMemo(() => {
@@ -841,7 +976,6 @@ export default function LiveClassesPage() {
             onChange={e => setCourseFilter(e.target.value)}
             className="rounded-xl px-3 py-1.5 text-xs font-semibold outline-none transition-all"
             style={{
-              /* Solid dark bg so the native dropdown popup renders dark (not white) */
               background: courseFilter ? '#2a1a0a' : '#1e2035',
               border: courseFilter ? '1px solid rgba(255,107,26,0.35)' : '1px solid rgba(255,255,255,0.10)',
               color: courseFilter ? '#FF6B1A' : 'rgba(255,255,255,0.65)',
@@ -851,6 +985,40 @@ export default function LiveClassesPage() {
               <option key={c.id} value={c.id}>{c.title}</option>
             ))}
           </select>
+        )}
+
+        {/* Mentor filter — hidden for instructors (they only see their own sessions) */}
+        {!isInstructor && instructors.length > 0 && (
+          <div className="relative flex items-center">
+            <UserCheck
+              size={11}
+              className="pointer-events-none absolute left-2.5 z-10"
+              style={{ color: mentorFilter ? '#818CF8' : 'rgba(255,255,255,0.35)' }}
+            />
+            <select
+              value={mentorFilter}
+              onChange={e => setMentorFilter(e.target.value)}
+              className="rounded-xl py-1.5 pl-7 pr-3 text-xs font-semibold outline-none transition-all appearance-none"
+              style={{
+                background: mentorFilter ? '#0d0f22' : '#1e2035',
+                border: mentorFilter ? '1px solid rgba(129,140,248,0.40)' : '1px solid rgba(255,255,255,0.10)',
+                color: mentorFilter ? '#818CF8' : 'rgba(255,255,255,0.65)',
+                minWidth: 120,
+              }}>
+              <option value="">All mentors</option>
+              {instructors.map(i => (
+                <option key={i.id} value={i.id}>{i.name}</option>
+              ))}
+            </select>
+            {mentorFilter && (
+              <button
+                onClick={() => setMentorFilter('')}
+                className="absolute right-2 flex h-3.5 w-3.5 items-center justify-center rounded-full transition-opacity hover:opacity-70"
+                style={{ background: 'rgba(129,140,248,0.20)', color: '#818CF8' }}>
+                <X size={8} />
+              </button>
+            )}
+          </div>
         )}
 
         {/* Type filter */}

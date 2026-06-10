@@ -48,6 +48,44 @@ export async function authenticate(
 }
 
 /* ─────────────────────────────────────────────────────
+   authenticateAny
+   ─────────────────────────────────────────────────────
+   Accepts EITHER the client cookie (`lms_at`) or the admin
+   cookie (`lms_admin_at`). Used by endpoints shared between
+   the client and admin portals (e.g. support tickets, where
+   both the ticket owner and an admin read/reply on the same
+   resource).
+───────────────────────────────────────────────────── */
+export async function authenticateAny(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const authHeader  = req.headers['authorization']
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+  const token = req.cookies?.[ADMIN_ACCESS_COOKIE] ?? req.cookies?.[ACCESS_COOKIE] ?? bearerToken
+
+  if (!token) {
+    sendError(res, 'MISSING_TOKEN', 'Authentication required', 401)
+    return
+  }
+
+  try {
+    const payload = await verifyAccessToken(token)
+    req.user = { id: payload.sub!, email: payload.email, role: payload.role }
+    next()
+  } catch (err: any) {
+    const isExpired = err?.code === 'ERR_JWT_EXPIRED'
+    sendError(
+      res,
+      isExpired ? 'TOKEN_EXPIRED' : 'INVALID_TOKEN',
+      isExpired ? 'Access token expired' : 'Invalid access token',
+      401,
+    )
+  }
+}
+
+/* ─────────────────────────────────────────────────────
    requireRole(...roles)
    ─────────────────────────────────────────────────────
    Authorization guard — must come AFTER authenticate.

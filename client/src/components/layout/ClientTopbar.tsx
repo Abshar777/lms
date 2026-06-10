@@ -7,7 +7,7 @@ import Link from 'next/link'
 import {
   Search, Bell, X, MessageSquare, BookOpen,
   GraduationCap, Heart, Sparkles, Trophy,
-  Settings, Clock, Star, Users, Video, Flame, Menu, ShoppingCart, Map, CalendarDays,
+  Settings, Clock, Star, Users, Video, Flame, Menu, ShoppingCart, Map, CalendarDays, LifeBuoy,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
@@ -40,6 +40,7 @@ const TOPBAR_TABS = [
   { label: 'Achievements',   href: '/achievements',    icon: Trophy },
   { label: 'Streaks',        href: '/streaks',         icon: Flame },
   { label: 'Favorites',      href: '/favorites',       icon: Heart, badge: 1 },
+  { label: 'Help & Support', href: '/support',         icon: LifeBuoy },
   { label: 'Settings',       href: '/settings',        icon: Settings },
 ]
 

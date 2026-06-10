@@ -22,6 +22,7 @@ import { NoteError } from '@/services/note.service.ts'
 import { BookmarkError } from '@/services/bookmark.service.ts'
 import { LearningPathError } from '@/services/learningpath.service.ts'
 import { AIError } from '@/services/ai.service.ts'
+import { SupportError } from '@/services/support.service.ts'
 
 /* ─────────────────────────────────────────────────────
    Global error handler
@@ -61,6 +62,10 @@ export function errorMiddleware(
     return
   }
   if (err instanceof NotificationError) {
+    sendError(res, err.code, err.message, err.statusCode)
+    return
+  }
+  if (err instanceof SupportError) {
     sendError(res, err.code, err.message, err.statusCode)
     return
   }

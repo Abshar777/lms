@@ -36,7 +36,9 @@ export class RolesController {
       const roles = await RoleModel.find()
         .sort({ isSystem: -1, name: 1 })
         .lean({ virtuals: true })
-      sendSuccess(res, roles)
+      // `.lean()` skips the toJSON `id` virtual (no mongoose-lean-virtuals plugin),
+      // so map `_id` → `id` explicitly — same pattern as bookings/live-classes routes.
+      sendSuccess(res, roles.map((r: any) => ({ ...r, id: r.id ?? String(r._id) })))
     } catch (err) { next(err) }
   }
 
@@ -84,6 +86,10 @@ export class RolesController {
       const id   = String(req.params['id'] ?? '')
       const role = await RoleModel.findById(id)
       if (!role) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Role not found' } }); return }
+      // The Super Admin role is always unrestricted — protect it from being stripped.
+      if (role.isSystem && role.name === 'Super Admin') {
+        res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'The Super Admin role always has full access and cannot be modified.' } }); return
+      }
 
       const { permissions } = req.body as { permissions: Partial<IResourcePermission>[] }
       role.permissions = normalizePermissions(permissions ?? [])

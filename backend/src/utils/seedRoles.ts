@@ -63,6 +63,7 @@ const DEFAULT_ROLES = [
       reviews:        { read: true, update: true, delete: true, list: true, list_basic: true },
       reports:        { read: true, list: true },
       roles:          { read: true, list: true, list_basic: true },
+      support:        { read: true, update: true, list: true, list_basic: true },
     }),
   },
   {

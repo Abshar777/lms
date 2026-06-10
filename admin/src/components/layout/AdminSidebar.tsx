@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, BookOpen, Users, GraduationCap,
   Tag, Star, Settings, ChevronLeft, LogOut, X,
-  ShoppingBag, Ticket, Map, ClipboardList, Video, CalendarDays, BarChart3, ShieldCheck,
+  ShoppingBag, Ticket, Map, ClipboardList, Video, CalendarDays, BarChart3, ShieldCheck, LifeBuoy,
 } from 'lucide-react'
 import { useUIStore } from '@/store/ui.store'
 import { useAllLiveClasses } from '@/lib/api/liveClasses'
@@ -28,6 +28,7 @@ const adminNavItems = [
   { label: 'Coupons',        href: '/coupons',           icon: Ticket },
   { label: 'Reports',        href: '/reports',           icon: BarChart3 },
   { label: 'Roles',          href: '/roles',             icon: ShieldCheck },
+  { label: 'Support',        href: '/support',           icon: LifeBuoy },
   { label: 'Audit Logs',     href: '/audit-logs',        icon: ClipboardList },
 ]
 

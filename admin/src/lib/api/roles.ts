@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 
 export const PERMISSION_RESOURCES = [
   'users', 'courses', 'live-classes', 'bookings',
-  'orders', 'categories', 'coupons', 'reviews', 'reports', 'roles',
+  'orders', 'categories', 'coupons', 'reviews', 'reports', 'roles', 'support',
 ] as const
 
 export type PermissionResource = typeof PERMISSION_RESOURCES[number]

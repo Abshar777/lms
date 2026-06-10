@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   BookOpen, GraduationCap, Trophy,
-  Settings, LogOut, Flame, Map, X, Video, CalendarDays,
+  Settings, LogOut, Flame, Map, X, Video, CalendarDays, LifeBuoy,
 } from 'lucide-react'
 import { useUIStore } from '@/store/ui.store'
 
@@ -18,7 +18,10 @@ const navItems = [
   { label: 'Achievements',   href: '/achievements',    icon: Trophy },
   { label: 'Streaks',        href: '/streaks',         icon: Flame },
 ]
-const bottomItems = [{ label: 'Settings', href: '/settings', icon: Settings }]
+const bottomItems = [
+  { label: 'Help & Support', href: '/support',  icon: LifeBuoy },
+  { label: 'Settings',       href: '/settings', icon: Settings },
+]
 
 const itemVariants = {
   hidden: { opacity: 0, x: -14 },

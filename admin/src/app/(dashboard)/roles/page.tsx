@@ -41,6 +41,7 @@ const RESOURCE_LABELS: Record<PermissionResource, string> = {
   'reviews':      'Reviews',
   'reports':      'Reports',
   'roles':        'Roles',
+  'support':      'Support',
 }
 
 function permissionsFromRole(role: Role): ResourcePermission[] {
@@ -732,21 +733,21 @@ export default function RolesPage() {
                   <div className="mb-3 flex items-center justify-between">
                     <p className="text-xs font-semibold uppercase tracking-wider"
                       style={{ color: 'rgba(255,255,255,0.3)' }}>Permission matrix</p>
-                    {selectedRole.isSystem && (
+                    {selectedRole.name === 'Super Admin' && (
                       <span className="flex items-center gap-1 text-[11px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                        <Lock size={10} /> System roles are read-only
+                        <Lock size={10} /> Super Admin always has full access
                       </span>
                     )}
                   </div>
                   <PermissionMatrix
                     permissions={draft}
                     onChange={p => { setDraft(p); setDraftDirty(true); setSaveOk(false); setSaveErr(null) }}
-                    readOnly={selectedRole.isSystem}
+                    readOnly={selectedRole.name === 'Super Admin'}
                   />
                 </div>
 
-                {/* Save bar */}
-                {!selectedRole.isSystem && (
+                {/* Save bar — editable for every role except the unrestricted Super Admin */}
+                {selectedRole.name !== 'Super Admin' && (
                   <div className="flex items-center gap-3">
                     <button onClick={handleSavePermissions}
                       disabled={!draftDirty || permsMutation.isPending}

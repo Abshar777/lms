@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, Loader2, AlertCircle, User, Mail,
@@ -256,7 +257,10 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
     e.currentTarget.style.boxShadow = 'none'
   }
 
-  return (
+  // Render through a portal to <body> so the fixed overlay isn't an (invalid)
+  // DOM child of the <tbody>/<tr> that mounts this modal.
+  if (typeof document === 'undefined') return null
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -334,11 +338,12 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
                     value={addCourseId}
                     onChange={e => setAddCourseId(e.target.value)}
                     className="flex-1 rounded-xl px-3 py-2 text-xs text-white outline-none"
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', color: addCourseId ? 'white' : 'rgba(255,255,255,0.3)' }}
+                    /* Solid dark bg so the browser-native dropdown popup renders dark (not white) */
+                    style={{ background: '#1e2035', border: '1px solid rgba(255,255,255,0.09)', color: addCourseId ? 'white' : 'rgba(255,255,255,0.3)' }}
                   >
-                    <option value="">Select a course to enroll…</option>
+                    <option value="" style={{ background: '#1e2035', color: 'rgba(255,255,255,0.5)' }}>Select a course to enroll…</option>
                     {unenrolledCourses.map(c => (
-                      <option key={c.id} value={c.id}>{c.title}</option>
+                      <option key={c.id} value={c.id} style={{ background: '#1e2035', color: 'white' }}>{c.title}</option>
                     ))}
                   </select>
                   <button
@@ -484,6 +489,7 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
           </form>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   )
 }

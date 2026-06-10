@@ -13,6 +13,7 @@ import { useAllLiveClasses, type LiveClass } from '@/lib/api/liveClasses'
 import { useMyBookings, useCreateBooking, useCancelBooking, type MyBooking } from '@/lib/api/bookings'
 import { useCourses, useCourse } from '@/lib/api/courses'
 import { APP_TIMEZONE } from '@/lib/timezone'
+import { useServerNow } from '@/hooks/useServerNow'
 
 /* ─────────────────────────────────────────────────────────
    DATE HELPERS
@@ -58,7 +59,10 @@ function toDateKey(d: Date): string {
 }
 
 function fmtTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+  // Hardcoded to Dubai (GST) — every user worldwide sees the same wall-clock time.
+  return new Date(iso).toLocaleTimeString('en-US', {
+    timeZone: APP_TIMEZONE, hour: 'numeric', minute: '2-digit', hour12: true,
+  })
 }
 
 function fmtSlotLabel(iso: string, durationMins: number): string {
@@ -589,12 +593,10 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
 
   const [selectedId, setSelectedId] = useState<string | null>(defaultId)
 
-  /* Tick every 30 s so the 5-min link gate updates without a full page reload */
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 30_000)
-    return () => clearInterval(id)
-  }, [])
+  /* Server-anchored clock (ticks every 30 s). The link gate / countdown compare
+   * the class start against the SERVER's current time, so they're correct even if
+   * the user's device clock is wrong — and independent of their timezone. */
+  const now = useServerNow(30_000)
 
   useEffect(() => {
     if (bookedSlot) setSelectedId(bookedSlot.id)
@@ -758,7 +760,7 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
                         style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
                         <Clock size={13} style={{ color: '#9CA3AF' }} />
                         <p className="text-[11px]" style={{ color: '#6B7280' }}>
-                          Class link unlocks <strong>{minsLeft > 60 ? `${Math.ceil(minsLeft/60)}h ${minsLeft%60}m` : `${minsLeft} min`}</strong> before start
+                          Class link unlocks <strong>{minsLeft >= 60 ? `${Math.floor(minsLeft/60)}h ${minsLeft%60}m` : `${minsLeft} min`}</strong> before start
                         </p>
                       </div>
                     )}

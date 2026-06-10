@@ -29,6 +29,7 @@ import auditLogRoutes      from './auditlog.routes.ts'
 import uploadRoutes        from './upload.routes.ts'
 import bookingRoutes       from './bookings.routes.ts'
 import feedbackRoutes      from './feedback.routes.ts'
+import supportRoutes       from './support.routes.ts'
 
 const router = Router()
 
@@ -104,5 +105,7 @@ router.use('/uploads',         uploadRoutes)
 router.use('/bookings',        bookingRoutes)
 /* Class feedback */
 router.use('/feedback',        feedbackRoutes)
+/* Help / Contact-us support tickets */
+router.use('/support',         supportRoutes)
 
 export default router
