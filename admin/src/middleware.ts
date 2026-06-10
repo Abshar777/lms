@@ -26,9 +26,13 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/', req.url))
   }
 
-  /* Unauthenticated users visiting any protected route → login */
+  /* Unauthenticated users visiting any protected route → login.
+     Forward ?sso= so SSO auto-login works when Root ERP opens the
+     root URL with ?sso=TOKEN (middleware would otherwise drop the param). */
   if (pathname !== '/login' && !hasToken) {
     const loginUrl = new URL('/login', req.url)
+    const ssoParam = req.nextUrl.searchParams.get('sso')
+    if (ssoParam) loginUrl.searchParams.set('sso', ssoParam)
     return NextResponse.redirect(loginUrl)
   }
 
