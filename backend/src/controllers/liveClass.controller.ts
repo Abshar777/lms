@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express'
 import { LiveClassService } from '@/services/liveClass.service.ts'
 import { verifyWebhookSignature } from '@/services/mux.service.ts'
+import { createGoogleMeetLink } from '@/services/googleMeet.service.ts'
 import { sendSuccess } from '@/utils/response.ts'
 
 function isPopulated(v: unknown): v is Record<string, unknown> & { id: string } {
@@ -142,17 +143,29 @@ export class LiveClassController {
   adminCreate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const dto = req.body as {
-        courseId:        string
-        title:           string
-        description?:    string
-        scheduledStart:  string | Date
-        durationMins:    number
-        type?:           'external' | 'internal'
-        meetingUrl?:     string
-        instructorId?:   string
-        sectionId?:      string
+        courseId:         string
+        title:            string
+        description?:     string
+        scheduledStart:   string | Date
+        durationMins:     number
+        type?:            'external' | 'internal'
+        instructorId?:    string
+        sectionId?:       string
         sessionCapacity?: number
       }
+
+      const sessionType = dto.type ?? 'external'
+
+      /* Auto-generate a Google Meet link for external sessions */
+      let meetingUrl: string | undefined
+      if (sessionType === 'external') {
+        meetingUrl = await createGoogleMeetLink({
+          title:        dto.title,
+          startISO:     String(dto.scheduledStart),
+          durationMins: dto.durationMins,
+        })
+      }
+
       const live = await this.service.create({
         courseId:        dto.courseId,
         instructorId:    dto.instructorId ?? req.user!.id,
@@ -160,8 +173,8 @@ export class LiveClassController {
         description:     dto.description,
         scheduledStart:  new Date(dto.scheduledStart),
         durationMins:    dto.durationMins,
-        type:            dto.type ?? 'external',
-        meetingUrl:      dto.meetingUrl,
+        type:            sessionType,
+        meetingUrl,
         sectionId:       dto.sectionId,
         sessionCapacity: dto.sessionCapacity,
       })

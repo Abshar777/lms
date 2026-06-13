@@ -8,7 +8,7 @@ import {
   Video, Radio, Calendar, Clock, Users, Loader2,
   AlertCircle, Tv2, ExternalLink, BookOpen, Star,
   ChevronRight, PlayCircle, CalendarDays, Pencil, Search, X, Plus,
-  Link as LinkIcon, LayoutList, CalendarRange, ChevronLeft, GraduationCap,
+  LayoutList, CalendarRange, ChevronLeft, GraduationCap,
   UserCheck,
 } from 'lucide-react'
 import { useAllLiveClasses, useCreateLiveClass, type LiveClass, type LiveClassType } from '@/lib/api/liveClasses'
@@ -605,7 +605,6 @@ function QuickCreateModal({ onClose, onSuccess }: { onClose: () => void; onSucce
   const [durationMins,    setDurationMins]    = useState(60)
   const [sessionCapacity, setSessionCapacity] = useState<number | ''>(500)
   const [type,            setType]            = useState<LiveClassType>('external')
-  const [meetingUrl,      setMeetingUrl]      = useState('')
   const [sectionId,       setSectionId]       = useState('')
   const [instructorId,    setInstructorId]    = useState('')
   const [error,           setError]           = useState<string | null>(null)
@@ -631,7 +630,6 @@ function QuickCreateModal({ onClose, onSuccess }: { onClose: () => void; onSucce
         durationMins,
         sessionCapacity: sessionCapacity !== '' ? sessionCapacity : undefined,
         type,
-        meetingUrl:      type === 'external' ? meetingUrl.trim() || undefined : undefined,
         sectionId:       sectionId || undefined,
         instructorId:    instructorId || undefined,
       })
@@ -687,20 +685,27 @@ function QuickCreateModal({ onClose, onSuccess }: { onClose: () => void; onSucce
             <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
               style={{ color: 'rgba(255,255,255,0.35)' }}>Type</label>
             <div className="flex gap-2">
-              {(['external', 'internal'] as const).map(t => (
-                <button key={t} type="button" onClick={() => setType(t)}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all"
-                  style={type === t
-                    ? { background: t === 'internal' ? 'rgba(255,107,26,0.20)' : 'rgba(99,102,241,0.20)',
-                        color:      t === 'internal' ? '#FF6B1A' : '#818CF8',
-                        border:     `1px solid ${t === 'internal' ? 'rgba(255,107,26,0.35)' : 'rgba(99,102,241,0.35)'}` }
-                    : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)',
-                        border: '1px solid rgba(255,255,255,0.08)' }}>
-                  {t === 'internal' ? <ExternalLink size={11} /> : <ExternalLink size={11} />}
-                  {t === 'internal' ? 'In-App Stream' : 'External Link'}
-                </button>
-              ))}
+              <button type="button" onClick={() => setType('external')}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all"
+                style={type === 'external'
+                  ? { background: 'rgba(34,197,94,0.15)', color: '#4ADE80', border: '1px solid rgba(34,197,94,0.30)' }
+                  : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <Video size={11} />Google Meet
+              </button>
+              <button type="button" onClick={() => setType('internal')}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all"
+                style={type === 'internal'
+                  ? { background: 'rgba(255,107,26,0.20)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.35)' }
+                  : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <Radio size={11} />In-App Stream
+              </button>
             </div>
+            {type === 'external' && (
+              <p className="mt-1.5 flex items-center gap-1 text-[10px]" style={{ color: 'rgba(74,222,128,0.65)' }}>
+                <span className="h-1.5 w-1.5 rounded-full bg-green-400 inline-block" />
+                Google Meet link will be auto-generated
+              </p>
+            )}
           </div>
 
           {/* Title */}
@@ -733,17 +738,6 @@ function QuickCreateModal({ onClose, onSuccess }: { onClose: () => void; onSucce
                 className={base} style={iStyle} />
             </div>
           </div>
-
-          {/* Meeting URL — external only */}
-          {type === 'external' && (
-            <div className="relative">
-              <LinkIcon size={13} className="absolute left-3 top-1/2 -translate-y-1/2"
-                style={{ color: 'rgba(255,255,255,0.35)' }} />
-              <input value={meetingUrl} onChange={e => setMeetingUrl(e.target.value)}
-                type="url" placeholder="https://zoom.us/j/…"
-                className={`${base} pl-9`} style={iStyle} />
-            </div>
-          )}
 
           {/* Module */}
           {sections.length > 0 && (

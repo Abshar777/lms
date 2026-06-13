@@ -359,13 +359,11 @@ const liveCreateSchema = z.object({
   scheduledStart:  z.string().datetime().or(z.string().refine(s => !isNaN(Date.parse(s)), 'Invalid date')),
   durationMins:    z.coerce.number().int().min(5).max(600),
   type:            z.enum(['external', 'internal']).default('external'),
-  meetingUrl:      z.string().url().max(2048).optional(),
+  /* meetingUrl is now auto-generated for external sessions — omit from create requests */
   instructorId:    z.string().optional(),
+  sectionId:       z.string().optional(),
   sessionCapacity: z.coerce.number().int().min(1).max(500).optional(),
-}).refine(
-  data => data.type === 'internal' || !!data.meetingUrl,
-  { message: 'meetingUrl is required for external live classes', path: ['meetingUrl'] },
-)
+})
 const liveUpdateSchema = z.object({
   title:           z.string().min(3).max(255).trim().optional(),
   description:     z.string().max(2000).optional(),
