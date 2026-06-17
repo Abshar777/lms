@@ -224,6 +224,12 @@ function CourseCard({ course, index, checked, onToggle, onDelete }: {
               {lv.label}
             </span>
           )}
+          {course.program && (
+            <span className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
+              style={{ background: PROGRAM_STYLE[course.program].bg, color: PROGRAM_STYLE[course.program].color }}>
+              {PROGRAM_LABELS[course.program]}
+            </span>
+          )}
           {course.category && (
             <span className="truncate rounded-md px-1.5 py-0.5 text-[10px]"
               style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.4)' }}>
@@ -333,6 +339,18 @@ function CourseRow({ course, index, checked, onToggle, onDelete }: {
         </div>
       </td>
 
+      {/* Program */}
+      <td className="px-4 py-3.5">
+        {course.program ? (
+          <span className="inline-flex items-center rounded-lg px-2 py-1 text-[11px] font-semibold"
+            style={{ background: PROGRAM_STYLE[course.program].bg, color: PROGRAM_STYLE[course.program].color }}>
+            {PROGRAM_LABELS[course.program]}
+          </span>
+        ) : (
+          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>—</span>
+        )}
+      </td>
+
       {/* Status */}
       <td className="px-4 py-3.5">
         <span className="flex w-fit items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold"
@@ -403,9 +421,19 @@ function CourseRow({ course, index, checked, onToggle, onDelete }: {
 }
 
 /* ── Main component ─────────────────────────────────────────── */
+const PROGRAM_LABELS: Record<string, string> = {
+  '4x-trading':        '4x Trading',
+  'digital-marketing': 'Digital Marketing',
+}
+const PROGRAM_STYLE: Record<string, { bg: string; color: string }> = {
+  '4x-trading':        { bg: 'rgba(96,165,250,0.12)',  color: '#60A5FA' },
+  'digital-marketing': { bg: 'rgba(52,211,153,0.12)',  color: '#34D399' },
+}
+
 export function CourseTable() {
   const [search,   setSearch]   = useState('')
   const [status,   setStatus]   = useState<string>('all')
+  const [program,  setProgram]  = useState<string>('')
   const [page,     setPage]     = useState(1)
   const [sortKey,  setSortKey]  = useState<SortKey>('createdAt')
   const [sortDir,  setSortDir]  = useState<'asc' | 'desc'>('desc')
@@ -418,6 +446,7 @@ export function CourseTable() {
   const { data, isLoading } = useCourses({
     page, per_page: view === 'grid' ? 12 : 8,
     search, status,
+    program: program || undefined,
     sort: `${sortKey}:${sortDir}`,
   })
 
@@ -498,6 +527,19 @@ export function CourseTable() {
             ))}
           </div>
 
+          {/* Program filter */}
+          <div className="flex items-center gap-1">
+            {(['', '4x-trading', 'digital-marketing'] as const).map(p => (
+              <button key={p || 'all'} onClick={() => { setProgram(p); setPage(1) }}
+                className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
+                style={program === p
+                  ? { background: 'rgba(255,107,26,0.18)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.4)' }
+                  : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.38)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                {p === '' ? 'All' : PROGRAM_LABELS[p]}
+              </button>
+            ))}
+          </div>
+
           {/* View toggle */}
           <div className="flex rounded-xl p-0.5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
             <button onClick={() => setView('table')} title="Table view"
@@ -544,6 +586,7 @@ export function CourseTable() {
                       </th>
                       {[
                         { label: 'Course',   col: 'title'         as SortKey },
+                        { label: 'Program' },
                         { label: 'Status' },
                         { label: 'Students', col: 'enrolledCount' as SortKey },
                         { label: 'Rating',   col: 'ratingAvg'     as SortKey },

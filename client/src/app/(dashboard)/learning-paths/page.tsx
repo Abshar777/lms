@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { BookOpen, Users, ChevronRight, Loader2, Search, GraduationCap } from 'lucide-react'
 import { useLearningPaths } from '@/lib/api/learningpaths'
+import { Button } from '@/components/ui/button'
 
 export default function LearningPathsPage() {
   const [page, setPage] = useState(1)
@@ -123,19 +124,19 @@ export default function LearningPathsPage() {
       {/* Pagination */}
       {meta && meta.total_pages > 1 && (
         <div className="flex items-center justify-center gap-2">
-          <button disabled={!meta.has_prev} onClick={() => setPage(p => p - 1)}
+          <Button variant="ghost" size="sm" disabled={!meta.has_prev} onClick={() => setPage(p => p - 1)}
             className="rounded-xl px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-40"
             style={{ background: '#F4F5F8', color: '#374151' }}>
             ← Prev
-          </button>
+          </Button>
           <span className="text-sm" style={{ color: '#6B7280' }}>
             {meta.page} / {meta.total_pages}
           </span>
-          <button disabled={!meta.has_next} onClick={() => setPage(p => p + 1)}
+          <Button variant="ghost" size="sm" disabled={!meta.has_next} onClick={() => setPage(p => p + 1)}
             className="rounded-xl px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-40"
             style={{ background: '#F4F5F8', color: '#374151' }}>
             Next →
-          </button>
+          </Button>
         </div>
       )}
     </div>

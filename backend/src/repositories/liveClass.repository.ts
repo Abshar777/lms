@@ -33,12 +33,16 @@ export class LiveClassRepository extends BaseRepository<ILiveClass> {
   }
 
   /* All upcoming/live sessions across every course — no enrollment filter */
-  async listAllUpcoming(limit = 50): Promise<ILiveClass[]> {
+  async listAllUpcoming(limit = 50, courseIds?: string[]): Promise<ILiveClass[]> {
+    const query: Record<string, unknown> = {
+      status: { $in: ['scheduled', 'live'] },
+      scheduledStart: { $gte: new Date(Date.now() - 60 * 60_000) },
+    }
+    if (courseIds && courseIds.length > 0) {
+      query['courseId'] = { $in: courseIds.map(id => new Types.ObjectId(id)) }
+    }
     return LiveClassModel
-      .find({
-        status: { $in: ['scheduled', 'live'] },
-        scheduledStart: { $gte: new Date(Date.now() - 60 * 60_000) },
-      })
+      .find(query)
       .sort({ scheduledStart: 1 })
       .limit(limit)
       .populate('courseId',     'title slug thumbnailUrl')
@@ -56,13 +60,18 @@ export class LiveClassRepository extends BaseRepository<ILiveClass> {
    * We do NOT mutate the DB, so internal (Mux) sessions can still be started
    * late or rescheduled. */
   async listAll(filter: {
-    status?: string
-    limit?:  number
+    status?:    string
+    limit?:     number
+    courseIds?: string[]
   } = {}): Promise<ILiveClass[]> {
     const now      = Date.now()
     const liveFrom = new Date(now - LIVE_GRACE_MS)  // start ≥ this → not yet past the 15-min grace
     const liveTo   = new Date(now + LIVE_LEAD_MS)   // start ≤ this → live window has opened (30 min ahead)
     const query: Record<string, unknown> = {}
+
+    if (filter.courseIds && filter.courseIds.length > 0) {
+      query['courseId'] = { $in: filter.courseIds.map(id => new Types.ObjectId(id)) }
+    }
 
     if (filter.status && filter.status !== 'all') {
       if (filter.status === 'live') {

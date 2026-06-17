@@ -7,8 +7,10 @@ import {
   BookOpen, Play, Search, Loader2, CheckCircle2,
 } from 'lucide-react'
 import { useMyEnrollments, type MyEnrollment } from '@/lib/api/enrollments'
+import { useCurrentUser } from '@/lib/api/user'
 import type { Course } from '@/types/index'
 import { StreakWidget } from '@/components/ui/StreakWidget'
+import { MotionButton } from '@/components/ui/button'
 
 const STATUS_TABS = ['All Status', 'Not Started', 'In Progress', 'Completed'] as const
 type StatusTab = typeof STATUS_TABS[number]
@@ -31,15 +33,24 @@ export default function MyLearningPage() {
   const [activeTab, setActiveTab] = useState<StatusTab>('All Status')
   const [search, setSearch] = useState('')
 
+  const { data: currentUser } = useCurrentUser()
   const { data: enrollments, isLoading } = useMyEnrollments()
 
+  const scopedEnrollments = useMemo(() => {
+    if (!currentUser?.category) return enrollments ?? []
+    return (enrollments ?? []).filter(e => {
+      const course = asCourse(e)
+      return course?.program === currentUser.category
+    })
+  }, [enrollments, currentUser?.category])
+
   const continuing = useMemo(
-    () => (enrollments ?? []).filter(e => bucketOf(e) === 'in_progress').slice(0, 4),
-    [enrollments],
+    () => scopedEnrollments.filter(e => bucketOf(e) === 'in_progress').slice(0, 4),
+    [scopedEnrollments],
   )
 
   const filtered = useMemo(() => {
-    return (enrollments ?? []).filter(e => {
+    return scopedEnrollments.filter(e => {
       const course = asCourse(e)
       if (!course) return false
       const bucket = bucketOf(e)
@@ -50,7 +61,7 @@ export default function MyLearningPage() {
       const matchSearch = course.title.toLowerCase().includes(search.toLowerCase())
       return matchTab && matchSearch
     })
-  }, [enrollments, activeTab, search])
+  }, [scopedEnrollments, activeTab, search])
 
   if (isLoading) {
     return (
@@ -87,7 +98,7 @@ export default function MyLearningPage() {
             All Materials
             <span className="ml-2 inline-flex items-center justify-center rounded-lg px-2 py-0.5 text-sm font-bold"
               style={{ background: '#F3F4F6', color: '#374151' }}>
-              {enrollments?.length ?? 0}
+              {scopedEnrollments.length}
             </span>
           </h2>
 
@@ -104,7 +115,7 @@ export default function MyLearningPage() {
 
         <div className="mb-5 flex items-center gap-1 rounded-2xl p-1 overflow-x-auto scrollbar-none" style={{ background: '#F3F4F6' }}>
           {STATUS_TABS.map(tab => (
-            <motion.button key={tab} onClick={() => setActiveTab(tab)}
+            <MotionButton key={tab} variant="ghost" onClick={() => setActiveTab(tab)}
               className="relative rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
               style={{ color: activeTab === tab ? '#111827' : '#9CA3AF' }}>
               {activeTab === tab && (
@@ -114,7 +125,7 @@ export default function MyLearningPage() {
                   transition={{ type: 'spring', stiffness: 500, damping: 35 }} />
               )}
               <span className="relative z-10">{tab}</span>
-            </motion.button>
+            </MotionButton>
           ))}
         </div>
 
@@ -127,14 +138,14 @@ export default function MyLearningPage() {
                 <BookOpen size={22} style={{ color: '#D1D5DB' }} />
               </div>
               <p className="text-base font-bold" style={{ color: '#111827' }}>
-                {(enrollments?.length ?? 0) === 0 ? "You haven't enrolled yet" : 'No materials match'}
+                {scopedEnrollments.length === 0 ? "You haven't enrolled yet" : 'No materials match'}
               </p>
               <p className="text-sm" style={{ color: '#9CA3AF' }}>
-                {(enrollments?.length ?? 0) === 0
+                {scopedEnrollments.length === 0
                   ? 'Browse the catalogue and pick something that sparks your interest.'
                   : 'Try a different filter or search term.'}
               </p>
-              {(enrollments?.length ?? 0) === 0 && (
+              {scopedEnrollments.length === 0 && (
                 <Link href="/courses" className="mt-1 rounded-xl px-5 py-2 text-sm font-semibold transition-colors hover:opacity-90"
                   style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A' }}>
                   Browse courses
@@ -201,11 +212,12 @@ function ContinueCard({ enrollment }: { enrollment: MyEnrollment }) {
             </div>
           </div>
           <Link href={href}>
-            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-              className="mt-3 rounded-xl px-4 py-1.5 text-xs font-bold text-white"
-              style={{ background: '#111827' }}>
+            <MotionButton whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+              variant="ghost"
+              size="sm"
+              className="mt-3 rounded-xl px-4 py-1.5 text-xs font-bold !bg-[#111827] !text-white">
               Continue
-            </motion.button>
+            </MotionButton>
           </Link>
         </div>
       </div>

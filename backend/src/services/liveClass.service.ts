@@ -26,7 +26,7 @@ export class LiveClassService {
 
   /* ── Public list — slug-based for the course page ─── */
   /* Admin — list all live classes across all courses */
-  async listAll(filter: { status?: string; limit?: number } = {}): Promise<ILiveClass[]> {
+  async listAll(filter: { status?: string; limit?: number; courseIds?: string[] } = {}): Promise<ILiveClass[]> {
     return this.liveRepo.listAll(filter)
   }
 
@@ -62,7 +62,7 @@ export class LiveClassService {
   }
 
   /* ── Upcoming feed — all sessions, annotated with isEnrolled ─────────────── */
-  async listUpcomingForUser(userId: string, limit = 50): Promise<(ILiveClass & { isEnrolled: boolean })[]> {
+  async listUpcomingForUser(userId: string, limit = 50, categoryFilter?: string): Promise<(ILiveClass & { isEnrolled: boolean })[]> {
     // Find which courses the user has purchased so we can annotate isEnrolled
     const enrollments = await this.enrollRepo.listForUser(userId)
     const enrolledCourseIds = new Set(
@@ -73,8 +73,18 @@ export class LiveClassService {
         .filter(Boolean),
     )
 
-    // Return ALL upcoming sessions (no enrollment gate)
-    const sessions = await this.liveRepo.listAllUpcoming(limit)
+    // If student has a category, restrict to that category's courses
+    let courseIds: string[] | undefined
+    if (categoryFilter) {
+      const { CourseModel } = await import('@/models/schema.ts')
+      const courses = await CourseModel.find({ program: categoryFilter }, { _id: 1 }).lean()
+      courseIds = courses.map((c: any) => String(c._id))
+      // No courses in this category → return empty rather than showing all sessions
+      if (courseIds.length === 0) return []
+    }
+
+    // Return upcoming sessions (optionally filtered by category's courseIds)
+    const sessions = await this.liveRepo.listAllUpcoming(limit, courseIds)
 
     return sessions
       .slice()

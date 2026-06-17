@@ -25,7 +25,7 @@ export const courseKeys = {
 
 /* ─── List ───────────────────────────────────────── */
 export function useCourses(params: {
-  page?: number; per_page?: number; search?: string; status?: string; sort?: string
+  page?: number; per_page?: number; search?: string; status?: string; sort?: string; program?: string
 } = {}) {
   return useQuery({
     queryKey: courseKeys.list(params),
@@ -56,11 +56,12 @@ export function useCourse(id: string) {
 /* Map the form's "level: ''" to "level: undefined" so the optional enum
    on the backend accepts it. */
 function normalizeFormData(data: Partial<CourseFormValues>) {
-  const { level, categoryId, tags, ...rest } = data
+  const { level, categoryId, program, tags, ...rest } = data
   return {
     ...rest,
-    ...(level !== undefined && level !== '' ? { level } : {}),
+    ...(level    !== undefined && level    !== '' ? { level }    : {}),
     ...(categoryId !== undefined && categoryId !== '' ? { categoryId } : {}),
+    ...(program  !== undefined && program  !== '' ? { program }  : {}),
     ...(tags !== undefined ? { tags } : {}),
   }
 }

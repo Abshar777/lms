@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from 'react'
 import { motion, AnimatePresence }        from 'framer-motion'
 import { Upload, X, CheckCircle2, Film, Image as ImageIcon, AlertCircle } from 'lucide-react'
 import { useImageUpload, usePresignedUpload } from '@/lib/api/upload'
+import { Button } from '@/components/ui/button'
 
 /* ── Types ─────────────────────────────────────────────────── */
 export type FileUploadType = 'image' | 'video' | 'any'
@@ -198,12 +199,14 @@ export function FileUpload({
                 <span className="text-xs font-medium" style={{ color: '#0ECC8E' }}>Upload complete</span>
               </div>
               {!disabled && (
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={(e) => { e.stopPropagation(); clear() }}
-                  className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full transition-colors hover:bg-red-50"
+                  className="absolute right-2 top-2 h-6 w-6 rounded-full hover:bg-red-50"
                   style={{ color: '#9CA3AF' }}>
                   <X size={12} />
-                </button>
+                </Button>
               )}
             </motion.div>
           )}

@@ -503,6 +503,90 @@ export async function sendBookingCancelledByStudent(
   await sender.send({ to, subject, html, text: `Your booking for ${sessionTitle} on ${date} has been cancelled. Book again: ${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/class-bookings` })
 }
 
+/* ─── Enrollment approval emails ────────────────── */
+
+const CATEGORY_LABEL: Record<string, string> = {
+  '4x-trading':        '4x Trading',
+  'digital-marketing': 'Digital Marketing',
+}
+
+export async function sendEnrollmentApproved(
+  to: string,
+  name: string,
+  category: string,
+): Promise<void> {
+  const prog = CATEGORY_LABEL[category] ?? category
+  const subject = `Your ${prog} access has been approved!`
+  const dashUrl = `${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/my-learning`
+  const html = wrap(subject, `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">You're in! 🎉</h2>
+    <p>Hi ${escapeHtml(name)},</p>
+    <p>Great news — your access to the <strong>${escapeHtml(prog)}</strong> program has been approved. You can now book and join live sessions.</p>
+    <p style="margin:24px 0">
+      <a href="${dashUrl}" style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
+        Go to my learning →
+      </a>
+    </p>
+  `)
+  await sender.send({ to, subject, html, text: `Your ${prog} program access has been approved. Visit ${dashUrl} to get started.` })
+}
+
+export async function sendEnrollmentCancelled(
+  to: string,
+  name: string,
+  category: string,
+  reason: string,
+): Promise<void> {
+  const prog = CATEGORY_LABEL[category] ?? category
+  const subject = `Update on your ${prog} access request`
+  const html = wrap(subject, `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">Access request update</h2>
+    <p>Hi ${escapeHtml(name)},</p>
+    <p>We've reviewed your access request for the <strong>${escapeHtml(prog)}</strong> program.</p>
+    <div style="background:#FEF2F2;border-left:4px solid #EF4444;padding:16px 20px;border-radius:0 12px 12px 0;margin:20px 0">
+      <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#DC2626;text-transform:uppercase;letter-spacing:0.05em">Access not approved</p>
+      <p style="margin:0;font-size:14px;color:#374151">${escapeHtml(reason)}</p>
+    </div>
+    <p>If you believe this is a mistake or have any questions, please reach out to our support team and we'll be happy to help.</p>
+  `)
+  await sender.send({ to, subject, html, text: `Your ${prog} access request was not approved. Reason: ${reason}` })
+}
+
+export async function sendNewEnrollmentRequestToAdmin(
+  to: string,
+  adminName: string,
+  studentName: string,
+  studentEmail: string,
+  category: string,
+): Promise<void> {
+  const prog = CATEGORY_LABEL[category] ?? category
+  const subject = `New ${prog} signup — approval needed`
+  const requestsUrl = `${process.env['ADMIN_URL'] ?? 'http://localhost:3001'}/enrollment-requests`
+  const html = wrap(subject, `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">New student signup 🔔</h2>
+    <p>Hi ${escapeHtml(adminName)},</p>
+    <p>A new student has signed up for the <strong>${escapeHtml(prog)}</strong> program and is waiting for your approval.</p>
+    <table cellpadding="0" cellspacing="0" style="margin:18px 0;background:#F4F5F8;border-radius:12px;padding:16px;width:100%">
+      <tr><td style="font-size:14px;color:#374151;padding:4px 0">
+        <strong>Name:</strong> ${escapeHtml(studentName)}
+      </td></tr>
+      <tr><td style="font-size:14px;color:#374151;padding:4px 0">
+        <strong>Email:</strong> ${escapeHtml(studentEmail)}
+      </td></tr>
+      <tr><td style="font-size:14px;color:#374151;padding:4px 0">
+        <strong>Program:</strong> ${escapeHtml(prog)}
+      </td></tr>
+    </table>
+    <p>Review the request and approve or deny access in the admin panel.</p>
+    <p style="margin:24px 0">
+      <a href="${requestsUrl}" style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
+        Review request →
+      </a>
+    </p>
+  `)
+  await sender.send({ to, subject, html, text: `New ${prog} signup from ${studentName} (${studentEmail}). Review at ${requestsUrl}` })
+}
+
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]!))
 }

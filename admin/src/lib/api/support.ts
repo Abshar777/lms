@@ -4,6 +4,7 @@ import { api } from '@/lib/axios'
 
 export type SupportStatus   = 'open' | 'pending' | 'resolved' | 'closed'
 export type SupportCategory = 'technical' | 'billing' | 'course' | 'account' | 'other'
+export type SupportProgram  = '4x-trading' | 'digital-marketing' | 'all'
 
 export interface SupportMessage {
   _id?:       string
@@ -20,6 +21,7 @@ export interface SupportTicket {
   userId:        SupportUser | string
   subject:       string
   category:      SupportCategory
+  program?:      '4x-trading' | 'digital-marketing'
   status:        SupportStatus
   messages:      SupportMessage[]
   lastMessageAt: string
@@ -28,22 +30,30 @@ export interface SupportTicket {
   createdAt:     string
 }
 
-export interface SupportStats { open: number; pending: number; resolved: number; closed: number; unread: number }
+export interface SupportStats {
+  total:    number
+  open:     number
+  pending:  number
+  resolved: number
+  closed:   number
+  unread:   number
+}
 
 export const supportKeys = {
   list:  (p: object) => ['admin', 'support', p] as const,
   one:   (id: string) => ['admin', 'support', 'ticket', id] as const,
-  stats: ['admin', 'support', 'stats'] as const,
+  stats: (p?: string) => ['admin', 'support', 'stats', p ?? 'all'] as const,
 }
 
 /* GET /support/admin */
-export function useAdminTickets(filter: { status?: string; search?: string } = {}) {
+export function useAdminTickets(filter: { status?: string; search?: string; program?: string } = {}) {
   return useQuery({
     queryKey: supportKeys.list(filter),
     queryFn:  async () => {
       const params: Record<string, string> = {}
       if (filter.status && filter.status !== 'all') params.status = filter.status
       if (filter.search?.trim()) params.search = filter.search.trim()
+      if (filter.program && filter.program !== 'all') params.program = filter.program
       const res = await api.get<{ success: true; data: SupportTicket[] }>('/support/admin', { params })
       return res.data.data
     },
@@ -52,10 +62,15 @@ export function useAdminTickets(filter: { status?: string; search?: string } = {
 }
 
 /* GET /support/admin/stats */
-export function useSupportStats() {
+export function useSupportStats(program?: string) {
   return useQuery({
-    queryKey: supportKeys.stats,
-    queryFn:  async () => (await api.get<{ success: true; data: SupportStats }>('/support/admin/stats')).data.data,
+    queryKey: supportKeys.stats(program),
+    queryFn:  async () => {
+      const params: Record<string, string> = {}
+      if (program && program !== 'all') params.program = program
+      const res = await api.get<{ success: true; data: SupportStats }>('/support/admin/stats', { params })
+      return res.data.data
+    },
     staleTime: 10_000,
   })
 }

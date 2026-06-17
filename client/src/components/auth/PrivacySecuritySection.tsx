@@ -12,6 +12,7 @@ import {
   type ActiveSession,
 } from '@/lib/api/user'
 import { useTotpStatus, useTotpSetup, useTotpEnable, useTotpDisable } from '@/lib/api/totp'
+import { Button } from '@/components/ui/button'
 
 function fmtRel(iso?: string): string {
   if (!iso) return '—'
@@ -146,11 +147,15 @@ function TwoFactorSection() {
       </AnimatePresence>
 
       {!enabled && !setupData && (
-        <button onClick={handleSetup} disabled={setup.isPending}
-          className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-white transition-all disabled:opacity-60 hover:opacity-90"
-          style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)', boxShadow: '0 4px 14px rgba(255,107,26,0.25)' }}>
+        <Button
+          variant="default"
+          size="default"
+          onClick={handleSetup}
+          disabled={setup.isPending}
+          className="flex items-center gap-2"
+        >
           {setup.isPending ? <><Loader2 size={13} className="animate-spin" />Setting up…</> : <><KeyRound size={13} />Enable 2FA</>}
-        </button>
+        </Button>
       )}
 
       {/* ── Setup flow ── */}
@@ -181,12 +186,16 @@ function TwoFactorSection() {
                     style={{ background: '#F4F5F8', color: '#111827', letterSpacing: '0.2em' }}>
                     {setupData.secret.match(/.{1,4}/g)?.join(' ')}
                   </code>
-                  <button onClick={copySecret}
-                    className="flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-semibold transition-colors hover:bg-gray-100"
-                    style={{ color: copied ? '#22C55E' : '#6B7280' }}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={copySecret}
+                    className="flex items-center gap-1"
+                    style={{ color: copied ? '#22C55E' : '#6B7280' }}
+                  >
                     {copied ? <Check size={12} /> : <Copy size={12} />}
                     {copied ? 'Copied' : 'Copy'}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -207,16 +216,23 @@ function TwoFactorSection() {
                   onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none' }}
                   onKeyDown={e => { if (e.key === 'Enter' && code.length === 6) handleEnable() }}
                 />
-                <button onClick={handleEnable} disabled={code.length !== 6 || enable.isPending}
-                  className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all disabled:opacity-50"
-                  style={{ background: 'linear-gradient(135deg,#22C55E,#16A34A)' }}>
+                <Button
+                  variant="default"
+                  size="default"
+                  onClick={handleEnable}
+                  disabled={code.length !== 6 || enable.isPending}
+                  className="flex items-center gap-1.5 !bg-[#22C55E] hover:!bg-[#16A34A]"
+                >
                   {enable.isPending ? <><Loader2 size={13} className="animate-spin" />Verifying…</> : <><CheckCircle2 size={13} />Verify & enable</>}
-                </button>
-                <button onClick={() => { setSetupData(null); setCode(''); setError(null) }}
-                  className="rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors hover:bg-gray-50"
-                  style={{ color: '#6B7280' }}>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="default"
+                  onClick={() => { setSetupData(null); setCode(''); setError(null) }}
+                  style={{ color: '#6B7280' }}
+                >
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           </motion.div>
@@ -225,11 +241,14 @@ function TwoFactorSection() {
 
       {/* ── Disable flow ── */}
       {enabled && !showDisable && (
-        <button onClick={() => { setShowDisable(true); setError(null) }}
-          className="rounded-xl px-4 py-2 text-sm font-semibold transition-colors hover:bg-red-50"
-          style={{ color: '#EF4444', border: '1px solid rgba(239,68,68,0.20)' }}>
+        <Button
+          variant="outline"
+          size="default"
+          onClick={() => { setShowDisable(true); setError(null) }}
+          className="!text-[#EF4444] !border-[rgba(239,68,68,0.20)] hover:!bg-red-50"
+        >
           Disable 2FA
-        </button>
+        </Button>
       )}
       <AnimatePresence>
         {showDisable && (
@@ -248,17 +267,24 @@ function TwoFactorSection() {
                 onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB' }}
                 onKeyDown={e => { if (e.key === 'Enter' && disablePw) handleDisable() }}
               />
-              <button onClick={handleDisable} disabled={!disablePw || disable.isPending}
-                className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-                style={{ background: '#EF4444' }}>
+              <Button
+                variant="destructive"
+                size="default"
+                onClick={handleDisable}
+                disabled={!disablePw || disable.isPending}
+                className="flex items-center gap-1.5"
+              >
                 {disable.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
                 Disable
-              </button>
-              <button onClick={() => { setShowDisable(false); setDisablePw(''); setError(null) }}
-                className="rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors hover:bg-gray-50"
-                style={{ color: '#6B7280' }}>
+              </Button>
+              <Button
+                variant="ghost"
+                size="default"
+                onClick={() => { setShowDisable(false); setDisablePw(''); setError(null) }}
+                style={{ color: '#6B7280' }}
+              >
                 Cancel
-              </button>
+              </Button>
             </div>
           </motion.div>
         )}
@@ -380,22 +406,35 @@ function SessionRow({ session, onRevoke, revoking }: {
         </div>
       </div>
       {!confirming ? (
-        <button onClick={() => setConfirming(true)} disabled={revoking}
-          className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors hover:bg-red-50"
-          style={{ color: session.isCurrent ? '#6B7280' : '#EF4444' }}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setConfirming(true)}
+          disabled={revoking}
+          className="flex items-center gap-1 hover:!bg-red-50"
+          style={{ color: session.isCurrent ? '#6B7280' : '#EF4444' }}
+        >
           <LogOut size={11} />{session.isCurrent ? 'Sign out' : 'Revoke'}
-        </button>
+        </Button>
       ) : (
         <div className="flex items-center gap-1.5">
-          <button onClick={() => setConfirming(false)}
-            className="rounded-lg px-2 py-1 text-[11px] font-semibold transition-colors hover:bg-gray-50"
-            style={{ color: '#6B7280' }}>Cancel</button>
-          <button onClick={async () => { await onRevoke(); setConfirming(false) }}
-            className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-white"
-            style={{ background: '#EF4444' }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setConfirming(false)}
+            style={{ color: '#6B7280' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={async () => { await onRevoke(); setConfirming(false) }}
+            className="flex items-center gap-1"
+          >
             {revoking ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle2 size={10} />}
             Confirm
-          </button>
+          </Button>
         </div>
       )}
     </div>
@@ -458,11 +497,15 @@ function DangerCard(p: DangerCardProps) {
           <p className="mt-1 text-xs leading-relaxed" style={{ color: '#6B7280' }}>{p.desc}</p>
         </div>
       </div>
-      <button onClick={() => setOpen(true)}
-        className="flex-shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold transition-colors hover:bg-red-50"
-        style={{ color: palette.bg, border: `1px solid ${palette.border}` }}>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setOpen(true)}
+        className="flex-shrink-0 hover:!bg-red-50"
+        style={{ color: palette.bg, borderColor: palette.border }}
+      >
         {p.confirmLabel}
-      </button>
+      </Button>
 
       <AnimatePresence>
         {open && (
@@ -477,11 +520,15 @@ function DangerCard(p: DangerCardProps) {
               transition={{ type: 'spring', stiffness: 360, damping: 28 }}
               className="fixed left-1/2 top-1/2 z-50 w-full max-w-[440px] -translate-x-1/2 -translate-y-1/2 rounded-3xl bg-white p-6"
               style={{ boxShadow: '0 30px 80px rgba(13,15,26,0.18)' }}>
-              <button onClick={() => !pending && !done && setOpen(false)}
-                className="absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-gray-100"
-                style={{ color: '#9CA3AF' }}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => !pending && !done && setOpen(false)}
+                className="absolute right-4 top-4 h-7 w-7"
+                style={{ color: '#9CA3AF' }}
+              >
                 <X size={14} />
-              </button>
+              </Button>
 
               {done ? (
                 <div className="flex flex-col items-center gap-3 py-2 text-center">
@@ -541,18 +588,27 @@ function DangerCard(p: DangerCardProps) {
                   )}
 
                   <div className="mt-5 flex items-center justify-end gap-2">
-                    <button onClick={() => setOpen(false)} disabled={pending}
-                      className="rounded-xl px-4 py-2 text-sm font-semibold transition-colors hover:bg-gray-50"
-                      style={{ color: '#6B7280' }}>
+                    <Button
+                      variant="ghost"
+                      size="default"
+                      onClick={() => setOpen(false)}
+                      disabled={pending}
+                      style={{ color: '#6B7280' }}
+                    >
                       Cancel
-                    </button>
-                    <button onClick={submit} disabled={pending || !password || !typedOk}
-                      className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold text-white transition-opacity disabled:opacity-50"
-                      style={{ background: palette.bg }}>
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="default"
+                      onClick={submit}
+                      disabled={pending || !password || !typedOk}
+                      className="flex items-center gap-1.5"
+                      style={{ background: palette.bg }}
+                    >
                       {pending
                         ? <><Loader2 size={13} className="animate-spin" />Working…</>
                         : p.confirmLabel}
-                    </button>
+                    </Button>
                   </div>
                 </>
               )}

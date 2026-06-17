@@ -76,7 +76,10 @@ export class LiveClassController {
   upcomingForMe = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const limit = Math.min(Number(req.query['limit'] ?? 10), 100)
-      const docs  = await this.service.listUpcomingForUser(req.user!.id, limit)
+      const { UserModel } = await import('@/models/schema.ts')
+      const user     = await UserModel.findById(req.user!.id).select('category').lean()
+      const category = (user as any)?.category as string | undefined
+      const docs     = await this.service.listUpcomingForUser(req.user!.id, limit, category)
       sendSuccess(res, docs.map(toDTO))
     } catch (err) { next(err) }
   }
@@ -119,15 +122,33 @@ export class LiveClassController {
     try {
       const status = typeof req.query['status'] === 'string' ? req.query['status'] : 'all'
       const limit  = Math.min(Number(req.query['limit'] ?? 100), 200)
-      const docs   = await this.service.listAll({ status, limit })
+      const scope  = req.user?.categoryScope
+      let courseIds: string[] | undefined
+      if (scope) {
+        const CourseModel = (await import('@/models/schema.ts')).CourseModel
+        const courses = await CourseModel.find({ program: scope }, { _id: 1 }).lean()
+        courseIds = courses.map((c: any) => String(c._id))
+        // No courses in this category → return empty, don't leak other categories' sessions
+        if (courseIds.length === 0) { sendSuccess(res, []); return }
+      }
+      const docs = await this.service.listAll({ status, limit, courseIds })
       sendSuccess(res, docs.map(toDTO))
     } catch (err) { next(err) }
   }
 
   adminGetById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const id   = String(req.params['id'] ?? '')
-      const live = await this.service.getById(id)
+      const id    = String(req.params['id'] ?? '')
+      const scope = req.user?.categoryScope as string | undefined
+      const live  = await this.service.getById(id)
+      if (scope) {
+        const { CourseModel } = await import('@/models/schema.ts')
+        const courseIdStr = isPopulated(live.courseId as any) ? (live.courseId as any).id : String(live.courseId)
+        const course = await CourseModel.findById(courseIdStr).select('program').lean()
+        if (!course || (course as any).program !== scope) {
+          res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Access denied.' } }); return
+        }
+      }
       sendSuccess(res, toDTO(live))
     } catch (err) { next(err) }
   }
@@ -135,6 +156,14 @@ export class LiveClassController {
   adminListForCourse = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const courseId = String(req.params['courseId'] ?? '')
+      const scope    = req.user?.categoryScope as string | undefined
+      if (scope) {
+        const { CourseModel } = await import('@/models/schema.ts')
+        const course = await CourseModel.findById(courseId).select('program').lean()
+        if (!course || (course as any).program !== scope) {
+          res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Access denied.' } }); return
+        }
+      }
       const docs = await this.service.listForCourseId(courseId)
       sendSuccess(res, docs.map(toDTO))
     } catch (err) { next(err) }
@@ -152,6 +181,19 @@ export class LiveClassController {
         instructorId?:    string
         sectionId?:       string
         sessionCapacity?: number
+      }
+
+      /* Category scope check — 4x_admin / digital_marketing_admin can only create for their program */
+      const scope = req.user?.categoryScope as string | undefined
+      if (scope) {
+        const { CourseModel } = await import('@/models/schema.ts')
+        const course = await CourseModel.findById(dto.courseId).select('program').lean()
+        if (!course) {
+          res.status(404).json({ success: false, error: { code: 'COURSE_NOT_FOUND', message: 'Course not found' } }); return
+        }
+        if ((course as any).program !== scope) {
+          res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You can only create sessions for your category courses.' } }); return
+        }
       }
 
       const sessionType = dto.type ?? 'external'
@@ -184,7 +226,17 @@ export class LiveClassController {
 
   adminUpdate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const id  = String(req.params['id'] ?? '')
+      const id    = String(req.params['id'] ?? '')
+      const scope = req.user?.categoryScope as string | undefined
+      if (scope) {
+        const existing = await this.service.getById(id)
+        const { CourseModel } = await import('@/models/schema.ts')
+        const courseIdStr = isPopulated(existing.courseId as any) ? (existing.courseId as any).id : String(existing.courseId)
+        const course = await CourseModel.findById(courseIdStr).select('program').lean()
+        if (!course || (course as any).program !== scope) {
+          res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You can only edit sessions for your category courses.' } }); return
+        }
+      }
       const dto = req.body as Record<string, unknown>
       const data: Parameters<LiveClassService['update']>[1] = {}
       if (typeof dto['title']           === 'string')  data.title           = dto['title']
@@ -239,7 +291,18 @@ export class LiveClassController {
 
   adminDelete = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      await this.service.delete(String(req.params['id'] ?? ''))
+      const id    = String(req.params['id'] ?? '')
+      const scope = req.user?.categoryScope as string | undefined
+      if (scope) {
+        const live = await this.service.getById(id)
+        const { CourseModel } = await import('@/models/schema.ts')
+        const courseIdStr = isPopulated(live.courseId as any) ? (live.courseId as any).id : String(live.courseId)
+        const course = await CourseModel.findById(courseIdStr).select('program').lean()
+        if (!course || (course as any).program !== scope) {
+          res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You can only delete sessions for your category courses.' } }); return
+        }
+      }
+      await this.service.delete(id)
       sendSuccess(res, null, 'Live class deleted')
     } catch (err) { next(err) }
   }

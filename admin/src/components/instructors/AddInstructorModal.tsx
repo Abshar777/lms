@@ -19,6 +19,7 @@ const schema = z.object({
   headline: z.string().max(255).optional(),
   bio:      z.string().max(2000).optional(),
   role:     z.enum(['instructor', 'admin']).default('instructor'),
+  category: z.enum(['4x-trading', 'digital-marketing', '']).optional(),
 })
 type Values = z.infer<typeof schema>
 
@@ -80,6 +81,7 @@ export function AddInstructorModal({ open, onClose }: AddInstructorModalProps) {
       role:     values.role,
       headline: values.headline || undefined,
       bio:      values.bio      || undefined,
+      category: (values.category || undefined) as '4x-trading' | 'digital-marketing' | undefined,
     })
     setSuccess(true)
     setTimeout(() => {
@@ -189,6 +191,16 @@ export function AddInstructorModal({ open, onClose }: AddInstructorModalProps) {
                     </select>
                   </Field>
                 </div>
+
+                {/* Program Category */}
+                <Field label="Program Category" error={errors.category?.message}>
+                  <select {...register('category')}
+                    className="w-full rounded-xl border border-[#E4E7ED] bg-[#F8F9FB] py-2.5 pl-3 pr-4 text-sm text-gray-800 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100">
+                    <option value="">Select category…</option>
+                    <option value="4x-trading">4x Trading</option>
+                    <option value="digital-marketing">Digital Marketing</option>
+                  </select>
+                </Field>
 
                 {/* Email */}
                 <Field label="Email address *" error={errors.email?.message}>

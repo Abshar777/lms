@@ -2,6 +2,7 @@
 
 import { Bookmark, Trash2, Loader2, Clock } from 'lucide-react'
 import { useLessonBookmarks, useDeleteBookmark } from '@/lib/api/bookmarks'
+import { Button } from '@/components/ui/button'
 
 function fmtTime(secs: number) {
   const h = Math.floor(secs / 3600)
@@ -52,9 +53,10 @@ export function BookmarksPanel({ lessonId, onSeek }: Props) {
             <div key={bm.id}
               className="group flex items-center gap-2 rounded-xl px-3 py-2 transition-colors"
               style={{ background: '#F9FAFB', border: '1px solid #F0F1F5' }}>
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => onSeek?.(bm.timeSecs)}
-                className="flex flex-1 items-center gap-2.5 text-left"
+                className="flex flex-1 items-center gap-2.5 text-left h-auto p-0"
                 title="Jump to this timestamp">
                 <span className="flex h-7 w-14 flex-shrink-0 items-center justify-center rounded-lg text-[11px] font-mono font-bold"
                   style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A' }}>
@@ -63,13 +65,15 @@ export function BookmarksPanel({ lessonId, onSeek }: Props) {
                 <span className="flex-1 truncate text-xs font-medium" style={{ color: '#374151' }}>
                   {bm.label || `Bookmark at ${fmtTime(bm.timeSecs)}`}
                 </span>
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => del.mutate(bm.id)}
                 disabled={del.isPending}
-                className="flex-shrink-0 rounded-lg p-1 opacity-0 transition-opacity group-hover:opacity-100 disabled:opacity-40">
+                className="flex-shrink-0 rounded-lg opacity-0 transition-opacity group-hover:opacity-100 disabled:opacity-40">
                 <Trash2 size={11} style={{ color: '#EF4444' }} />
-              </button>
+              </Button>
             </div>
           ))}
         </div>

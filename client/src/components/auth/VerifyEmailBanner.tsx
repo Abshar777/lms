@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mail, X, Loader2, CheckCircle2 } from 'lucide-react'
 import { useCurrentUser, resendVerification } from '@/lib/api/user'
+import { Button } from '@/components/ui/button'
 
 const STORAGE_KEY = 'lms-verify-banner-dismissed-at'
 
@@ -68,23 +69,27 @@ export function VerifyEmailBanner() {
             {error && <> <span style={{ color: '#EF4444' }}>{error}</span></>}
           </p>
         </div>
-        <button
+        <Button
+          variant="default"
+          size="sm"
           onClick={resend}
           disabled={sending || sent}
-          className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-white transition-all disabled:opacity-60"
-          style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+          className="flex items-center gap-1.5 rounded-xl text-xs font-bold">
           {sending
             ? <><Loader2 size={12} className="animate-spin" />Sending…</>
             : sent
               ? <><CheckCircle2 size={12} />Sent</>
               : 'Resend email'}
-        </button>
-        <button onClick={dismiss}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={dismiss}
           aria-label="Dismiss"
-          className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/60"
+          className="rounded-lg hover:bg-white/60"
           style={{ color: '#9CA3AF' }}>
           <X size={13} />
-        </button>
+        </Button>
       </motion.div>
     </AnimatePresence>
   )

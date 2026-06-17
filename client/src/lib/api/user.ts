@@ -13,6 +13,9 @@ export interface CurrentUser {
   websiteUrl?: string
   isVerified:  boolean
   isActive:    boolean
+  category?:   '4x-trading' | 'digital-marketing'
+  enrollmentStatus?:            'pending' | 'approved' | 'cancelled'
+  enrollmentCancellationReason?: string
   createdAt:   string
   updatedAt:   string
 }

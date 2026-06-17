@@ -10,6 +10,7 @@ import {
   useMyTickets, useTicket, useCreateTicket, useReplyTicket,
   type SupportTicket, type SupportStatus, type SupportCategory,
 } from '@/lib/api/support'
+import { Button } from '@/components/ui/button'
 
 const CATEGORIES: { value: SupportCategory; label: string }[] = [
   { value: 'technical', label: 'Technical issue' },
@@ -55,11 +56,14 @@ export default function SupportPage() {
             Report a problem or ask a question — our team will reply right here.
           </p>
         </div>
-        <button onClick={() => { setComposing(true); setSelectedId(null) }}
-          className="flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold text-white"
-          style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)', boxShadow: '0 4px 14px rgba(255,107,26,0.3)' }}>
+        <Button
+          variant="default"
+          size="default"
+          onClick={() => { setComposing(true); setSelectedId(null) }}
+          className="flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold"
+        >
           <Plus size={15} /> New request
-        </button>
+        </Button>
       </motion.div>
 
       <div className="flex gap-5 items-start">
@@ -106,21 +110,26 @@ export default function SupportPage() {
 function TicketRow({ ticket, active, onClick }: { ticket: SupportTicket; active: boolean; onClick: () => void }) {
   const s = STATUS_STYLE[ticket.status]
   return (
-    <button onClick={onClick}
-      className="w-full rounded-2xl p-3 text-left transition-all"
+    <Button
+      variant="ghost"
+      onClick={onClick}
+      className="w-full rounded-2xl p-3 text-left transition-all h-auto justify-start"
       style={{
         background: active ? 'rgba(255,107,26,0.06)' : 'white',
         border: `1px solid ${active ? 'rgba(255,107,26,0.3)' : '#E5E7EB'}`,
-      }}>
-      <div className="flex items-start justify-between gap-2">
-        <p className="line-clamp-1 text-sm font-bold" style={{ color: '#111827' }}>{ticket.subject}</p>
-        {ticket.userUnread && <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full" style={{ background: '#FF6B1A' }} />}
+      }}
+    >
+      <div className="w-full">
+        <div className="flex items-start justify-between gap-2">
+          <p className="line-clamp-1 text-sm font-bold" style={{ color: '#111827' }}>{ticket.subject}</p>
+          {ticket.userUnread && <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full" style={{ background: '#FF6B1A' }} />}
+        </div>
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          <span className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: s.bg, color: s.color }}>{s.label}</span>
+          <span className="text-[10px]" style={{ color: '#9CA3AF' }}>{fmtWhen(ticket.lastMessageAt)}</span>
+        </div>
       </div>
-      <div className="mt-1.5 flex items-center justify-between gap-2">
-        <span className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: s.bg, color: s.color }}>{s.label}</span>
-        <span className="text-[10px]" style={{ color: '#9CA3AF' }}>{fmtWhen(ticket.lastMessageAt)}</span>
-      </div>
-    </button>
+    </Button>
   )
 }
 
@@ -150,20 +159,35 @@ function NewTicketForm({ onCreated, onCancel }: { onCreated: (id: string) => voi
     <form onSubmit={submit} className="flex flex-col gap-4 p-5">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-bold" style={{ color: '#111827' }}>New support request</h2>
-        <button type="button" onClick={onCancel} className="flex h-8 w-8 items-center justify-center rounded-xl hover:bg-gray-100" style={{ color: '#9CA3AF' }}><X size={16} /></button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          onClick={onCancel}
+          className="h-8 w-8 rounded-xl"
+          style={{ color: '#9CA3AF' }}
+        >
+          <X size={16} />
+        </Button>
       </div>
 
       <div>
         <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#9CA3AF' }}>Topic</label>
         <div className="flex flex-wrap gap-2">
           {CATEGORIES.map(c => (
-            <button key={c.value} type="button" onClick={() => setCategory(c.value)}
-              className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
+            <Button
+              key={c.value}
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setCategory(c.value)}
+              className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-all h-auto"
               style={category === c.value
                 ? { background: 'rgba(255,107,26,0.1)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.3)' }
-                : { background: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}>
+                : { background: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}
+            >
               {c.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -184,12 +208,25 @@ function NewTicketForm({ onCreated, onCancel }: { onCreated: (id: string) => voi
       {error && <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>}
 
       <div className="flex items-center justify-end gap-2">
-        <button type="button" onClick={onCancel} className="rounded-xl px-4 py-2 text-sm font-medium" style={{ color: '#6B7280' }}>Cancel</button>
-        <button type="submit" disabled={create.isPending || !subject.trim() || !message.trim()}
-          className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-          style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="default"
+          onClick={onCancel}
+          className="rounded-xl px-4 py-2 text-sm font-medium"
+          style={{ color: '#6B7280' }}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          variant="default"
+          size="default"
+          disabled={create.isPending || !subject.trim() || !message.trim()}
+          className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold disabled:opacity-50"
+        >
           {create.isPending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Submit request
-        </button>
+        </Button>
       </div>
     </form>
   )
@@ -221,7 +258,15 @@ function TicketThread({ ticketId, onBack }: { ticketId: string; onBack: () => vo
     <div className="flex h-full flex-col" style={{ minHeight: 460 }}>
       {/* Thread header */}
       <div className="flex items-center gap-3 border-b p-4" style={{ borderColor: '#F3F4F6' }}>
-        <button onClick={onBack} className="flex h-8 w-8 items-center justify-center rounded-xl hover:bg-gray-100 lg:hidden" style={{ color: '#9CA3AF' }}><ChevronLeft size={16} /></button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={onBack}
+          className="h-8 w-8 rounded-xl lg:hidden"
+          style={{ color: '#9CA3AF' }}
+        >
+          <ChevronLeft size={16} />
+        </Button>
         <div className="min-w-0 flex-1">
           <p className="line-clamp-1 text-sm font-bold" style={{ color: '#111827' }}>{ticket.subject}</p>
           <p className="text-[11px] capitalize" style={{ color: '#9CA3AF' }}>{ticket.category}</p>
@@ -264,11 +309,15 @@ function TicketThread({ ticketId, onBack }: { ticketId: string; onBack: () => vo
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(e) } }}
             placeholder="Write a reply…" className="flex-1 resize-none rounded-xl px-3 py-2.5 text-sm outline-none focus:border-orange-400"
             style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', color: '#111827', maxHeight: 120 }} />
-          <button type="submit" disabled={reply.isPending || !body.trim()}
-            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-white disabled:opacity-50"
-            style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+          <Button
+            type="submit"
+            variant="default"
+            size="icon"
+            disabled={reply.isPending || !body.trim()}
+            className="h-10 w-10 flex-shrink-0 rounded-xl disabled:opacity-50"
+          >
             {reply.isPending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-          </button>
+          </Button>
         </form>
       )}
     </div>

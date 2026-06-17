@@ -11,6 +11,7 @@ import {
 import { useUIStore } from '@/store/ui.store'
 import { useCurrentUser, useUpdateProfile, useChangePassword, logout as apiLogout } from '@/lib/api/user'
 import { PrivacySecuritySection } from '@/components/auth/PrivacySecuritySection'
+import { Button, MotionButton } from '@/components/ui/button'
 
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.05 } } }
 const fadeUp  = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 280, damping: 26 } } }
@@ -26,13 +27,13 @@ const MENU = [
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
-    <motion.button onClick={onToggle}
-      className="relative flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors"
+    <MotionButton onClick={onToggle} variant="ghost" size="icon"
+      className="relative flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors !p-0 !min-w-0"
       style={{ background: on ? '#FF6B1A' : '#D1D5DB' }}>
       <motion.span animate={{ x: on ? 22 : 2 }}
         transition={{ type: 'spring', stiffness: 500, damping: 35 }}
         className="absolute h-4 w-4 rounded-full bg-white shadow-sm" />
-    </motion.button>
+    </MotionButton>
   )
 }
 
@@ -44,9 +45,9 @@ function LayoutCard({
   preview: React.ReactNode
 }) {
   return (
-    <motion.button whileHover={{ y: -3 }} whileTap={{ scale: 0.98 }}
-      onClick={onSelect}
-      className="relative flex flex-col overflow-hidden rounded-2xl text-left w-full transition-all"
+    <MotionButton whileHover={{ y: -3 }} whileTap={{ scale: 0.98 }}
+      onClick={onSelect} variant="ghost"
+      className="relative flex flex-col overflow-hidden rounded-2xl text-left w-full transition-all h-auto !p-0"
       style={{
         border: selected ? '2px solid #FF6B1A' : '2px solid #E5E7EB',
         boxShadow: selected ? '0 0 0 3px rgba(255,107,26,0.12)' : '0 2px 6px rgba(0,0,0,0.04)',
@@ -62,7 +63,7 @@ function LayoutCard({
           {selected && <Check size={11} color="white" strokeWidth={3} />}
         </div>
       </div>
-    </motion.button>
+    </MotionButton>
   )
 }
 
@@ -225,8 +226,8 @@ function SettingsContent() {
             const Icon  = item.icon
             const isAct = active === item.id
             return (
-              <button key={item.id} onClick={() => setActive(item.id)}
-                className="relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-left transition-colors"
+              <Button key={item.id} onClick={() => setActive(item.id)} variant="ghost"
+                className="relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-left transition-colors justify-start h-auto"
                 style={{ color: isAct ? '#111827' : '#6B7280' }}>
                 {isAct && (
                   <motion.div layoutId="settings-active"
@@ -237,17 +238,17 @@ function SettingsContent() {
                 <Icon size={15} className="relative z-10 flex-shrink-0"
                   style={{ color: isAct ? '#FF6B1A' : '#9CA3AF' }} />
                 <span className="relative z-10">{item.label}</span>
-              </button>
+              </Button>
             )
           })}
         </div>
         <div className="mt-3 pt-3" style={{ borderTop: '1px solid #F3F4F6' }}>
-          <button
-            onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-red-50"
+          <Button
+            onClick={handleLogout} variant="ghost"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-red-50 justify-start h-auto"
             style={{ color: '#EF4444' }}>
             <LogOut size={15} />Logout
-          </button>
+          </Button>
         </div>
       </motion.div>
 
@@ -270,11 +271,12 @@ function SettingsContent() {
                       ? <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
                       : (profile.name?.trim()?.[0]?.toUpperCase() ?? '?')}
                   </div>
-                  <button className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-md"
+                  <Button size="icon-sm" variant="outline"
+                    className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-md !p-0"
                     style={{ border: '1px solid #E5E7EB', color: '#FF6B1A' }}
                     title="Photo upload coming soon">
                     <Camera size={12} />
-                  </button>
+                  </Button>
                 </div>
                 <div>
                   <p className="text-sm font-semibold" style={{ color: '#111827' }}>Profile Photo</p>
@@ -332,13 +334,13 @@ function SettingsContent() {
                 )}
               </AnimatePresence>
               <div className="mt-5 flex items-center justify-end gap-3">
-                <button
-                  type="button"
+                <Button
+                  type="button" variant="outline"
                   onClick={() => user && setProfile({ name: user.name, email: user.email, role: user.headline ?? '', bio: user.bio ?? '' })}
                   className="rounded-xl px-4 py-2 text-sm font-semibold transition-colors hover:bg-gray-50"
-                  style={{ color: '#6B7280', border: '1px solid #E5E7EB' }}>Cancel</button>
-                <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
-                  onClick={handleSave}
+                  style={{ color: '#6B7280', border: '1px solid #E5E7EB' }}>Cancel</Button>
+                <MotionButton whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
+                  onClick={handleSave} variant="default"
                   disabled={updateMutation.isPending || userLoading}
                   className="flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold text-white transition-all disabled:opacity-70"
                   style={{
@@ -350,7 +352,7 @@ function SettingsContent() {
                     : saved
                       ? <><Check size={14} />Saved!</>
                       : 'Save changes'}
-                </motion.button>
+                </MotionButton>
               </div>
             </motion.div>
           )}
@@ -381,11 +383,11 @@ function SettingsContent() {
                       onFocus={e => { e.currentTarget.style.border = '1.5px solid #FF6B1A'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.08)' }}
                       onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none' }}
                     />
-                    <button type="button" onClick={() => setShowCur(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
+                    <Button type="button" variant="ghost" size="icon-sm" onClick={() => setShowCur(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70 h-auto w-auto !p-0"
                       style={{ color: '#9CA3AF' }}>
                       {showCur ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -403,11 +405,11 @@ function SettingsContent() {
                       onFocus={e => { e.currentTarget.style.border = '1.5px solid #FF6B1A'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.08)' }}
                       onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none' }}
                     />
-                    <button type="button" onClick={() => setShowNew(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
+                    <Button type="button" variant="ghost" size="icon-sm" onClick={() => setShowNew(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70 h-auto w-auto !p-0"
                       style={{ color: '#9CA3AF' }}>
                       {showNew ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -438,8 +440,8 @@ function SettingsContent() {
               </AnimatePresence>
 
               <div className="mt-5 flex justify-end">
-                <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
-                  onClick={handleChangePassword}
+                <MotionButton whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
+                  onClick={handleChangePassword} variant="default"
                   disabled={changePasswordMutation.isPending || !pwForm.current || !pwForm.next || !pwForm.confirm}
                   className="flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold text-white transition-all disabled:opacity-50"
                   style={{
@@ -451,7 +453,7 @@ function SettingsContent() {
                     : pwSaved
                       ? <><Check size={14} />Password updated!</>
                       : <><Lock size={14} />Update password</>}
-                </motion.button>
+                </MotionButton>
               </div>
             </motion.div>
           )}

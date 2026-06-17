@@ -21,6 +21,7 @@ import {
 } from '@/lib/api/notifications'
 import { AIChatPanel } from '@/components/layout/AIChatPanel'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { Button, MotionButton } from '@/components/ui/button'
 
 /* Nav tabs shown when sidebar layout is active (minimal — sidebar handles main nav) */
 const SIDEBAR_TABS = [
@@ -176,13 +177,15 @@ export function ClientTopbar() {
         <div className="flex h-[60px] items-center gap-3 px-4 sm:px-6" style={{ borderBottom: '1px solid #F3F4F6' }}>
 
           {/* Hamburger — always shown on mobile for the mobile drawer */}
-          <button
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={() => setMobileNav(true)}
-            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-orange-50 lg:hidden"
+            className="flex-shrink-0 hover:bg-orange-50 lg:hidden"
             style={{ color: '#FF6B1A' }}
             aria-label="Open menu">
             <Menu size={18} />
-          </button>
+          </Button>
 
           {/* Logo — always visible (no desktop sidebar) */}
           <div className="flex items-center gap-2 mr-4 flex-shrink-0">
@@ -229,24 +232,28 @@ export function ClientTopbar() {
                   color: '#111827',
                 }} />
               {query && (
-                <button type="button"
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() => {
                     setQuery(''); setDebouncedQ('')
                     if (isSearchPage) router.replace('/search')
                     inputRef.current?.focus()
                   }}
-                  className="absolute right-9 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-md hover:bg-gray-200 transition-colors"
+                  className="absolute right-9 top-1/2 -translate-y-1/2 h-5 w-5 hover:bg-gray-200"
                   style={{ color: '#9CA3AF' }}>
                   <X size={11} />
-                </button>
+                </Button>
               )}
-              {/* <motion.button
+              {/* <MotionButton
               type="submit"
+              variant="default"
+              size="icon-sm"
               whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-lg text-white"
-              style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)', boxShadow: '0 2px 8px rgba(255,107,26,0.30)' }}>
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 w-7">
               <Search size={12} />
-            </motion.button> */}
+            </MotionButton> */}
             </form>
 
             {/* ── Typeahead dropdown (only on non-search pages) ── */}
@@ -330,20 +337,23 @@ export function ClientTopbar() {
 
           <div className="ml-auto flex items-center gap-1.5">
             {/* Ask AI — orange primary */}
-            <motion.button
+            <MotionButton
+              variant="default"
               onClick={() => setAiChatOpen(v => !v)}
               whileHover={{ scale: 1.02, boxShadow: '0 6px 20px rgba(255,107,26,0.35)' }} whileTap={{ scale: 0.97 }}
-              className="hidden sm:flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold text-white"
-              style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)', boxShadow: '0 3px 12px rgba(255,107,26,0.28)' }}>
+              className="hidden sm:flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold">
               <Sparkles size={12} />Ask AI
-            </motion.button>
+            </MotionButton>
 
             {/* Messages */}
-            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              className="flex h-9 w-9 items-center justify-center rounded-xl transition-colors hover:bg-orange-50"
+            <MotionButton
+              variant="ghost"
+              size="icon"
+              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              className="hover:bg-orange-50"
               style={{ color: '#FF6B1A' }}>
               <MessageSquare size={16} />
-            </motion.button>
+            </MotionButton>
 
             {/* Cart */}
             <Link href="/cart">
@@ -368,9 +378,12 @@ export function ClientTopbar() {
 
             {/* Notifications */}
             <div className="relative">
-              <motion.button onClick={() => setNotifOpen(v => !v)}
+              <MotionButton
+                variant="ghost"
+                size="icon"
+                onClick={() => setNotifOpen(v => !v)}
                 whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                className="relative flex h-9 w-9 items-center justify-center rounded-xl transition-colors hover:bg-orange-50"
+                className="relative hover:bg-orange-50"
                 style={{ color: '#FF6B1A' }}>
                 <Bell size={16} />
                 {unread > 0 && (
@@ -381,7 +394,7 @@ export function ClientTopbar() {
                     {unread}
                   </motion.span>
                 )}
-              </motion.button>
+              </MotionButton>
 
               <AnimatePresence>
                 {notifOpen && (
@@ -396,13 +409,14 @@ export function ClientTopbar() {
                       <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #F3F4F6' }}>
                         <span className="text-sm font-semibold" style={{ color: '#111827' }}>Notifications</span>
                         {unread > 0 && (
-                          <button
+                          <Button
+                            variant="link"
                             onClick={() => markAllRead.mutate()}
                             disabled={markAllRead.isPending}
-                            className="text-[11px] font-semibold transition-opacity hover:opacity-70 disabled:opacity-50"
+                            className="text-[11px] font-semibold p-0 h-auto"
                             style={{ color: '#FF6B1A' }}>
                             Mark all read
-                          </button>
+                          </Button>
                         )}
                       </div>
                       {notifications.length === 0 && (

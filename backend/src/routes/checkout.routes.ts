@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { z } from 'zod'
-import { authenticate } from '@/middleware/auth.middleware.ts'
+import { authenticate, requireEnrollmentApproval } from '@/middleware/auth.middleware.ts'
 import { validate } from '@/middleware/validate.middleware.ts'
 import { OrderService } from '@/services/order.service.ts'
 import { sendSuccess, sendError } from '@/utils/response.ts'
@@ -17,7 +17,7 @@ const checkoutSchema = z.object({
 
 /* POST /checkout — create a Stripe hosted checkout session
    Returns { url } to redirect the browser to. */
-router.post('/', authenticate, validate(checkoutSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/', authenticate, requireEnrollmentApproval, validate(checkoutSchema), async (req: Request, res: Response, next: NextFunction) => {
   /* Bail early with a friendly error when Stripe isn't configured */
   if (!env.STRIPE_SECRET_KEY) {
     sendError(res, 'STRIPE_NOT_CONFIGURED', 'Payments are not configured on this server. Add STRIPE_SECRET_KEY to the backend .env file.', 503)

@@ -19,8 +19,14 @@ export class SupportError extends Error {
   }
 }
 
-type Requester = { id: string; role: 'student' | 'instructor' | 'admin' }
-const isStaff = (r: Requester) => r.role === 'admin'
+type Requester = {
+  id:            string
+  role:          'student' | 'instructor' | 'admin' | '4x_admin' | 'digital_marketing_admin' | 'super_admin'
+  categoryScope?: '4x-trading' | 'digital-marketing'
+}
+
+const isStaff = (r: Requester) =>
+  r.role === 'admin' || r.role === 'super_admin' || r.role === '4x_admin' || r.role === 'digital_marketing_admin'
 
 const notifSvc = new NotificationService()
 
@@ -28,21 +34,22 @@ export class SupportService {
   /* ── Client opens a new ticket ─────────────────────── */
   async create(
     requester: Requester,
-    input: { subject: string; category?: SupportCategory; message: string },
+    input: { subject: string; category?: SupportCategory; message: string; program?: string },
   ): Promise<ISupportTicket> {
     const ticket = await SupportTicketModel.create({
       userId:         new Types.ObjectId(requester.id),
       subject:        input.subject.trim(),
       category:       input.category ?? 'other',
+      program:        input.program ?? undefined,
       status:         'open',
       messages:       [{
         senderId:   new Types.ObjectId(requester.id),
-        senderRole: requester.role,
+        senderRole: 'student',
         body:       input.message.trim(),
         createdAt:  new Date(),
       }],
       lastMessageAt:  new Date(),
-      lastSenderRole: requester.role,
+      lastSenderRole: 'student',
       userUnread:     false,
       adminUnread:    true,
     })
@@ -58,11 +65,12 @@ export class SupportService {
       .exec()
   }
 
-  /* ── Admin: list all tickets ───────────────────────── */
-  async listAll(filter: { status?: string; search?: string } = {}): Promise<ISupportTicket[]> {
+  /* ── Admin: list all tickets (scoped by program if set) */
+  async listAll(filter: { status?: string; search?: string; program?: string } = {}): Promise<ISupportTicket[]> {
     const query: Record<string, unknown> = {}
     if (filter.status && filter.status !== 'all') query['status'] = filter.status
     if (filter.search?.trim()) query['subject'] = { $regex: filter.search.trim(), $options: 'i' }
+    if (filter.program) query['program'] = filter.program
     return SupportTicketModel
       .find(query)
       .sort({ lastMessageAt: -1 })
@@ -71,16 +79,18 @@ export class SupportService {
       .exec()
   }
 
-  /* ── Admin: status counts for the inbox header ─────── */
-  async adminStats(): Promise<{ open: number; pending: number; resolved: number; closed: number; unread: number }> {
-    const [open, pending, resolved, closed, unread] = await Promise.all([
-      SupportTicketModel.countDocuments({ status: 'open' }),
-      SupportTicketModel.countDocuments({ status: 'pending' }),
-      SupportTicketModel.countDocuments({ status: 'resolved' }),
-      SupportTicketModel.countDocuments({ status: 'closed' }),
-      SupportTicketModel.countDocuments({ adminUnread: true }),
+  /* ── Admin: status counts (scoped by program if set) ── */
+  async adminStats(program?: string): Promise<{ open: number; pending: number; resolved: number; closed: number; unread: number; total: number }> {
+    const base: Record<string, unknown> = program ? { program } : {}
+    const [open, pending, resolved, closed, unread, total] = await Promise.all([
+      SupportTicketModel.countDocuments({ ...base, status: 'open' }),
+      SupportTicketModel.countDocuments({ ...base, status: 'pending' }),
+      SupportTicketModel.countDocuments({ ...base, status: 'resolved' }),
+      SupportTicketModel.countDocuments({ ...base, status: 'closed' }),
+      SupportTicketModel.countDocuments({ ...base, adminUnread: true }),
+      SupportTicketModel.countDocuments(base),
     ])
-    return { open, pending, resolved, closed, unread }
+    return { total, open, pending, resolved, closed, unread }
   }
 
   /* ── View a single ticket (owner or staff) ─────────── */
@@ -108,19 +118,17 @@ export class SupportService {
     const staff = isStaff(requester)
     ticket.messages.push({
       senderId:   new Types.ObjectId(requester.id),
-      senderRole: requester.role,
+      senderRole: staff ? 'admin' : 'student',
       body:       body.trim(),
       createdAt:  new Date(),
     })
     ticket.lastMessageAt  = new Date()
-    ticket.lastSenderRole = requester.role
-    // staff reply → awaiting user; user reply → awaiting staff
+    ticket.lastSenderRole = staff ? 'admin' : 'student'
     ticket.status      = staff ? 'pending' : 'open'
     ticket.userUnread  = staff ? true  : ticket.userUnread
     ticket.adminUnread = staff ? false : true
     await ticket.save()
 
-    // Notify the client when staff replies (fire-and-forget)
     if (staff) {
       void notifSvc.create(String(ticket.userId), {
         kind:  'system',
@@ -147,9 +155,18 @@ export class SupportService {
 
   /* ── helpers ───────────────────────────────────────── */
   private assertAccess(ticket: ISupportTicket, requester: Requester): void {
-    if (isStaff(requester)) return
-    if (String(ticket.userId) !== requester.id) {
-      throw new SupportError('FORBIDDEN', 'You do not have access to this ticket', 403)
+    if (!isStaff(requester)) {
+      // clients can only view their own tickets
+      if (String(ticket.userId) !== requester.id) {
+        throw new SupportError('FORBIDDEN', 'You do not have access to this ticket', 403)
+      }
+      return
+    }
+    // category-scoped admins can only see their program's tickets
+    if (requester.categoryScope) {
+      if (ticket.program && ticket.program !== requester.categoryScope) {
+        throw new SupportError('FORBIDDEN', 'You do not have access to this ticket', 403)
+      }
     }
   }
 

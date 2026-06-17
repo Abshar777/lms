@@ -7,6 +7,7 @@ import { ArrowLeft, BookOpen, Star, Users, Play, Sparkles, Loader2 } from 'lucid
 import { useCourses } from '@/lib/api/courses'
 import { useCategories } from '@/lib/api/categories'
 import type { Course } from '@/types/index'
+import { Button } from '@/components/ui/button'
 
 const stagger  = { hidden: {}, show: { transition: { staggerChildren: 0.05 } } }
 const cardAnim = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 280, damping: 26 } } }
@@ -134,25 +135,37 @@ export default function CategoryLandingPage({ params }: { params: Promise<{ slug
       {/* Pagination */}
       {data && data.meta.total_pages > 1 && (
         <div className="mt-8 flex items-center justify-center gap-2">
-          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!data.meta.has_prev}
-            className="rounded-xl px-4 py-2 text-sm font-semibold bg-white transition-colors hover:bg-gray-50 disabled:opacity-40"
+          <Button
+            variant="outline"
+            size="default"
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={!data.meta.has_prev}
+            className="rounded-xl px-4 py-2 text-sm font-semibold bg-white hover:bg-gray-50 disabled:opacity-40"
             style={{ border: '1px solid #E5E7EB', color: '#374151' }}>
             Previous
-          </button>
+          </Button>
           {Array.from({ length: data.meta.total_pages }, (_, i) => i + 1).map(p => (
-            <button key={p} onClick={() => setPage(p)}
+            <Button
+              key={p}
+              variant="ghost"
+              size="icon"
+              onClick={() => setPage(p)}
               className="h-9 w-9 rounded-xl text-sm font-semibold transition-all"
               style={p === page
                 ? { background: '#111827', color: 'white' }
                 : { color: '#6B7280', background: 'white', border: '1px solid #E5E7EB' }}>
               {p}
-            </button>
+            </Button>
           ))}
-          <button onClick={() => setPage(p => p + 1)} disabled={!data.meta.has_next}
-            className="rounded-xl px-4 py-2 text-sm font-semibold bg-white transition-colors hover:bg-gray-50 disabled:opacity-40"
+          <Button
+            variant="outline"
+            size="default"
+            onClick={() => setPage(p => p + 1)}
+            disabled={!data.meta.has_next}
+            className="rounded-xl px-4 py-2 text-sm font-semibold bg-white hover:bg-gray-50 disabled:opacity-40"
             style={{ border: '1px solid #E5E7EB', color: '#374151' }}>
             Next
-          </button>
+          </Button>
         </div>
       )}
     </div>

@@ -15,19 +15,44 @@ interface Props {
   label: string
 }
 
+type CategoryFilter = '' | '4x-trading' | 'digital-marketing'
+
+const CATEGORY_LABELS: Record<string, string> = {
+  '4x-trading':        '4x Trading',
+  'digital-marketing': 'Digital Marketing',
+}
+
+const CATEGORY_STYLE: Record<string, { bg: string; color: string }> = {
+  '4x-trading':        { bg: 'rgba(96,165,250,0.12)',  color: '#60A5FA' },
+  'digital-marketing': { bg: 'rgba(52,211,153,0.12)',  color: '#34D399' },
+}
+
 function fmtDate(d?: string) {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 export function UserTable({ role, label }: Props) {
-  const [search, setSearch] = useState('')
-  const [page, setPage]     = useState(1)
-  const { data, isLoading } = useUsers(role, { search, page, per_page: 20 })
+  const [search,   setSearch]   = useState('')
+  const [page,     setPage]     = useState(1)
+  const [category, setCategory] = useState<CategoryFilter>('')
+
+  const { data, isLoading } = useUsers(role, {
+    search,
+    page,
+    per_page: 20,
+    category: category || undefined,
+  })
+
+  const handleCategoryFilter = (cat: CategoryFilter) => {
+    setCategory(cat)
+    setPage(1)
+  }
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between gap-3">
+      {/* ── Search + filter row ── */}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="relative max-w-xs flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(255,255,255,0.3)' }} />
           <input
@@ -39,17 +64,33 @@ export function UserTable({ role, label }: Props) {
             onFocus={e => { e.currentTarget.style.border = '1px solid rgba(255,107,26,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.10)' }}
             onBlur={e => { e.currentTarget.style.border = '1px solid rgba(255,255,255,0.08)'; e.currentTarget.style.boxShadow = 'none' }} />
         </div>
-        <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
+
+        {/* Category filter chips */}
+        <div className="flex items-center gap-1.5">
+          {(['', '4x-trading', 'digital-marketing'] as CategoryFilter[]).map(cat => (
+            <button
+              key={cat || 'all'}
+              onClick={() => handleCategoryFilter(cat)}
+              className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
+              style={category === cat
+                ? { background: 'rgba(255,107,26,0.18)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.4)' }
+                : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              {cat === '' ? 'All' : CATEGORY_LABELS[cat]}
+            </button>
+          ))}
+        </div>
+
+        <p className="ml-auto text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
           {data && `${data.meta.total_count.toLocaleString()} ${label.toLowerCase()}`}
         </p>
       </div>
 
       <div className="overflow-hidden rounded-2xl" style={{ border: '1px solid rgba(255,255,255,0.07)' }}>
         <div className="overflow-x-auto">
-        <table className="w-full min-w-[680px] border-collapse">
+        <table className="w-full min-w-[720px] border-collapse">
           <thead>
             <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-              {['Name', 'Email', 'Status', 'Joined', ''].map(h => (
+              {['Name', 'Email', 'Category', 'Status', 'Joined', ''].map(h => (
                 <th key={h} className="px-4 py-3 text-left"
                   style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   {h}
@@ -59,21 +100,21 @@ export function UserTable({ role, label }: Props) {
           </thead>
           <tbody>
             {isLoading && (
-              <tr><td colSpan={5} className="px-4 py-12 text-center">
+              <tr><td colSpan={6} className="px-4 py-12 text-center">
                 <div className="inline-flex items-center gap-2 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
                   <Loader2 size={14} className="animate-spin" />Loading…
                 </div>
               </td></tr>
             )}
             {!isLoading && data?.docs.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-16 text-center text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              <tr><td colSpan={6} className="px-4 py-16 text-center text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
                 No {label.toLowerCase()} found
               </td></tr>
             )}
             {!isLoading && data?.docs.map((u, i) => <UserRow key={u.id} user={u} index={i} />)}
           </tbody>
         </table>
-        </div>{/* overflow-x-auto */}
+        </div>
 
         {data && data.meta.total_pages > 1 && (
           <div className="flex items-center justify-between px-4 py-3"
@@ -128,6 +169,8 @@ function UserRow({ user, index }: { user: AdminUser; index: number }) {
     }
   }
 
+  const catStyle = user.category ? CATEGORY_STYLE[user.category] : null
+
   return (
     <>
     <motion.tr
@@ -158,6 +201,16 @@ function UserRow({ user, index }: { user: AdminUser; index: number }) {
           <Mail size={12} />
           <span className="text-sm truncate max-w-[220px]">{user.email}</span>
         </div>
+      </td>
+      <td className="px-4 py-3.5">
+        {catStyle ? (
+          <span className="inline-flex items-center rounded-lg px-2 py-1 text-[11px] font-semibold"
+            style={{ background: catStyle.bg, color: catStyle.color }}>
+            {CATEGORY_LABELS[user.category!]}
+          </span>
+        ) : (
+          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>—</span>
+        )}
       </td>
       <td className="px-4 py-3.5">
         <span className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold"
@@ -222,7 +275,6 @@ function UserRow({ user, index }: { user: AdminUser; index: number }) {
       </td>
     </motion.tr>
 
-    {/* Edit modal — rendered outside the <tr> to avoid DOM nesting issues */}
     <AnimatePresence>
       {editOpen && (
         <EditStudentModal

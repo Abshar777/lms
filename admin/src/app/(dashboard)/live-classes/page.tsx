@@ -592,9 +592,9 @@ function CalendarView({ items, onSlotClick }: { items: LiveClass[]; onSlotClick:
 }
 
 /* ── Quick create modal ──────────────────────────────── */
-function QuickCreateModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+function QuickCreateModal({ onClose, onSuccess, categoryProgram }: { onClose: () => void; onSuccess: () => void; categoryProgram?: string }) {
   const createMutation = useCreateLiveClass()
-  const { data: coursesData,     isLoading: loadingCourses }     = useCourses({ per_page: 200 })
+  const { data: coursesData,     isLoading: loadingCourses }     = useCourses({ per_page: 200, ...(categoryProgram ? { program: categoryProgram } : {}) })
   const { data: instructorsData, isLoading: loadingInstructors } = useUsers('instructor', { per_page: 200 })
   const courses     = coursesData?.docs     ?? []
   const instructors = instructorsData?.docs ?? []
@@ -1162,6 +1162,11 @@ export default function LiveClassesPage() {
           <QuickCreateModal
             onClose={() => setCreateOpen(false)}
             onSuccess={() => setCreateOpen(false)}
+            categoryProgram={
+              me?.role === '4x_admin' ? '4x-trading'
+              : me?.role === 'digital_marketing_admin' ? 'digital-marketing'
+              : undefined
+            }
           />
         )}
       </AnimatePresence>

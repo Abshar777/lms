@@ -2,13 +2,14 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Bell, Plus, ChevronDown, X, BookOpen, Users, GraduationCap, Menu } from 'lucide-react'
+import { Search, Bell, Plus, ChevronDown, X, BookOpen, Users, GraduationCap, Menu, UserCog } from 'lucide-react'
 import Link from 'next/link'
 import { useUIStore } from '@/store/ui.store'
 import { useCurrentUser, logout } from '@/lib/api/user'
 import { useRouter } from 'next/navigation'
 import { LogOut } from 'lucide-react'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { useImpersonationStore } from '@/store/impersonation.store'
 
 const notifications = [
   { id: 1, type: 'enroll',     text: 'New enrollment: UI/UX Design Mastery', time: '2m ago',  unread: true },
@@ -37,6 +38,7 @@ export function AdminTopbar() {
   const { data: user } = useCurrentUser()
   const router = useRouter()
   const avatarInitial = (user?.name?.trim()?.[0] ?? '?').toUpperCase()
+  const { impersonatedUser, endImpersonation } = useImpersonationStore()
 
   const handleLogout = async () => {
     await logout()
@@ -91,6 +93,32 @@ export function AdminTopbar() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* ── Category scope badge ───────────────────── */}
+      {user && (user.role === '4x_admin' || user.role === 'digital_marketing_admin') && (
+        <div className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold flex-shrink-0"
+          style={user.role === '4x_admin'
+            ? { background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.3)', color: '#60A5FA' }
+            : { background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.3)', color: '#34D399' }}>
+          <span className="h-1.5 w-1.5 rounded-full flex-shrink-0"
+            style={{ background: user.role === '4x_admin' ? '#60A5FA' : '#34D399' }} />
+          {user.role === '4x_admin' ? '4x Trading' : 'Digital Marketing'} scope
+        </div>
+      )}
+
+      {/* ── Impersonation banner ────────────────────── */}
+      {impersonatedUser && (
+        <div className="flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold"
+          style={{ background: 'rgba(250,204,21,0.12)', border: '1px solid rgba(250,204,21,0.3)', color: '#FACC15' }}>
+          <UserCog size={13} />
+          <span>Viewing as <strong>{impersonatedUser.name}</strong></span>
+          <button onClick={endImpersonation}
+            className="ml-1 transition-opacity hover:opacity-70"
+            style={{ color: 'rgba(250,204,21,0.7)' }}>
+            <X size={12} />
+          </button>
+        </div>
+      )}
 
       <div className="ml-auto flex items-center gap-2">
         {/* ── Quick create ─────────────────────────── */}

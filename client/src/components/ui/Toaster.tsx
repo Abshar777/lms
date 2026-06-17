@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle2, XCircle, Info, X } from 'lucide-react'
 import { useUIStore, type ToastKind } from '@/store/ui.store'
+import { Button } from '@/components/ui/button'
 
 const STYLES: Record<ToastKind, { fg: string; bg: string; border: string; Icon: React.ElementType }> = {
   success: { fg: '#059669', bg: 'rgba(16,185,129,0.08)',  border: 'rgba(16,185,129,0.20)', Icon: CheckCircle2 },
@@ -65,11 +66,10 @@ function ToastCard({
           <p className="mt-0.5 text-xs leading-relaxed" style={{ color: '#6B7280' }}>{body}</p>
         )}
       </div>
-      <button type="button" onClick={onDismiss}
-        className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-gray-100"
-        style={{ color: '#9CA3AF' }}>
+      <Button type="button" variant="ghost" size="icon" onClick={onDismiss}
+        className="h-6 w-6 flex-shrink-0 rounded-lg text-gray-400 hover:bg-gray-100">
         <X size={11} />
-      </button>
+      </Button>
     </motion.div>
   )
 }

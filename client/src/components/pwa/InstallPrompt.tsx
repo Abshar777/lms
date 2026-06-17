@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Download, X, Sparkles } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -81,23 +82,29 @@ export function InstallPrompt() {
                 Add it to your home screen for a faster, full-screen learning experience.
               </p>
               <div className="mt-3 flex items-center gap-2">
-                <button onClick={onInstall}
-                  className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-white transition-all hover:opacity-90"
-                  style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+                <Button
+                  onClick={onInstall}
+                  variant="default"
+                  size="sm"
+                  className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold">
                   <Download size={11} />Install
-                </button>
-                <button onClick={onDismiss}
-                  className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-gray-50"
-                  style={{ color: '#6B7280' }}>
+                </Button>
+                <Button
+                  onClick={onDismiss}
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-xl px-3 py-1.5 text-xs font-semibold">
                   Not now
-                </button>
+                </Button>
               </div>
             </div>
-            <button onClick={onDismiss}
-              className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-gray-50"
-              style={{ color: '#9CA3AF' }}>
+            <Button
+              onClick={onDismiss}
+              variant="ghost"
+              size="icon-sm"
+              className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg">
               <X size={12} />
-            </button>
+            </Button>
           </div>
         </motion.div>
       )}

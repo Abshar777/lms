@@ -109,10 +109,22 @@ export function requireRole(...roles: UserRole[]) {
   }
 }
 
-/* ─── Convenience guards ────────────────────────────── */
-export const requireAdmin      = requireRole('admin')
-export const requireInstructor = requireRole('instructor', 'admin')
-export const requireStudent    = requireRole('student', 'instructor', 'admin')
+/* ─── Role hierarchy (highest to lowest) ───────────────
+   super_admin > admin > 4x_admin / digital_marketing_admin > instructor > student
+──────────────────────────────────────────────────── */
+export const requireSuperAdmin = requireRole('super_admin')
+
+/** Any admin-panel admin — super_admin or admin (full platform management) */
+export const requireAdmin      = requireRole('super_admin', 'admin')
+
+/** Category admins + above */
+export const requireAnyAdmin   = requireRole('super_admin', 'admin', '4x_admin', 'digital_marketing_admin')
+
+/** Teaching staff + above */
+export const requireInstructor = requireRole('super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'instructor')
+
+/** Any authenticated user */
+export const requireStudent    = requireRole('super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'instructor', 'student')
 
 /* ─────────────────────────────────────────────────────
    authenticateAdmin
@@ -130,7 +142,9 @@ export async function authenticateAdmin(
   const authHeader  = req.headers['authorization']
   const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
 
-  const token = cookieToken ?? bearerToken
+  // Bearer takes priority: an explicit Authorization header (used for impersonation)
+  // overrides the session cookie so the caller identity is whoever the token says.
+  const token = bearerToken ?? cookieToken
 
   if (!token) {
     sendError(res, 'MISSING_TOKEN', 'Authentication required', 401)
@@ -165,6 +179,67 @@ export async function authenticateAdmin(
    Use on public endpoints that want to personalise
    their response when the caller happens to be logged in.
 ───────────────────────────────────────────────────── */
+export async function injectCategoryScope(req: Request, _res: Response, next: NextFunction): Promise<void> {
+  if (!req.user) { next(); return }
+  if (req.user.role === '4x_admin')                     req.user.categoryScope = '4x-trading'
+  else if (req.user.role === 'digital_marketing_admin') req.user.categoryScope = 'digital-marketing'
+  else if (req.user.role === 'instructor') {
+    const { UserModel } = await import('@/models/schema.ts')
+    const user = await UserModel.findById(req.user.id).select('category').lean()
+    const cat  = (user as any)?.category as string | undefined
+    if (cat === '4x-trading' || cat === 'digital-marketing') req.user.categoryScope = cat
+  }
+  next()
+}
+
+/* ─────────────────────────────────────────────────────
+   requireEnrollmentApproval
+   ─────────────────────────────────────────────────────
+   For student-facing endpoints that require the student
+   to have been approved by an admin (when they signed up
+   with a program category).
+
+   Non-students always pass through.
+   Students with no category always pass through.
+   Students with a category must have enrollmentStatus === 'approved'.
+───────────────────────────────────────────────────── */
+export async function requireEnrollmentApproval(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  if (!req.user || req.user.role !== 'student') { next(); return }
+
+  const { UserModel } = await import('@/models/schema.ts')
+  const user = await UserModel.findById(req.user.id)
+    .select('category enrollmentStatus enrollmentCancellationReason').lean()
+
+  if (!user || !user.category) { next(); return }
+
+  if (user.enrollmentStatus === 'pending') {
+    res.status(403).json({
+      success: false,
+      error: {
+        code:    'PENDING_APPROVAL',
+        message: 'Your account is pending admin approval. You can browse courses but cannot access sessions yet.',
+      },
+    }); return
+  }
+
+  if (user.enrollmentStatus === 'cancelled') {
+    res.status(403).json({
+      success: false,
+      error: {
+        code:    'ACCESS_CANCELLED',
+        message: 'Your access has been cancelled by an admin.',
+        reason:  user.enrollmentCancellationReason ?? '',
+      },
+    }); return
+  }
+
+  next()
+}
+
 export async function optionalAuthenticate(
   req: Request,
   _res: Response,

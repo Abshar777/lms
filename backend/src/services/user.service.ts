@@ -19,15 +19,22 @@ export class UserService {
   private readonly repo         = new UserRepository()
   private readonly refreshRepo  = new RefreshTokenRepository()
 
-  async listByRole(role: UserRole, params: { page: number; perPage: number; search?: string }) {
+  async listByRole(role: UserRole | undefined, params: { page: number; perPage: number; search?: string; category?: '4x-trading' | 'digital-marketing'; status?: 'active' | 'inactive'; excludeStudents?: boolean }) {
     return this.repo.listByRole(role, params)
+  }
+
+  async adminDelete(id: string): Promise<void> {
+    if (!Types.ObjectId.isValid(id)) throw new UserError('INVALID_ID', 'Invalid user id', 400)
+    const deleted = await this.repo.hardDelete(id)
+    if (!deleted) throw new UserError('USER_NOT_FOUND', 'User not found.', 404)
+    await this.refreshRepo.revokeAllForUser(id, 'security')
   }
 
   /* Admin-only updates: role change, deactivate/activate, force-verify.
      Deactivation also revokes all refresh tokens for that user. */
   async adminUpdate(
     id: string,
-    dto: { role?: UserRole; isActive?: boolean; isVerified?: boolean; name?: string; email?: string },
+    dto: { role?: UserRole; isActive?: boolean; isVerified?: boolean; name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | null },
   ): Promise<IUser> {
     if (!Types.ObjectId.isValid(id)) {
       throw new UserError('INVALID_ID', 'Invalid user id', 400)
@@ -37,6 +44,7 @@ export class UserService {
     if (dto.isActive   !== undefined) update.isActive   = dto.isActive
     if (dto.isVerified !== undefined) update.isVerified = dto.isVerified
     if (dto.name       !== undefined) update.name       = dto.name.trim()
+    if (dto.category   !== undefined) update.category   = dto.category ?? undefined
     if (dto.email      !== undefined) {
       /* Check for duplicate email, excluding the current user */
       const existing = await this.repo.findByEmail(dto.email)
@@ -61,6 +69,11 @@ export class UserService {
   }
 
   /* Admin creates a new user (instructor / admin) directly. */
+  async findById(id: string): Promise<IUser | null> {
+    if (!Types.ObjectId.isValid(id)) return null
+    return this.repo.findById(id)
+  }
+
   async adminCreateUser(dto: {
     name:      string
     email:     string
@@ -68,6 +81,7 @@ export class UserService {
     role:      UserRole
     bio?:      string
     headline?: string
+    category?: '4x-trading' | 'digital-marketing'
   }): Promise<IUser> {
     const exists = await this.repo.emailExists(dto.email)
     if (exists) {
@@ -79,6 +93,7 @@ export class UserService {
       email:        dto.email,
       passwordHash,
       role:         dto.role,
+      category:     dto.category,
     })
     /* Patch bio / headline if provided */
     if (dto.bio || dto.headline) {

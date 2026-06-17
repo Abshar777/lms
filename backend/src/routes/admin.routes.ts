@@ -4,7 +4,7 @@ import { AdminController } from '@/controllers/admin.controller.ts'
 import { AuthController } from '@/controllers/auth.controller.ts'
 import { LiveClassController } from '@/controllers/liveClass.controller.ts'
 import { RolesController } from '@/controllers/roles.controller.ts'
-import { authenticateAdmin, requireRole, requireAdmin } from '@/middleware/auth.middleware.ts'
+import { authenticateAdmin, requireRole, requireAdmin, requireAnyAdmin, injectCategoryScope } from '@/middleware/auth.middleware.ts'
 import { validate } from '@/middleware/validate.middleware.ts'
 import { QuizService } from '@/services/quiz.service.ts'
 import { AssignmentService } from '@/services/assignment.service.ts'
@@ -39,7 +39,7 @@ router.get ('/auth/me',     authenticateAdmin, authCtrl.me)
 /* Admin routes are open to admins and instructors. Per-resource
    ownership checks inside the controllers reject instructors who
    try to mutate courses they don't own. */
-router.use(authenticateAdmin, requireRole('admin', 'instructor'))
+router.use(authenticateAdmin, requireRole('super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'instructor'), injectCategoryScope)
 
 /* ─── Schemas ─────────────────────────────────────── */
 const courseCreateSchema = z.object({
@@ -56,6 +56,7 @@ const courseCreateSchema = z.object({
   tags:         z.union([z.string(), z.array(z.string())]).optional(),
   categoryId:   z.string().optional(),
   instructorId: z.string().optional(),
+  program:      z.enum(['4x-trading', 'digital-marketing']).optional(),
 })
 
 const courseUpdateSchema = courseCreateSchema.partial().extend({
@@ -73,10 +74,13 @@ const categoryCreateSchema = z.object({
 const categoryUpdateSchema = categoryCreateSchema.partial()
 
 const usersQuerySchema = z.object({
-  page:     z.coerce.number().int().min(1).default(1),
-  per_page: z.coerce.number().int().min(1).max(500).default(20),
-  role:     z.enum(['student', 'instructor', 'admin']).default('student'),
-  search:   z.string().trim().optional(),
+  page:             z.coerce.number().int().min(1).default(1),
+  per_page:         z.coerce.number().int().min(1).max(500).default(20),
+  role:             z.enum(['student', 'instructor', 'admin', '4x_admin', 'digital_marketing_admin', 'super_admin']).optional(),
+  search:           z.string().trim().optional(),
+  category:         z.enum(['4x-trading', 'digital-marketing']).optional(),
+  status:           z.enum(['active', 'inactive']).optional(),
+  exclude_students: z.coerce.boolean().optional(),
 })
 
 /* ─── Dashboard (admin-only) ─────────────────────── */
@@ -129,20 +133,22 @@ router.delete('/categories/:id', requireAdmin, audit('category.delete', 'Categor
 
 /* ─── Users (admin-only) ──────────────────────────── */
 const userUpdateSchema = z.object({
-  role:       z.enum(['student', 'instructor', 'admin']).optional(),
+  role:       z.enum(['student', 'instructor', 'admin', '4x_admin', 'digital_marketing_admin', 'super_admin']).optional(),
   isActive:   z.boolean().optional(),
   isVerified: z.boolean().optional(),
   name:       z.string().min(2).max(100).trim().optional(),
   email:      z.string().email().optional(),
+  category:   z.enum(['4x-trading', 'digital-marketing']).nullable().optional(),
 }).refine(d => Object.keys(d).length > 0, { message: 'Provide at least one field' })
 
 const userCreateSchema = z.object({
   name:      z.string().min(2).max(100).trim(),
   email:     z.string().email(),
   password:  z.string().min(8, 'Password must be at least 8 characters'),
-  role:      z.enum(['student', 'instructor', 'admin']).default('instructor'),
+  role:      z.enum(['student', 'instructor', 'admin', '4x_admin', 'digital_marketing_admin', 'super_admin']).default('instructor'),
   bio:       z.string().max(2000).optional(),
   headline:  z.string().max(255).optional(),
+  category:  z.enum(['4x-trading', 'digital-marketing']).optional(),
   courses:   z.array(z.object({
     courseId:       z.string().min(1),
     blockedLessons: z.array(z.string()).default([]),
@@ -150,29 +156,33 @@ const userCreateSchema = z.object({
 })
 
 router.get  ('/users',
-  requireRole('admin', 'instructor'),
   validate(usersQuerySchema, 'query'),
-  /* Instructors may only list other instructors (for selects/dropdowns). */
   (req: Request, res: Response, next: NextFunction) => {
     if (req.user!.role === 'instructor') {
-      const q = req.query as Record<string, string>
-      if (q['role'] !== 'instructor') {
-        res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Instructors can only query the instructor list.' } })
-        return
-      }
+      res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Access denied.' } })
+      return
     }
     next()
   },
   ctrl.listUsers)
-/* Admins can create any role; instructors can only create students. */
 router.post ('/users',          validate(userCreateSchema), audit('user.create', 'User'),
   async (req, res, next) => {
-    const role = req.user!.role
+    const role       = req.user!.role
     const targetRole = (req.body as { role?: string }).role ?? 'instructor'
-    if (role === 'instructor' && targetRole !== 'student') {
-      res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Instructors can only create student accounts.' } })
+    if (role === 'instructor') {
+      res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Instructors cannot create accounts.' } })
       return
     }
+    if ((role === '4x_admin' || role === 'digital_marketing_admin') && targetRole !== 'instructor') {
+      res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You can only create instructor accounts.' } })
+      return
+    }
+    if (role === 'admin' && targetRole === 'super_admin') {
+      res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Only super admins can create super admin accounts.' } })
+      return
+    }
+    if (role === '4x_admin')               (req.body as any).category = '4x-trading'
+    else if (role === 'digital_marketing_admin') (req.body as any).category = 'digital-marketing'
     next()
   },
   async (req: Request, res: Response, next: NextFunction) => {
@@ -205,7 +215,43 @@ router.post ('/users',          validate(userCreateSchema), audit('user.create',
     } catch (err) { next(err) }
   },
 )
-router.patch('/users/:id',      requireAdmin, validate(userUpdateSchema), audit('user.roleChange', 'User', r => String(r.params['id'] ?? '')), ctrl.updateUser)
+router.patch ('/users/:id',
+  requireAdmin,
+  (req: Request, res: Response, next: NextFunction) => {
+    if (req.user!.role === 'admin' && (req.body as any).role === 'super_admin') {
+      res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Only super admins can grant super admin access.' } })
+      return
+    }
+    next()
+  },
+  validate(userUpdateSchema),
+  audit('user.roleChange', 'User', r => String(r.params['id'] ?? '')),
+  ctrl.updateUser,
+)
+router.delete('/users/:id',           requireAdmin, audit('user.delete', 'User', r => String(r.params['id'] ?? '')), ctrl.deleteUser)
+router.post  ('/users/:id/impersonate', requireRole('super_admin'), audit('user.impersonate', 'User', r => String(r.params['id'] ?? '')), ctrl.impersonateUser)
+
+/* ── Enrollment requests (student approval workflow) ─────────────────────
+   4x_admin / digital_marketing_admin approve or cancel student signups
+   for their program. super_admin / admin manage all.
+──────────────────────────────────────────────────────────────────────── */
+const enrollmentRequestQuerySchema = z.object({
+  status:   z.enum(['pending', 'approved', 'cancelled', 'all']).default('pending'),
+  category: z.enum(['4x-trading', 'digital-marketing']).optional(),
+  page:     z.coerce.number().min(1).default(1),
+  per_page: z.coerce.number().min(1).max(100).default(20),
+})
+
+const cancelEnrollmentSchema = z.object({
+  reason: z.string().min(5, 'Please provide a reason (min 5 characters)').max(1000),
+})
+
+router.get ('/enrollment-requests',
+  validate(enrollmentRequestQuerySchema, 'query'),
+  ctrl.listEnrollmentRequests,
+)
+router.patch('/enrollment-requests/:userId/approve', requireAnyAdmin, ctrl.approveEnrollment)
+router.patch('/enrollment-requests/:userId/cancel',  requireAnyAdmin, validate(cancelEnrollmentSchema), ctrl.cancelEnrollment)
 
 /* GET /admin/users/:id/enrollments — list a student's course enrollments */
 router.get('/users/:id/enrollments', requireAdmin,
@@ -1018,6 +1064,6 @@ router.patch ('/roles/:id',                  requireAdmin, validate(roleUpdateSc
 router.patch ('/roles/:id/permissions',      requireAdmin, validate(permissionsBodySchema), roleCtrl.updatePermissions)
 router.delete('/roles/:id',                  requireAdmin, roleCtrl.delete)
 router.patch ('/users/:userId/assign-role',  requireAdmin, validate(assignRoleSchema), roleCtrl.assignRole)
-router.post  ('/users/:userId/impersonate',  requireAdmin, roleCtrl.impersonate)
+router.post  ('/users/:userId/impersonate',  requireRole('super_admin'), roleCtrl.impersonate)
 
 export default router

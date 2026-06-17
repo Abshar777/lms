@@ -9,6 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Lock, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react'
 import { resetPassword } from '@/lib/api/user'
+import { Button, MotionButton } from '@/components/ui/button'
 
 const schema = z.object({
   password: z
@@ -87,11 +88,11 @@ function ResetPasswordForm() {
               border: `1.5px solid ${errors.password ? '#FCA5A5' : 'transparent'}`,
               color: '#0D0F1A',
             }} />
-          <button type="button" onClick={() => setShow(v => !v)}
+          <Button type="button" variant="ghost" size="icon-sm" onClick={() => setShow(v => !v)}
             className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
             style={{ color: '#9CA3AF' }}>
             {show ? <EyeOff size={15} /> : <Eye size={15} />}
-          </button>
+          </Button>
         </div>
         {errors.password && (
           <p className="mt-1.5 flex items-center gap-1 text-xs" style={{ color: '#EF4444' }}>
@@ -127,12 +128,11 @@ function ResetPasswordForm() {
         </div>
       )}
 
-      <motion.button type="submit" disabled={isSubmitting}
+      <MotionButton type="submit" variant="default" size="lg" disabled={isSubmitting}
         whileHover={{ y: -1 }} whileTap={{ scale: 0.98 }}
-        className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white transition-all disabled:opacity-60"
-        style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)', boxShadow: '0 4px 18px rgba(255,107,26,0.30)' }}>
+        className="w-full gap-2 rounded-xl py-3 text-sm font-bold transition-all disabled:opacity-60">
         {isSubmitting ? <><Loader2 size={14} className="animate-spin" />Updating…</> : 'Set new password'}
-      </motion.button>
+      </MotionButton>
     </form>
   )
 }

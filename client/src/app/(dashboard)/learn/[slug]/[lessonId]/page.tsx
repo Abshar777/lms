@@ -23,6 +23,7 @@ import { QuizPlayer } from '@/components/learn/QuizPlayer'
 import { DiscussionPanel } from '@/components/learn/DiscussionPanel'
 import { NotesPanel } from '@/components/learn/NotesPanel'
 import { BookmarksPanel } from '@/components/learn/BookmarksPanel'
+import { Button } from '@/components/ui/button'
 
 type SidebarTab = 'curriculum' | 'transcript' | 'qa' | 'notes' | 'bookmarks'
 
@@ -154,14 +155,15 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
       {/* Tab bar */}
       <div className="flex border-b flex-shrink-0" style={{ borderColor: '#F0F1F5' }}>
         {tabs.map(t => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)}
-            className="flex flex-1 flex-col items-center gap-0.5 px-1 py-2.5 text-[10px] font-semibold transition-colors"
+          <Button key={t.key} onClick={() => setActiveTab(t.key)}
+            variant="ghost"
+            className="flex flex-1 flex-col items-center gap-0.5 px-1 py-2.5 text-[10px] font-semibold transition-colors h-auto rounded-none"
             style={{
               color:        activeTab === t.key ? '#FF6B1A' : '#9CA3AF',
               borderBottom: activeTab === t.key ? '2px solid #FF6B1A' : '2px solid transparent',
             }}>
             {t.icon}{t.label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -282,38 +284,43 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
             </div>
             <div className="flex items-center gap-2">
               {prevLesson && (
-                <button onClick={() => router.push(`/learn/${slug}/${prevLesson.id}`)}
-                  className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold transition-colors hover:bg-gray-50"
-                  style={{ background: 'white', border: '1px solid #E5E7EB', color: '#374151' }}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push(`/learn/${slug}/${prevLesson.id}`)}
+                  className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold">
                   <ChevronLeft size={14} />Prev
-                </button>
+                </Button>
               )}
-              <button
+              <Button
+                variant="default"
+                size="sm"
                 onClick={async () => { await markComplete.mutateAsync(lessonId); if (nextLesson) router.push(`/learn/${slug}/${nextLesson.id}`) }}
                 disabled={markComplete.isPending}
-                className="flex items-center gap-1 rounded-xl px-4 py-2 text-xs font-bold text-white transition-all disabled:opacity-60"
+                className="flex items-center gap-1 rounded-xl px-4 py-2 text-xs font-bold disabled:opacity-60"
                 style={{ background: isCompleted ? '#22C55E' : 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
                 {markComplete.isPending
                   ? <><Loader2 size={13} className="animate-spin" />Saving…</>
                   : isCompleted
                     ? <><CheckCircle2 size={13} />Completed</>
                     : <>Mark complete{nextLesson ? ' & next' : ''}{nextLesson && <ChevronRight size={13} />}</>}
-              </button>
+              </Button>
             </div>
           </div>
 
           {/* ── Mobile: inline sidebar accordion ── */}
           <div className="mt-4 lg:hidden">
-            <button
+            <Button
+              variant="ghost"
               onClick={() => setSidebarOpen(v => !v)}
-              className="flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3"
+              className="flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 h-auto"
               style={{ border: '1px solid #E4E7ED' }}>
               <span className="text-sm font-semibold" style={{ color: '#0D0F1A' }}>
                 <List size={14} className="inline mr-2 -mt-0.5" style={{ color: '#FF6B1A' }} />
                 Course content
               </span>
               <ChevronDown size={16} style={{ color: '#9CA3AF', transform: sidebarOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-            </button>
+            </Button>
             {sidebarOpen && (
               <div className="mt-2 flex flex-col rounded-2xl bg-white overflow-hidden"
                 style={{ border: '1px solid #E4E7ED', maxHeight: '60vh' }}>
@@ -446,22 +453,26 @@ function PlayerArea({
         {/* Skip ±10s buttons — bottom-center, above Vidstack controls */}
         {lesson.contentUrl && (
           <div className="absolute bottom-14 left-1/2 -translate-x-1/2 flex items-center gap-2 pointer-events-auto">
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => skip(-10)}
               title="Skip back 10 seconds"
-              className="group flex flex-col items-center justify-center gap-0.5 h-9 w-9 rounded-full transition-all hover:scale-110 active:scale-95"
+              className="group flex flex-col items-center justify-center gap-0.5 h-9 w-9 rounded-full transition-all hover:scale-110 active:scale-95 !bg-transparent hover:!bg-transparent"
               style={{ background: 'rgba(13,15,26,0.72)', backdropFilter: 'blur(4px)' }}>
               <RotateCcw size={13} className="text-white" />
               <span className="text-[8px] font-bold leading-none text-white/80">10</span>
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => skip(10)}
               title="Skip forward 10 seconds"
-              className="group flex flex-col items-center justify-center gap-0.5 h-9 w-9 rounded-full transition-all hover:scale-110 active:scale-95"
+              className="group flex flex-col items-center justify-center gap-0.5 h-9 w-9 rounded-full transition-all hover:scale-110 active:scale-95 !bg-transparent hover:!bg-transparent"
               style={{ background: 'rgba(13,15,26,0.72)', backdropFilter: 'blur(4px)' }}>
               <RotateCw size={13} className="text-white" />
               <span className="text-[8px] font-bold leading-none text-white/80">10</span>
-            </button>
+            </Button>
           </div>
         )}
 
@@ -481,21 +492,34 @@ function PlayerArea({
                 autoFocus
                 className="w-36 bg-transparent text-xs text-white outline-none placeholder:text-white/50"
               />
-              <button onClick={addBookmark} disabled={bookmarking}
-                className="text-xs font-semibold" style={{ color: '#FF6B1A' }}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={addBookmark}
+                disabled={bookmarking}
+                className="h-auto p-0 text-xs font-semibold hover:bg-transparent"
+                style={{ color: '#FF6B1A' }}>
                 {bookmarking ? '…' : 'Save'}
-              </button>
-              <button onClick={() => setShowBmForm(false)}
-                className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>✕</button>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowBmForm(false)}
+                className="h-auto p-0 text-xs hover:bg-transparent"
+                style={{ color: 'rgba(255,255,255,0.5)' }}>
+                ✕
+              </Button>
             </div>
           )}
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setShowBmForm(f => !f)}
             title="Add bookmark at current time"
-            className="flex h-8 w-8 items-center justify-center rounded-full transition-opacity hover:opacity-80"
+            className="flex h-8 w-8 items-center justify-center rounded-full transition-opacity hover:opacity-80 hover:!bg-transparent"
             style={{ background: 'rgba(13,15,26,0.72)', backdropFilter: 'blur(4px)' }}>
             <Bookmark size={14} className="text-white" />
-          </button>
+          </Button>
         </div>
       </div>
     </div>

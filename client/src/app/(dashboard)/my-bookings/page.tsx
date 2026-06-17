@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useMyBookings, useCancelBooking, type BookingStatus, type MyBooking } from '@/lib/api/bookings'
+import { Button } from '@/components/ui/button'
 
 /* ── Helpers ─────────────────────────────────────────── */
 function fmtDate(iso: string) {
@@ -135,22 +136,31 @@ function BookingCard({ booking }: { booking: MyBooking }) {
           {!isPast && isBooked && (
             confirming ? (
               <div className="flex items-center gap-1.5">
-                <button onClick={() => setConfirming(false)} className="text-[10px] font-medium" style={{ color: '#9CA3AF' }}>
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => setConfirming(false)}
+                  className="h-auto p-0 text-[10px] font-medium text-[#9CA3AF]">
                   No
-                </button>
-                <button onClick={handleCancel} disabled={cancelMutation.isPending}
-                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold text-white disabled:opacity-60"
-                  style={{ background: '#EF4444' }}>
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleCancel}
+                  disabled={cancelMutation.isPending}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold disabled:opacity-60">
                   {cancelMutation.isPending ? <Loader2 size={9} className="animate-spin" /> : null}
                   Cancel booking
-                </button>
+                </Button>
               </div>
             ) : (
-              <button onClick={() => setConfirming(true)}
-                className="text-[10px] font-medium transition-colors hover:text-red-500"
-                style={{ color: '#9CA3AF' }}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirming(true)}
+                className="h-auto p-0 text-[10px] font-medium text-[#9CA3AF] hover:text-red-500 hover:bg-transparent">
                 Cancel
-              </button>
+              </Button>
             )
           )}
         </div>
@@ -195,15 +205,19 @@ export default function MyBookingsPage() {
       {/* Tabs */}
       <div className="flex gap-1 mb-5 rounded-2xl p-1" style={{ background: '#F9FAFB' }}>
         {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className="flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition-all"
+          <Button
+            key={t.key}
+            variant="ghost"
+            size="sm"
+            onClick={() => setTab(t.key)}
+            className="flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition-all hover:bg-transparent"
             style={{
               background: tab === t.key ? 'white' : 'transparent',
               color:      tab === t.key ? '#0D0F1A' : '#6B7280',
               boxShadow:  tab === t.key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
             }}>
             {t.label}
-          </button>
+          </Button>
         ))}
       </div>
 

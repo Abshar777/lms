@@ -11,7 +11,7 @@ import { useCurrentUser } from '@/lib/api/user'
 export default function InstructorsPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const { data: me } = useCurrentUser()
-  const isAdmin = me?.role === 'admin'
+  const isAdmin = ['super_admin', 'admin', '4x_admin', 'digital_marketing_admin'].includes(me?.role ?? '')
 
   return (
     <div>

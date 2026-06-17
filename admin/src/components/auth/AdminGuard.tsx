@@ -5,23 +5,13 @@ import { useRouter } from 'next/navigation'
 import { Loader2, ShieldOff } from 'lucide-react'
 import { useCurrentUser, logout } from '@/lib/api/user'
 
-/**
- * AdminGuard
- * ───────────────────────────────────────────────
- * Wrap admin-only UI. Renders the children only when the authenticated
- * user has role === 'admin' or role === 'instructor'. Students are
- * redirected to /login.
- *
- * The middleware already keeps anonymous users out via the `lms_at`
- * cookie. The cookie is shared across :3000 and :3001 because both
- * run on the same localhost host, so a logged-in student would
- * otherwise reach the admin app. This guard rejects them.
- */
+const ALLOWED_ROLES = ['super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'instructor']
+
 export function AdminGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const { data: user, isLoading, isError } = useCurrentUser()
 
-  const isAllowed = user?.role === 'admin' || user?.role === 'instructor'
+  const isAllowed = ALLOWED_ROLES.includes(user?.role ?? '')
 
   useEffect(() => {
     if (isLoading) return

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useCartStore, type CartItem } from '@/store/cart.store'
 import { useCheckout, useValidateCoupon } from '@/lib/api/checkout'
+import { Button, MotionButton } from '@/components/ui/button'
 
 /* ── helpers ─────────────────────────────────────────── */
 function fmt(cents: number, currency = 'USD') {
@@ -49,17 +50,18 @@ function CouponRow({
           style={{ background: '#F4F5F8', border: '1px solid #E5E7EB', color: '#111827' }}
         />
       </div>
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={handleApply}
         disabled={!data || applied || isLoading}
-        className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all disabled:opacity-50"
-        style={{ background: applied ? '#F0FDF4' : 'rgba(255,107,26,0.10)', color: applied ? '#16A34A' : '#FF6B1A' }}>
+        className={`flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all disabled:opacity-50 ${applied ? '!bg-[#F0FDF4] !text-[#16A34A]' : '!bg-[rgba(255,107,26,0.10)] !text-[#FF6B1A]'}`}>
         {isLoading
           ? <Loader2 size={10} className="animate-spin" />
           : applied
             ? <><CheckCircle2 size={10} />Applied</>
             : 'Apply'}
-      </button>
+      </Button>
       {isError && code.length >= 2 && (
         <span className="text-[10px]" style={{ color: '#EF4444' }}>Invalid</span>
       )}
@@ -126,11 +128,15 @@ function CartItemCard({ item, onRemove }: { item: CartItem; onRemove: () => void
                 <p className="mt-0.5 text-xs" style={{ color: '#9CA3AF' }}>{item.instructorName}</p>
               )}
             </div>
-            <button onClick={onRemove} aria-label="Remove from cart"
-              className="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-xl transition-colors hover:bg-red-50"
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={onRemove}
+              aria-label="Remove from cart"
+              className="flex-shrink-0 h-7 w-7 rounded-xl hover:bg-red-50"
               style={{ color: '#D1D5DB' }}>
               <X size={13} />
-            </button>
+            </Button>
           </div>
 
           {/* Price + action */}
@@ -147,15 +153,18 @@ function CartItemCard({ item, onRemove }: { item: CartItem; onRemove: () => void
 
             {isFree ? (
               <Link href={`/courses/${item.slug}`}>
-                <motion.button
+                <MotionButton
+                  variant="default"
+                  size="sm"
                   whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                  className="flex items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-bold text-white"
-                  style={{ background: 'linear-gradient(135deg,#22C55E,#16A34A)' }}>
+                  className="flex items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-bold !bg-gradient-to-br !from-[#22C55E] !to-[#16A34A] text-white">
                   <GraduationCap size={11} />Enroll Free
-                </motion.button>
+                </MotionButton>
               </Link>
             ) : (
-              <motion.button
+              <MotionButton
+                variant="default"
+                size="sm"
                 whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
                 onClick={handleBuy}
                 disabled={buying || checkout.isPending}
@@ -164,7 +173,7 @@ function CartItemCard({ item, onRemove }: { item: CartItem; onRemove: () => void
                 {buying || checkout.isPending
                   ? <><Loader2 size={11} className="animate-spin" />Processing…</>
                   : <><ArrowRight size={11} />Checkout</>}
-              </motion.button>
+              </MotionButton>
             )}
           </div>
         </div>
@@ -222,11 +231,13 @@ export default function CartPage() {
         </div>
 
         {items.length > 0 && (
-          <button onClick={clearCart}
-            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-red-50"
-            style={{ color: '#EF4444', border: '1px solid rgba(239,68,68,0.18)' }}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={clearCart}
+            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold !text-[#EF4444] !border-[rgba(239,68,68,0.18)] hover:!bg-red-50 hover:!text-[#EF4444]">
             <Trash2 size={11} />Clear all
-          </button>
+          </Button>
         )}
       </motion.div>
 
@@ -243,11 +254,14 @@ export default function CartPage() {
             <p className="mt-1 text-sm" style={{ color: '#9CA3AF' }}>Browse the catalog to find courses you love</p>
           </div>
           <Link href="/courses">
-            <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+            <MotionButton
+              variant="default"
+              size="default"
+              whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
               className="flex items-center gap-2 rounded-2xl px-6 py-2.5 text-sm font-bold text-white"
               style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)', boxShadow: '0 4px 14px rgba(255,107,26,0.30)' }}>
               <Sparkles size={14} />Browse Catalog
-            </motion.button>
+            </MotionButton>
           </Link>
         </motion.div>
       )}

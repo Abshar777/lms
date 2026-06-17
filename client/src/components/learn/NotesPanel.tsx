@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { FileText, Save, Trash2, Loader2 } from 'lucide-react'
 import { useMyNote, useUpsertNote, useDeleteNote } from '@/lib/api/notes'
+import { Button } from '@/components/ui/button'
 
 export function NotesPanel({ lessonId }: { lessonId: string }) {
   const { data: note, isLoading } = useMyNote(lessonId)
@@ -57,20 +58,27 @@ export function NotesPanel({ lessonId }: { lessonId: string }) {
         </p>
         <div className="flex items-center gap-1">
           {note && (
-            <button onClick={clear} className="rounded-lg p-1.5 transition-colors hover:bg-red-50">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={clear}
+              className="rounded-lg p-1.5 hover:bg-red-50"
+            >
               <Trash2 size={12} style={{ color: '#EF4444' }} />
-            </button>
+            </Button>
           )}
-          <button
+          <Button
+            variant="default"
+            size="sm"
             onClick={save}
             disabled={!body.trim() || !dirty || upsert.isPending}
-            className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-white transition-opacity disabled:opacity-40"
-            style={{ background: saved ? '#22C55E' : '#FF6B1A' }}>
+            className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-white transition-opacity disabled:opacity-40${saved ? ' !bg-[#22C55E]' : ''}`}
+          >
             {upsert.isPending
               ? <Loader2 size={11} className="animate-spin" />
               : <Save size={11} />}
             {saved ? 'Saved' : 'Save'}
-          </button>
+          </Button>
         </div>
       </div>
 

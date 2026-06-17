@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Send, Sparkles, Bot, User, Loader2, RotateCcw } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useAIChat, type ChatMessage } from '@/lib/api/ai'
+import { Button, MotionButton } from '@/components/ui/button'
 
 /* ─── Context extraction from URL ───────────────────── */
 function useAIContext(): { lessonId?: string; courseSlug?: string } {
@@ -147,20 +148,22 @@ export function AIChatPanel({ open, onClose }: AIChatPanelProps) {
                 <p className="text-[10px]" style={{ color: '#9CA3AF' }}>{contextLabel}</p>
               </div>
               {history.length > 0 && (
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={clearHistory}
                   title="Clear chat"
-                  className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-gray-100"
-                  style={{ color: '#9CA3AF' }}>
+                  className="h-7 w-7 rounded-lg text-[#9CA3AF]">
                   <RotateCcw size={13} />
-                </button>
+                </Button>
               )}
-              <button
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={onClose}
-                className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-gray-100"
-                style={{ color: '#6B7280' }}>
+                className="h-7 w-7 rounded-lg text-[#6B7280]">
                 <X size={15} />
-              </button>
+              </Button>
             </div>
 
             {/* Messages */}
@@ -184,13 +187,14 @@ export function AIChatPanel({ open, onClose }: AIChatPanelProps) {
                       'Can you give me a quick quiz question?',
                       'Explain this concept with a simple example',
                     ].map(suggestion => (
-                      <button
+                      <Button
                         key={suggestion}
+                        variant="ghost"
                         onClick={() => { setInput(suggestion); inputRef.current?.focus() }}
-                        className="text-left rounded-xl px-3 py-2 text-xs transition-colors hover:bg-orange-50"
+                        className="text-left justify-start h-auto rounded-xl px-3 py-2 text-xs hover:bg-orange-50"
                         style={{ border: '1px solid #E5E7EB', color: '#374151' }}>
                         {suggestion}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -235,14 +239,16 @@ export function AIChatPanel({ open, onClose }: AIChatPanelProps) {
                     minHeight: '20px',
                   }}
                 />
-                <motion.button
+                <MotionButton
+                  variant="default"
+                  size="icon-sm"
                   onClick={() => void send()}
                   disabled={!input.trim() || chat.isPending}
-                  whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                  className="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-white disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex-shrink-0 h-7 w-7 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed">
                   <Send size={12} />
-                </motion.button>
+                </MotionButton>
               </div>
               <p className="mt-1.5 text-center text-[9px]" style={{ color: '#D1D5DB' }}>
                 AI can make mistakes. Verify important information.

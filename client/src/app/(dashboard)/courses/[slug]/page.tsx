@@ -20,6 +20,7 @@ import { AINotesPanel } from '@/components/courses/AINotesPanel'
 import { LiveClassesPanel } from '@/components/courses/LiveClassesPanel'
 import { FavoriteButton } from '@/components/courses/FavoriteButton'
 import { CourseRecommendations } from '@/components/courses/CourseRecommendations'
+import { Button, MotionButton } from '@/components/ui/button'
 
 function fmt(mins: number) {
   const h = Math.floor(mins / 60)
@@ -433,39 +434,43 @@ function CourseDetailInner({ slug }: { slug: string }) {
               {/* CTA */}
               {isEnrolled && continueLessonId ? (
                 <Link href={`/learn/${course.slug}/${continueLessonId}`}>
-                  <motion.button
+                  <MotionButton
+                    variant="default"
+                    size="lg"
                     whileHover={{ y: -2, boxShadow: '0 12px 32px rgba(255,107,26,0.40)' }}
                     whileTap={{ scale: 0.97 }}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all"
-                    style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)', boxShadow: '0 6px 24px rgba(255,107,26,0.30)' }}>
+                    className="w-full rounded-2xl gap-2 font-bold transition-all">
                     <Play size={15} fill="white" />
                     Continue learning
-                  </motion.button>
+                  </MotionButton>
                 </Link>
               ) : isPaid ? (
                 <>
-                  <motion.button
+                  <MotionButton
+                    variant="default"
+                    size="lg"
                     onClick={onCheckout}
                     disabled={checkout.isPending}
                     whileHover={{ y: -2, boxShadow: '0 12px 32px rgba(255,107,26,0.40)' }}
                     whileTap={{ scale: 0.97 }}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all disabled:opacity-70"
-                    style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)', boxShadow: '0 6px 24px rgba(255,107,26,0.30)' }}>
+                    className="w-full rounded-2xl gap-2 font-bold transition-all">
                     {checkout.isPending
                       ? <><Loader2 size={15} className="animate-spin" />Redirecting…</>
                       : <><ShoppingCart size={15} />Buy for {formatPrice(discountedPrice)}</>}
-                  </motion.button>
+                  </MotionButton>
 
                   {/* Coupon code accordion */}
                   <div className="mt-3">
-                    <button onClick={() => setCouponOpen(o => !o)}
-                      className="flex w-full items-center justify-between text-xs font-semibold transition-opacity hover:opacity-70"
+                    <Button
+                      variant="ghost"
+                      onClick={() => setCouponOpen(o => !o)}
+                      className="flex w-full items-center justify-between text-xs font-semibold transition-opacity hover:opacity-70 h-auto py-0 px-0"
                       style={{ color: '#9CA3AF' }}>
                       <span className="flex items-center gap-1">
                         <TagIcon size={11} />Have a promo code?
                       </span>
                       <ChevronDown size={12} className={`transition-transform ${couponOpen ? 'rotate-180' : ''}`} />
-                    </button>
+                    </Button>
                     <AnimatePresence>
                       {couponOpen && (
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
@@ -479,11 +484,14 @@ function CourseDetailInner({ slug }: { slug: string }) {
                               style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', color: '#111827' }}
                             />
                             {couponCode && (
-                              <button onClick={() => setCouponCode('')}
-                                className="flex h-9 w-9 items-center justify-center rounded-xl"
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => setCouponCode('')}
+                                className="h-9 w-9 rounded-xl"
                                 style={{ background: '#F3F4F6' }}>
                                 <X size={12} style={{ color: '#9CA3AF' }} />
-                              </button>
+                              </Button>
                             )}
                           </div>
                           <div className="mt-1 min-h-[16px]">
@@ -507,17 +515,18 @@ function CourseDetailInner({ slug }: { slug: string }) {
                   </div>
                 </>
               ) : (
-                <motion.button
+                <MotionButton
+                  variant="default"
+                  size="lg"
                   onClick={onEnroll}
                   disabled={enroll.isPending}
                   whileHover={{ y: -2, boxShadow: '0 12px 32px rgba(255,107,26,0.40)' }}
                   whileTap={{ scale: 0.97 }}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all disabled:opacity-70"
-                  style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)', boxShadow: '0 6px 24px rgba(255,107,26,0.30)' }}>
+                  className="w-full rounded-2xl gap-2 font-bold transition-all">
                   {enroll.isPending
                     ? <><Loader2 size={15} className="animate-spin" />Enrolling…</>
                     : <><Zap size={15} fill="white" />Enroll for free</>}
-                </motion.button>
+                </MotionButton>
               )}
 
               {enrollError && (

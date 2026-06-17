@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader2, AlertCircle } from 'lucide-react'
 import { api } from '@/lib/axios'
+import { Button, MotionButton } from '@/components/ui/button'
 
 /* ─── Validation schema ─────────────────────────── */
 const loginSchema = z.object({
@@ -200,14 +201,15 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
                 e.currentTarget.style.boxShadow = 'none'
               }}
             />
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-sm"
               onClick={() => setShowPassword(v => !v)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
-              style={{ color: '#9CA3AF' }}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#9CA3AF] transition-opacity hover:opacity-70"
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
+            </Button>
           </div>
           <AnimatePresence>
             {errors.password && (
@@ -263,16 +265,14 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
 
         {/* Submit */}
         <motion.div custom={5} variants={fieldVariant} initial="hidden" animate="visible">
-          <motion.button
+          <MotionButton
             type="submit"
+            variant="default"
+            size="lg"
             disabled={isSubmitting}
             whileHover={{ y: -2, boxShadow: '0 8px 28px rgba(255,107,26,0.38)' }}
             whileTap={{ scale: 0.98 }}
-            className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold text-white transition-all disabled:cursor-not-allowed disabled:opacity-60"
-            style={{
-              background: 'linear-gradient(135deg, #FF6B1A 0%, #FF8C42 100%)',
-              boxShadow: '0 4px 20px rgba(255,107,26,0.30)',
-            }}
+            className="w-full gap-2 rounded-xl py-3.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? (
               <>
@@ -285,7 +285,7 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
                 <ArrowRight size={16} />
               </>
             )}
-          </motion.button>
+          </MotionButton>
         </motion.div>
       </form>
 
@@ -299,16 +299,15 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
         style={{ color: '#6B7280' }}
       >
         Don&apos;t have an account?{' '}
-        <button
+        <Button
           type="button"
+          variant="link"
           onClick={onSwitch}
-          className="font-semibold transition-opacity hover:opacity-70"
-          style={{ color: '#FF6B1A' }}
+          className="p-0 font-semibold text-[#FF6B1A] transition-opacity hover:opacity-70"
         >
           Create one free →
-        </button>
+        </Button>
       </motion.p>
     </motion.div>
   )
 }
-

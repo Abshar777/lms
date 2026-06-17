@@ -15,12 +15,19 @@ export interface AuthUser {
   id: string
   email: string
   role: UserRole
+  categoryScope?: '4x-trading' | 'digital-marketing'
 }
 
 /* ─────────────────────────────────────────────────────
    Domain enums
 ───────────────────────────────────────────────────── */
-export type UserRole = 'student' | 'instructor' | 'admin'
+export type UserRole =
+  | 'student'
+  | 'instructor'
+  | 'admin'
+  | '4x_admin'
+  | 'digital_marketing_admin'
+  | 'super_admin'
 
 export type EnrollmentStatus = 'active' | 'completed' | 'dropped'
 

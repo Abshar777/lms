@@ -48,6 +48,7 @@ type CoursesParams = {
   duration_max?: number
   price_min?: number
   price_max?: number
+  program?: string
 }
 
 /* Strip null / undefined / empty-string / `false` values from query params

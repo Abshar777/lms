@@ -7,6 +7,7 @@ import {
   Loader2, Check, TrendingUp,
 } from 'lucide-react'
 import { useMyStreak, useUpdateStreakGoal } from '@/lib/api/streaks'
+import { Button } from '@/components/ui/button'
 
 /* ─── Helpers ──────────────────────────────────────────── */
 function fmtDate(iso: string): string {
@@ -127,11 +128,15 @@ function GoalEditor({ current }: { current: number }) {
             <Check size={11} />Saved!
           </span>
         ) : !editing ? (
-          <button onClick={() => { setValue(current); setEditing(true) }}
-            className="text-xs font-semibold transition-opacity hover:opacity-70"
-            style={{ color: '#FF6B1A' }}>
+          <Button
+            variant="link"
+            size="sm"
+            onClick={() => { setValue(current); setEditing(true) }}
+            className="h-auto p-0 text-xs font-semibold"
+            style={{ color: '#FF6B1A' }}
+          >
             Edit
-          </button>
+          </Button>
         ) : null}
       </div>
 
@@ -154,17 +159,23 @@ function GoalEditor({ current }: { current: number }) {
               <span className="text-sm" style={{ color: '#6B7280' }}>lessons / week</span>
             </div>
             <div className="mt-3 flex gap-2">
-              <button onClick={save} disabled={update.isPending}
-                className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold text-white transition-all disabled:opacity-60"
-                style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={save}
+                disabled={update.isPending}
+                className="flex items-center gap-1.5"
+              >
                 {update.isPending ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
                 {update.isPending ? 'Saving…' : 'Save goal'}
-              </button>
-              <button onClick={() => setEditing(false)}
-                className="rounded-xl px-4 py-2 text-sm font-semibold transition-colors hover:bg-gray-50"
-                style={{ color: '#6B7280' }}>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditing(false)}
+              >
                 Cancel
-              </button>
+              </Button>
             </div>
           </motion.div>
         ) : (

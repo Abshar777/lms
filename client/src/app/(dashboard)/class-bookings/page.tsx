@@ -14,6 +14,7 @@ import { useMyBookings, useCreateBooking, useCancelBooking, type MyBooking } fro
 import { useCourse } from '@/lib/api/courses'
 import { APP_TIMEZONE } from '@/lib/timezone'
 import { useServerNow } from '@/hooks/useServerNow'
+import { Button, MotionButton } from '@/components/ui/button'
 
 /* ─────────────────────────────────────────────────────────
    DATE HELPERS
@@ -273,20 +274,18 @@ function MiniCalendar({
     >
       {/* Month navigation */}
       <div className="mb-3 flex items-center justify-between">
-        <button type="button"
-          onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
-          className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-gray-100">
+        <Button type="button" variant="ghost" size="icon-sm"
+          onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>
           <ChevronLeft size={14} style={{ color: '#6B7280' }} />
-        </button>
+        </Button>
         <span className="text-sm font-bold"
           style={{ color: '#111827', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
           {month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
         </span>
-        <button type="button"
-          onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
-          className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-gray-100">
+        <Button type="button" variant="ghost" size="icon-sm"
+          onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>
           <ChevronRight size={14} style={{ color: '#6B7280' }} />
-        </button>
+        </Button>
       </div>
 
       {/* Day-of-week headers */}
@@ -304,7 +303,7 @@ function MiniCalendar({
           const range    = inRange(day)
           const tod      = isSameDay(day, today)
           return (
-            <button key={day.toISOString()} type="button"
+            <Button key={day.toISOString()} type="button" variant="ghost"
               onClick={() => handleDay(day)}
               onMouseEnter={() => anchor && setHover(day)}
               onMouseLeave={() => anchor && setHover(null)}
@@ -316,7 +315,7 @@ function MiniCalendar({
                 fontWeight:   tod && !endpoint ? 700 : 500,
               }}>
               {day.getDate()}
-            </button>
+            </Button>
           )
         })}
       </div>
@@ -329,15 +328,15 @@ function MiniCalendar({
       {/* Quick presets */}
       <div className="flex flex-wrap gap-1.5">
         {presets.map(p => (
-          <button key={p.label} type="button" onClick={p.fn}
-            className="rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors hover:brightness-95"
+          <Button key={p.label} type="button" variant="ghost" size="sm" onClick={p.fn}
+            className="rounded-lg px-2.5 py-1 text-[11px] font-semibold hover:brightness-95"
             style={{
               background: 'rgba(255,107,26,0.06)',
               color:      '#FF6B1A',
               border:     '1px solid rgba(255,107,26,0.15)',
             }}>
             {p.label}
-          </button>
+          </Button>
         ))}
       </div>
     </motion.div>
@@ -381,12 +380,13 @@ function SlotChip({ lc, status, isSelected, onClick }: {
   }
 
   return (
-    <motion.button
+    <MotionButton
       type="button"
+      variant="ghost"
       onClick={clickable ? onClick : undefined}
       whileHover={clickable ? { scale: 1.02 } : undefined}
       whileTap={clickable ? { scale: 0.97 } : undefined}
-      className="relative flex flex-col rounded-2xl p-3 text-left"
+      className="relative flex h-auto flex-col rounded-2xl p-3 text-left"
       style={{
         background: c.bg,
         border: `1.5px solid ${isSelected && status === 'bookable' ? '#FF6B1A' : c.border}`,
@@ -440,7 +440,7 @@ function SlotChip({ lc, status, isSelected, onClick }: {
       {isSelected && status === 'bookable' && (
         <div className="absolute right-2 top-2 h-2 w-2 rounded-full" style={{ background: '#FF6B1A' }} />
       )}
-    </motion.button>
+    </MotionButton>
   )
 }
 
@@ -475,12 +475,13 @@ function ClassCard({ group, bookingMap, onClick }: {
   const p = pal[state]
 
   return (
-    <motion.button
+    <MotionButton
       type="button"
+      variant="ghost"
       onClick={onClick}
       whileHover={{ y: -3, boxShadow: '0 10px 28px rgba(0,0,0,0.09)' }}
       whileTap={{ scale: 0.97 }}
-      className="flex w-full flex-col rounded-2xl bg-white p-4 text-left"
+      className="flex h-auto w-full flex-col rounded-2xl bg-white p-4 text-left"
       style={{ border: `1px solid ${p.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
     >
       {/* Top row: icon + pill */}
@@ -562,7 +563,7 @@ function ClassCard({ group, bookingMap, onClick }: {
           </span>
         </div>
       </div>
-    </motion.button>
+    </MotionButton>
   )
 }
 
@@ -663,10 +664,10 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
               ) : null
             })()}
           </div>
-          <button type="button" onClick={onClose}
-            className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-xl transition-colors hover:bg-gray-100">
+          <Button type="button" variant="ghost" size="icon-sm" onClick={onClose}
+            className="flex-shrink-0 rounded-xl">
             <X size={15} style={{ color: '#6B7280' }} />
-          </button>
+          </Button>
         </div>
 
         <div className="px-5 pb-3 pt-4">
@@ -697,37 +698,39 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
                 exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.14 }}
               >
                 {selectedStatus === 'bookable' && (
-                  <motion.button type="button"
+                  <MotionButton
+                    type="button"
+                    variant="default"
+                    size="lg"
                     whileHover={{ scale: 1.01, boxShadow: '0 6px 20px rgba(255,107,26,0.35)' }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => onBook(selectedSlot.id)}
                     disabled={bookPending.has(selectedSlot.id)}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold text-white transition-all disabled:opacity-60"
-                    style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)', boxShadow: '0 4px 14px rgba(255,107,26,0.28)' }}>
+                    className="w-full gap-2 rounded-2xl py-3 text-sm font-bold">
                     {bookPending.has(selectedSlot.id)
                       ? <><Loader2 size={14} className="animate-spin" /> Booking…</>
                       : <><BookOpen size={14} /> Book {fmtShortSlot(selectedSlot.scheduledStart)}</>}
-                  </motion.button>
+                  </MotionButton>
                 )}
 
                 {selectedStatus === 'live' && (
                   <div className="flex flex-col gap-2">
                     {selectedSlot.type === 'internal' && (
                       <Link href={`/live-classes/${selectedSlot.id}/watch`}>
-                        <button type="button"
-                          className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold text-white"
-                          style={{ background: 'linear-gradient(135deg,#EF4444,#DC2626)', boxShadow: '0 4px 14px rgba(239,68,68,0.30)' }}>
+                        <Button type="button" variant="destructive"
+                          className="w-full gap-2 rounded-2xl py-3 text-sm font-bold"
+                          style={{ boxShadow: '0 4px 14px rgba(239,68,68,0.30)' }}>
                           <Radio size={14} /> Watch Live
-                        </button>
+                        </Button>
                       </Link>
                     )}
                     {selectedSlot.meetingUrl && (
                       <a href={selectedSlot.meetingUrl} target="_blank" rel="noreferrer">
-                        <button type="button"
-                          className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold text-white"
-                          style={{ background: 'linear-gradient(135deg,#EF4444,#DC2626)', boxShadow: '0 4px 14px rgba(239,68,68,0.30)' }}>
+                        <Button type="button" variant="destructive"
+                          className="w-full gap-2 rounded-2xl py-3 text-sm font-bold"
+                          style={{ boxShadow: '0 4px 14px rgba(239,68,68,0.30)' }}>
                           <ExternalLink size={14} /> Join Live →
-                        </button>
+                        </Button>
                       </a>
                     )}
                   </div>
@@ -748,11 +751,11 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
                     </div>
                     {selectedSlot.meetingUrl && linkReady && (
                       <a href={selectedSlot.meetingUrl} target="_blank" rel="noreferrer">
-                        <button type="button"
-                          className="flex w-full items-center justify-center gap-2 rounded-2xl py-2.5 text-sm font-semibold"
+                        <Button type="button" variant="outline"
+                          className="w-full gap-2 rounded-2xl py-2.5 text-sm font-semibold"
                           style={{ background: 'rgba(16,185,129,0.08)', color: '#10B981', border: '1px solid rgba(16,185,129,0.20)' }}>
                           <ExternalLink size={13} /> Get Class Link
-                        </button>
+                        </Button>
                       </a>
                     )}
                     {selectedSlot.meetingUrl && !linkReady && (
@@ -764,16 +767,16 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
                         </p>
                       </div>
                     )}
-                    <button type="button"
+                    <Button type="button" variant="ghost"
                       onClick={() => onCancel(selectedBooking.id, fmtShortSlot(selectedSlot.scheduledStart))}
                       disabled={cancelPending.has(selectedBooking.id)}
-                      className="flex w-full items-center justify-center gap-1.5 rounded-2xl py-2 text-xs font-medium transition-colors hover:bg-red-50 disabled:opacity-50"
+                      className="w-full gap-1.5 rounded-2xl py-2 text-xs font-medium hover:bg-red-50 disabled:opacity-50"
                       style={{ color: '#EF4444', border: '1px solid rgba(239,68,68,0.18)' }}>
                       {cancelPending.has(selectedBooking.id)
                         ? <Loader2 size={11} className="animate-spin" />
                         : <X size={11} />}
                       Cancel booking
-                    </button>
+                    </Button>
                   </div>
                   )
                 })()}
@@ -811,11 +814,11 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
 
                 {selectedStatus === 'ended' && selectedSlot.recordingUrl && (
                   <a href={selectedSlot.recordingUrl} target="_blank" rel="noreferrer">
-                    <button type="button"
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl py-2.5 text-sm font-medium"
+                    <Button type="button" variant="outline"
+                      className="w-full gap-2 rounded-2xl py-2.5 text-sm font-medium"
                       style={{ background: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}>
                       <Video size={13} /> Watch Recording
-                    </button>
+                    </Button>
                   </a>
                 )}
                 {selectedStatus === 'ended' && !selectedSlot.recordingUrl && (
@@ -896,11 +899,10 @@ function ContactAdminModal({ onClose }: { onClose: () => void }) {
         <p className="mb-5 text-sm leading-relaxed" style={{ color: '#6B7280' }}>
           You&apos;ve already attended this class twice. Please contact the admin team to arrange additional access.
         </p>
-        <button type="button" onClick={onClose}
-          className="w-full rounded-2xl py-3 text-sm font-bold text-white"
-          style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+        <Button type="button" variant="default" size="lg" onClick={onClose}
+          className="w-full rounded-2xl py-3 text-sm font-bold">
           Got it, I&apos;ll contact admin
-        </button>
+        </Button>
       </motion.div>
     </div>
   )
@@ -1185,29 +1187,29 @@ export default function ClassBookingsPage() {
         {/* Date range navigation */}
         <div className="relative flex items-center gap-2" ref={calendarRef}>
           {!isCurrentWeek && (
-            <button type="button"
+            <Button type="button" variant="ghost" size="sm"
               onClick={() => {
                 const m = getMondayOfWeek(new Date())
                 setRangeStart(m)
                 setRangeEnd(addDays(m, 6))
               }}
-              className="rounded-xl px-3 py-2 text-xs font-semibold transition-all hover:brightness-105"
+              className="rounded-xl px-3 py-2 text-xs font-semibold hover:brightness-105"
               style={{ background: 'rgba(255,107,26,0.08)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.20)' }}>
               This week
-            </button>
+            </Button>
           )}
 
           <div className="flex items-center gap-1 rounded-2xl p-1"
             style={{ background: 'white', border: '1px solid #E5E7EB' }}>
-            <button type="button" onClick={() => shiftRange(-1)}
-              className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-gray-100"
+            <Button type="button" variant="ghost" size="icon" onClick={() => shiftRange(-1)}
+              className="h-8 w-8 rounded-xl"
               style={{ color: '#6B7280' }}>
               <ChevronLeft size={15} />
-            </button>
+            </Button>
 
-            <button type="button"
+            <Button type="button" variant="ghost"
               onClick={() => setShowCalendar(v => !v)}
-              className="flex items-center gap-1.5 rounded-xl px-2 py-1 transition-colors hover:bg-gray-50"
+              className="flex items-center gap-1.5 rounded-xl px-2 py-1 hover:bg-gray-50"
               style={{ color: '#374151' }}>
               <Calendar size={12} style={{ color: showCalendar ? '#FF6B1A' : '#9CA3AF' }} />
               <span className="whitespace-nowrap text-xs font-semibold">
@@ -1215,13 +1217,13 @@ export default function ClassBookingsPage() {
                 {' – '}
                 {rangeEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </span>
-            </button>
+            </Button>
 
-            <button type="button" onClick={() => shiftRange(1)}
-              className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-gray-100"
+            <Button type="button" variant="ghost" size="icon" onClick={() => shiftRange(1)}
+              className="h-8 w-8 rounded-xl"
               style={{ color: '#6B7280' }}>
               <ChevronRight size={15} />
-            </button>
+            </Button>
           </div>
 
           {/* Inline calendar dropdown */}
@@ -1257,10 +1259,11 @@ export default function ClassBookingsPage() {
             }}
           />
           {search && (
-            <button type="button" onClick={() => setSearch('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 flex h-4 w-4 items-center justify-center rounded-full hover:bg-gray-100">
+            <Button type="button" variant="ghost" size="icon-sm"
+              onClick={() => setSearch('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full">
               <X size={9} style={{ color: '#9CA3AF' }} />
-            </button>
+            </Button>
           )}
         </div>
 
@@ -1302,12 +1305,12 @@ export default function ClassBookingsPage() {
         </select>
 
         {hasFilters && (
-          <button type="button"
+          <Button type="button" variant="link"
             onClick={() => { setSearch(''); setFilterCourse(''); setFilterModule(''); setFilterInstructor('') }}
-            className="shrink-0 text-xs font-medium transition-colors hover:opacity-80"
+            className="shrink-0 text-xs font-medium hover:opacity-80"
             style={{ color: '#EF4444' }}>
             × Clear
-          </button>
+          </Button>
         )}
       </div>
 
@@ -1352,12 +1355,12 @@ export default function ClassBookingsPage() {
                   ) : hasFilters ? (
                     <>
                       <p className="font-bold" style={{ color: '#111827' }}>No classes match your filters</p>
-                      <button type="button"
+                      <Button type="button" variant="ghost"
                         onClick={() => { setSearch(''); setFilterCourse(''); setFilterModule(''); setFilterInstructor('') }}
                         className="rounded-xl px-4 py-2 text-sm font-semibold"
                         style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.20)' }}>
                         Clear filters
-                      </button>
+                      </Button>
                     </>
                   ) : (
                     <>
@@ -1367,13 +1370,13 @@ export default function ClassBookingsPage() {
                         return futureCount > 0 ? (
                           <div className="flex flex-col items-center gap-2">
                             <p className="text-sm" style={{ color: '#9CA3AF' }}>No sessions in the selected date range.</p>
-                            <button type="button"
+                            <Button type="button" variant="ghost"
                               onClick={() => shiftRange(1)}
                               className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold"
                               style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.20)' }}>
                               <Calendar size={13} />
                               {futureCount} upcoming — go forward →
-                            </button>
+                            </Button>
                           </div>
                         ) : (
                           <p className="text-sm" style={{ color: '#9CA3AF' }}>

@@ -13,6 +13,7 @@ import { useCurrentUser } from '@/lib/api/user'
 import { useMyEnrollments, useMyActivity, type MyEnrollment, type ActivityItem } from '@/lib/api/enrollments'
 import { useUpcomingLiveClasses, isLive, type LiveClass } from '@/lib/api/liveClasses'
 import { useUIStore } from '@/store/ui.store'
+import { Button, MotionButton } from '@/components/ui/button'
 
 /* ── Helpers ──────────────────────────────────────────── */
 function fmtMins(mins: number): string {
@@ -161,11 +162,12 @@ export function RightSidebar() {
                       </p>
                     </div>
                   </div>
-                  <button onClick={() => setRightPanel(false)} aria-label="Close"
-                    className="ml-2 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-white/80"
+                  <Button onClick={() => setRightPanel(false)} aria-label="Close"
+                    variant="ghost" size="icon-sm"
+                    className="ml-2 h-5 w-5 flex-shrink-0 rounded-lg hover:bg-white/80"
                     style={{ color: '#C4C9D4' }}>
                     <X size={11} />
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Stats */}
@@ -427,14 +429,15 @@ export function RightSidebarToggle() {
   const { rightPanelOpen, setRightPanel } = useUIStore()
   if (rightPanelOpen) return null
   return (
-    <motion.button
+    <MotionButton
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       onClick={() => setRightPanel(true)}
       aria-label="Show activity panel"
-      className="fixed right-4 bottom-6 z-20 flex h-10 w-10 items-center justify-center rounded-full transition-shadow hover:shadow-xl lg:bottom-auto lg:top-[120px]"
+      variant="ghost" size="icon"
+      className="fixed right-4 bottom-6 z-20 h-10 w-10 rounded-full transition-shadow hover:shadow-xl lg:bottom-auto lg:top-[120px]"
       style={{ background: 'white', border: '1px solid #E5E7EB', boxShadow: '0 4px 14px rgba(0,0,0,0.10)' }}>
       <Zap size={15} style={{ color: '#FF6B1A' }} />
-    </motion.button>
+    </MotionButton>
   )
 }

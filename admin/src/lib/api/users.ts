@@ -16,16 +16,26 @@ const enrollmentKeys = {
   forStudent: (userId: string) => ['admin', 'enrollments', userId] as const,
 }
 
+export type AdminUserRole =
+  | 'student'
+  | 'instructor'
+
+  | 'admin'
+  | '4x_admin'
+  | 'digital_marketing_admin'
+  | 'super_admin'
+
 export interface AdminUser {
   id:            string
   name:          string
   email:         string
   avatarUrl?:    string
-  role:          'student' | 'instructor' | 'admin'
+  role:          AdminUserRole
   isVerified:    boolean
   isActive:      boolean
   headline?:     string
   bio?:          string
+  category?:     '4x-trading' | 'digital-marketing'
   lastLoginAt?:  string
   createdAt:     string
   updatedAt:     string
@@ -36,15 +46,15 @@ export const userKeys = {
   list: (role: string, params: object) => ['admin', 'users', role, params] as const,
 }
 
-export function useUsers(role: 'student' | 'instructor' | 'admin', params: {
-  page?: number; per_page?: number; search?: string
+export function useUsers(role: Exclude<AdminUserRole, 'student'> | undefined, params: {
+  page?: number; per_page?: number; search?: string; category?: string; status?: 'active' | 'inactive'; exclude_students?: boolean
 } = {}) {
   return useQuery({
-    queryKey: userKeys.list(role, params),
+    queryKey: userKeys.list(role ?? 'all', params),
     queryFn: async () => {
       const res = await api.get<{ success: true; data: AdminUser[]; meta: PaginationMeta }>(
         '/admin/users',
-        { params: { role, ...params } },
+        { params: { ...(role ? { role } : {}), ...params } },
       )
       return { docs: res.data.data, meta: res.data.meta }
     },
@@ -109,13 +119,39 @@ export function useRemoveEnrollment() {
   })
 }
 
+/* ─── Impersonate a user ─────────────────────────────── */
+export function useImpersonateUser() {
+  return useMutation({
+    mutationFn: async (userId: string): Promise<{ token: string; user: { id: string; name: string; email: string; role: string; avatarUrl?: string } }> => {
+      const res = await api.post<{ success: true; data: { token: string; user: { id: string; name: string; email: string; role: string; avatarUrl?: string } } }>(
+        `/admin/users/${userId}/impersonate`,
+      )
+      return res.data.data
+    },
+  })
+}
+
+/* ─── Delete user (hard delete) ──────────────────────────────── */
+export function useDeleteUser() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      await api.delete(`/admin/users/${userId}`)
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] })
+      qc.invalidateQueries({ queryKey: ['admin', 'stats'] })
+    },
+  })
+}
+
 /* ─── Update user (role / isActive / isVerified / name / email) ─── */
 export function useUpdateUser() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({
       id, ...dto
-    }: { id: string; role?: AdminUser['role']; isActive?: boolean; isVerified?: boolean; name?: string; email?: string }) => {
+    }: { id: string; role?: AdminUser['role']; isActive?: boolean; isVerified?: boolean; name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | null }) => {
       const res = await api.patch<{ success: true; data: AdminUser }>(`/admin/users/${id}`, dto)
       return res.data.data
     },

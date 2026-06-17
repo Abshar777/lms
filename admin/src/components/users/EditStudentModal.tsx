@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, Loader2, AlertCircle, User, Mail,
   Lock, Unlock, BookOpen, Plus, Trash2,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, Check,
 } from 'lucide-react'
 import {
   useUpdateUser, useStudentEnrollments, useUpdateEnrollmentAccess,
@@ -113,6 +113,60 @@ function ModuleAccessPanel({
   )
 }
 
+/* ── Dark custom dropdown (native <select> shows white on dark bg on Windows) ── */
+function DarkSelect({ value, onChange, options, placeholder }: {
+  value: string; onChange: (v: string) => void
+  options: { value: string; label: string }[]; placeholder?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    function onOut(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', onOut)
+    return () => document.removeEventListener('mousedown', onOut)
+  }, [])
+  const selected = options.find(o => o.value === value)
+  const label = selected?.label ?? placeholder ?? 'Select…'
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" onClick={() => setOpen(v => !v)}
+        className="w-full rounded-xl py-2.5 pl-9 pr-9 text-sm outline-none transition-all flex items-center"
+        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', color: value ? '#fff' : 'rgba(255,255,255,0.3)' }}>
+        <span className="truncate">{label}</span>
+        <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+          style={{ color: 'rgba(255,255,255,0.3)', transform: open ? 'translateY(-50%) rotate(180deg)' : 'translateY(-50%)', transition: 'transform 0.15s' }} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={{ duration: 0.12 }}
+            className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl py-1"
+            style={{ background: '#0F1020', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 16px 40px rgba(0,0,0,0.6)' }}>
+            {placeholder && (
+              <button type="button" onClick={() => { onChange(''); setOpen(false) }}
+                className="w-full px-3 py-2 text-left text-sm transition-colors hover:bg-white/05"
+                style={{ color: 'rgba(255,255,255,0.3)' }}>{placeholder}</button>
+            )}
+            {options.map(o => (
+              <button key={o.value} type="button" onClick={() => { onChange(o.value); setOpen(false) }}
+                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors hover:bg-white/05"
+                style={{ color: o.value === value ? '#FF6B1A' : 'rgba(255,255,255,0.8)' }}>
+                {o.label}
+                {o.value === value && <Check size={12} style={{ color: '#FF6B1A' }} />}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+const CATEGORY_OPTIONS = [
+  { value: '4x-trading',        label: '4x Trading' },
+  { value: 'digital-marketing', label: 'Digital Marketing' },
+]
+
 /* ── Props ──────────────────────────────────────────── */
 interface Props {
   user:      AdminUser
@@ -128,9 +182,13 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
   const toast          = useToast()
 
   /* Profile fields */
-  const [name,  setName]  = useState(user.name)
-  const [email, setEmail] = useState(user.email)
-  const [error, setError] = useState<string | null>(null)
+  const [name,     setName]     = useState(user.name)
+  const [email,    setEmail]    = useState(user.email)
+  const [category, setCategory] = useState<'4x-trading' | 'digital-marketing' | ''>(user.category ?? '')
+  const [error,    setError]    = useState<string | null>(null)
+
+  /* Keep category in sync if user prop changes (e.g. after refetch) */
+  useEffect(() => { setCategory(user.category ?? '') }, [user.category])
 
   /* Course access — localBlocked stores SECTION IDs (not lesson IDs) */
   const { data: enrollments, isLoading: enrollmentsLoading } = useStudentEnrollments(user.id)
@@ -218,9 +276,10 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
 
     const promises: Promise<unknown>[] = []
 
-    const dto: { name?: string; email?: string } = {}
-    if (name.trim()  !== user.name)  dto.name  = name.trim()
-    if (email.trim() !== user.email) dto.email = email.trim().toLowerCase()
+    const dto: { name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | null } = {}
+    if (name.trim()  !== user.name)              dto.name     = name.trim()
+    if (email.trim() !== user.email)             dto.email    = email.trim().toLowerCase()
+    if (category     !== (user.category ?? '')) dto.category = category === '' ? null : category
     if (Object.keys(dto).length > 0) promises.push(update.mutateAsync({ id: user.id, ...dto }))
 
     enrollments?.forEach(e => {
@@ -319,6 +378,18 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
                     type="email" required placeholder="email@example.com"
                     className={base} style={iStyle} onFocus={iFocus} onBlur={iBlur} />
                 </div>
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+                  style={{ color: 'rgba(255,255,255,0.35)' }}>Program Category</label>
+                <DarkSelect
+                  value={category}
+                  onChange={v => setCategory(v as '4x-trading' | 'digital-marketing' | '')}
+                  options={CATEGORY_OPTIONS}
+                  placeholder="Select category…"
+                />
               </div>
             </div>
 

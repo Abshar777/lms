@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -37,6 +37,7 @@ const schema = z.object({
   language:     z.string().min(1, 'Language required'),
   tags:         z.string(),
   categoryId:   z.string(),
+  program:      z.enum(['4x-trading', 'digital-marketing', '']),
 })
 
 type Values = z.infer<typeof schema>
@@ -90,25 +91,60 @@ const inputBlur = (el: HTMLElement) => {
   el.style.boxShadow = 'none'
 }
 
-/* ── Select component ────────────────────────────────────────── */
+/* ── Custom dark dropdown (replaces native <select> to avoid OS-white dropdown) ── */
 function Select({ value, onChange, options, placeholder }: {
   value: string; onChange: (v: string) => void
   options: { value: string; label: string }[]; placeholder?: string
 }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function onOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onOutside)
+    return () => document.removeEventListener('mousedown', onOutside)
+  }, [])
+
+  const selected = options.find(o => o.value === value)
+  const displayLabel = selected?.label ?? placeholder ?? 'Select…'
+
   return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className={`${inputBase} cursor-pointer appearance-none pr-10`}
-        style={inputStyle}
-        onFocus={e => inputFocus(e.currentTarget)}
-        onBlur={e => inputBlur(e.currentTarget)}>
-        {placeholder && <option value="">{placeholder}</option>}
-        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-      <ChevronDown size={13} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2"
-        style={{ color: 'rgba(255,255,255,0.3)' }} />
+    <div ref={ref} className="relative">
+      <button type="button" onClick={() => setOpen(v => !v)}
+        className={`${inputBase} flex cursor-pointer items-center justify-between pr-10`}
+        style={inputStyle}>
+        <span style={{ color: value ? '#fff' : 'rgba(255,255,255,0.3)' }}>{displayLabel}</span>
+        <ChevronDown size={13} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 transition-transform"
+          style={{ color: 'rgba(255,255,255,0.3)', transform: open ? 'translateY(-50%) rotate(180deg)' : 'translateY(-50%)' }} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={{ duration: 0.12 }}
+            className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl py-1"
+            style={{ background: '#13141C', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 16px 40px rgba(0,0,0,0.5)' }}>
+            {placeholder && (
+              <button type="button" onClick={() => { onChange(''); setOpen(false) }}
+                className="w-full px-3 py-2 text-left text-sm transition-colors hover:bg-white/05"
+                style={{ color: 'rgba(255,255,255,0.3)' }}>
+                {placeholder}
+              </button>
+            )}
+            {options.map(o => (
+              <button key={o.value} type="button"
+                onClick={() => { onChange(o.value); setOpen(false) }}
+                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors hover:bg-white/05"
+                style={{ color: o.value === value ? '#FF6B1A' : 'rgba(255,255,255,0.8)' }}>
+                {o.label}
+                {o.value === value && <Check size={12} style={{ color: '#FF6B1A' }} />}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -143,6 +179,7 @@ export function CourseForm({ course }: CourseFormProps) {
       language:     course?.language     ?? 'English',
       tags:         course?.tags?.join(', ') ?? '',
       categoryId:   course?.categoryId   ?? '',
+      program:      course?.program       ?? '',
     },
   })
 
@@ -404,8 +441,18 @@ export function CourseForm({ course }: CourseFormProps) {
 
               <Field label="Category">
                 <Controller name="categoryId" control={control} render={({ field }) => (
-                  <Select value={field.value} onChange={field.onChange} placeholder="Select category"
+                  <Select value={field.value} onChange={field.onChange} placeholder="Select category…"
                     options={(categories ?? []).map(c => ({ value: c.id, label: c.name }))} />
+                )} />
+              </Field>
+
+              <Field label="Program *">
+                <Controller name="program" control={control} render={({ field }) => (
+                  <Select value={field.value} onChange={field.onChange} placeholder="Select program…"
+                    options={[
+                      { value: '4x-trading',        label: '4x Trading' },
+                      { value: 'digital-marketing', label: 'Digital Marketing' },
+                    ]} />
                 )} />
               </Field>
             </motion.div>

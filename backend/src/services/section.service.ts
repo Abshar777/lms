@@ -34,25 +34,36 @@ export class SectionService {
   /* Ownership check: throws if the course is not editable by this user.
      - Admins always pass.
      - Instructors must own the course. */
-  async assertCourseEditable(courseId: string, userId: string, role: string): Promise<void> {
+  async assertCourseEditable(courseId: string, userId: string, role: string, categoryScope?: '4x-trading' | 'digital-marketing'): Promise<void> {
     if (!Types.ObjectId.isValid(courseId)) {
       throw new OutlineError('INVALID_ID', 'Invalid course id', 400)
     }
     const course = await this.courseRepo.findById_(courseId)
     if (!course) throw new OutlineError('COURSE_NOT_FOUND', 'Course not found.', 404)
-    if (role === 'admin') return
-    if (role === 'instructor' && String(course.instructorId._id ?? course.instructorId) === userId) return
+
+    // Full-platform admins — no restrictions
+    if (role === 'super_admin' || role === 'admin') return
+
+    // Category-scoped admins — can only edit their program's courses
+    if ((role === '4x_admin' || role === 'digital_marketing_admin') && categoryScope) {
+      if ((course as any).program === categoryScope) return
+      throw new OutlineError('FORBIDDEN', 'You can only edit courses in your program.', 403)
+    }
+
+    // Teaching staff — only own courses
+    if (role === 'instructor' && String((course as any).instructorId?._id ?? course.instructorId) === userId) return
+
     throw new OutlineError('FORBIDDEN', 'You do not have permission to edit this course.', 403)
   }
 
   /** Convenience: look up lesson → course, then assertCourseEditable. */
-  async assertLessonEditable(lessonId: string, userId: string, role: string): Promise<void> {
+  async assertLessonEditable(lessonId: string, userId: string, role: string, categoryScope?: '4x-trading' | 'digital-marketing'): Promise<void> {
     if (!Types.ObjectId.isValid(lessonId)) {
       throw new OutlineError('INVALID_ID', 'Invalid lesson id', 400)
     }
     const lesson = await this.lessonRepo.findById(lessonId)
     if (!lesson) throw new OutlineError('LESSON_NOT_FOUND', 'Lesson not found', 404)
-    await this.assertCourseEditable(String(lesson.courseId), userId, role)
+    await this.assertCourseEditable(String(lesson.courseId), userId, role, categoryScope)
   }
 
   async list(courseId: string): Promise<ISection[]> {

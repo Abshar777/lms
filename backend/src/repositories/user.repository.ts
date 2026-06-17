@@ -35,6 +35,7 @@ export class UserRepository extends BaseRepository<IUser> {
     provider?:    string
     providerId?:  string
     avatarUrl?:   string
+    category?:    IUser['category']
   }): Promise<IUser> {
     return this.create({
       ...data,
@@ -54,7 +55,8 @@ export class UserRepository extends BaseRepository<IUser> {
 
   /* ── Login-lockout helpers ──────────────────────── */
   async incrementFailedLogin(id: string): Promise<{ attempts: number; lockedUntil?: Date }> {
-    const MAX_ATTEMPTS  = 5
+    const isDev         = process.env['NODE_ENV'] !== 'production'
+    const MAX_ATTEMPTS  = isDev ? 50 : 5
     const LOCK_DURATION = 15 * 60 * 1000  // 15 min
 
     const updated = await UserModel.findByIdAndUpdate(
@@ -91,12 +93,17 @@ export class UserRepository extends BaseRepository<IUser> {
     return this.exists({ email: email.toLowerCase().trim() })
   }
 
-  /* ── Paginated list by role (admin / instructors / students) */
+  /* ── Paginated list (all roles, or filtered by role / category / status) */
   async listByRole(
-    role: IUser['role'],
-    params: { page: number; perPage: number; search?: string },
+    role: IUser['role'] | undefined,
+    params: { page: number; perPage: number; search?: string; category?: IUser['category']; status?: 'active' | 'inactive'; excludeStudents?: boolean },
   ): Promise<{ docs: IUser[]; totalCount: number }> {
-    const filter: Record<string, unknown> = { role }
+    const filter: Record<string, unknown> = {}
+    if (role)                        filter['role']     = role
+    else if (params.excludeStudents) filter['role']     = { $ne: 'student' }
+    if (params.category) filter['category'] = params.category
+    if (params.status)   filter['isActive'] = params.status === 'active'
+    if (role === 'student') filter['enrollmentStatus'] = { $ne: 'cancelled' }
     if (params.search) {
       filter['$or'] = [
         { name:  { $regex: params.search, $options: 'i' } },

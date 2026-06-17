@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { useImpersonationStore } from '@/store/impersonation.store'
 
 /**
  * Admin API client.
@@ -11,6 +12,18 @@ export const api = axios.create({
   withCredentials: true,
   timeout:         15_000,
   headers: { 'Content-Type': 'application/json' },
+})
+
+/* ── Request interceptor — inject impersonation token ── */
+api.interceptors.request.use(config => {
+  if (typeof window !== 'undefined') {
+    const token = useImpersonationStore.getState().token
+    if (token) {
+      config.headers = config.headers ?? {}
+      config.headers['Authorization'] = `Bearer ${token}`
+    }
+  }
+  return config
 })
 
 /* ── Response interceptor — 401 → redirect to login ─── */

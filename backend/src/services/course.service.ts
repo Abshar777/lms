@@ -137,6 +137,7 @@ export class CourseService {
     tags?:         string[]
     instructorId:  string
     categoryId?:   string
+    program?:      '4x-trading' | 'digital-marketing'
   }): Promise<ICourse> {
     if (await this.repo.slugExists(input.slug)) {
       throw new CourseError('SLUG_TAKEN', 'Another course already uses this slug.', 409)
@@ -160,6 +161,7 @@ export class CourseService {
     if (input.categoryId) {
       payload.categoryId = new Types.ObjectId(input.categoryId) as unknown as ICourse['categoryId']
     }
+    if (input.program) payload.program = input.program
     return this.repo.createOne(payload)
   }
 
@@ -179,6 +181,7 @@ export class CourseService {
       tags:         string[]
       categoryId:   string
       instructorId: string
+      program:      '4x-trading' | 'digital-marketing' | ''
     }>,
   ): Promise<ICourse> {
     if (!Types.ObjectId.isValid(id)) {
@@ -221,6 +224,9 @@ export class CourseService {
     }
     if (input.instructorId !== undefined) {
       update.instructorId = new Types.ObjectId(input.instructorId) as unknown as ICourse['instructorId']
+    }
+    if (input.program !== undefined) {
+      update.program = input.program === '' ? undefined : input.program
     }
 
     const updated = await this.repo.updateOne_(id, update)

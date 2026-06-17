@@ -8,8 +8,29 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Eye, EyeOff, Mail, Lock, User, ArrowRight,
   Loader2, AlertCircle, CheckCircle2,
+  TrendingUp, Megaphone, ChevronLeft,
 } from 'lucide-react'
 import { api } from '@/lib/axios'
+import { Button, MotionButton } from '@/components/ui/button'
+
+/* ─── Categories ────────────────────────────────── */
+const CATEGORIES = [
+  {
+    id: '4x-trading' as const,
+    label: '4x Trading',
+    desc: 'Master forex strategies, chart analysis & market psychology',
+    icon: TrendingUp,
+    accent: '#2F6BFF',
+  },
+  {
+    id: 'digital-marketing' as const,
+    label: 'Digital Marketing',
+    desc: 'SEO, social media, paid ads & content strategy',
+    icon: Megaphone,
+    accent: '#FF6B1A',
+  },
+]
+type CategoryId = typeof CATEGORIES[number]['id']
 
 /* ─── Validation ────────────────────────────────── */
 const registerSchema = z.object({
@@ -28,17 +49,17 @@ const registerSchema = z.object({
 type RegisterValues = z.infer<typeof registerSchema>
 
 /* ─── Password strength ─────────────────────────── */
-function getStrength(password: string): { score: number; label: string; color: string } {
+function getStrength(pw: string) {
   let score = 0
-  if (password.length >= 8) score++
-  if (/[A-Z]/.test(password)) score++
-  if (/[0-9]/.test(password)) score++
-  if (/[^A-Za-z0-9]/.test(password)) score++
+  if (pw.length >= 8)           score++
+  if (/[A-Z]/.test(pw))        score++
+  if (/[0-9]/.test(pw))        score++
+  if (/[^A-Za-z0-9]/.test(pw)) score++
   const map = [
-    { label: '', color: '#E4E7ED' },
-    { label: 'Weak', color: '#EF4444' },
-    { label: 'Fair', color: '#F59E0B' },
-    { label: 'Good', color: '#2F6BFF' },
+    { label: '',       color: '#E4E7ED' },
+    { label: 'Weak',   color: '#EF4444' },
+    { label: 'Fair',   color: '#F59E0B' },
+    { label: 'Good',   color: '#2F6BFF' },
     { label: 'Strong', color: '#0ECC8E' },
   ]
   return { score, ...map[score] }
@@ -48,30 +69,19 @@ function getStrength(password: string): { score: number; label: string; color: s
 const fieldVariant = {
   hidden: { opacity: 0, x: 12 },
   visible: (i: number) => ({
-    opacity: 1,
-    x: 0,
+    opacity: 1, x: 0,
     transition: { type: 'spring', stiffness: 300, damping: 24, delay: i * 0.055 },
   }),
 }
 
-/* ─── Styled input helper ───────────────────────── */
+/* ─── Input helper ──────────────────────────────── */
 function InputField({
-  icon: Icon,
-  error,
-  rightEl,
-  ...props
-}: {
-  icon: React.ElementType
-  error?: boolean
-  rightEl?: React.ReactNode
-} & React.InputHTMLAttributes<HTMLInputElement>) {
+  icon: Icon, error, rightEl, ...props
+}: { icon: React.ElementType; error?: boolean; rightEl?: React.ReactNode } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div className="relative">
-      <Icon
-        size={16}
-        className="absolute left-3.5 top-1/2 -translate-y-1/2"
-        style={{ color: error ? '#EF4444' : '#9CA3AF' }}
-      />
+      <Icon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2"
+        style={{ color: error ? '#EF4444' : '#9CA3AF' }} />
       <input
         {...props}
         className="w-full rounded-xl py-3 pl-10 pr-11 text-sm outline-none transition-all"
@@ -94,45 +104,68 @@ function InputField({
           e.currentTarget.style.boxShadow = 'none'
         }}
       />
-      {rightEl && (
-        <div className="absolute right-3.5 top-1/2 -translate-y-1/2">{rightEl}</div>
-      )}
+      {rightEl && <div className="absolute right-3.5 top-1/2 -translate-y-1/2">{rightEl}</div>}
     </div>
   )
 }
 
 interface RegisterFormProps {
   onSwitch: () => void
+  onStepChange?: (step: number) => void
 }
 
-export function RegisterForm({ onSwitch }: RegisterFormProps) {
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirm,  setShowConfirm]  = useState(false)
-  const [serverError,  setServerError]  = useState<string | null>(null)
+export function RegisterForm({ onSwitch, onStepChange }: RegisterFormProps) {
+  const [step,          setStep]          = useState<1 | 2>(1)
+  const [step1Data,     setStep1Data]     = useState<RegisterValues | null>(null)
+  const [category,      setCategory]      = useState<CategoryId | null>(null)
+  const [categoryError, setCategoryError] = useState(false)
+  const [showPassword,  setShowPassword]  = useState(false)
+  const [showConfirm,   setShowConfirm]   = useState(false)
+  const [serverError,   setServerError]   = useState<string | null>(null)
+  const [submitting,    setSubmitting]    = useState(false)
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors, isSubmitting },
-  } = useForm<RegisterValues>({ resolver: zodResolver(registerSchema) })
+  const { register, handleSubmit, watch, formState: { errors } } =
+    useForm<RegisterValues>({ resolver: zodResolver(registerSchema) })
 
-  const watchedPassword = watch('password', '')
-  const strength = getStrength(watchedPassword)
+  const watchedPw = watch('password', '')
+  const strength  = getStrength(watchedPw)
 
-  const onSubmit = async (data: RegisterValues) => {
+  const goToStep2 = handleSubmit(data => {
+    setStep1Data(data)
+    setStep(2)
+    onStepChange?.(2)
+  })
+
+  const goBack = () => {
+    setStep(1)
+    onStepChange?.(1)
     setServerError(null)
+  }
+
+  const pickCategory = (id: CategoryId) => {
+    setCategory(id)
+    setCategoryError(false)
+  }
+
+  const onFinalSubmit = async () => {
+    if (!category) { setCategoryError(true); return }
+    if (!step1Data) return
+    setServerError(null)
+    setSubmitting(true)
     try {
       await api.post('/auth/register', {
-        name: data.name,
-        email: data.email,
-        password: data.password,
+        name:     step1Data.name,
+        email:    step1Data.email,
+        password: step1Data.password,
+        category,
       })
-      // Backend sets httpOnly lms_at + lms_rt cookies on success
       window.location.href = '/my-learning'
     } catch (err: any) {
-      const msg = err?.response?.data?.error?.message
-      setServerError(msg ?? 'Unable to create your account. Please try again.')
+      setServerError(
+        err?.response?.data?.error?.message ?? 'Unable to create your account. Please try again.',
+      )
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -145,269 +178,280 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
       transition={{ type: 'spring', stiffness: 280, damping: 26 }}
       className="w-full"
     >
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-        className="mb-7"
-      >
-        <p className="mb-1 text-sm font-medium" style={{ color: '#FF6B1A' }}>
-          Start for free ✨
-        </p>
-        <h2
-          className="text-[28px] font-bold leading-tight tracking-tight"
-          style={{ fontFamily: 'Bricolage Grotesque, sans-serif', color: '#0D0F1A' }}
-        >
-          Create your account
-        </h2>
-        <p className="mt-1.5 text-sm" style={{ color: '#6B7280' }}>
-          Join 24,000+ learners already on LearnOS.
-        </p>
-      </motion.div>
+      <AnimatePresence mode="wait">
 
-      {/* Form */}
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-3.5">
-        {/* Full name */}
-        <motion.div custom={2} variants={fieldVariant} initial="hidden" animate="visible">
-          <label className="mb-1.5 block text-sm font-semibold" style={{ color: '#0D0F1A' }}>
-            Full name
-          </label>
-          <InputField
-            {...register('name')}
-            icon={User}
-            error={!!errors.name}
-            type="text"
-            placeholder="Cecillia Funi"
-            autoComplete="name"
-          />
-          <AnimatePresence>
-            {errors.name && (
-              <motion.p
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                className="mt-1.5 flex items-center gap-1 text-xs"
-                style={{ color: '#EF4444' }}
-              >
-                <AlertCircle size={11} /> {errors.name.message}
-              </motion.p>
-            )}
-          </AnimatePresence>
-        </motion.div>
-
-        {/* Email */}
-        <motion.div custom={3} variants={fieldVariant} initial="hidden" animate="visible">
-          <label className="mb-1.5 block text-sm font-semibold" style={{ color: '#0D0F1A' }}>
-            Email address
-          </label>
-          <InputField
-            {...register('email')}
-            icon={Mail}
-            error={!!errors.email}
-            type="email"
-            placeholder="you@example.com"
-            autoComplete="email"
-          />
-          <AnimatePresence>
-            {errors.email && (
-              <motion.p
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                className="mt-1.5 flex items-center gap-1 text-xs"
-                style={{ color: '#EF4444' }}
-              >
-                <AlertCircle size={11} /> {errors.email.message}
-              </motion.p>
-            )}
-          </AnimatePresence>
-        </motion.div>
-
-        {/* Password */}
-        <motion.div custom={4} variants={fieldVariant} initial="hidden" animate="visible">
-          <label className="mb-1.5 block text-sm font-semibold" style={{ color: '#0D0F1A' }}>
-            Password
-          </label>
-          <InputField
-            {...register('password')}
-            icon={Lock}
-            error={!!errors.password}
-            type={showPassword ? 'text' : 'password'}
-            placeholder="Min. 8 characters"
-            autoComplete="new-password"
-            rightEl={
-              <button
-                type="button"
-                onClick={() => setShowPassword(v => !v)}
-                className="transition-opacity hover:opacity-70"
-                style={{ color: '#9CA3AF' }}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            }
-          />
-
-          {/* Password strength bar */}
-          <AnimatePresence>
-            {watchedPassword.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mt-2 overflow-hidden"
-              >
-                <div className="flex items-center gap-1.5">
-                  {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="h-1 flex-1 overflow-hidden rounded-full" style={{ background: '#F0F1F5' }}>
-                      <motion.div
-                        className="h-full rounded-full"
-                        animate={{ width: strength.score >= i ? '100%' : '0%' }}
-                        transition={{ duration: 0.3, ease: 'easeOut' }}
-                        style={{ background: strength.color }}
-                      />
-                    </div>
-                  ))}
-                  <span className="text-[11px] font-medium w-12" style={{ color: strength.color }}>
-                    {strength.label}
-                  </span>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <AnimatePresence>
-            {errors.password && (
-              <motion.p
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                className="mt-1.5 flex items-center gap-1 text-xs"
-                style={{ color: '#EF4444' }}
-              >
-                <AlertCircle size={11} /> {errors.password.message}
-              </motion.p>
-            )}
-          </AnimatePresence>
-        </motion.div>
-
-        {/* Confirm password */}
-        <motion.div custom={5} variants={fieldVariant} initial="hidden" animate="visible">
-          <label className="mb-1.5 block text-sm font-semibold" style={{ color: '#0D0F1A' }}>
-            Confirm password
-          </label>
-          <InputField
-            {...register('confirmPassword')}
-            icon={Lock}
-            error={!!errors.confirmPassword}
-            type={showConfirm ? 'text' : 'password'}
-            placeholder="Repeat your password"
-            autoComplete="new-password"
-            rightEl={
-              <button
-                type="button"
-                onClick={() => setShowConfirm(v => !v)}
-                className="transition-opacity hover:opacity-70"
-                style={{ color: '#9CA3AF' }}
-              >
-                {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            }
-          />
-          <AnimatePresence>
-            {errors.confirmPassword && (
-              <motion.p
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                className="mt-1.5 flex items-center gap-1 text-xs"
-                style={{ color: '#EF4444' }}
-              >
-                <AlertCircle size={11} /> {errors.confirmPassword.message}
-              </motion.p>
-            )}
-          </AnimatePresence>
-        </motion.div>
-
-        {/* Terms */}
-        <motion.p
-          custom={6}
-          variants={fieldVariant}
-          initial="hidden"
-          animate="visible"
-          className="text-xs leading-relaxed"
-          style={{ color: '#9CA3AF' }}
-        >
-          By creating an account, you agree to our{' '}
-          <span className="font-medium cursor-pointer" style={{ color: '#2F6BFF' }}>Terms of Service</span>
-          {' '}and{' '}
-          <span className="font-medium cursor-pointer" style={{ color: '#2F6BFF' }}>Privacy Policy</span>.
-        </motion.p>
-
-        {/* Server error */}
-        <AnimatePresence>
-          {serverError && (
-            <motion.div
-              initial={{ opacity: 0, y: -6, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -4 }}
-              className="flex items-center gap-2.5 rounded-xl px-4 py-3 text-sm"
-              style={{ background: '#FEE2E2', color: '#DC2626' }}
-            >
-              <AlertCircle size={15} />
-              {serverError}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Submit */}
-        <motion.div custom={7} variants={fieldVariant} initial="hidden" animate="visible">
-          <motion.button
-            type="submit"
-            disabled={isSubmitting}
-            whileHover={{ y: -2, boxShadow: '0 8px 28px rgba(255,107,26,0.38)' }}
-            whileTap={{ scale: 0.98 }}
-            className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold text-white transition-all disabled:cursor-not-allowed disabled:opacity-60"
-            style={{
-              background: 'linear-gradient(135deg, #FF6B1A 0%, #FF8C42 100%)',
-              boxShadow: '0 4px 20px rgba(255,107,26,0.30)',
-            }}
+        {/* ══════════ STEP 1 — Account details ══════════ */}
+        {step === 1 && (
+          <motion.div key="s1"
+            initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -30 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 28 }}
           >
-            {isSubmitting ? (
-              <>
-                <Loader2 size={16} className="animate-spin" />
-                Creating account…
-              </>
-            ) : (
-              <>
-                Create free account
-                <ArrowRight size={16} />
-              </>
-            )}
-          </motion.button>
-        </motion.div>
-      </form>
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }} className="mb-7">
+              <p className="mb-1 text-sm font-medium" style={{ color: '#FF6B1A' }}>Start for free ✨</p>
+              <h2 className="text-[28px] font-bold leading-tight tracking-tight"
+                style={{ fontFamily: 'Bricolage Grotesque, sans-serif', color: '#0D0F1A' }}>
+                Create your account
+              </h2>
+              <p className="mt-1.5 text-sm" style={{ color: '#6B7280' }}>
+                Join 24,000+ learners already on LearnOS.
+              </p>
+            </motion.div>
 
-      {/* Switch to login */}
-      <motion.p
-        custom={8}
-        variants={fieldVariant}
-        initial="hidden"
-        animate="visible"
-        className="mt-5 text-center text-sm"
-        style={{ color: '#6B7280' }}
-      >
-        Already have an account?{' '}
-        <button
-          type="button"
-          onClick={onSwitch}
-          className="font-semibold transition-opacity hover:opacity-70"
-          style={{ color: '#FF6B1A' }}
-        >
-          Sign in →
-        </button>
-      </motion.p>
+            <form onSubmit={goToStep2} noValidate className="space-y-3.5">
+              {/* Full name */}
+              <motion.div custom={2} variants={fieldVariant} initial="hidden" animate="visible">
+                <label className="mb-1.5 block text-sm font-semibold" style={{ color: '#0D0F1A' }}>Full name</label>
+                <InputField {...register('name')} icon={User} error={!!errors.name}
+                  type="text" placeholder="Cecillia Funi" autoComplete="name" />
+                <AnimatePresence>
+                  {errors.name && (
+                    <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }} className="mt-1.5 flex items-center gap-1 text-xs"
+                      style={{ color: '#EF4444' }}>
+                      <AlertCircle size={11} /> {errors.name.message}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+
+              {/* Email */}
+              <motion.div custom={3} variants={fieldVariant} initial="hidden" animate="visible">
+                <label className="mb-1.5 block text-sm font-semibold" style={{ color: '#0D0F1A' }}>Email address</label>
+                <InputField {...register('email')} icon={Mail} error={!!errors.email}
+                  type="email" placeholder="you@example.com" autoComplete="email" />
+                <AnimatePresence>
+                  {errors.email && (
+                    <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }} className="mt-1.5 flex items-center gap-1 text-xs"
+                      style={{ color: '#EF4444' }}>
+                      <AlertCircle size={11} /> {errors.email.message}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+
+              {/* Password */}
+              <motion.div custom={4} variants={fieldVariant} initial="hidden" animate="visible">
+                <label className="mb-1.5 block text-sm font-semibold" style={{ color: '#0D0F1A' }}>Password</label>
+                <InputField {...register('password')} icon={Lock} error={!!errors.password}
+                  type={showPassword ? 'text' : 'password'} placeholder="Min. 8 characters" autoComplete="new-password"
+                  rightEl={
+                    <Button type="button" variant="ghost" size="icon-sm"
+                      onClick={() => setShowPassword(v => !v)}
+                      className="transition-opacity hover:opacity-70 text-[#9CA3AF]">
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </Button>
+                  }
+                />
+                <AnimatePresence>
+                  {watchedPw.length > 0 && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }} className="mt-2 overflow-hidden">
+                      <div className="flex items-center gap-1.5">
+                        {[1, 2, 3, 4].map(i => (
+                          <div key={i} className="h-1 flex-1 overflow-hidden rounded-full" style={{ background: '#F0F1F5' }}>
+                            <motion.div className="h-full rounded-full"
+                              animate={{ width: strength.score >= i ? '100%' : '0%' }}
+                              transition={{ duration: 0.3, ease: 'easeOut' }}
+                              style={{ background: strength.color }} />
+                          </div>
+                        ))}
+                        <span className="w-12 text-[11px] font-medium" style={{ color: strength.color }}>
+                          {strength.label}
+                        </span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <AnimatePresence>
+                  {errors.password && (
+                    <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }} className="mt-1.5 flex items-center gap-1 text-xs"
+                      style={{ color: '#EF4444' }}>
+                      <AlertCircle size={11} /> {errors.password.message}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+
+              {/* Confirm password */}
+              <motion.div custom={5} variants={fieldVariant} initial="hidden" animate="visible">
+                <label className="mb-1.5 block text-sm font-semibold" style={{ color: '#0D0F1A' }}>Confirm password</label>
+                <InputField {...register('confirmPassword')} icon={Lock} error={!!errors.confirmPassword}
+                  type={showConfirm ? 'text' : 'password'} placeholder="Repeat your password" autoComplete="new-password"
+                  rightEl={
+                    <Button type="button" variant="ghost" size="icon-sm"
+                      onClick={() => setShowConfirm(v => !v)}
+                      className="transition-opacity hover:opacity-70 text-[#9CA3AF]">
+                      {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </Button>
+                  }
+                />
+                <AnimatePresence>
+                  {errors.confirmPassword && (
+                    <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }} className="mt-1.5 flex items-center gap-1 text-xs"
+                      style={{ color: '#EF4444' }}>
+                      <AlertCircle size={11} /> {errors.confirmPassword.message}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+
+              {/* Terms */}
+              <motion.p custom={6} variants={fieldVariant} initial="hidden" animate="visible"
+                className="text-xs leading-relaxed" style={{ color: '#9CA3AF' }}>
+                By creating an account, you agree to our{' '}
+                <span className="cursor-pointer font-medium" style={{ color: '#2F6BFF' }}>Terms of Service</span>
+                {' '}and{' '}
+                <span className="cursor-pointer font-medium" style={{ color: '#2F6BFF' }}>Privacy Policy</span>.
+              </motion.p>
+
+              {/* Next */}
+              <motion.div custom={7} variants={fieldVariant} initial="hidden" animate="visible">
+                <MotionButton
+                  type="submit"
+                  variant="default"
+                  size="lg"
+                  whileHover={{ y: -2, boxShadow: '0 8px 28px rgba(255,107,26,0.38)' }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full"
+                >
+                  Next <ArrowRight size={16} />
+                </MotionButton>
+              </motion.div>
+            </form>
+
+            <motion.p custom={8} variants={fieldVariant} initial="hidden" animate="visible"
+              className="mt-5 text-center text-sm" style={{ color: '#6B7280' }}>
+              Already have an account?{' '}
+              <Button type="button" variant="link" onClick={onSwitch}
+                className="font-semibold transition-opacity hover:opacity-70 p-0 h-auto text-[#FF6B1A]">
+                Sign in →
+              </Button>
+            </motion.p>
+          </motion.div>
+        )}
+
+        {/* ══════════ STEP 2 — Choose track ══════════ */}
+        {step === 2 && (
+          <motion.div key="s2"
+            initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -30 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+            className="w-full"
+          >
+            {/* Back + header */}
+            <div className="mb-7">
+              <Button type="button" variant="ghost" onClick={goBack}
+                className="mb-4 flex items-center gap-1 text-sm font-medium transition-opacity hover:opacity-60 h-auto p-0"
+                style={{ color: '#9CA3AF' }}>
+                <ChevronLeft size={15} /> Back
+              </Button>
+              <p className="mb-1 text-sm font-medium" style={{ color: '#FF6B1A' }}>Almost there ✨</p>
+              <h2 className="text-[28px] font-bold leading-tight tracking-tight"
+                style={{ fontFamily: 'Bricolage Grotesque, sans-serif', color: '#0D0F1A' }}>
+                Choose your track
+              </h2>
+              <p className="mt-1.5 text-sm" style={{ color: '#6B7280' }}>
+                Pick the field you want to master.
+              </p>
+            </div>
+
+            {/* Category cards */}
+            <div className="flex flex-col gap-3 mb-5">
+              {CATEGORIES.map(cat => {
+                const Icon    = cat.icon
+                const sel     = category === cat.id
+                const isOrange = cat.accent === '#FF6B1A'
+                return (
+                  <MotionButton
+                    key={cat.id}
+                    type="button"
+                    variant="ghost"
+                    onClick={() => pickCategory(cat.id)}
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.99 }}
+                    className="relative flex items-center gap-4 rounded-2xl p-4 text-left transition-all h-auto w-full justify-start"
+                    style={{
+                      background: sel
+                        ? (isOrange ? 'rgba(255,107,26,0.07)' : 'rgba(47,107,255,0.07)')
+                        : '#F4F5F8',
+                      border: `1.5px solid ${sel ? cat.accent : 'transparent'}`,
+                      boxShadow: sel ? `0 0 0 3px ${cat.accent}22` : 'none',
+                    }}
+                  >
+                    {/* Icon bubble */}
+                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl"
+                      style={{ background: cat.accent + '1A' }}>
+                      <Icon size={22} style={{ color: cat.accent }} />
+                    </div>
+
+                    {/* Label + desc */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold" style={{ color: '#0D0F1A' }}>{cat.label}</p>
+                      <p className="mt-0.5 text-xs leading-relaxed" style={{ color: '#6B7280' }}>{cat.desc}</p>
+                    </div>
+
+                    {/* Radio indicator */}
+                    <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full transition-all"
+                      style={{
+                        background: sel ? cat.accent : 'transparent',
+                        border: `1.5px solid ${sel ? cat.accent : '#D1D5DB'}`,
+                      }}>
+                      {sel && <CheckCircle2 size={11} color="white" strokeWidth={2.5} />}
+                    </div>
+                  </MotionButton>
+                )
+              })}
+            </div>
+
+            {/* Validation error */}
+            <AnimatePresence>
+              {categoryError && (
+                <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  className="mb-3 flex items-center gap-1.5 text-sm"
+                  style={{ color: '#EF4444' }}>
+                  <AlertCircle size={13} /> Please select a track to continue.
+                </motion.p>
+              )}
+            </AnimatePresence>
+
+            {/* Server error */}
+            <AnimatePresence>
+              {serverError && (
+                <motion.div initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4 }}
+                  className="mb-3 flex items-center gap-2.5 rounded-xl px-4 py-3 text-sm"
+                  style={{ background: '#FEE2E2', color: '#DC2626' }}>
+                  <AlertCircle size={15} /> {serverError}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Create account */}
+            <MotionButton
+              type="button"
+              variant="default"
+              size="lg"
+              onClick={onFinalSubmit}
+              disabled={submitting}
+              whileHover={{ y: -2, boxShadow: '0 8px 28px rgba(255,107,26,0.38)' }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full"
+            >
+              {submitting
+                ? <><Loader2 size={16} className="animate-spin" /> Creating account…</>
+                : <>Create free account <ArrowRight size={16} /></>
+              }
+            </MotionButton>
+          </motion.div>
+        )}
+
+      </AnimatePresence>
     </motion.div>
   )
 }
-

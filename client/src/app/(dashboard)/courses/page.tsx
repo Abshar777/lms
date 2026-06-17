@@ -12,9 +12,11 @@ import {
 import { useCourses } from '@/lib/api/courses'
 import { useCategories } from '@/lib/api/categories'
 import { useMyEnrollments, useEnroll } from '@/lib/api/enrollments'
+import { useCurrentUser } from '@/lib/api/user'
 import { useUIStore } from '@/store/ui.store'
 import { FavoriteButton } from '@/components/courses/FavoriteButton'
 import { useCartStore } from '@/store/cart.store'
+import { Button, MotionButton } from '@/components/ui/button'
 import type { Course } from '@/types/index'
 
 const STATUS_TABS = ['All Status', 'Not Started', 'In Progress', 'Completed']
@@ -80,6 +82,7 @@ function TypeBadge({ type }: { type: string }) {
 
 export default function CoursesPage() {
   const { rightPanelOpen } = useUIStore()
+  const { data: currentUser } = useCurrentUser()
   const [search,      setSearch]      = useState('')
   const [activeTab,   setActiveTab]   = useState('All Status')
   const [level,       setLevel]       = useState('all')
@@ -106,6 +109,7 @@ export default function CoursesPage() {
     duration_max: dur?.max,
     price_min:    pr?.min,
     price_max:    pr?.max,
+    program:      currentUser?.category ?? undefined,
   })
   const { data: categoriesData } = useCategories()
   const categories: string[] = ['all', ...(categoriesData?.map(c => c.slug) ?? [])]
@@ -154,8 +158,10 @@ export default function CoursesPage() {
           <div className="flex shrink-0 items-center gap-1 overflow-x-auto rounded-2xl p-1 scrollbar-none self-start"
             style={{ background: '#F3F4F6' }}>
             {STATUS_TABS.map(tab => (
-              <motion.button key={tab} onClick={() => setActiveTab(tab)}
-                className="relative rounded-xl px-3 py-1.5 text-sm font-semibold transition-colors whitespace-nowrap"
+              <MotionButton key={tab} onClick={() => setActiveTab(tab)}
+                variant="ghost"
+                size="sm"
+                className="relative rounded-xl px-3 py-1.5 text-sm font-semibold transition-colors whitespace-nowrap h-auto"
                 style={{ color: activeTab === tab ? '#111827' : '#9CA3AF' }}>
                 {activeTab === tab && (
                   <motion.div layoutId="status-pill"
@@ -164,7 +170,7 @@ export default function CoursesPage() {
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }} />
                 )}
                 <span className="relative z-10">{tab}</span>
-              </motion.button>
+              </MotionButton>
             ))}
           </div>
 
@@ -181,9 +187,11 @@ export default function CoursesPage() {
             </div>
 
             {/* Filter */}
-            <motion.button whileTap={{ scale: 0.96 }} onClick={() => setShowFilters(v => !v)}
-              className="relative flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold bg-white transition-colors hover:bg-gray-50"
-              style={{ border: `1px solid ${showFilters ? '#FF6B1A' : '#E5E7EB'}`, color: showFilters ? '#FF6B1A' : '#374151' }}>
+            <MotionButton whileTap={{ scale: 0.96 }} onClick={() => setShowFilters(v => !v)}
+              variant="outline"
+              size="sm"
+              className="relative flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold h-auto"
+              style={{ borderColor: showFilters ? '#FF6B1A' : '#E5E7EB', color: showFilters ? '#FF6B1A' : '#374151' }}>
               <SlidersHorizontal size={13} />
               <span className="hidden sm:inline">Filters</span>
               {activeFilterCount > 0 && (
@@ -192,16 +200,18 @@ export default function CoursesPage() {
                   {activeFilterCount}
                 </span>
               )}
-            </motion.button>
+            </MotionButton>
 
             {/* Sort */}
             <div className="relative shrink-0">
-              <motion.button whileTap={{ scale: 0.96 }} onClick={() => setShowSort(v => !v)}
-                className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold bg-white transition-colors hover:bg-gray-50"
-                style={{ border: '1px solid #E5E7EB', color: '#374151' }}>
+              <MotionButton whileTap={{ scale: 0.96 }} onClick={() => setShowSort(v => !v)}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold h-auto"
+                style={{ borderColor: '#E5E7EB', color: '#374151' }}>
                 <ChevronDown size={13} className={`transition-transform ${showSort ? 'rotate-180' : ''}`} />
                 <span className="hidden sm:inline">Sort</span>
-              </motion.button>
+              </MotionButton>
               <AnimatePresence>
                 {showSort && (
                   <>
@@ -211,12 +221,14 @@ export default function CoursesPage() {
                       className="absolute right-0 top-full mt-1 w-52 rounded-2xl p-1.5 z-50 bg-white"
                       style={{ border: '1px solid #E5E7EB', boxShadow: '0 16px 40px rgba(0,0,0,0.10)' }}>
                       {SORTS.map(s => (
-                        <button key={s.value} onClick={() => { setSort(s.value); setShowSort(false); setPage(1) }}
-                          className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors hover:bg-gray-50"
+                        <Button key={s.value} onClick={() => { setSort(s.value); setShowSort(false); setPage(1) }}
+                          variant="ghost"
+                          size="sm"
+                          className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm h-auto"
                           style={{ color: sort === s.value ? '#FF6B1A' : '#374151', fontWeight: sort === s.value ? 600 : 400 }}>
                           {s.label}
                           {sort === s.value && <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#FF6B1A' }} />}
-                        </button>
+                        </Button>
                       ))}
                     </motion.div>
                   </>
@@ -237,13 +249,15 @@ export default function CoursesPage() {
                   <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#9CA3AF' }}>Type</p>
                   <div className="flex flex-wrap gap-2">
                     {CONTENT_TYPES.map(t => (
-                      <button key={t.value} onClick={() => setContentType(t.value)}
-                        className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
+                      <Button key={t.value} onClick={() => setContentType(t.value)}
+                        variant="ghost"
+                        size="sm"
+                        className="rounded-xl px-3 py-1.5 text-xs font-semibold h-auto transition-all"
                         style={contentType === t.value
                           ? { background: t.bg, color: t.color, border: `1px solid ${t.color}40` }
                           : { background: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}>
                         {t.label}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -252,13 +266,15 @@ export default function CoursesPage() {
                   <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#9CA3AF' }}>Level</p>
                   <div className="flex flex-wrap gap-2">
                     {LEVELS.map(l => (
-                      <button key={l} onClick={() => { setLevel(l); setPage(1) }}
-                        className="rounded-xl px-3 py-1.5 text-xs font-semibold capitalize transition-all"
+                      <Button key={l} onClick={() => { setLevel(l); setPage(1) }}
+                        variant="ghost"
+                        size="sm"
+                        className="rounded-xl px-3 py-1.5 text-xs font-semibold capitalize h-auto transition-all"
                         style={level === l
                           ? { background: 'rgba(255,107,26,0.10)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.28)' }
                           : { background: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}>
                         {l === 'all' ? 'All levels' : l}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -267,13 +283,15 @@ export default function CoursesPage() {
                   <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#9CA3AF' }}>Category</p>
                   <div className="flex flex-wrap gap-2">
                     {categories.map(c => (
-                      <button key={c} onClick={() => { setCategory(c); setPage(1) }}
-                        className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
+                      <Button key={c} onClick={() => { setCategory(c); setPage(1) }}
+                        variant="ghost"
+                        size="sm"
+                        className="rounded-xl px-3 py-1.5 text-xs font-semibold h-auto transition-all"
                         style={category === c
                           ? { background: 'rgba(99,102,241,0.10)', color: '#4F46E5', border: '1px solid rgba(99,102,241,0.28)' }
                           : { background: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}>
                         {categoryLabel(c)}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -282,13 +300,15 @@ export default function CoursesPage() {
                   <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#9CA3AF' }}>Duration</p>
                   <div className="flex flex-wrap gap-2">
                     {DURATIONS.map(d => (
-                      <button key={d.key} onClick={() => { setDuration(d.key); setPage(1) }}
-                        className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
+                      <Button key={d.key} onClick={() => { setDuration(d.key); setPage(1) }}
+                        variant="ghost"
+                        size="sm"
+                        className="rounded-xl px-3 py-1.5 text-xs font-semibold h-auto transition-all"
                         style={duration === d.key
                           ? { background: 'rgba(59,130,246,0.10)', color: '#2563EB', border: '1px solid rgba(59,130,246,0.28)' }
                           : { background: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}>
                         {d.label}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -297,33 +317,39 @@ export default function CoursesPage() {
                   <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#9CA3AF' }}>Price</p>
                   <div className="flex flex-wrap gap-2">
                     {PRICES.map(p => (
-                      <button key={p.key} onClick={() => { setPriceRange(p.key); setPage(1) }}
-                        className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
+                      <Button key={p.key} onClick={() => { setPriceRange(p.key); setPage(1) }}
+                        variant="ghost"
+                        size="sm"
+                        className="rounded-xl px-3 py-1.5 text-xs font-semibold h-auto transition-all"
                         style={priceRange === p.key
                           ? { background: 'rgba(34,197,94,0.10)', color: '#16A34A', border: '1px solid rgba(34,197,94,0.28)' }
                           : { background: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}>
                         {p.label}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
                 {/* Free toggle + clear */}
                 <div className="flex items-center gap-3 pt-1" style={{ borderTop: '1px solid #F3F4F6' }}>
-                  <button onClick={() => { setFree(v => !v); setPage(1) }}
-                    className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
+                  <Button onClick={() => { setFree(v => !v); setPage(1) }}
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold h-auto transition-all"
                     style={free
                       ? { background: 'rgba(34,197,94,0.10)', color: '#16A34A', border: '1px solid rgba(34,197,94,0.25)' }
                       : { background: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}>
                     {free ? '✓ ' : ''}Free only
-                  </button>
-                  <button onClick={() => {
+                  </Button>
+                  <Button onClick={() => {
                     setLevel('all'); setCategory('all'); setFree(false)
                     setContentType('all'); setDuration('any'); setPriceRange('any'); setPage(1)
                   }}
-                    className="flex items-center gap-1 text-xs font-semibold transition-colors hover:text-red-500"
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center gap-1 text-xs font-semibold h-auto transition-colors hover:text-red-500"
                     style={{ color: '#9CA3AF' }}>
                     <X size={11} />Clear all
-                  </button>
+                  </Button>
                 </div>
               </div>
             </motion.div>
@@ -360,14 +386,16 @@ export default function CoursesPage() {
             </div>
             <p className="text-base font-bold" style={{ color: '#111827' }}>No courses found</p>
             <p className="text-sm text-center" style={{ color: '#9CA3AF' }}>Try adjusting your filters or search query</p>
-            <button onClick={() => {
+            <Button onClick={() => {
               setSearch(''); setLevel('all'); setCategory('all'); setFree(false)
               setDuration('any'); setPriceRange('any')
             }}
-              className="mt-1 rounded-xl px-5 py-2 text-sm font-semibold transition-colors hover:opacity-90"
+              variant="ghost"
+              size="sm"
+              className="mt-1 rounded-xl px-5 py-2 text-sm font-semibold h-auto transition-colors hover:opacity-90"
               style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A' }}>
               Clear filters
-            </button>
+            </Button>
           </motion.div>
         ) : (
           <motion.div key="grid" variants={stagger} initial="hidden" animate="show"
@@ -385,25 +413,31 @@ export default function CoursesPage() {
       {data && data.meta.total_pages > 1 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
           className="mt-8 flex items-center justify-center gap-2 flex-wrap">
-          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!data.meta.has_prev}
-            className="rounded-xl px-4 py-2 text-sm font-semibold transition-colors hover:bg-gray-50 disabled:opacity-40 bg-white"
-            style={{ border: '1px solid #E5E7EB', color: '#374151' }}>
+          <Button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!data.meta.has_prev}
+            variant="outline"
+            size="sm"
+            className="rounded-xl px-4 py-2 text-sm font-semibold h-auto disabled:opacity-40"
+            style={{ borderColor: '#E5E7EB', color: '#374151' }}>
             Previous
-          </button>
+          </Button>
           {Array.from({ length: Math.min(data.meta.total_pages, 7) }, (_, i) => i + 1).map(p => (
-            <button key={p} onClick={() => setPage(p)}
-              className="h-9 w-9 rounded-xl text-sm font-semibold transition-all"
+            <Button key={p} onClick={() => setPage(p)}
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-xl text-sm font-semibold"
               style={p === page
                 ? { background: '#111827', color: 'white' }
                 : { color: '#6B7280', background: 'white', border: '1px solid #E5E7EB' }}>
               {p}
-            </button>
+            </Button>
           ))}
-          <button onClick={() => setPage(p => p + 1)} disabled={!data.meta.has_next}
-            className="rounded-xl px-4 py-2 text-sm font-semibold transition-colors hover:bg-gray-50 disabled:opacity-40 bg-white"
-            style={{ border: '1px solid #E5E7EB', color: '#374151' }}>
+          <Button onClick={() => setPage(p => p + 1)} disabled={!data.meta.has_next}
+            variant="outline"
+            size="sm"
+            className="rounded-xl px-4 py-2 text-sm font-semibold h-auto disabled:opacity-40"
+            style={{ borderColor: '#E5E7EB', color: '#374151' }}>
             Next
-          </button>
+          </Button>
         </motion.div>
       )}
     </div>
@@ -568,12 +602,14 @@ function MaterialCard({ course }: { course: Course }) {
             </div>
 
             {/* Cart / Enroll button */}
-            <motion.button
+            <MotionButton
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
               onClick={handleAction}
               disabled={enroll.isPending}
-              className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-bold whitespace-nowrap transition-all disabled:opacity-70"
+              variant={(isEnrolled || (!isFree && inCart)) ? 'ghost' : 'default'}
+              size="sm"
+              className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-bold whitespace-nowrap h-auto disabled:opacity-70"
               style={(isEnrolled || (!isFree && inCart))
                 ? { background: '#F0FDF4', color: '#16A34A', border: '1px solid rgba(34,197,94,0.28)' }
                 : isFree
@@ -590,7 +626,7 @@ function MaterialCard({ course }: { course: Course }) {
                       ? <><Check size={10} />Added</>
                       : <><ShoppingCart size={10} />Add to Cart</>
               }
-            </motion.button>
+            </MotionButton>
           </div>
         </div>
       </motion.div>

@@ -6,6 +6,7 @@ import { Calendar, Video, Loader2, Radio, Clock, AlertCircle } from 'lucide-reac
 import Link from 'next/link'
 import { Tv2 } from 'lucide-react'
 import { useLiveClassesForCourse, isLive, isUpcoming, fmtCountdown, type LiveClass } from '@/lib/api/liveClasses'
+import { Button } from '@/components/ui/button'
 
 function fmtDateTime(iso: string): string {
   return new Date(iso).toLocaleString('en-US', {
@@ -140,21 +141,25 @@ function LiveClassRow({ live, now, index }: { live: LiveClass; now: number; inde
 
       {/* CTA — internal uses watch page, external opens link */}
       {isInternal ? (
-        <Link href={`/live-classes/${live.id}/watch`}
-          className="rounded-xl px-3.5 py-2 text-xs font-bold text-white transition-all"
-          style={isLiveNow
-            ? { background: 'linear-gradient(135deg, #EF4444, #DC2626)', boxShadow: '0 4px 16px rgba(239,68,68,0.32)' }
-            : { background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
-          {isLiveNow ? 'Watch now' : 'View'}
-        </Link>
+        <Button
+          asChild
+          variant={isLiveNow ? 'destructive' : 'default'}
+          size="sm"
+          className={isLiveNow ? 'shadow-[0_4px_16px_rgba(239,68,68,0.32)]' : ''}>
+          <Link href={`/live-classes/${live.id}/watch`}>
+            {isLiveNow ? 'Watch now' : 'View'}
+          </Link>
+        </Button>
       ) : (
-        <a href={live.meetingUrl ?? '#'} target="_blank" rel="noreferrer noopener"
-          className="rounded-xl px-3.5 py-2 text-xs font-bold text-white transition-all"
-          style={isLiveNow
-            ? { background: 'linear-gradient(135deg, #EF4444, #DC2626)', boxShadow: '0 4px 16px rgba(239,68,68,0.32)' }
-            : { background: 'linear-gradient(135deg, #6366F1, #818CF8)' }}>
-          {isLiveNow ? 'Join now' : 'Open link'}
-        </a>
+        <Button
+          asChild
+          variant={isLiveNow ? 'destructive' : 'secondary'}
+          size="sm"
+          className={isLiveNow ? 'shadow-[0_4px_16px_rgba(239,68,68,0.32)]' : ''}>
+          <a href={live.meetingUrl ?? '#'} target="_blank" rel="noreferrer noopener">
+            {isLiveNow ? 'Join now' : 'Open link'}
+          </a>
+        </Button>
       )}
     </motion.div>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -23,6 +23,60 @@ interface CourseState {
 interface BlockState {
   [courseId: string]: CourseState
 }
+
+/* ── Dark custom dropdown ───────────────────────────── */
+function DarkSelect({ value, onChange, options, placeholder }: {
+  value: string; onChange: (v: string) => void
+  options: { value: string; label: string }[]; placeholder?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    function onOut(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', onOut)
+    return () => document.removeEventListener('mousedown', onOut)
+  }, [])
+  const selected = options.find(o => o.value === value)
+  const label = selected?.label ?? placeholder ?? 'Select…'
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" onClick={() => setOpen(v => !v)}
+        className="w-full rounded-xl py-2.5 pl-4 pr-9 text-sm outline-none flex items-center"
+        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', color: value ? '#fff' : 'rgba(255,255,255,0.3)' }}>
+        <span className="truncate">{label}</span>
+        <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+          style={{ color: 'rgba(255,255,255,0.3)', transform: open ? 'translateY(-50%) rotate(180deg)' : 'translateY(-50%)', transition: 'transform 0.15s' }} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={{ duration: 0.12 }}
+            className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl py-1"
+            style={{ background: '#0F1020', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 16px 40px rgba(0,0,0,0.6)' }}>
+            {placeholder && (
+              <button type="button" onClick={() => { onChange(''); setOpen(false) }}
+                className="w-full px-3 py-2 text-left text-sm transition-colors hover:bg-white/05"
+                style={{ color: 'rgba(255,255,255,0.3)' }}>{placeholder}</button>
+            )}
+            {options.map(o => (
+              <button key={o.value} type="button" onClick={() => { onChange(o.value); setOpen(false) }}
+                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors hover:bg-white/05"
+                style={{ color: o.value === value ? '#FF6B1A' : 'rgba(255,255,255,0.8)' }}>
+                {o.label}
+                {o.value === value && <Check size={12} style={{ color: '#FF6B1A' }} />}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+const CATEGORY_OPTIONS = [
+  { value: '4x-trading',        label: '4x Trading' },
+  { value: 'digital-marketing', label: 'Digital Marketing' },
+]
 
 /* ── Zod schema for step 1 ─────────────────────────── */
 const accountSchema = z.object({
@@ -164,6 +218,7 @@ export function AddStudentModal({ open, onClose }: Props) {
   const [success, setSuccess] = useState(false)
   const [blockState, setBlockState] = useState<BlockState>({})
   const [accountValues, setAccountValues] = useState<AccountValues | null>(null)
+  const [category, setCategory] = useState<'4x-trading' | 'digital-marketing' | ''>('')
 
   const { mutateAsync, isPending, error: apiError } = useCreateInstructor()
   const { data: coursesData, isLoading: coursesLoading } = useCourses({ per_page: 50, status: 'published' })
@@ -252,6 +307,7 @@ export function AddStudentModal({ open, onClose }: Props) {
       email:    accountValues.email,
       password: accountValues.password,
       role:     'student',
+      category: (category || undefined) as '4x-trading' | 'digital-marketing' | undefined,
       courses,
     })
     setSuccess(true)
@@ -261,6 +317,7 @@ export function AddStudentModal({ open, onClose }: Props) {
       setStep(1)
       setBlockState({})
       setAccountValues(null)
+      setCategory('')
       onClose()
     }, 1800)
   }
@@ -271,6 +328,7 @@ export function AddStudentModal({ open, onClose }: Props) {
     setStep(1)
     setBlockState({})
     setAccountValues(null)
+    setCategory('')
     setSuccess(false)
     onClose()
   }
@@ -365,6 +423,15 @@ export function AddStudentModal({ open, onClose }: Props) {
                           <input {...register('name')} placeholder="e.g. John Smith"
                             className={inputCls} style={inputStyle(!!errors.name)} />
                         </div>
+                      </Field>
+
+                      <Field label="Program Category">
+                        <DarkSelect
+                          value={category}
+                          onChange={v => setCategory(v as '4x-trading' | 'digital-marketing' | '')}
+                          options={CATEGORY_OPTIONS}
+                          placeholder="Select category…"
+                        />
                       </Field>
 
                       <Field label="Email address *" error={errors.email?.message}>

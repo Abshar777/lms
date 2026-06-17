@@ -2,7 +2,7 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import express from 'express'
 import { z } from 'zod'
 import { LiveClassController } from '@/controllers/liveClass.controller.ts'
-import { authenticate } from '@/middleware/auth.middleware.ts'
+import { authenticate, requireEnrollmentApproval } from '@/middleware/auth.middleware.ts'
 import { validate } from '@/middleware/validate.middleware.ts'
 import { resolveLiveStatus } from '@/utils/liveStatus.ts'
 
@@ -72,8 +72,8 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
 /* Upcoming sessions for authenticated user's enrolled courses */
 router.get('/upcoming', authenticate, ctrl.upcomingForMe)
 
-/* Student watch access — checks enrollment, returns playback URL or meeting URL */
-router.get('/:id/watch', authenticate, ctrl.watchAccess)
+/* Student watch access — checks enrollment approval then returns playback/meeting URL */
+router.get('/:id/watch', authenticate, requireEnrollmentApproval, ctrl.watchAccess)
 
 /* Mux webhook — must use raw body parser BEFORE json parser for signature verification */
 router.post(

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Star, CheckCircle, Loader2, MessageSquare } from 'lucide-react'
 import { useSessionFeedback, useSubmitFeedback } from '@/lib/api/feedback'
+import { Button } from '@/components/ui/button'
 
 interface Props {
   sessionId:   string
@@ -51,9 +52,11 @@ export function SessionFeedback({ sessionId, sessionTitle }: Props) {
       {/* Stars */}
       <div className="flex items-center gap-1 mb-3">
         {[1, 2, 3, 4, 5].map(star => (
-          <button
+          <Button
             key={star}
             type="button"
+            variant="ghost"
+            size="icon-sm"
             onMouseEnter={() => setHovered(star)}
             onMouseLeave={() => setHovered(0)}
             onClick={() => setSelected(star)}
@@ -64,7 +67,7 @@ export function SessionFeedback({ sessionId, sessionTitle }: Props) {
               fill={star <= active ? '#F59E0B' : 'none'}
               style={{ color: star <= active ? '#F59E0B' : '#D1D5DB' }}
             />
-          </button>
+          </Button>
         ))}
         {selected > 0 && (
           <span className="ml-2 text-xs font-semibold" style={{ color: '#F59E0B' }}>
@@ -88,19 +91,20 @@ export function SessionFeedback({ sessionId, sessionTitle }: Props) {
               value={comment}
               onChange={e => setComment(e.target.value)}
             />
-            <button
+            <Button
+              variant="default"
+              size="default"
               onClick={async () => {
                 await mutation.mutateAsync({ rating: selected, comment: comment || undefined })
                 setDone(true)
               }}
               disabled={mutation.isPending}
-              className="flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}
+              className="flex items-center gap-2"
             >
               {mutation.isPending
                 ? <><Loader2 size={12} className="animate-spin" /><span>Submitting…</span></>
                 : <><CheckCircle size={12} /><span>Submit feedback</span></>}
-            </button>
+            </Button>
           </motion.div>
         )}
       </AnimatePresence>

@@ -13,6 +13,7 @@ import { useAllLiveClasses, useCreateLiveClass, type LiveClass, type LiveClassTy
 import { useCourses } from '@/lib/api/courses'
 import { useCourseOutline } from '@/lib/api/outline'
 import { useUsers } from '@/lib/api/users'
+import { useCurrentUser } from '@/lib/api/user'
 import { EditLiveClassModal } from '@/components/live-classes/EditLiveClassModal'
 
 /* ── Constants ──────────────────────────────────────── */
@@ -268,14 +269,15 @@ interface SlotDraft {
 }
 
 function QuickCreateModal({
-  draft, weekDays, onClose, onSuccess,
+  draft, weekDays, onClose, onSuccess, categoryProgram,
 }: {
-  draft:     SlotDraft
-  weekDays:  Date[]
-  onClose:   () => void
-  onSuccess: () => void
+  draft:             SlotDraft
+  weekDays:          Date[]
+  onClose:           () => void
+  onSuccess:         () => void
+  categoryProgram?:  string
 }) {
-  const { data: coursesData, isLoading: cLoading } = useCourses({ per_page: 200 })
+  const { data: coursesData, isLoading: cLoading } = useCourses({ per_page: 200, ...(categoryProgram ? { program: categoryProgram } : {}) })
   const { data: instructorsData } = useUsers('instructor', { per_page: 200 })
   const createMutation = useCreateLiveClass()
 
@@ -520,6 +522,12 @@ export default function TimetablePage() {
   const [draft,        setDraft]        = useState<SlotDraft | null>(null)
   const [editTarget,   setEditTarget]   = useState<LiveClass | null>(null)
 
+  const { data: me } = useCurrentUser()
+  const categoryProgram =
+    me?.role === '4x_admin' ? '4x-trading'
+    : me?.role === 'digital_marketing_admin' ? 'digital-marketing'
+    : undefined
+
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
 
   const { data: allClasses, isLoading } = useAllLiveClasses('all')
@@ -733,6 +741,7 @@ export default function TimetablePage() {
             weekDays={weekDays}
             onClose={() => setDraft(null)}
             onSuccess={() => setDraft(null)}
+            categoryProgram={categoryProgram}
           />
         )}
         {editTarget && (

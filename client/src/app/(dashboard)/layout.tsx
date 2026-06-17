@@ -6,6 +6,7 @@ import { ClientSidebar } from '@/components/layout/ClientSidebar'
 import { ClientTopbar } from '@/components/layout/ClientTopbar'
 import { RightSidebar, RightSidebarToggle } from '@/components/layout/RightSidebar'
 import { VerifyEmailBanner } from '@/components/auth/VerifyEmailBanner'
+import { EnrollmentStatusBanner } from '@/components/auth/EnrollmentStatusBanner'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 import { Toaster } from '@/components/ui/Toaster'
 
@@ -26,6 +27,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           rightPanelOpen ? 'lg:pr-[344px]' : 'lg:pr-6'
         }`}>
           <VerifyEmailBanner />
+          <EnrollmentStatusBanner />
           {children}
         </div>
       </motion.main>

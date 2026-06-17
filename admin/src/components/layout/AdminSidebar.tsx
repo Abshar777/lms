@@ -6,17 +6,21 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, BookOpen, Users, GraduationCap,
   Tag, Star, Settings, ChevronLeft, LogOut, X,
-  ShoppingBag, Ticket, Map, ClipboardList, Video, CalendarDays, BarChart3, ShieldCheck, LifeBuoy,
+  ShoppingBag, Ticket, Map, ClipboardList, Video, CalendarDays, BarChart3, ShieldCheck, LifeBuoy, UserCog,
+  ClipboardCheck,
 } from 'lucide-react'
 import { useUIStore } from '@/store/ui.store'
 import { useAllLiveClasses } from '@/lib/api/liveClasses'
 import { useCurrentUser, logout } from '@/lib/api/user'
+import { useEnrollmentRequests } from '@/lib/api/enrollmentRequests'
 import { useRouter } from 'next/navigation'
 
 /* ── All nav items (admin sees all) ──────────────────── */
 const adminNavItems = [
-  { label: 'Dashboard',      href: '/',                 icon: LayoutDashboard },
-  { label: 'Courses',        href: '/courses',           icon: BookOpen },
+  { label: 'Dashboard',      href: '/',                       icon: LayoutDashboard },
+  { label: 'Users',          href: '/users',                  icon: UserCog },
+  { label: 'Requests',       href: '/enrollment-requests',    icon: ClipboardCheck },
+  { label: 'Courses',        href: '/courses',                icon: BookOpen },
   { label: 'Learning Paths', href: '/learning-paths',   icon: Map },
   { label: 'Live Classes',   href: '/live-classes',     icon: Video },
   { label: 'Bookings',       href: '/bookings',          icon: CalendarDays },
@@ -30,6 +34,17 @@ const adminNavItems = [
   { label: 'Roles',          href: '/roles',             icon: ShieldCheck },
   { label: 'Support',        href: '/support',           icon: LifeBuoy },
   { label: 'Audit Logs',     href: '/audit-logs',        icon: ClipboardList },
+]
+
+/* ── Scoped-admin nav (4x_admin, digital_marketing_admin) ─ */
+const scopedAdminNavItems = [
+  { label: 'Dashboard',        href: '/',                       icon: LayoutDashboard },
+  { label: 'Requests',         href: '/enrollment-requests',    icon: ClipboardCheck },
+  { label: 'Users',            href: '/users',                  icon: UserCog },
+  { label: 'Courses',          href: '/courses',                icon: BookOpen },
+  { label: 'Live Classes',     href: '/live-classes',           icon: Video },
+  { label: 'Bookings',         href: '/bookings',               icon: CalendarDays },
+  { label: 'Support',          href: '/support',                icon: LifeBuoy },
 ]
 
 /* ── Instructor-restricted nav (view users + own content) ─ */
@@ -59,9 +74,14 @@ function SidebarContent({ collapsed, onClose }: SidebarContentProps) {
   const { data: allLive } = useAllLiveClasses('live')
   const liveNowCount = allLive?.length ?? 0
 
-  const isInstructor = user?.role === 'instructor'
-  const navItems     = isInstructor ? instructorNavItems : adminNavItems
-  const roleLabel    = isInstructor ? 'Instructor' : 'Admin'
+  const isInstructor  = user?.role === 'instructor'
+  const isManager     = user?.role === '4x_admin' || user?.role === 'digital_marketing_admin'
+  const canSeeRequests = !isInstructor
+
+  const { data: pendingData } = useEnrollmentRequests('pending', undefined)
+  const pendingCount = canSeeRequests ? (pendingData?.meta?.total_count ?? 0) : 0
+  const navItems  = isInstructor ? instructorNavItems : isManager ? scopedAdminNavItems : adminNavItems
+  const roleLabel = isInstructor ? 'Instructor' : isManager ? 'Manager' : 'Admin'
 
   const isActive = (href: string) =>
     href === '/' ? pathname === '/' : pathname.startsWith(href)
@@ -150,6 +170,13 @@ function SidebarContent({ collapsed, onClose }: SidebarContentProps) {
                       exit={{ opacity: 0, x: -6 }} transition={{ duration: 0.13 }}
                       className="relative z-10 flex flex-1 items-center justify-between whitespace-nowrap text-sm font-medium">
                       {item.label}
+                      {/* Pending requests badge */}
+                      {item.href === '/enrollment-requests' && pendingCount > 0 && (
+                        <span className="ml-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
+                          style={{ background: '#F59E0B' }}>
+                          {pendingCount}
+                        </span>
+                      )}
                       {/* Pulsing live badge — only on Live Classes item when streams are active */}
                       {item.href === '/live-classes' && liveNowCount > 0 && (
                         <motion.span

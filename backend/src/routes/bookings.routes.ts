@@ -13,7 +13,7 @@
  */
 import { Router, type Request, type Response, type NextFunction } from 'express'
 import { z } from 'zod'
-import { authenticate } from '@/middleware/auth.middleware.ts'
+import { authenticate, requireEnrollmentApproval } from '@/middleware/auth.middleware.ts'
 import { validate } from '@/middleware/validate.middleware.ts'
 import { NotificationService } from '@/services/notification.service.ts'
 
@@ -106,7 +106,7 @@ async function afterBookingCancelled(
 }
 
 /* ── POST /bookings ─────────────────────────── */
-router.post('/', authenticate, validate(createBookingSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/', authenticate, requireEnrollmentApproval, validate(createBookingSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { ClassBookingModel, LiveClassModel, EnrollmentModel, UserModel } =
       await import('@/models/schema.ts')

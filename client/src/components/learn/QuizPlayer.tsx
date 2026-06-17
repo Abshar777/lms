@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle2, XCircle, Clock, Trophy, RotateCcw, ChevronRight, Loader2 } from 'lucide-react'
 import { useStudentQuiz, useQuizSummary, useSubmitQuiz, type QuizQuestion, type SubmitQuizResult } from '@/lib/api/quizzes'
+import { Button } from '@/components/ui/button'
 
 interface Props {
   lessonId: string
@@ -142,11 +143,9 @@ function SummaryPanel({ quiz, summary, onStart }: {
         </div>
       )}
 
-      <button onClick={onStart}
-        className="inline-flex items-center gap-2 rounded-xl px-8 py-3 text-sm font-bold text-white"
-        style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+      <Button variant="default" size="default" onClick={onStart} className="gap-2">
         {summary?.hasAttempted ? <><RotateCcw size={14} />Retry quiz</> : <><ChevronRight size={14} />Start quiz</>}
-      </button>
+      </Button>
     </motion.div>
   )
 }
@@ -195,12 +194,16 @@ function TakingPanel({ quiz, answers, timeLeft, onAnswer, onSubmit, isPending }:
 
       {/* Submit */}
       <div className="border-t px-6 py-4" style={{ borderColor: '#F0F1F5' }}>
-        <button onClick={onSubmit} disabled={isPending}
-          className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white disabled:opacity-60"
-          style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+        <Button
+          variant="default"
+          size="lg"
+          className="w-full gap-2"
+          onClick={onSubmit}
+          disabled={isPending}
+        >
           {isPending ? <Loader2 size={14} className="animate-spin" /> : null}
           Submit quiz ({answered}/{quiz.questions.length} answered)
-        </button>
+        </Button>
       </div>
     </motion.div>
   )
@@ -233,19 +236,24 @@ function QuestionItem({ question: q, index, answer, onAnswer }: {
             const val = String(ci)
             const chosen = answer === val
             return (
-              <button key={ci} onClick={() => onAnswer(q.id, val)}
-                className="flex w-full items-center gap-3 rounded-xl border px-4 py-2.5 text-left text-sm transition-colors"
+              <Button
+                key={ci}
+                variant="outline"
+                size="default"
+                onClick={() => onAnswer(q.id, val)}
+                className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm h-auto justify-start"
                 style={{
                   borderColor: chosen ? '#FF6B1A' : '#E5E7EB',
                   background:  chosen ? 'rgba(255,107,26,0.06)' : '#FAFAFA',
                   color:       '#374151',
-                }}>
+                }}
+              >
                 <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors"
                   style={{ borderColor: chosen ? '#FF6B1A' : '#D1D5DB', background: chosen ? '#FF6B1A' : 'transparent' }}>
                   {chosen && <span className="h-2 w-2 rounded-full bg-white" />}
                 </span>
                 {c}
-              </button>
+              </Button>
             )
           })}
         </div>
@@ -325,11 +333,14 @@ function ResultPanel({ result, passPercent, onRetry }: {
       </div>
 
       {!result.passed && (
-        <button onClick={onRetry}
-          className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white"
-          style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+        <Button
+          variant="default"
+          size="lg"
+          className="w-full gap-2"
+          onClick={onRetry}
+        >
           <RotateCcw size={14} />Try again
-        </button>
+        </Button>
       )}
     </motion.div>
   )

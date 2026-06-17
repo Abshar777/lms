@@ -14,6 +14,7 @@ export interface CourseListParams {
   searchMode?:   'text' | 'prefix'
   level?:        'beginner' | 'intermediate' | 'advanced'
   category?:     string   // category slug
+  program?:      '4x-trading' | 'digital-marketing'
   free?:         boolean
   instructorId?: string
   durationMin?:  number
@@ -105,6 +106,8 @@ export class CourseRepository extends BaseRepository<ICourse> {
       else return { docs: [], totalCount: 0 }
     }
 
+    if (params.program) filter['program'] = params.program
+
     /* When using $text and no explicit sort, rank by relevance score.
        For prefix ($regex) searches, fall back to popularity (enrolledCount). */
     const useTextScore = !!params.search && params.searchMode !== 'prefix' && !params.sort
@@ -184,6 +187,8 @@ export class CourseRepository extends BaseRepository<ICourse> {
       if (cat) filter['categoryId'] = cat['_id']
       else return { docs: [], totalCount: 0 }
     }
+
+    if (params.program) filter['program'] = params.program
 
     const sort = resolveSort(params.sort)
 

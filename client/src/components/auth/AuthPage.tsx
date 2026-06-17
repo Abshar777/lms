@@ -31,11 +31,13 @@ function StepDots({ mode }: { mode: AuthMode }) {
 }
 
 export function AuthPage({ initialMode }: AuthPageProps) {
-  const [mode, setMode] = useState<AuthMode>(initialMode)
+  const [mode,         setMode]         = useState<AuthMode>(initialMode)
+  const [registerStep, setRegisterStep] = useState(1)
 
   /* Update URL bar silently — no navigation, no remount */
   const switchMode = (next: AuthMode) => {
     setMode(next)
+    if (next === 'register') setRegisterStep(1)
     window.history.replaceState(null, '', next === 'login' ? '/login' : '/register')
   }
 
@@ -127,7 +129,7 @@ export function AuthPage({ initialMode }: AuthPageProps) {
             <div className="mb-6 flex items-center justify-between">
               <StepDots mode={mode} />
               <span className="text-xs font-medium" style={{ color: '#9CA3AF' }}>
-                {mode === 'login' ? 'Step 1 of 1' : 'Step 1 of 2'}
+                {mode === 'login' ? 'Step 1 of 1' : `Step ${registerStep} of 2`}
               </span>
             </div>
 
@@ -136,7 +138,7 @@ export function AuthPage({ initialMode }: AuthPageProps) {
               {mode === 'login' ? (
                 <LoginForm key="login" onSwitch={() => switchMode('register')} />
               ) : (
-                <RegisterForm key="register" onSwitch={() => switchMode('login')} />
+                <RegisterForm key="register" onSwitch={() => switchMode('login')} onStepChange={setRegisterStep} />
               )}
             </AnimatePresence>
           </div>

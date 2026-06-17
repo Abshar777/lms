@@ -8,6 +8,7 @@ import {
   Settings, LogOut, Flame, Map, X, Video, CalendarDays, LifeBuoy,
 } from 'lucide-react'
 import { useUIStore } from '@/store/ui.store'
+import { Button } from '@/components/ui/button'
 
 const navItems = [
   { label: 'My Learning',    href: '/my-learning',    icon: GraduationCap },
@@ -49,11 +50,14 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
           style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 16, color: '#0D0F1A' }}>
           LearnOS
         </span>
-        <button onClick={onClose}
-          className="ml-auto flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-orange-50"
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={onClose}
+          className="ml-auto flex-shrink-0 hover:bg-orange-50"
           style={{ color: '#FF6B1A' }}>
           <X size={15} />
-        </button>
+        </Button>
       </div>
 
       {/* ── Nav ──────────────────────────────── */}
@@ -112,11 +116,14 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
             <p className="truncate text-xs font-semibold" style={{ color: '#0D0F1A' }}>Adit Irwan</p>
             <p className="truncate text-[10px]" style={{ color: '#9CA3AF' }}>student@learnos.com</p>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={() => { document.cookie = 'lms_at=; path=/; max-age=0'; window.location.href = '/login' }}
-            className="flex-shrink-0 transition-all hover:text-red-500" style={{ color: '#9CA3AF' }}>
+            className="flex-shrink-0 hover:text-red-500"
+            style={{ color: '#9CA3AF' }}>
             <LogOut size={14} />
-          </button>
+          </Button>
         </div>
       </div>
     </>

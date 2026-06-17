@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { BookOpen, Send, CheckCircle, Clock, Award, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import { useSessionHomework, useSubmitHomework, type Homework } from '@/lib/api/homework'
+import { Button } from '@/components/ui/button'
 
 interface Props {
   sessionId: string
@@ -103,16 +104,17 @@ function HomeworkCard({ hw, sessionId }: { hw: Homework; sessionId: string }) {
                       onChange={e => setSubmissionUrl(e.target.value)}
                     />
                   </div>
-                  <button
+                  <Button
+                    variant="default"
+                    size="default"
                     disabled={(!submissionText.trim() && !submissionUrl.trim()) || submitMutation.isPending}
                     onClick={handleSubmit}
-                    className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 transition-opacity hover:opacity-90"
-                    style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+                    className="flex items-center gap-2">
                     {submitMutation.isPending
                       ? <Loader2 size={13} className="animate-spin" />
                       : <Send size={13} />}
                     Submit
-                  </button>
+                  </Button>
                 </>
               )}
             </div>

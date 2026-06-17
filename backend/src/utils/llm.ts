@@ -21,20 +21,26 @@ export function hasLLM(): boolean {
 
 /**
  * Call Ollama with `format: 'json'` and parse the response.
- * Throws if the model output is not valid JSON.
+ * Throws if the model output is not valid JSON or the call exceeds 8 s.
  */
 export async function callLLMJSON<T>(
   systemPrompt: string,
   userMessage:  string,
 ): Promise<T> {
-  const res = await getClient().chat({
-    model:  env.OLLAMA_MODEL,
-    format: 'json',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user',   content: userMessage  },
-    ],
-  })
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('LLM timeout')), 8_000),
+  )
+  const res = await Promise.race([
+    getClient().chat({
+      model:  env.OLLAMA_MODEL,
+      format: 'json',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user',   content: userMessage  },
+      ],
+    }),
+    timeout,
+  ])
   const text = res.message.content.trim()
   return JSON.parse(text) as T
 }

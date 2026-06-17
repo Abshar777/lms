@@ -4,12 +4,13 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   LifeBuoy, Send, Loader2, MessageSquare, Search, ShieldCheck,
-  CheckCircle2, Clock, ChevronLeft,
+  CheckCircle2, ChevronLeft,
 } from 'lucide-react'
 import {
   useAdminTickets, useAdminTicket, useAdminReply, useSetTicketStatus, useSupportStats,
   type SupportTicket, type SupportStatus, type SupportUser,
 } from '@/lib/api/support'
+import { useCurrentUser } from '@/lib/api/user'
 
 const STATUS_STYLE: Record<SupportStatus, { label: string; color: string; bg: string }> = {
   open:     { label: 'Open',     color: '#FBBF24', bg: 'rgba(245,158,11,0.15)' },
@@ -23,6 +24,12 @@ const STATUS_TABS: { key: string; label: string }[] = [
 ]
 const ALL_STATUSES: SupportStatus[] = ['open', 'pending', 'resolved', 'closed']
 
+const PROGRAM_TABS: { key: string; label: string }[] = [
+  { key: 'all',                label: 'All Programs' },
+  { key: '4x-trading',        label: '4x Trading' },
+  { key: 'digital-marketing', label: 'Digital Marketing' },
+]
+
 function userOf(t: SupportTicket): SupportUser | null {
   return typeof t.userId === 'object' ? t.userId : null
 }
@@ -31,18 +38,26 @@ function fmtWhen(iso: string) {
 }
 
 export default function AdminSupportPage() {
+  const { data: currentUser } = useCurrentUser()
+  const isSuperAdmin = currentUser?.role === 'admin' || currentUser?.role === 'super_admin'
+
   const [statusFilter, setStatusFilter] = useState('all')
+  const [programFilter, setProgramFilter] = useState('all')
   const [search, setSearch]             = useState('')
   const [selectedId, setSelectedId]     = useState<string | null>(null)
 
-  const { data: tickets = [], isLoading } = useAdminTickets({ status: statusFilter, search })
-  const { data: stats } = useSupportStats()
+  // category-scoped admins have a fixed program; super/admin can toggle
+  const effectiveProgram = isSuperAdmin ? (programFilter !== 'all' ? programFilter : undefined) : undefined
+
+  const { data: tickets = [], isLoading } = useAdminTickets({ status: statusFilter, search, program: effectiveProgram })
+  const { data: stats } = useSupportStats(effectiveProgram)
 
   const cards = [
-    { label: 'Open',     value: stats?.open ?? 0,    color: '#FBBF24' },
-    { label: 'Replied',  value: stats?.pending ?? 0, color: '#60A5FA' },
+    { label: 'Total',    value: stats?.total ?? 0,    color: '#A78BFA' },
+    { label: 'Open',     value: stats?.open ?? 0,     color: '#FBBF24' },
+    { label: 'Replied',  value: stats?.pending ?? 0,  color: '#60A5FA' },
     { label: 'Resolved', value: stats?.resolved ?? 0, color: '#4ADE80' },
-    { label: 'Unread',   value: stats?.unread ?? 0,  color: '#FF6B1A' },
+    { label: 'Unread',   value: stats?.unread ?? 0,   color: '#FF6B1A' },
   ]
 
   return (
@@ -58,7 +73,7 @@ export default function AdminSupportPage() {
       </motion.div>
 
       {/* Stats */}
-      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
         {cards.map(c => (
           <div key={c.label} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
             <p className="text-2xl font-bold" style={{ color: c.color }}>{c.value}</p>
@@ -67,7 +82,22 @@ export default function AdminSupportPage() {
         ))}
       </div>
 
-      {/* Filters */}
+      {/* Program filter — only super_admin and admin see this */}
+      {isSuperAdmin && (
+        <div className="mb-4 flex items-center gap-2">
+          {PROGRAM_TABS.map(t => (
+            <button key={t.key} onClick={() => setProgramFilter(t.key)}
+              className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
+              style={programFilter === t.key
+                ? { background: 'rgba(167,139,250,0.15)', color: '#A78BFA', border: '1px solid rgba(167,139,250,0.3)' }
+                : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Status filters + search */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {STATUS_TABS.map(t => (
           <button key={t.key} onClick={() => setStatusFilter(t.key)}
@@ -109,7 +139,15 @@ export default function AdminSupportPage() {
                 <p className="mt-0.5 text-[11px]" style={{ color: 'rgba(255,255,255,0.45)' }}>{u?.name ?? 'Unknown'} · {u?.email}</p>
                 <div className="mt-1.5 flex items-center justify-between">
                   <span className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: s.bg, color: s.color }}>{s.label}</span>
-                  <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{fmtWhen(t.lastMessageAt)}</span>
+                  <div className="flex items-center gap-2">
+                    {t.program && (
+                      <span className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
+                        style={{ background: t.program === '4x-trading' ? 'rgba(167,139,250,0.12)' : 'rgba(96,165,250,0.12)', color: t.program === '4x-trading' ? '#A78BFA' : '#60A5FA' }}>
+                        {t.program === '4x-trading' ? '4x' : 'DM'}
+                      </span>
+                    )}
+                    <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{fmtWhen(t.lastMessageAt)}</span>
+                  </div>
                 </div>
               </button>
             )
@@ -160,7 +198,15 @@ function AdminThread({ ticketId, onBack }: { ticketId: string; onBack: () => voi
         <button onClick={onBack} className="flex h-8 w-8 items-center justify-center rounded-xl hover:bg-white/10 lg:hidden" style={{ color: 'rgba(255,255,255,0.5)' }}><ChevronLeft size={16} /></button>
         <div className="min-w-0 flex-1">
           <p className="line-clamp-1 text-sm font-bold text-white">{ticket.subject}</p>
-          <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.4)' }}>{u?.name} · {u?.email} · <span className="capitalize">{ticket.category}</span></p>
+          <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
+            {u?.name} · {u?.email} · <span className="capitalize">{ticket.category}</span>
+            {ticket.program && (
+              <span className="ml-1.5 rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                style={{ background: ticket.program === '4x-trading' ? 'rgba(167,139,250,0.12)' : 'rgba(96,165,250,0.12)', color: ticket.program === '4x-trading' ? '#A78BFA' : '#60A5FA' }}>
+                {ticket.program === '4x-trading' ? '4x Trading' : 'Digital Marketing'}
+              </span>
+            )}
+          </p>
         </div>
         <select value={ticket.status} onChange={e => status.mutate(e.target.value as SupportStatus)}
           className="rounded-lg px-2 py-1 text-xs font-semibold outline-none"
@@ -172,7 +218,7 @@ function AdminThread({ ticketId, onBack }: { ticketId: string; onBack: () => voi
       {/* Messages */}
       <div className="flex-1 space-y-3 overflow-y-auto p-4">
         {ticket.messages.map((m, i) => {
-          const mine = m.senderRole === 'admin'  // admin/support on the right
+          const mine = m.senderRole === 'admin'
           return (
             <div key={m._id ?? i} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
               <div className="max-w-[78%]">
