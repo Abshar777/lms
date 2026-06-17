@@ -27,7 +27,7 @@ const ROLE_STYLE: Record<string, { bg: string; color: string; label: string }> =
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  '4x-trading':        '4x Trading',
+  '4x-trading':        'FOREX Trading',
   'digital-marketing': 'Digital Marketing',
 }
 
@@ -62,7 +62,7 @@ function getRoleOptions(myRole: string): { value: string; label: string }[] {
       { value: 'instructor',              label: 'Instructor' },
     ]
     case '4x_admin': return [
-      { value: 'all',       label: 'All (4x Trading)' },
+      { value: 'all',       label: 'All (FOREX Trading)' },
       { value: '4x_admin', label: '4x Admin' },
       { value: 'instructor', label: 'Instructor' },
     ]

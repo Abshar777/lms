@@ -26,7 +26,7 @@ const ALL_STATUSES: SupportStatus[] = ['open', 'pending', 'resolved', 'closed']
 
 const PROGRAM_TABS: { key: string; label: string }[] = [
   { key: 'all',                label: 'All Programs' },
-  { key: '4x-trading',        label: '4x Trading' },
+  { key: '4x-trading',        label: 'FOREX Trading' },
   { key: 'digital-marketing', label: 'Digital Marketing' },
 ]
 
@@ -143,7 +143,7 @@ export default function AdminSupportPage() {
                     {t.program && (
                       <span className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
                         style={{ background: t.program === '4x-trading' ? 'rgba(167,139,250,0.12)' : 'rgba(96,165,250,0.12)', color: t.program === '4x-trading' ? '#A78BFA' : '#60A5FA' }}>
-                        {t.program === '4x-trading' ? '4x' : 'DM'}
+                        {t.program === '4x-trading' ? 'FOREX' : 'DM'}
                       </span>
                     )}
                     <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{fmtWhen(t.lastMessageAt)}</span>
@@ -203,7 +203,7 @@ function AdminThread({ ticketId, onBack }: { ticketId: string; onBack: () => voi
             {ticket.program && (
               <span className="ml-1.5 rounded px-1.5 py-0.5 text-[10px] font-semibold"
                 style={{ background: ticket.program === '4x-trading' ? 'rgba(167,139,250,0.12)' : 'rgba(96,165,250,0.12)', color: ticket.program === '4x-trading' ? '#A78BFA' : '#60A5FA' }}>
-                {ticket.program === '4x-trading' ? '4x Trading' : 'Digital Marketing'}
+                {ticket.program === '4x-trading' ? 'FOREX Trading' : 'Digital Marketing'}
               </span>
             )}
           </p>

@@ -197,7 +197,7 @@ export function AddInstructorModal({ open, onClose }: AddInstructorModalProps) {
                   <select {...register('category')}
                     className="w-full rounded-xl border border-[#E4E7ED] bg-[#F8F9FB] py-2.5 pl-3 pr-4 text-sm text-gray-800 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100">
                     <option value="">Select category…</option>
-                    <option value="4x-trading">4x Trading</option>
+                    <option value="4x-trading">FOREX Trading</option>
                     <option value="digital-marketing">Digital Marketing</option>
                   </select>
                 </Field>

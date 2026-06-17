@@ -422,7 +422,7 @@ function CourseRow({ course, index, checked, onToggle, onDelete }: {
 
 /* ── Main component ─────────────────────────────────────────── */
 const PROGRAM_LABELS: Record<string, string> = {
-  '4x-trading':        '4x Trading',
+  '4x-trading':        'FOREX Trading',
   'digital-marketing': 'Digital Marketing',
 }
 const PROGRAM_STYLE: Record<string, { bg: string; color: string }> = {

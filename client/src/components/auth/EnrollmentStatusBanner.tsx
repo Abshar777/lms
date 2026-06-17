@@ -5,7 +5,7 @@ import { Clock, XCircle, ChevronRight } from 'lucide-react'
 import { useCurrentUser } from '@/lib/api/user'
 
 const CATEGORY_LABEL: Record<string, string> = {
-  '4x-trading':        '4x Trading',
+  '4x-trading':        'FOREX Trading',
   'digital-marketing': 'Digital Marketing',
 }
 

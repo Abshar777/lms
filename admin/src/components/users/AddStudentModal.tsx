@@ -74,7 +74,7 @@ function DarkSelect({ value, onChange, options, placeholder }: {
 }
 
 const CATEGORY_OPTIONS = [
-  { value: '4x-trading',        label: '4x Trading' },
+  { value: '4x-trading',        label: 'FOREX Trading' },
   { value: 'digital-marketing', label: 'Digital Marketing' },
 ]
 

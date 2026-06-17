@@ -450,7 +450,7 @@ export function CourseForm({ course }: CourseFormProps) {
                 <Controller name="program" control={control} render={({ field }) => (
                   <Select value={field.value} onChange={field.onChange} placeholder="Select program…"
                     options={[
-                      { value: '4x-trading',        label: '4x Trading' },
+                      { value: '4x-trading',        label: 'FOREX Trading' },
                       { value: 'digital-marketing', label: 'Digital Marketing' },
                     ]} />
                 )} />

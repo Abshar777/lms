@@ -136,7 +136,7 @@ const ROLE_OPTIONS_BY_EDITOR: Record<string, { value: AdminUserRole; label: stri
 
 const CATEGORY_OPTIONS = [
   { value: '' as const,                   label: 'No category' },
-  { value: '4x-trading' as const,         label: '4x Trading' },
+  { value: '4x-trading' as const,         label: 'FOREX Trading' },
   { value: 'digital-marketing' as const,  label: 'Digital Marketing' },
 ]
 

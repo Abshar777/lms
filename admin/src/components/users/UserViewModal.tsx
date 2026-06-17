@@ -19,7 +19,7 @@ const ROLE_STYLE: Record<string, { bg: string; color: string; label: string }> =
 }
 
 const CATEGORY_STYLE: Record<string, { bg: string; color: string; label: string }> = {
-  '4x-trading':        { bg: 'rgba(96,165,250,0.12)',  color: '#60A5FA', label: '4x Trading' },
+  '4x-trading':        { bg: 'rgba(96,165,250,0.12)',  color: '#60A5FA', label: 'FOREX Trading' },
   'digital-marketing': { bg: 'rgba(52,211,153,0.12)',  color: '#34D399', label: 'Digital Marketing' },
 }
 

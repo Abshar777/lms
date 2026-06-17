@@ -17,7 +17,7 @@ import { Button, MotionButton } from '@/components/ui/button'
 const CATEGORIES = [
   {
     id: '4x-trading' as const,
-    label: '4x Trading',
+    label: 'FOREX Trading',
     desc: 'Master forex strategies, chart analysis & market psychology',
     icon: TrendingUp,
     accent: '#2F6BFF',

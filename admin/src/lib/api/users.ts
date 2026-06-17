@@ -46,7 +46,7 @@ export const userKeys = {
   list: (role: string, params: object) => ['admin', 'users', role, params] as const,
 }
 
-export function useUsers(role: Exclude<AdminUserRole, 'student'> | undefined, params: {
+export function useUsers(role: AdminUserRole | undefined, params: {
   page?: number; per_page?: number; search?: string; category?: string; status?: 'active' | 'inactive'; exclude_students?: boolean
 } = {}) {
   return useQuery({

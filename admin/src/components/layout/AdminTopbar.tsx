@@ -102,7 +102,7 @@ export function AdminTopbar() {
             : { background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.3)', color: '#34D399' }}>
           <span className="h-1.5 w-1.5 rounded-full flex-shrink-0"
             style={{ background: user.role === '4x_admin' ? '#60A5FA' : '#34D399' }} />
-          {user.role === '4x_admin' ? '4x Trading' : 'Digital Marketing'} scope
+          {user.role === '4x_admin' ? 'FOREX Trading' : 'Digital Marketing'} scope
         </div>
       )}
 

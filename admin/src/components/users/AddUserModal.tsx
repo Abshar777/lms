@@ -123,7 +123,7 @@ const LOCKED_CATEGORY: Record<string, '4x-trading' | 'digital-marketing'> = {
 
 const CATEGORY_OPTIONS = [
   { value: '' as const,                   label: 'No category' },
-  { value: '4x-trading' as const,         label: '4x Trading' },
+  { value: '4x-trading' as const,         label: 'FOREX Trading' },
   { value: 'digital-marketing' as const,  label: 'Digital Marketing' },
 ]
 

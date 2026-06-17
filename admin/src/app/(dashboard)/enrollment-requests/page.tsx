@@ -14,7 +14,7 @@ import { useCurrentUser } from '@/lib/api/user'
 import { useToast } from '@/store/ui.store'
 
 const CATEGORY_LABEL: Record<string, string> = {
-  '4x-trading':        '4x Trading',
+  '4x-trading':        'FOREX Trading',
   'digital-marketing': 'Digital Marketing',
 }
 
