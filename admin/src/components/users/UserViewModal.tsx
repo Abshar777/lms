@@ -12,7 +12,7 @@ import { useStudentEnrollments } from '@/lib/api/users'
 const ROLE_STYLE: Record<string, { bg: string; color: string; label: string }> = {
   super_admin:             { bg: 'rgba(168,85,247,0.18)',  color: '#A855F7', label: 'Super Admin' },
   admin:                   { bg: 'rgba(251,146,60,0.15)',  color: '#FB923C', label: 'Admin' },
-  '4x_admin':              { bg: 'rgba(96,165,250,0.15)',  color: '#60A5FA', label: '4x Admin' },
+  '4x_admin':              { bg: 'rgba(96,165,250,0.15)',  color: '#60A5FA', label: 'FOREX Admin' },
   digital_marketing_admin: { bg: 'rgba(52,211,153,0.15)',  color: '#34D399', label: 'DM Admin' },
   instructor:              { bg: 'rgba(99,102,241,0.15)',  color: '#818CF8', label: 'Instructor' },
   student:                 { bg: 'rgba(156,163,175,0.15)', color: '#9CA3AF', label: 'Student' },

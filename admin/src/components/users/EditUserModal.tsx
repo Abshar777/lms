@@ -122,13 +122,13 @@ const ROLE_OPTIONS_BY_EDITOR: Record<string, { value: AdminUserRole; label: stri
   super_admin: [
     { value: 'super_admin',             label: 'Super Admin' },
     { value: 'admin',                   label: 'Admin' },
-    { value: '4x_admin',               label: '4x Admin' },
+    { value: '4x_admin',               label: 'FOREX Admin' },
     { value: 'digital_marketing_admin', label: 'DM Admin' },
     { value: 'instructor',              label: 'Instructor' },
   ],
   admin: [
     { value: 'admin',                   label: 'Admin' },
-    { value: '4x_admin',               label: '4x Admin' },
+    { value: '4x_admin',               label: 'FOREX Admin' },
     { value: 'digital_marketing_admin', label: 'DM Admin' },
     { value: 'instructor',              label: 'Instructor' },
   ],
