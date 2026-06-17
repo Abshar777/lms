@@ -23,8 +23,12 @@ export const useImpersonationStore = create<ImpersonationState>()(
     {
       name: 'lms-impersonation',
       storage: {
-        getItem:    k => typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(k) : null,
-        setItem:    (k, v) => typeof sessionStorage !== 'undefined' && sessionStorage.setItem(k, v),
+        getItem:    k => {
+          if (typeof sessionStorage === 'undefined') return null
+          const raw = sessionStorage.getItem(k)
+          return raw ? JSON.parse(raw) : null
+        },
+        setItem:    (k, v) => typeof sessionStorage !== 'undefined' && sessionStorage.setItem(k, JSON.stringify(v)),
         removeItem: k => typeof sessionStorage !== 'undefined' && sessionStorage.removeItem(k),
       },
     },
