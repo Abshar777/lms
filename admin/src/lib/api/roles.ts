@@ -59,7 +59,10 @@ export function useCreateRole() {
       const res = await api.post<{ success: true; data: Role }>('/admin/roles', dto)
       return res.data.data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: roleKeys.all }),
+    onSuccess: (newRole) => {
+      qc.setQueryData<Role[]>(roleKeys.all, (old = []) => [...old, newRole])
+      qc.invalidateQueries({ queryKey: roleKeys.all })
+    },
   })
 }
 
@@ -70,7 +73,12 @@ export function useUpdateRole() {
       const res = await api.patch<{ success: true; data: Role }>(`/admin/roles/${id}`, dto)
       return res.data.data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: roleKeys.all }),
+    onSuccess: (updated) => {
+      qc.setQueryData<Role[]>(roleKeys.all, (old = []) =>
+        old.map(r => r.id === updated.id ? updated : r),
+      )
+      qc.invalidateQueries({ queryKey: roleKeys.all })
+    },
   })
 }
 
@@ -83,7 +91,12 @@ export function useUpdatePermissions() {
       )
       return res.data.data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: roleKeys.all }),
+    onSuccess: (updated) => {
+      qc.setQueryData<Role[]>(roleKeys.all, (old = []) =>
+        old.map(r => r.id === updated.id ? updated : r),
+      )
+      qc.invalidateQueries({ queryKey: roleKeys.all })
+    },
   })
 }
 
@@ -92,8 +105,10 @@ export function useDeleteRole() {
   return useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/admin/roles/${id}`)
+      return id
     },
-    onSuccess: () => {
+    onSuccess: (id) => {
+      qc.setQueryData<Role[]>(roleKeys.all, (old = []) => old.filter(r => r.id !== id))
       qc.invalidateQueries({ queryKey: roleKeys.all })
       qc.invalidateQueries({ queryKey: ['admin', 'users'] })
     },

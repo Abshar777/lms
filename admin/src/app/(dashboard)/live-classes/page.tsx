@@ -241,6 +241,14 @@ function TableRow({ live, index, showInstructor }: { live: LiveClass; index: num
           </div>
         </td>
 
+        {/* Language */}
+        <td className="px-4 py-3 text-sm">
+          <span className="rounded-md px-2 py-0.5 text-[10px] font-semibold"
+            style={{ background: 'rgba(16,185,129,0.12)', color: '#34D399' }}>
+            {live.language ?? 'English'}
+          </span>
+        </td>
+
         {/* Seats */}
         <td className="px-4 py-3 text-sm">
           <div className="flex flex-col gap-1 min-w-[80px]">
@@ -607,6 +615,7 @@ function QuickCreateModal({ onClose, onSuccess, categoryProgram }: { onClose: ()
   const [type,            setType]            = useState<LiveClassType>('external')
   const [sectionId,       setSectionId]       = useState('')
   const [instructorId,    setInstructorId]    = useState('')
+  const [language,        setLanguage]        = useState('English')
   const [error,           setError]           = useState<string | null>(null)
 
   const { data: outline } = useCourseOutline(courseId)
@@ -632,6 +641,7 @@ function QuickCreateModal({ onClose, onSuccess, categoryProgram }: { onClose: ()
         type,
         sectionId:       sectionId || undefined,
         instructorId:    instructorId || undefined,
+        language,
       })
       onSuccess()
     } catch (err: any) {
@@ -764,6 +774,20 @@ function QuickCreateModal({ onClose, onSuccess, categoryProgram }: { onClose: ()
             </select>
           </div>
 
+          {/* Language */}
+          <div>
+            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: 'rgba(255,255,255,0.35)' }}>Language</label>
+            <select value={language} onChange={e => setLanguage(e.target.value)}
+              className={base} style={selStyle}>
+              <option value="English">🇬🇧 English</option>
+              <option value="Arabic">🇦🇪 Arabic (عربي)</option>
+              <option value="Hindi">🇮🇳 Hindi (हिंदी)</option>
+              <option value="Malayalam">🇮🇳 Malayalam (മലയാളം)</option>
+              <option value="Urdu">🇵🇰 Urdu (اردو)</option>
+            </select>
+          </div>
+
           {error && (
             <p className="flex items-center gap-1.5 text-xs" style={{ color: '#F87171' }}>
               <AlertCircle size={11} />{error}
@@ -865,7 +889,7 @@ export default function LiveClassesPage() {
   }
 
   /* Table column count depends on showInstructor */
-  const colSpan = isInstructor ? 6 : 7
+  const colSpan = isInstructor ? 7 : 8
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -1115,6 +1139,7 @@ export default function LiveClassesPage() {
                           <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>Instructor</th>
                         )}
                         <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>Date & Time</th>
+                        <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>Language</th>
                         <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>Seats</th>
                         <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>Actions</th>
                       </tr>

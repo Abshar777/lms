@@ -311,14 +311,18 @@ export async function sendBookingConfirmation(
         <strong>Date &amp; Time:</strong> ${escapeHtml(date)}
       </td></tr>
     </table>
+    <p style="font-size:14px;color:#374151;margin:16px 0">
+      🔗 Your <strong>join link</strong> will be sent to this email address <strong>5 minutes before the class starts</strong>.
+    </p>
     <p style="margin:24px 0">
-      <a href="${joinUrl}" style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
-        Join session →
+      <a href="${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/class-bookings"
+        style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
+        View my schedule →
       </a>
     </p>
-    <p style="font-size:12px;color:#9CA3AF">You'll receive reminder emails before the session starts.</p>
+    <p style="font-size:12px;color:#9CA3AF">You'll receive a reminder email the day before and on the day of your session.</p>
   `)
-  await sender.send({ to, subject, html, text: `Your seat is confirmed for ${sessionTitle} on ${date}. Join: ${joinUrl}` })
+  await sender.send({ to, subject, html, text: `Your seat is confirmed for ${sessionTitle} on ${date}. Your join link will be sent 5 minutes before the class starts.` })
 }
 
 export async function sendSessionLinkReminder(
@@ -337,13 +341,17 @@ export async function sendSessionLinkReminder(
         <strong>Date &amp; Time:</strong> ${escapeHtml(date)}
       </td></tr>
     </table>
+    <p style="font-size:14px;color:#374151;margin:16px 0">
+      🔗 Your <strong>join link</strong> will be sent to this email 5 minutes before the session starts.
+    </p>
     <p style="margin:24px 0">
-      <a href="${joinUrl}" style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
-        Join session →
+      <a href="${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/class-bookings"
+        style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
+        View my schedule →
       </a>
     </p>
   `)
-  await sender.send({ to, subject, html, text: `${sessionTitle} is tomorrow at ${date}. Join: ${joinUrl}` })
+  await sender.send({ to, subject, html, text: `${sessionTitle} is tomorrow at ${date}. Your join link will be sent 5 minutes before the session.` })
 }
 
 export async function sendDayOfReminder(
@@ -357,14 +365,18 @@ export async function sendDayOfReminder(
   const html = wrap(subject, `
     <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">Session today! ⏰</h2>
     <p>Hi ${escapeHtml(name)}, <strong>${escapeHtml(sessionTitle)}</strong> is happening today at <strong>${escapeHtml(time)}</strong>.</p>
-    <p>Get ready and make sure your connection is stable.</p>
+    <p>Get ready and make sure your device and connection are stable.</p>
+    <p style="font-size:14px;color:#374151;margin:16px 0">
+      🔗 Your <strong>join link</strong> will be sent to this email 5 minutes before the session starts.
+    </p>
     <p style="margin:24px 0">
-      <a href="${joinUrl}" style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
-        Join session →
+      <a href="${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/class-bookings"
+        style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
+        View my schedule →
       </a>
     </p>
   `)
-  await sender.send({ to, subject, html, text: `${sessionTitle} is today at ${time}. Join: ${joinUrl}` })
+  await sender.send({ to, subject, html, text: `${sessionTitle} is today at ${time}. Your join link will be sent 5 minutes before the session.` })
 }
 
 /**
@@ -413,25 +425,26 @@ export async function sendFiveMinReminder(
   await sender.send({ to, subject, html, text: `${sessionTitle} starts in 5 minutes. Join: ${joinUrl}` })
 }
 
-/** At-time reminder — WITH join link, sent when class has just started */
+/** At-time reminder — informational only; join link was already sent at the 5-min mark */
 export async function sendClassStartingReminder(
   to: string,
   name: string,
   sessionTitle: string,
   joinUrl: string,
 ): Promise<void> {
-  const subject = `Class is starting now: ${sessionTitle}`
+  const subject = `${sessionTitle} is starting now`
   const html = wrap(subject, `
     <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">Your class is live! 🎯</h2>
     <p>Hi ${escapeHtml(name)}, <strong>${escapeHtml(sessionTitle)}</strong> has just started.</p>
-    <p>Don't miss it — join immediately using the button below.</p>
+    <p>Check the join link that was sent to you 5 minutes ago and join now.</p>
     <p style="margin:24px 0">
-      <a href="${joinUrl}" style="display:inline-block;background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff;font-weight:700;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:15px">
-        Join class now →
+      <a href="${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/class-bookings"
+        style="display:inline-block;background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff;font-weight:700;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:15px">
+        View my schedule →
       </a>
     </p>
   `)
-  await sender.send({ to, subject, html, text: `${sessionTitle} is starting now. Join: ${joinUrl}` })
+  await sender.send({ to, subject, html, text: `${sessionTitle} is starting now. Check your earlier email for the join link.` })
 }
 
 export async function sendRescheduledNotification(

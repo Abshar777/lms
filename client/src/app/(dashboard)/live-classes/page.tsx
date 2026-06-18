@@ -229,8 +229,14 @@ function LiveHeroCard({ live, index }: { live: LiveClass; index: number }) {
         </h2>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <p className="flex items-center gap-1.5 text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            <Clock size={11} />{fmtTime(live.scheduledStart)} · {fmtDuration(live.durationMins)}
+            <Clock size={11} />{fmtTime(live.scheduledStart)} – {fmtTime(new Date(new Date(live.scheduledStart).getTime() + live.durationMins * 60_000).toISOString())}
           </p>
+          {live.language && (
+            <span className="rounded-lg px-2 py-0.5 text-[10px] font-bold"
+              style={{ background: 'rgba(16,185,129,0.20)', color: '#6EE7B7' }}>
+              {live.language}
+            </span>
+          )}
           {live.instructor?.name && (
             <div className="flex items-center gap-1.5">
               {live.instructor.avatarUrl ? (
@@ -245,19 +251,10 @@ function LiveHeroCard({ live, index }: { live: LiveClass; index: number }) {
               <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>{live.instructor.name}</p>
             </div>
           )}
-          {isInt ? (
-            <Link href={`/live-classes/${live.id}/watch`}
-              className="ml-auto flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white transition-all hover:brightness-110"
-              style={{ background: 'linear-gradient(135deg,#EF4444,#DC2626)', boxShadow: '0 4px 14px rgba(239,68,68,0.4)' }}>
-              <Radio size={12} />Watch now
-            </Link>
-          ) : live.meetingUrl ? (
-            <a href={live.meetingUrl} target="_blank" rel="noreferrer"
-              className="ml-auto flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white transition-all hover:brightness-110"
-              style={{ background: 'linear-gradient(135deg,#EF4444,#DC2626)', boxShadow: '0 4px 14px rgba(239,68,68,0.4)' }}>
-              <ExternalLink size={12} />Join now
-            </a>
-          ) : null}
+          <span className="ml-auto flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[10px] font-bold"
+            style={{ background: 'rgba(239,68,68,0.15)', color: '#EF4444' }}>
+            🔗 Link sent by email
+          </span>
         </div>
       </div>
     </motion.div>
@@ -370,13 +367,21 @@ function SessionCard({ live, index, now }: { live: LiveClass; now: number; index
       {/* Body */}
       <div className="p-3.5">
         <div className="mb-1.5 flex items-center justify-between gap-2">
-          <span className="rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-            style={{
-              background: isInt ? 'rgba(255,107,26,0.09)' : 'rgba(99,102,241,0.09)',
-              color:      isInt ? '#FF6B1A' : '#6366F1',
-            }}>
-            {isInt ? 'In-App' : 'External'}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+              style={{
+                background: isInt ? 'rgba(255,107,26,0.09)' : 'rgba(99,102,241,0.09)',
+                color:      isInt ? '#FF6B1A' : '#6366F1',
+              }}>
+              {isInt ? 'In-App' : 'External'}
+            </span>
+            {live.language && (
+              <span className="rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                style={{ background: 'rgba(16,185,129,0.10)', color: '#10B981' }}>
+                {live.language}
+              </span>
+            )}
+          </div>
           {liveNow && live.viewerCount > 0 && (
             <span className="flex items-center gap-1 text-[10px] font-bold" style={{ color: '#EF4444' }}>
               <Users size={9} />{live.viewerCount.toLocaleString()}
@@ -396,7 +401,7 @@ function SessionCard({ live, index, now }: { live: LiveClass; now: number; index
 
         <div className="mt-2 flex items-center justify-between gap-2">
           <p className="flex items-center gap-1 text-[11px]" style={{ color: '#9CA3AF' }}>
-            <Clock size={9} />{fmtTime(live.scheduledStart)}
+            <Clock size={9} />{fmtTime(live.scheduledStart)} – {fmtTime(new Date(new Date(live.scheduledStart).getTime() + live.durationMins * 60_000).toISOString())}
             {upcoming && (
               <span className="ml-1 font-semibold" style={{ color: '#FF6B1A' }}>
                 {fmtCountdown(live.scheduledStart, now)}
@@ -422,19 +427,12 @@ function SessionCard({ live, index, now }: { live: LiveClass; now: number; index
             ) : null
           ) : (
             <>
-              {/* Internal — watch / recording */}
+              {/* Internal — recording only (live-now is view-only, no watch button) */}
               {isInt && liveNow && (
-                <Link href={`/live-classes/${live.id}/watch`}>
-                  <MotionButton
-                    variant="ghost"
-                    size="sm"
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.97 }}
-                    className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold text-white h-auto"
-                    style={{ background: 'linear-gradient(135deg,#EF4444,#DC2626)' }}>
-                    <Radio size={9} />Watch
-                  </MotionButton>
-                </Link>
+                <span className="flex items-center gap-1 rounded-xl px-2 py-1 text-[9px] font-bold"
+                  style={{ background: 'rgba(239,68,68,0.10)', color: '#EF4444' }}>
+                  🔗 Link by email
+                </span>
               )}
               {isInt && upcoming && (
                 <Link href={`/live-classes/${live.id}/watch`}>
@@ -462,8 +460,14 @@ function SessionCard({ live, index, now }: { live: LiveClass; now: number; index
                   </MotionButton>
                 </Link>
               )}
-              {/* External — gate through watch page so meetingUrl stays protected */}
-              {!isInt && (liveNow || upcoming) && (
+              {/* External — live-now is view-only; upcoming shows details link */}
+              {!isInt && liveNow && (
+                <span className="flex items-center gap-1 rounded-xl px-2 py-1 text-[9px] font-bold"
+                  style={{ background: 'rgba(239,68,68,0.10)', color: '#EF4444' }}>
+                  🔗 Link by email
+                </span>
+              )}
+              {!isInt && upcoming && (
                 <Link href={`/live-classes/${live.id}/watch`}>
                   <MotionButton
                     variant="ghost"
@@ -471,8 +475,8 @@ function SessionCard({ live, index, now }: { live: LiveClass; now: number; index
                     whileHover={{ scale: 1.04 }}
                     whileTap={{ scale: 0.97 }}
                     className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold text-white h-auto"
-                    style={{ background: liveNow ? 'linear-gradient(135deg,#EF4444,#DC2626)' : 'linear-gradient(135deg,#6366F1,#818CF8)' }}>
-                    <ExternalLink size={9} />{liveNow ? 'Join' : 'Open'}
+                    style={{ background: 'linear-gradient(135deg,#6366F1,#818CF8)' }}>
+                    <ExternalLink size={9} />Open
                   </MotionButton>
                 </Link>
               )}

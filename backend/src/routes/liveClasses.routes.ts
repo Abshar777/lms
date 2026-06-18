@@ -55,7 +55,7 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
       return {
         ...c,
         id:         c.id ?? String(c._id),
-        status:     resolveLiveStatus(c.status, c.scheduledStart, now),
+        status:     resolveLiveStatus(c.status, c.scheduledStart, c.durationMins ?? 60, now),
         isEnrolled,
       }
     })

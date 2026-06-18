@@ -55,6 +55,8 @@ function toDTO(doc: any) {
     sessionCapacity: j.sessionCapacity ?? 30,
     bookedCount:     j.bookedCount     ?? 0,
 
+    language:       j.language ?? 'English',
+
     createdAt:      j.createdAt,
     updatedAt:      j.updatedAt,
   }
@@ -181,6 +183,7 @@ export class LiveClassController {
         instructorId?:    string
         sectionId?:       string
         sessionCapacity?: number
+        language?:        string
       }
 
       /* Category scope check — 4x_admin / digital_marketing_admin can only create for their program */
@@ -219,6 +222,7 @@ export class LiveClassController {
         meetingUrl,
         sectionId:       dto.sectionId,
         sessionCapacity: dto.sessionCapacity,
+        language:        dto.language,
       })
       sendSuccess(res, toDTO(live), 'Live class scheduled', 201)
     } catch (err) { next(err) }
@@ -250,6 +254,7 @@ export class LiveClassController {
       if (typeof dto['instructorId']    === 'string')  data.instructorId    = dto['instructorId']
       if (typeof dto['courseId']        === 'string')  data.courseId        = dto['courseId']
       if (typeof dto['sectionId']       === 'string')  data.sectionId       = dto['sectionId']
+      if (typeof dto['language']        === 'string')  data.language        = dto['language']
 
       /* Snapshot old session BEFORE update for notification comparison */
       const { LiveClassModel, ClassBookingModel, UserModel } = await import('@/models/schema.ts')

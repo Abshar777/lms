@@ -13,6 +13,7 @@
  */
 import { Router, type Request, type Response, type NextFunction } from 'express'
 import { z } from 'zod'
+import { resolveLiveStatus } from '@/utils/liveStatus.ts'
 import { authenticate, requireEnrollmentApproval } from '@/middleware/auth.middleware.ts'
 import { validate } from '@/middleware/validate.middleware.ts'
 import { NotificationService } from '@/services/notification.service.ts'
@@ -126,6 +127,12 @@ router.post('/', authenticate, requireEnrollmentApproval, validate(createBooking
     }
     if (session.status === 'cancelled' || session.status === 'ended') {
       res.status(400).json({ success: false, error: { code: 'SESSION_UNAVAILABLE', message: 'Session is no longer available for booking' } }); return
+    }
+
+    /* Block booking once the class has moved into the live window */
+    const effectiveStatus = resolveLiveStatus(session.status, session.scheduledStart, session.durationMins)
+    if (effectiveStatus === 'live') {
+      res.status(400).json({ success: false, error: { code: 'BOOKING_CLOSED', message: 'Booking is closed — this class is live. You must book before the class starts.' } }); return
     }
 
     /* Enrollment gate — student must be enrolled in the session's course */

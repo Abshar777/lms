@@ -602,6 +602,8 @@ export interface ILiveClass extends Document {
   sessionCapacity:   number           // max bookings (default 30)
   bookedCount:       number           // denormalised, incremented on booking
 
+  language:          string           // class language (English, Arabic, Hindi, Malayalam, Urdu)
+
   createdAt:      Date
   updatedAt:      Date
 }
@@ -632,6 +634,7 @@ const LiveClassSchema = new Schema<ILiveClass>(
     sectionId:         { type: Schema.Types.ObjectId, ref: 'Section' },
     sessionCapacity:   { type: Number, default: 30, min: 1, max: 500 },
     bookedCount:       { type: Number, default: 0, min: 0 },
+    language:          { type: String, default: 'English' },
   },
   baseSchemaOptions,
 )

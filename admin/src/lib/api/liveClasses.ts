@@ -37,6 +37,8 @@ export interface LiveClass {
   sessionCapacity: number
   bookedCount:     number
 
+  language:       string
+
   createdAt:      string
   updatedAt:      string
 }
@@ -104,6 +106,7 @@ export interface CreateLiveClassInput {
   sectionId?:       string       // optional course module/section link
   instructorId?:    string       // optional override; defaults to current user
   sessionCapacity?: number       // max bookings; defaults to 1000 (unlimited)
+  language?:        string
 }
 
 export interface UpdateLiveClassInput {
@@ -119,6 +122,7 @@ export interface UpdateLiveClassInput {
   status?:          LiveClassStatus
   mentorNotes?:     string
   instructorId?:    string
+  language?:        string
 }
 
 /* ── Availability types ─────────────────────── */

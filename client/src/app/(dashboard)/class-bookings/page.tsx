@@ -103,20 +103,20 @@ type SlotStatus =
   | 'live' | 'booked' | 'bookable' | 'full' | 'locked'
   | 'attended' | 'missed' | 'cancelled' | 'ended'
 
-/** Live-Now window: a session shows as "Live Now" from 30 min before its start
- *  (when the reminder email goes out) until 15 min after start (the booking cutoff)
- *  — a 45-minute window. After that it's ended; before it, upcoming. */
-const LIVE_LEAD_MINS     = 30   // minutes before start the session goes "Live Now"
-const BOOKING_GRACE_MINS = 15   // minutes after start that the live window stays open
+/** Live-Now window: a session shows as "Live Now" from 15 min before its start
+ *  until the class end time (scheduledStart + durationMins). */
+const LIVE_LEAD_MINS = 15   // minutes before start the session goes "Live Now"
 
 function isWithinLiveWindow(lc: LiveClass): boolean {
   const start = new Date(lc.scheduledStart).getTime()
+  const end   = start + lc.durationMins * 60_000
   const now   = Date.now()
-  return now >= start - LIVE_LEAD_MINS * 60_000 && now <= start + BOOKING_GRACE_MINS * 60_000
+  return now >= start - LIVE_LEAD_MINS * 60_000 && now < end
 }
 
 function isPastBookingCutoff(lc: LiveClass): boolean {
-  return Date.now() > new Date(lc.scheduledStart).getTime() + BOOKING_GRACE_MINS * 60_000
+  const end = new Date(lc.scheduledStart).getTime() + lc.durationMins * 60_000
+  return Date.now() >= end
 }
 
 function getSlotStatus(
@@ -351,7 +351,7 @@ function SlotChip({ lc, status, isSelected, onClick }: {
 }) {
   const d       = new Date(lc.scheduledStart)
   const isToday = isSameDay(d, new Date())
-  const clickable = ['bookable', 'live', 'booked', 'attended', 'ended'].includes(status)
+  const clickable = ['bookable', 'booked', 'attended', 'ended'].includes(status)
 
   const colors: Record<SlotStatus, { border: string; bg: string; label: string }> = {
     booked:    { border: '#10B981', bg: 'rgba(16,185,129,0.06)',  label: '#10B981' },
@@ -405,6 +405,12 @@ function SlotChip({ lc, status, isSelected, onClick }: {
         <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#9CA3AF' }}>
           {zonedDayLabel(lc.scheduledStart)}
         </span>
+        {lc.language && (
+          <span className="ml-auto rounded px-1 text-[8px] font-bold uppercase"
+            style={{ background: 'rgba(16,185,129,0.12)', color: '#10B981' }}>
+            {lc.language}
+          </span>
+        )}
       </div>
 
       <div className="mb-2 flex items-center gap-1">
@@ -663,6 +669,14 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
                 </p>
               ) : null
             })()}
+            {slots[0]?.language && (
+              <div className="mt-2 flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                  style={{ background: 'rgba(16,185,129,0.10)', color: '#059669', border: '1px solid rgba(16,185,129,0.20)' }}>
+                  🌐 {slots[0].language}
+                </span>
+              </div>
+            )}
           </div>
           <Button type="button" variant="ghost" size="icon-sm" onClick={onClose}
             className="flex-shrink-0 rounded-xl">
@@ -715,31 +729,22 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
 
                 {selectedStatus === 'live' && (
                   <div className="flex flex-col gap-2">
-                    {selectedSlot.type === 'internal' && (
-                      <Link href={`/live-classes/${selectedSlot.id}/watch`}>
-                        <Button type="button" variant="destructive"
-                          className="w-full gap-2 rounded-2xl py-3 text-sm font-bold"
-                          style={{ boxShadow: '0 4px 14px rgba(239,68,68,0.30)' }}>
-                          <Radio size={14} /> Watch Live
-                        </Button>
-                      </Link>
-                    )}
-                    {selectedSlot.meetingUrl && (
-                      <a href={selectedSlot.meetingUrl} target="_blank" rel="noreferrer">
-                        <Button type="button" variant="destructive"
-                          className="w-full gap-2 rounded-2xl py-3 text-sm font-bold"
-                          style={{ boxShadow: '0 4px 14px rgba(239,68,68,0.30)' }}>
-                          <ExternalLink size={14} /> Join Live →
-                        </Button>
-                      </a>
-                    )}
+                    <div className="flex items-start gap-2 rounded-2xl px-4 py-3"
+                      style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.18)' }}>
+                      <Radio size={14} style={{ color: '#EF4444', flexShrink: 0, marginTop: 2 }} />
+                      <div>
+                        <p className="text-[12px] font-bold" style={{ color: '#EF4444' }}>This class is live now</p>
+                        <p className="text-[11px] mt-0.5" style={{ color: '#6B7280' }}>
+                          Booking is closed. If you booked this class, check your email — the join link was sent 5 minutes before the class started.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 )}
 
                 {selectedStatus === 'booked' && selectedBooking && (() => {
-                  const msUntil   = new Date(selectedSlot.scheduledStart).getTime() - now
-                  const linkReady = msUntil <= 5 * 60_000   // ≤ 5 min before start
-                  const minsLeft  = Math.max(0, Math.ceil(msUntil / 60_000))
+                  const msUntil  = new Date(selectedSlot.scheduledStart).getTime() - now
+                  const minsLeft = Math.max(0, Math.ceil(msUntil / 60_000))
                   return (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 rounded-2xl px-4 py-2.5"
@@ -749,24 +754,15 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
                         Booked · {fmtSlotLabel(selectedSlot.scheduledStart, selectedSlot.durationMins)}
                       </p>
                     </div>
-                    {selectedSlot.meetingUrl && linkReady && (
-                      <a href={selectedSlot.meetingUrl} target="_blank" rel="noreferrer">
-                        <Button type="button" variant="outline"
-                          className="w-full gap-2 rounded-2xl py-2.5 text-sm font-semibold"
-                          style={{ background: 'rgba(16,185,129,0.08)', color: '#10B981', border: '1px solid rgba(16,185,129,0.20)' }}>
-                          <ExternalLink size={13} /> Get Class Link
-                        </Button>
-                      </a>
-                    )}
-                    {selectedSlot.meetingUrl && !linkReady && (
-                      <div className="flex items-center gap-2 rounded-2xl px-4 py-2.5"
-                        style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
-                        <Clock size={13} style={{ color: '#9CA3AF' }} />
-                        <p className="text-[11px]" style={{ color: '#6B7280' }}>
-                          Class link unlocks <strong>{minsLeft >= 60 ? `${Math.floor(minsLeft/60)}h ${minsLeft%60}m` : `${minsLeft} min`}</strong> before start
-                        </p>
-                      </div>
-                    )}
+                    <div className="flex items-start gap-2 rounded-2xl px-4 py-2.5"
+                      style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
+                      <Clock size={13} style={{ color: '#9CA3AF', flexShrink: 0, marginTop: 1 }} />
+                      <p className="text-[11px]" style={{ color: '#6B7280' }}>
+                        {minsLeft <= 5
+                          ? 'Your join link was sent by email. Check your inbox.'
+                          : <>Your join link will be <strong>emailed to you 5 minutes</strong> before the class starts.</>}
+                      </p>
+                    </div>
                     <Button type="button" variant="ghost"
                       onClick={() => onCancel(selectedBooking.id, fmtShortSlot(selectedSlot.scheduledStart))}
                       disabled={cancelPending.has(selectedBooking.id)}

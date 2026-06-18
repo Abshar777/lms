@@ -398,6 +398,7 @@ router.post  ('/lessons/:id/move',                        validate(lessonMoveSch
 router.put   ('/sections/:sectionId/lessons/reorder',     validate(reorderSchema),        ctrl.reorderLessons)
 
 /* ─── Live classes ────────────────────────────────── */
+const LIVE_LANGUAGES = ['English', 'Arabic', 'Hindi', 'Malayalam', 'Urdu'] as const
 const liveCreateSchema = z.object({
   courseId:        z.string().min(1),
   title:           z.string().min(3).max(255).trim(),
@@ -409,6 +410,7 @@ const liveCreateSchema = z.object({
   instructorId:    z.string().optional(),
   sectionId:       z.string().optional(),
   sessionCapacity: z.coerce.number().int().min(1).max(500).optional(),
+  language:        z.enum(LIVE_LANGUAGES).default('English'),
 })
 const liveUpdateSchema = z.object({
   title:           z.string().min(3).max(255).trim().optional(),
@@ -422,6 +424,7 @@ const liveUpdateSchema = z.object({
   courseId:        z.string().optional(),
   sectionId:       z.string().optional(),
   instructorId:    z.string().optional(),
+  language:        z.enum(LIVE_LANGUAGES).optional(),
 })
 
 router.get   ('/courses/:courseId/live-classes',          live.adminListForCourse)

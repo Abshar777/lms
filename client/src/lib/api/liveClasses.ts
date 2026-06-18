@@ -38,6 +38,8 @@ export interface LiveClass {
   sessionCapacity: number
   bookedCount:     number
 
+  language:        string
+
   /**
    * Annotated by the backend — true when the logged-in student has an active
    * enrollment in this session's course. False = show "Purchase to join" prompt.

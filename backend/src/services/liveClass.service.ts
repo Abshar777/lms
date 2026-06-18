@@ -111,6 +111,7 @@ export class LiveClassService {
     meetingUrl?:     string
     sectionId?:      string
     sessionCapacity?: number
+    language?:       string
   }): Promise<ILiveClass> {
     if (!Types.ObjectId.isValid(input.courseId)) {
       throw new LiveClassError('INVALID_COURSE_ID', 'Invalid course id', 400)
@@ -150,6 +151,7 @@ export class LiveClassService {
       status:          'scheduled',
       sessionCapacity: input.sessionCapacity ?? 30,
       bookedCount:     0,
+      language:        input.language ?? 'English',
     }
 
     if (input.sectionId && Types.ObjectId.isValid(input.sectionId)) {
@@ -457,6 +459,7 @@ export class LiveClassService {
     instructorId:    string
     courseId:        string
     sectionId:       string
+    language:        string
   }>): Promise<ILiveClass> {
     if (!Types.ObjectId.isValid(id)) {
       throw new LiveClassError('INVALID_ID', 'Invalid id', 400)

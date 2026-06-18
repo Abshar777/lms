@@ -63,6 +63,7 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
   const [sessionCapacity, setSessionCapacity] = useState<number | ''>(
     (live as any).sessionCapacity ?? 500,
   )
+  const [language,      setLanguage]      = useState<string>(live.language ?? 'English')
   const [error,         setError]         = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -93,6 +94,7 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
           courseId:        activeCourseId !== originalCourseId ? activeCourseId : undefined,
           sectionId:       sectionId || undefined,
           sessionCapacity: sessionCapacity !== '' ? sessionCapacity : undefined,
+          language,
         },
       })
       onSuccess()
@@ -309,6 +311,20 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
               {instructors.map(i => (
                 <option key={i.id} value={i.id}>{i.name}</option>
               ))}
+            </select>
+          </div>
+
+          {/* Language */}
+          <div>
+            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: 'rgba(255,255,255,0.35)' }}>Language</label>
+            <select value={language} onChange={e => setLanguage(e.target.value)}
+              className={base} style={{ ...selStyle }}>
+              <option value="English">🇬🇧 English</option>
+              <option value="Arabic">🇦🇪 Arabic (عربي)</option>
+              <option value="Hindi">🇮🇳 Hindi (हिंदी)</option>
+              <option value="Malayalam">🇮🇳 Malayalam (മലയാളം)</option>
+              <option value="Urdu">🇵🇰 Urdu (اردو)</option>
             </select>
           </div>
 

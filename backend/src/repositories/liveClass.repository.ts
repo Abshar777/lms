@@ -1,7 +1,7 @@
 import { Types } from 'mongoose'
 import { BaseRepository } from './base.repository.ts'
 import { LiveClassModel, type ILiveClass } from '@/models/schema.ts'
-import { resolveLiveStatus, LIVE_LEAD_MS, LIVE_GRACE_MS } from '@/utils/liveStatus.ts'
+import { resolveLiveStatus, LIVE_LEAD_MS } from '@/utils/liveStatus.ts'
 
 export class LiveClassRepository extends BaseRepository<ILiveClass> {
   constructor() {
@@ -53,9 +53,9 @@ export class LiveClassRepository extends BaseRepository<ILiveClass> {
   /* Admin global list — all live classes across all courses.
    *
    * A 'scheduled' session is bucketed by the clock (see utils/liveStatus.ts):
-   *   - LIVE    while within [start - 30m, start + 15m]  (the 45-min window)
-   *   - ENDED   once > 15m past start
-   *   - UPCOMING until 30m before start
+   *   - LIVE    while within [start - 15m, start + durationMins]
+   *   - ENDED   once past class end time
+   *   - UPCOMING until 15 min before start
    * The returned `status` reflects this so tabs, counts, and badges all agree.
    * We do NOT mutate the DB, so internal (Mux) sessions can still be started
    * late or rescheduled. */
@@ -65,8 +65,10 @@ export class LiveClassRepository extends BaseRepository<ILiveClass> {
     courseIds?: string[]
   } = {}): Promise<ILiveClass[]> {
     const now      = Date.now()
-    const liveFrom = new Date(now - LIVE_GRACE_MS)  // start ≥ this → not yet past the 15-min grace
-    const liveTo   = new Date(now + LIVE_LEAD_MS)   // start ≤ this → live window has opened (30 min ahead)
+    // Use a generous 12-hour lookback so any class up to 12h long is captured;
+    // resolveLiveStatus filters per-doc using the actual durationMins.
+    const liveFrom = new Date(now - 12 * 60 * 60_000)
+    const liveTo   = new Date(now + LIVE_LEAD_MS)   // start ≤ this → live window opened (15 min ahead)
     const query: Record<string, unknown> = {}
 
     if (filter.courseIds && filter.courseIds.length > 0) {
@@ -103,7 +105,7 @@ export class LiveClassRepository extends BaseRepository<ILiveClass> {
 
     // Reflect the effective (clock-based) status. Not persisted.
     for (const d of docs) {
-      d.status = resolveLiveStatus(d.status, d.scheduledStart, now) as ILiveClass['status']
+      d.status = resolveLiveStatus(d.status, d.scheduledStart, d.durationMins, now) as ILiveClass['status']
     }
     return docs
   }
