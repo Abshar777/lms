@@ -6,7 +6,7 @@
       "runtimeExecutable": "bun",
       "runtimeArgs": ["--watch", "src/index.ts"],
       "port": 8000,
-      "cwd": "backend",
+      "cwd": "C:/Users/MSI-PC/Delta/lms/backend",
       "autoPort": false
     },
     {

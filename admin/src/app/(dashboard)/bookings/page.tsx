@@ -1,24 +1,100 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ChevronLeft, ChevronRight, Calendar, Clock,
   CheckCircle2, XCircle, Loader2, Search,
   BookOpen, User, GraduationCap, LayoutList, X,
+  Download, TrendingUp, Users,
+  Filter, ChevronDown, Check,
 } from 'lucide-react'
 import {
   useAdminBookings, useUpdateAttendance,
   type ClassBooking, type BookingStatus,
 } from '@/lib/api/liveClasses'
+import { useCourses } from '@/lib/api/courses'
+import { useUsers } from '@/lib/api/users'
 import { useCurrentUser } from '@/lib/api/user'
 import { APP_TIMEZONE } from '@/lib/timezone'
 
-/* ─────────────────────────────────────────────────────────
-   HELPERS
-───────────────────────────────────────────────────────── */
-/** Calendar day (YYYY-MM-DD) of an instant, in UAE time — so bookings group
- *  by the same day the rest of the app shows, regardless of the operator's device. */
+/* ─── Custom dark dropdown ───────────────────────────────── */
+interface SelectOption { value: string; label: string }
+
+function FilterSelect({
+  value, onChange, options, placeholder = 'All', minWidth = 120,
+}: {
+  value: string
+  onChange: (v: string) => void
+  options: SelectOption[]
+  placeholder?: string
+  minWidth?: number
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const selected = options.find(o => o.value === value)
+
+  useEffect(() => {
+    function onOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    if (open) document.addEventListener('mousedown', onOutside)
+    return () => document.removeEventListener('mousedown', onOutside)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative" style={{ minWidth }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-1.5 text-xs font-medium outline-none transition-colors"
+        style={{
+          background: open ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.05)',
+          border: `1px solid ${open ? 'rgba(255,107,26,0.40)' : 'rgba(255,255,255,0.09)'}`,
+          color: value ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.45)',
+        }}
+      >
+        <span className="truncate">{selected?.label ?? placeholder}</span>
+        <ChevronDown size={11} className={`flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+          style={{ color: 'rgba(255,255,255,0.35)' }} />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.97 }}
+            transition={{ duration: 0.12 }}
+            className="absolute left-0 top-full z-50 mt-1 w-full min-w-[180px] overflow-hidden rounded-2xl py-1 shadow-2xl"
+            style={{ background: '#1A1A2E', border: '1px solid rgba(255,255,255,0.10)' }}
+          >
+            {options.map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => { onChange(opt.value); setOpen(false) }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors"
+                style={{
+                  background: opt.value === value ? 'rgba(255,107,26,0.12)' : 'transparent',
+                  color: opt.value === value ? '#FF6B1A' : 'rgba(255,255,255,0.75)',
+                }}
+                onMouseEnter={e => { if (opt.value !== value) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)' }}
+                onMouseLeave={e => { if (opt.value !== value) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+              >
+                {opt.value === value && <Check size={10} className="flex-shrink-0" style={{ color: '#FF6B1A' }} />}
+                {opt.value !== value && <span className="w-[10px] flex-shrink-0" />}
+                <span className="truncate">{opt.label}</span>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+/* ─── Helpers ────────────────────────────────────────────── */
 function toYMD(d: Date): string {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: APP_TIMEZONE,
@@ -33,14 +109,15 @@ function fmtHeading(ymd: string): string {
   if (ymd === today)     return 'Today'
   if (ymd === tomorrow)  return 'Tomorrow'
   if (ymd === yesterday) return 'Yesterday'
-  // Render the YMD as-is (noon UTC + explicit UTC formatting) so the timezone
-  // pin can't shift the displayed day off the grouping key.
   const d = new Date(ymd + 'T12:00:00Z')
   return d.toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 }
 
 function fmtTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  return new Date(iso).toLocaleTimeString('en-US', {
+    timeZone: APP_TIMEZONE,
+    hour: 'numeric', minute: '2-digit',
+  })
 }
 function fmtDuration(mins: number): string {
   if (mins < 60) return `${mins}m`
@@ -51,9 +128,15 @@ function addDays(d: Date, n: number): Date {
   const r = new Date(d); r.setDate(r.getDate() + n); return r
 }
 
-/* ─────────────────────────────────────────────────────────
-   STATUS BADGE
-───────────────────────────────────────────────────────── */
+const LANG_FLAG: Record<string, string> = {
+  English:   '🇬🇧',
+  Arabic:    '🇦🇪',
+  Hindi:     '🇮🇳',
+  Malayalam: '🇮🇳',
+  Urdu:      '🇵🇰',
+}
+
+/* ─── Status palette ─────────────────────────────────────── */
 const STATUS_PAL: Record<BookingStatus, { bg: string; color: string; label: string }> = {
   booked:    { bg: 'rgba(16,185,129,0.12)',  color: '#34D399', label: 'Booked'    },
   attended:  { bg: 'rgba(99,102,241,0.12)',  color: '#818CF8', label: 'Attended'  },
@@ -71,9 +154,7 @@ function StatusBadge({ status }: { status: BookingStatus }) {
   )
 }
 
-/* ─────────────────────────────────────────────────────────
-   AVATAR
-───────────────────────────────────────────────────────── */
+/* ─── Avatar ─────────────────────────────────────────────── */
 function Avatar({ name, url, size = 28 }: { name: string; url?: string; size?: number }) {
   const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
   if (url) return <img src={url} alt={name} className="rounded-full object-cover flex-shrink-0" style={{ width: size, height: size }} />
@@ -85,9 +166,7 @@ function Avatar({ name, url, size = 28 }: { name: string; url?: string; size?: n
   )
 }
 
-/* ─────────────────────────────────────────────────────────
-   ATTENDANCE TOGGLE
-───────────────────────────────────────────────────────── */
+/* ─── Attendance toggle ──────────────────────────────────── */
 function AttendanceToggle({ booking }: { booking: ClassBooking }) {
   const update = useUpdateAttendance()
   const isPast = new Date(booking.liveClassId.scheduledStart) < new Date()
@@ -116,54 +195,57 @@ function AttendanceToggle({ booking }: { booking: ClassBooking }) {
   )
 }
 
-/* ─────────────────────────────────────────────────────────
-   STATS STRIP
-───────────────────────────────────────────────────────── */
+/* ─── Stats strip ────────────────────────────────────────── */
 function StatsStrip({ bookings }: { bookings: ClassBooking[] }) {
-  const total    = bookings.length
-  const booked   = bookings.filter(b => b.status === 'booked').length
-  const attended = bookings.filter(b => b.status === 'attended').length
-  const missed   = bookings.filter(b => b.status === 'missed').length
+  const total     = bookings.length
+  const attended  = bookings.filter(b => b.status === 'attended').length
+  const missed    = bookings.filter(b => b.status === 'missed').length
+  const booked    = bookings.filter(b => b.status === 'booked').length
+  const concluded = attended + missed
+  const rate      = concluded > 0 ? Math.round((attended / concluded) * 100) : null
 
   const pills = [
-    { label: 'Total',    value: total,    color: 'rgba(255,255,255,0.75)', bg: 'rgba(255,255,255,0.04)',  border: 'rgba(255,255,255,0.08)' },
-    { label: 'Booked',   value: booked,   color: '#34D399',                bg: 'rgba(16,185,129,0.08)',   border: 'rgba(16,185,129,0.18)' },
-    { label: 'Attended', value: attended, color: '#818CF8',                bg: 'rgba(99,102,241,0.08)',   border: 'rgba(99,102,241,0.18)' },
-    { label: 'Missed',   value: missed,   color: '#FCD34D',                bg: 'rgba(245,158,11,0.08)',   border: 'rgba(245,158,11,0.18)' },
+    { label: 'Total',         value: String(total),            icon: <Users size={13} />,    color: 'rgba(255,255,255,0.75)', bg: 'rgba(255,255,255,0.04)',  border: 'rgba(255,255,255,0.08)' },
+    { label: 'Upcoming',      value: String(booked),           icon: <Calendar size={13} />, color: '#34D399',                bg: 'rgba(16,185,129,0.08)',   border: 'rgba(16,185,129,0.18)' },
+    { label: 'Attended',      value: String(attended),         icon: <CheckCircle2 size={13} />, color: '#818CF8',            bg: 'rgba(99,102,241,0.08)',   border: 'rgba(99,102,241,0.18)' },
+    { label: 'Attendance %',  value: rate !== null ? `${rate}%` : '—', icon: <TrendingUp size={13} />, color: rate !== null && rate >= 70 ? '#34D399' : rate !== null && rate >= 40 ? '#FCD34D' : '#F87171', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.08)' },
   ]
+
   return (
-    <div className="mb-5 grid grid-cols-4 gap-3">
+    <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
       {pills.map((p, i) => (
         <motion.div key={p.label}
           initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.04, type: 'spring', stiffness: 320, damping: 28 }}
+          transition={{ delay: i * 0.05, type: 'spring', stiffness: 320, damping: 28 }}
           className="rounded-2xl px-4 py-3"
           style={{ background: p.bg, border: `1px solid ${p.border}` }}>
+          <div className="mb-1 flex items-center gap-1.5" style={{ color: 'rgba(255,255,255,0.30)' }}>
+            {p.icon}
+            <span className="text-[10px] font-semibold uppercase tracking-widest">{p.label}</span>
+          </div>
           <p className="text-2xl font-bold" style={{ color: p.color, fontFamily: 'Bricolage Grotesque, sans-serif' }}>
             {p.value}
           </p>
-          <p className="mt-0.5 text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{p.label}</p>
         </motion.div>
       ))}
     </div>
   )
 }
 
-/* ─────────────────────────────────────────────────────────
-   BOOKING ROW
-───────────────────────────────────────────────────────── */
+/* ─── Booking row ────────────────────────────────────────── */
 function BookingRow({ booking, index }: { booking: ClassBooking; index: number }) {
-  const lc         = booking.liveClassId
+  const lc         = booking.liveClassId as typeof booking.liveClassId | null
   const student    = booking.userId
+  if (!lc) return null   // live class was deleted
   const instructor = lc.instructorId
   const course     = lc.courseId
-  const section    = lc.sectionId
+  const lang       = lc.language
 
   return (
     <motion.tr
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.02, duration: 0.15 }}
+      transition={{ delay: index * 0.018, duration: 0.14 }}
       className="group border-b last:border-b-0 transition-colors"
       style={{ borderColor: 'rgba(255,255,255,0.05)' }}
       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.025)')}
@@ -183,9 +265,17 @@ function BookingRow({ booking, index }: { booking: ClassBooking; index: number }
       {/* Session */}
       <td className="py-3 px-3">
         <p className="text-sm font-medium line-clamp-1" style={{ color: 'rgba(255,255,255,0.85)' }}>{lc.title}</p>
-        <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
-          {fmtTime(lc.scheduledStart)} · {fmtDuration(lc.durationMins)}
-        </p>
+        <div className="mt-0.5 flex items-center gap-2 flex-wrap">
+          <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            {fmtTime(lc.scheduledStart)} · {fmtDuration(lc.durationMins)}
+          </span>
+          {lang && (
+            <span className="rounded px-1.5 py-0 text-[10px] font-semibold"
+              style={{ background: 'rgba(16,185,129,0.12)', color: '#6EE7B7' }}>
+              {LANG_FLAG[lang] ?? '🌐'} {lang}
+            </span>
+          )}
+        </div>
       </td>
 
       {/* Course */}
@@ -195,18 +285,7 @@ function BookingRow({ booking, index }: { booking: ClassBooking; index: number }
             <BookOpen size={11} className="flex-shrink-0" style={{ color: '#FF6B1A' }} />
             <span className="text-[12px] truncate" style={{ color: 'rgba(255,255,255,0.70)' }}>{course.title}</span>
           </div>
-        ) : (
-          <span style={{ color: 'rgba(255,255,255,0.18)' }}>—</span>
-        )}
-      </td>
-
-      {/* Module */}
-      <td className="py-3 px-3">
-        {section ? (
-          <span className="text-[12px]" style={{ color: 'rgba(255,255,255,0.60)' }}>{section.title}</span>
-        ) : (
-          <span style={{ color: 'rgba(255,255,255,0.18)' }}>—</span>
-        )}
+        ) : <span style={{ color: 'rgba(255,255,255,0.18)' }}>—</span>}
       </td>
 
       {/* Instructor */}
@@ -216,8 +295,22 @@ function BookingRow({ booking, index }: { booking: ClassBooking; index: number }
             <Avatar name={instructor.name} url={instructor.avatarUrl} size={22} />
             <span className="text-[12px] truncate" style={{ color: 'rgba(255,255,255,0.70)' }}>{instructor.name}</span>
           </div>
+        ) : <span style={{ color: 'rgba(255,255,255,0.18)' }}>—</span>}
+      </td>
+
+      {/* Booked / Cancelled at */}
+      <td className="py-3 px-3 hidden lg:table-cell">
+        {booking.status === 'cancelled' && booking.cancelledAt ? (
+          <div>
+            <span className="text-[10px] font-semibold" style={{ color: '#F87171' }}>Cancelled</span>
+            <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              {new Date(booking.cancelledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </p>
+          </div>
         ) : (
-          <span style={{ color: 'rgba(255,255,255,0.18)' }}>—</span>
+          <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            {new Date(booking.bookedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </span>
         )}
       </td>
 
@@ -234,63 +327,122 @@ function BookingRow({ booking, index }: { booking: ClassBooking; index: number }
   )
 }
 
-/* ─────────────────────────────────────────────────────────
-   MAIN PAGE
-───────────────────────────────────────────────────────── */
-export default function BookingsPage() {
-  const { data: user } = useCurrentUser()
-  const isInstructor   = user?.role === 'instructor'
+/* ─── Export CSV ─────────────────────────────────────────── */
+function exportCSV(bookings: ClassBooking[], filename: string) {
+  const header = ['Student', 'Email', 'Session', 'Date', 'Time', 'Duration', 'Language', 'Course', 'Instructor', 'Status', 'Booked At', 'Cancelled At']
+  const rows = bookings.map(b => {
+    const lc = b.liveClassId as typeof b.liveClassId | null
+    return [
+      b.userId.name,
+      b.userId.email,
+      lc?.title ?? '(deleted session)',
+      lc ? new Date(lc.scheduledStart).toLocaleDateString('en-US') : '',
+      lc ? fmtTime(lc.scheduledStart) : '',
+      lc ? fmtDuration(lc.durationMins) : '',
+      lc?.language ?? 'English',
+      lc?.courseId?.title ?? '',
+      lc?.instructorId?.name ?? '',
+      b.status,
+      new Date(b.bookedAt).toLocaleDateString('en-US'),
+      b.cancelledAt ? new Date(b.cancelledAt).toLocaleDateString('en-US') : '',
+    ].map(v => `"${String(v).replace(/"/g, '""')}"`)
+  })
+  const csv = [header.join(','), ...rows.map(r => r.join(','))].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a'); a.href = url; a.download = filename; a.click()
+  URL.revokeObjectURL(url)
+}
 
+/* ─── Main page ──────────────────────────────────────────── */
+export default function BookingsPage() {
+  const { data: me }    = useCurrentUser()
+  const isInstructor    = me?.role === 'instructor'
+  const userScope       = (me as any)?.categoryScope as string | undefined  // '4x-trading' | 'digital-marketing' | undefined
+
+  /* Date range — default today */
   const [dateFrom, setDateFrom] = useState<Date>(() => { const d = new Date(); d.setHours(0,0,0,0);      return d })
   const [dateTo,   setDateTo]   = useState<Date>(() => { const d = new Date(); d.setHours(23,59,59,999); return d })
 
-  const [statusFilter, setStatusFilter] = useState<BookingStatus | ''>('')
-  const [search,       setSearch]       = useState('')
-  const [page,         setPage]         = useState(1)
+  /* Filters */
+  const [statusFilter,     setStatusFilter]     = useState<BookingStatus | ''>('')
+  const [courseFilter,     setCourseFilter]     = useState('')
+  const [instructorFilter, setInstructorFilter] = useState('')
+  const [langFilter,       setLangFilter]       = useState('')
+  const [search,           setSearch]           = useState('')
+  const [page,             setPage]             = useState(1)
+  const [showFilters,      setShowFilters]       = useState(false)
 
+  /* Supporting data for filter dropdowns — course list scoped to this admin's program */
+  const { data: coursesData }     = useCourses({ per_page: 200, program: userScope })
+  const { data: instructorsData } = useUsers('instructor', { per_page: 200 })
+  const courses     = coursesData?.docs ?? []
+  const instructors = instructorsData?.docs ?? []
+
+  /* Main data fetch */
   const { data, isLoading } = useAdminBookings({
-    dateFrom: toYMD(dateFrom),
-    dateTo:   toYMD(dateTo),
-    status:   statusFilter || undefined,
+    dateFrom:     toYMD(dateFrom),
+    dateTo:       toYMD(dateTo),
+    status:       statusFilter || undefined,
+    courseId:     courseFilter || undefined,
+    instructorId: instructorFilter || undefined,
+    language:     langFilter || undefined,
     page,
-    per_page: 100,
+    per_page: 150,
   })
 
   const bookings: ClassBooking[] = data?.docs ?? []
   const totalPages = data?.meta?.total_pages ?? 1
 
-  /* Client-side search */
+  const isCancelledView = statusFilter === 'cancelled'
+
+  /* Client-side search — guard against null liveClassId (deleted classes) */
   const filtered = useMemo(() => {
     if (!search.trim()) return bookings
     const q = search.toLowerCase()
-    return bookings.filter(b =>
-      b.userId.name.toLowerCase().includes(q)
-      || b.userId.email.toLowerCase().includes(q)
-      || b.liveClassId.title.toLowerCase().includes(q)
-      || (b.liveClassId.courseId?.title.toLowerCase().includes(q) ?? false)
-      || (b.liveClassId.instructorId?.name.toLowerCase().includes(q) ?? false)
-    )
+    return bookings.filter(b => {
+      const lc = b.liveClassId as typeof b.liveClassId | null
+      return (
+        b.userId.name.toLowerCase().includes(q)
+        || b.userId.email.toLowerCase().includes(q)
+        || (lc?.title.toLowerCase().includes(q) ?? false)
+        || (lc?.courseId?.title.toLowerCase().includes(q) ?? false)
+        || (lc?.instructorId?.name.toLowerCase().includes(q) ?? false)
+      )
+    })
   }, [bookings, search])
 
-  /* Group by session date */
+  /* Group by date — cancelled bookings group by cancelledAt, others by scheduledStart */
   const dateGroups = useMemo(() => {
     const map = new Map<string, ClassBooking[]>()
     filtered.forEach(b => {
-      const key = toYMD(new Date(b.liveClassId.scheduledStart))
+      const lc = b.liveClassId as typeof b.liveClassId | null
+      const dateStr = isCancelledView
+        ? (b.cancelledAt ?? b.bookedAt)
+        : (lc?.scheduledStart ?? b.bookedAt)
+      const key = toYMD(new Date(dateStr))
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(b)
     })
     return Array.from(map.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
+      .sort(([a], [b]) => isCancelledView ? b.localeCompare(a) : a.localeCompare(b))
       .map(([date, rows]) => ({
         date,
         heading: fmtHeading(date),
-        rows: rows.sort((a, b) => new Date(a.liveClassId.scheduledStart).getTime() - new Date(b.liveClassId.scheduledStart).getTime()),
+        rows: rows.sort((a, b) => {
+          if (isCancelledView) {
+            return new Date(b.cancelledAt ?? b.bookedAt).getTime() - new Date(a.cancelledAt ?? a.bookedAt).getTime()
+          }
+          const lca = (a.liveClassId as typeof a.liveClassId | null)?.scheduledStart ?? a.bookedAt
+          const lcb = (b.liveClassId as typeof b.liveClassId | null)?.scheduledStart ?? b.bookedAt
+          return new Date(lca).getTime() - new Date(lcb).getTime()
+        }),
       }))
-  }, [filtered])
+  }, [filtered, isCancelledView])
 
-  const isSingleDay = toYMD(dateFrom) === toYMD(dateTo)
-  const isToday     = toYMD(dateFrom) === toYMD(new Date())
+  const isSingleDay  = toYMD(dateFrom) === toYMD(dateTo)
+  const isToday      = toYMD(dateFrom) === toYMD(new Date())
+  const hasFilters   = !!(search || statusFilter || courseFilter || instructorFilter || langFilter)
 
   function shiftDay(n: number) { setDateFrom(d => addDays(d, n)); setDateTo(d => addDays(d, n)); setPage(1) }
   function goToday() {
@@ -298,14 +450,45 @@ export default function BookingsPage() {
     const e = new Date(); e.setHours(23,59,59,999)
     setDateFrom(s); setDateTo(e); setPage(1)
   }
-
-  /* Dark-theme input style */
-  const inputStyle = {
-    background: 'rgba(255,255,255,0.05)',
-    border:     '1px solid rgba(255,255,255,0.09)',
-    color:      'rgba(255,255,255,0.80)',
+  function clearFilters() {
+    setSearch(''); setStatusFilter(''); setCourseFilter(''); setInstructorFilter(''); setLangFilter(''); setPage(1)
+    // Reset date range back to today when clearing
+    const s = new Date(); s.setHours(0,0,0,0)
+    const e = new Date(); e.setHours(23,59,59,999)
+    setDateFrom(s); setDateTo(e)
   }
-  const inputCls = 'rounded-xl px-3 py-1.5 text-xs font-medium outline-none focus:border-orange-400/50'
+
+  function handleStatusChange(val: BookingStatus | '') {
+    setStatusFilter(val); setPage(1)
+    // Cancelled bookings aren't tied to today — expand to all time automatically
+    if (val === 'cancelled') {
+      setDateFrom(new Date('2020-01-01T00:00:00'))
+      setDateTo(new Date(Date.now() + 365 * 86_400_000))
+    } else if (statusFilter === 'cancelled') {
+      // Switching away from cancelled — snap back to today
+      const s = new Date(); s.setHours(0,0,0,0)
+      const e = new Date(); e.setHours(23,59,59,999)
+      setDateFrom(s); setDateTo(e)
+    }
+  }
+
+  const setDateRange = (from: string, to: string) => {
+    setDateFrom(new Date(from + 'T00:00:00'))
+    setDateTo(new Date(to + 'T23:59:59'))
+    setPage(1)
+  }
+
+  /* Preset ranges */
+  const presets = [
+    { label: 'Today',      from: toYMD(new Date()), to: toYMD(new Date()) },
+    { label: 'This week',  from: toYMD(addDays(new Date(), -6)), to: toYMD(new Date()) },
+    { label: 'This month', from: toYMD(new Date(new Date().getFullYear(), new Date().getMonth(), 1)), to: toYMD(new Date()) },
+    { label: 'All time',   from: '2020-01-01', to: toYMD(addDays(new Date(), 365)) },
+  ]
+
+  /* Styles */
+  const inputStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', color: 'rgba(255,255,255,0.80)' }
+  const inputCls   = 'rounded-xl px-3 py-1.5 text-xs font-medium outline-none focus:border-orange-400/50'
 
   const STATUS_OPTS: { value: BookingStatus | ''; label: string }[] = [
     { value: '',          label: 'All statuses' },
@@ -315,20 +498,27 @@ export default function BookingsPage() {
     { value: 'cancelled', label: 'Cancelled'    },
   ]
 
+  const LANG_OPTS = ['English', 'Arabic', 'Hindi', 'Malayalam', 'Urdu']
+
   const TH_COLS = [
     { label: 'Student',    icon: <User size={10} />          },
     { label: 'Session',    icon: <Clock size={10} />         },
     { label: 'Course',     icon: <BookOpen size={10} />      },
-    { label: 'Module',     icon: null                        },
     { label: 'Instructor', icon: <GraduationCap size={10} /> },
+    { label: 'Booked on',  icon: <Calendar size={10} />,  cls: 'hidden lg:table-cell' },
     { label: 'Status',     icon: null                        },
     { label: '',           icon: null                        },
   ]
 
+  /* Scope label for header */
+  const scopeLabel = (me as any)?.categoryScope
+    ? `${(me as any).categoryScope === 'digital-marketing' ? 'Digital Marketing' : '4X Trading'} Bookings`
+    : isInstructor ? 'My Session Bookings' : 'All Bookings'
+
   return (
     <div className="mx-auto max-w-7xl pb-16">
 
-      {/* ── Header ── */}
+      {/* ── Header ────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 280, damping: 26 }}
@@ -336,15 +526,29 @@ export default function BookingsPage() {
       >
         <div>
           <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-            {isInstructor ? 'My Bookings' : 'Bookings'}
+            Bookings
           </h1>
-          <p className="mt-0.5 text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
-            {isInstructor ? 'Students booked into your sessions' : 'All student session bookings'}
-          </p>
+          <p className="mt-0.5 text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>{scopeLabel}</p>
         </div>
 
-        {/* Date nav */}
+        {/* Date nav + presets */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Quick presets */}
+          <div className="flex items-center gap-1 rounded-2xl p-1"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            {presets.map(p => (
+              <button key={p.label} type="button"
+                onClick={() => setDateRange(p.from, p.to)}
+                className="rounded-xl px-2.5 py-1 text-[11px] font-medium transition-colors"
+                style={{
+                  background: toYMD(dateFrom) === p.from && toYMD(dateTo) === p.to ? 'rgba(255,107,26,0.18)' : 'transparent',
+                  color:      toYMD(dateFrom) === p.from && toYMD(dateTo) === p.to ? '#FF6B1A' : 'rgba(255,255,255,0.45)',
+                }}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+
           <input type="date" value={toYMD(dateFrom)}
             onChange={e => { setDateFrom(new Date(e.target.value + 'T00:00:00')); setPage(1) }}
             className={inputCls} style={inputStyle} />
@@ -377,49 +581,121 @@ export default function BookingsPage() {
         </div>
       </motion.div>
 
-      {/* ── Filter bar ── */}
-      <div className="mb-5 flex flex-wrap items-center gap-2">
-        {/* Search */}
-        <div className="relative">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ color: 'rgba(255,255,255,0.30)' }} />
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search student, session, course…"
-            className={`${inputCls} pl-8 pr-8 w-64`}
-            style={{ ...inputStyle, '::placeholder': { color: 'rgba(255,255,255,0.25)' } } as any} />
-          {search && (
-            <button type="button" onClick={() => setSearch('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2">
-              <X size={11} style={{ color: 'rgba(255,255,255,0.35)' }} />
-            </button>
-          )}
-        </div>
-
-        {/* Status filter */}
-        <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value as any); setPage(1) }}
-          className={inputCls} style={inputStyle}>
-          {STATUS_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-
-        {(search || statusFilter) && (
-          <button type="button"
-            onClick={() => { setSearch(''); setStatusFilter(''); setPage(1) }}
-            className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-medium transition-colors"
-            style={{ color: '#EF4444', border: '1px solid rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.06)' }}>
-            <X size={11} /> Clear
-          </button>
-        )}
-
-        <div className="ml-auto flex items-center gap-1.5 text-xs" style={{ color: 'rgba(255,255,255,0.30)' }}>
-          <LayoutList size={13} />
-          {filtered.length} booking{filtered.length !== 1 ? 's' : ''}
-        </div>
-      </div>
-
-      {/* ── Stats ── */}
+      {/* ── Stats ─────────────────────────────────────── */}
       {!isLoading && bookings.length > 0 && <StatsStrip bookings={filtered} />}
 
-      {/* ── Loading ── */}
+      {/* ── Filter bar ───────────────────────────────── */}
+      <div className="mb-5 space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Search */}
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: 'rgba(255,255,255,0.30)' }} />
+            <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
+              placeholder="Search student, session, course…"
+              className={`${inputCls} pl-8 pr-8 w-60`}
+              style={inputStyle} />
+            {search && (
+              <button type="button" onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                <X size={11} style={{ color: 'rgba(255,255,255,0.35)' }} />
+              </button>
+            )}
+          </div>
+
+          {/* Status */}
+          <FilterSelect
+            value={statusFilter}
+            onChange={v => handleStatusChange(v as BookingStatus | '')}
+            options={STATUS_OPTS}
+            placeholder="All statuses"
+            minWidth={130}
+          />
+
+          {/* More filters toggle */}
+          <button type="button" onClick={() => setShowFilters(f => !f)}
+            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition-colors"
+            style={{
+              background: showFilters ? 'rgba(255,107,26,0.12)' : 'rgba(255,255,255,0.05)',
+              border:     `1px solid ${showFilters ? 'rgba(255,107,26,0.30)' : 'rgba(255,255,255,0.09)'}`,
+              color:      showFilters ? '#FF6B1A' : 'rgba(255,255,255,0.55)',
+            }}>
+            <Filter size={12} />
+            Filters
+            {(courseFilter || instructorFilter || langFilter) && (
+              <span className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold"
+                style={{ background: '#FF6B1A', color: 'white' }}>
+                {[courseFilter, instructorFilter, langFilter].filter(Boolean).length}
+              </span>
+            )}
+            <ChevronDown size={11} className={`transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+          </button>
+
+          {hasFilters && (
+            <button type="button" onClick={clearFilters}
+              className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-medium transition-colors"
+              style={{ color: '#EF4444', border: '1px solid rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.06)' }}>
+              <X size={11} /> Clear all
+            </button>
+          )}
+
+          <div className="ml-auto flex items-center gap-2">
+            <span className="flex items-center gap-1.5 text-xs" style={{ color: 'rgba(255,255,255,0.30)' }}>
+              <LayoutList size={13} />
+              {filtered.length} booking{filtered.length !== 1 ? 's' : ''}
+            </span>
+            {filtered.length > 0 && (
+              <button type="button"
+                onClick={() => exportCSV(filtered, `bookings-${toYMD(dateFrom)}-${toYMD(dateTo)}.csv`)}
+                className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors hover:brightness-110"
+                style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)', color: '#818CF8' }}>
+                <Download size={12} /> Export CSV
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Expanded filters — NOTE: no overflow-hidden here so absolute dropdowns aren't clipped */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.15 }}
+              className="flex flex-wrap items-center gap-2 pb-1">
+              {/* Course */}
+              <FilterSelect
+                value={courseFilter}
+                onChange={v => { setCourseFilter(v); setPage(1) }}
+                options={[{ value: '', label: 'All courses' }, ...courses.map(c => ({ value: c.id, label: c.title }))]}
+                placeholder="All courses"
+                minWidth={180}
+              />
+
+              {/* Instructor */}
+              {!isInstructor && (
+                <FilterSelect
+                  value={instructorFilter}
+                  onChange={v => { setInstructorFilter(v); setPage(1) }}
+                  options={[{ value: '', label: 'All instructors' }, ...instructors.map(i => ({ value: i.id, label: i.name }))]}
+                  placeholder="All instructors"
+                  minWidth={160}
+                />
+              )}
+
+              {/* Language */}
+              <FilterSelect
+                value={langFilter}
+                onChange={v => { setLangFilter(v); setPage(1) }}
+                options={[{ value: '', label: 'All languages' }, ...LANG_OPTS.map(l => ({ value: l, label: `${LANG_FLAG[l] ?? ''} ${l}` }))]}
+                placeholder="All languages"
+                minWidth={140}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* ── Loading ───────────────────────────────────── */}
       {isLoading && (
         <div className="flex items-center justify-center gap-2 py-24 text-sm"
           style={{ color: 'rgba(255,255,255,0.35)' }}>
@@ -428,7 +704,7 @@ export default function BookingsPage() {
         </div>
       )}
 
-      {/* ── Empty ── */}
+      {/* ── Empty ─────────────────────────────────────── */}
       {!isLoading && filtered.length === 0 && (
         <motion.div
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
@@ -442,18 +718,25 @@ export default function BookingsPage() {
             No bookings found
           </p>
           <p className="max-w-xs text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
-            {search || statusFilter
-              ? 'Try clearing the filters.'
+            {hasFilters
+              ? 'Try adjusting or clearing the filters.'
               : 'No sessions are booked for the selected date range.'}
           </p>
+          {hasFilters && (
+            <button type="button" onClick={clearFilters}
+              className="mt-1 rounded-xl px-4 py-2 text-xs font-semibold transition-colors hover:brightness-110"
+              style={{ background: 'rgba(255,107,26,0.12)', border: '1px solid rgba(255,107,26,0.25)', color: '#FF6B1A' }}>
+              Clear filters
+            </button>
+          )}
         </motion.div>
       )}
 
-      {/* ── Day groups ── */}
+      {/* ── Day groups ────────────────────────────────── */}
       <AnimatePresence mode="wait">
         {!isLoading && dateGroups.length > 0 && (
           <motion.div
-            key={`${toYMD(dateFrom)}-${toYMD(dateTo)}-${search}-${statusFilter}`}
+            key={`${toYMD(dateFrom)}-${toYMD(dateTo)}-${search}-${statusFilter}-${courseFilter}-${instructorFilter}-${langFilter}`}
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="space-y-6"
           >
@@ -468,7 +751,7 @@ export default function BookingsPage() {
                     </div>
                     <h2 className="text-sm font-bold text-white"
                       style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-                      {group.heading}
+                      {isCancelledView ? `Cancelled · ${group.heading}` : group.heading}
                     </h2>
                   </div>
                   <span className="rounded-full px-2 py-0.5 text-[10px] font-bold"
@@ -476,6 +759,20 @@ export default function BookingsPage() {
                     {group.rows.length} booking{group.rows.length !== 1 ? 's' : ''}
                   </span>
                   <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+
+                  {/* Per-day attended/missed ratio */}
+                  {(() => {
+                    const a = group.rows.filter(r => r.status === 'attended').length
+                    const m = group.rows.filter(r => r.status === 'missed').length
+                    const total = a + m
+                    if (!total) return null
+                    return (
+                      <span className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                        <span style={{ color: '#818CF8' }}>{a} attended</span>
+                        {m > 0 && <> · <span style={{ color: '#FCD34D' }}>{m} missed</span></>}
+                      </span>
+                    )
+                  })()}
                 </div>
 
                 {/* Table */}
@@ -487,7 +784,7 @@ export default function BookingsPage() {
                         <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                           {TH_COLS.map((col, ci) => (
                             <th key={ci}
-                              className="py-2.5 px-3 text-left text-[10px] font-semibold uppercase tracking-widest first:pl-5 last:pr-5"
+                              className={`py-2.5 px-3 text-left text-[10px] font-semibold uppercase tracking-widest first:pl-5 last:pr-5 ${col.cls ?? ''}`}
                               style={{ color: 'rgba(255,255,255,0.30)', background: 'rgba(255,255,255,0.02)' }}>
                               <span className="flex items-center gap-1">
                                 {col.icon}{col.label}
@@ -530,7 +827,6 @@ export default function BookingsPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
     </div>
   )
 }

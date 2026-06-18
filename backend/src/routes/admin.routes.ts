@@ -4,7 +4,7 @@ import { AdminController } from '@/controllers/admin.controller.ts'
 import { AuthController } from '@/controllers/auth.controller.ts'
 import { LiveClassController } from '@/controllers/liveClass.controller.ts'
 import { RolesController } from '@/controllers/roles.controller.ts'
-import { authenticateAdmin, requireRole, requireAdmin, requireAnyAdmin, injectCategoryScope } from '@/middleware/auth.middleware.ts'
+import { authenticateAdmin, requireRole, requireAdmin, requireAnyAdmin, requireInstructor, injectCategoryScope } from '@/middleware/auth.middleware.ts'
 import { validate } from '@/middleware/validate.middleware.ts'
 import { QuizService } from '@/services/quiz.service.ts'
 import { AssignmentService } from '@/services/assignment.service.ts'
@@ -729,13 +729,14 @@ const bookingQuerySchema = z.object({
   status:       z.enum(['booked', 'attended', 'missed', 'cancelled']).optional(),
   instructorId: z.string().optional(),
   courseId:     z.string().optional(),
-  dateFrom:     z.string().optional(),   // ISO date string, e.g. "2025-06-01"
-  dateTo:       z.string().optional(),   // ISO date string, e.g. "2025-06-30"
+  language:     z.string().optional(),
+  dateFrom:     z.string().optional(),
+  dateTo:       z.string().optional(),
   page:         z.coerce.number().int().min(1).default(1),
   per_page:     z.coerce.number().int().min(1).max(200).default(50),
 })
 
-router.get('/bookings', requireRole('admin', 'instructor'), validate(bookingQuerySchema, 'query'), async (req: Request, res: Response, next: NextFunction) => {
+router.get('/bookings', requireInstructor, validate(bookingQuerySchema, 'query'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { ClassBookingModel, LiveClassModel } = await import('@/models/schema.ts')
     const { Types } = await import('mongoose')
@@ -751,17 +752,35 @@ router.get('/bookings', requireRole('admin', 'instructor'), validate(bookingQuer
       lcFilter['instructorId'] = new Types.ObjectId(q.instructorId)
     }
 
+    // Category-scoped admins (e.g. digital_marketing_admin, 4x_admin) only see their program's bookings
+    const scope = (req.user as any)?.categoryScope as string | undefined
+    if (scope) {
+      const { CourseModel } = await import('@/models/schema.ts')
+      const scopedCourses = await CourseModel.find({ program: scope }, '_id').lean()
+      const scopedIds = scopedCourses.map((c: any) => c._id)
+      if (!q.courseId) {
+        lcFilter['courseId'] = { $in: scopedIds }
+      }
+    }
+
     if (q.courseId && Types.ObjectId.isValid(q.courseId)) {
       lcFilter['courseId'] = new Types.ObjectId(q.courseId)
     }
 
+    if (q.language) {
+      lcFilter['language'] = q.language
+    }
+
+    // For cancelled bookings the date range applies to cancelledAt (not scheduledStart)
     if (q.dateFrom || q.dateTo) {
-      lcFilter['scheduledStart'] = {}
-      if (q.dateFrom) lcFilter['scheduledStart']['$gte'] = new Date(q.dateFrom)
-      if (q.dateTo) {
-        const end = new Date(q.dateTo)
-        end.setHours(23, 59, 59, 999)
-        lcFilter['scheduledStart']['$lte'] = end
+      if (q.status !== 'cancelled') {
+        lcFilter['scheduledStart'] = {}
+        if (q.dateFrom) lcFilter['scheduledStart']['$gte'] = new Date(q.dateFrom)
+        if (q.dateTo) {
+          const end = new Date(q.dateTo)
+          end.setHours(23, 59, 59, 999)
+          lcFilter['scheduledStart']['$lte'] = end
+        }
       }
     }
 
@@ -779,6 +798,14 @@ router.get('/bookings', requireRole('admin', 'instructor'), validate(bookingQuer
     if (q.userId && Types.ObjectId.isValid(q.userId)) filter['userId'] = new Types.ObjectId(q.userId)
     if (q.status) filter['status'] = q.status
 
+    // Cancelled bookings: apply date range to cancelledAt instead of scheduledStart
+    if (q.status === 'cancelled' && (q.dateFrom || q.dateTo)) {
+      const cf: Record<string, any> = {}
+      if (q.dateFrom) cf['$gte'] = new Date(q.dateFrom)
+      if (q.dateTo)   { const e = new Date(q.dateTo); e.setHours(23,59,59,999); cf['$lte'] = e }
+      filter['cancelledAt'] = cf
+    }
+
     /* ── Step 3: Fetch bookings with rich populate ── */
     const page     = Number(q.page)     || 1
     const per_page = Number(q.per_page) || 50
@@ -789,7 +816,7 @@ router.get('/bookings', requireRole('admin', 'instructor'), validate(bookingQuer
         .populate('userId', 'id name email avatarUrl')
         .populate({
           path:     'liveClassId',
-          select:   'id title scheduledStart durationMins courseId sectionId instructorId',
+          select:   'id title scheduledStart durationMins language courseId sectionId instructorId',
           populate: [
             { path: 'courseId',     select: 'id title' },
             { path: 'sectionId',    select: 'id title' },
@@ -815,7 +842,7 @@ const attendanceUpdateSchema = z.object({
   status: z.enum(['attended', 'missed']),
 })
 
-router.patch('/bookings/:id/attendance', requireRole('admin', 'instructor'), validate(attendanceUpdateSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.patch('/bookings/:id/attendance', requireInstructor, validate(attendanceUpdateSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { ClassBookingModel } = await import('@/models/schema.ts')
     const id = String(req.params['id'] ?? '')

@@ -144,13 +144,14 @@ export interface ClassBooking {
   id:          string
   userId:      { id: string; name: string; email: string; avatarUrl?: string }
   liveClassId: {
-    id:           string
-    title:        string
+    id:             string
+    title:          string
     scheduledStart: string
-    durationMins: number
-    courseId?:    { id: string; title: string }
-    sectionId?:   { id: string; title: string }
-    instructorId?: { id: string; name: string; avatarUrl?: string }
+    durationMins:   number
+    language?:      string
+    courseId?:      { id: string; title: string }
+    sectionId?:     { id: string; title: string }
+    instructorId?:  { id: string; name: string; avatarUrl?: string }
   }
   status:      BookingStatus
   bookedAt:    string
@@ -319,8 +320,9 @@ export function useAdminBookings(params: {
   status?:       BookingStatus
   instructorId?: string
   courseId?:     string
-  dateFrom?:     string   // ISO date "YYYY-MM-DD"
-  dateTo?:       string   // ISO date "YYYY-MM-DD"
+  language?:     string
+  dateFrom?:     string
+  dateTo?:       string
   page?:         number
   per_page?:     number
 } = {}) {
