@@ -118,6 +118,7 @@ export interface UpdateLiveClassInput {
   durationMins?:    number
   type?:            LiveClassType
   meetingUrl?:      string
+  recordingUrl?:    string
   sessionCapacity?: number
   status?:          LiveClassStatus
   mentorNotes?:     string

@@ -203,12 +203,15 @@ export class LiveClassController {
 
       /* Auto-generate a Google Meet link for external sessions */
       let meetingUrl: string | undefined
+      let googleMeetCode: string | undefined
       if (sessionType === 'external') {
-        meetingUrl = await createGoogleMeetLink({
+        const meet = await createGoogleMeetLink({
           title:        dto.title,
           startISO:     String(dto.scheduledStart),
           durationMins: dto.durationMins,
         })
+        meetingUrl    = meet.meetingUrl
+        googleMeetCode = meet.meetingCode || undefined
       }
 
       const live = await this.service.create({
@@ -220,6 +223,7 @@ export class LiveClassController {
         durationMins:    dto.durationMins,
         type:            sessionType,
         meetingUrl,
+        googleMeetCode,
         sectionId:       dto.sectionId,
         sessionCapacity: dto.sessionCapacity,
         language:        dto.language,
@@ -248,6 +252,7 @@ export class LiveClassController {
       if (typeof dto['scheduledStart']  === 'string')  data.scheduledStart  = new Date(dto['scheduledStart'])
       if (typeof dto['durationMins']    === 'number')  data.durationMins    = dto['durationMins']
       if (typeof dto['meetingUrl']      === 'string')  data.meetingUrl      = dto['meetingUrl']
+      if (typeof dto['recordingUrl']    === 'string')  data.recordingUrl    = dto['recordingUrl'] || undefined
       if (typeof dto['status']          === 'string')  data.status          = dto['status'] as any
       if (typeof dto['sessionCapacity'] === 'number')  data.sessionCapacity = dto['sessionCapacity']
       if (typeof dto['mentorNotes']     === 'string')  data.mentorNotes     = dto['mentorNotes']

@@ -418,6 +418,7 @@ const liveUpdateSchema = z.object({
   scheduledStart:  z.string().refine(s => !isNaN(Date.parse(s)), 'Invalid date').optional(),
   durationMins:    z.coerce.number().int().min(5).max(600).optional(),
   meetingUrl:      z.string().url().max(2048).optional(),
+  recordingUrl:    z.string().url().max(2048).optional().or(z.literal('')),
   status:          z.enum(['scheduled', 'live', 'ended', 'cancelled']).optional(),
   sessionCapacity: z.coerce.number().int().min(1).max(500).optional(),
   mentorNotes:     z.string().max(5000).optional(),

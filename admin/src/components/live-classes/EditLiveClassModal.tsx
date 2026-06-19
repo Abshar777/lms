@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, Loader2, AlertCircle, ExternalLink, Tv2,
-  Link as LinkIcon, Trash2, CheckCircle2,
+  Link as LinkIcon, Trash2, CheckCircle2, Video,
 } from 'lucide-react'
 import {
   useUpdateLiveClass, useDeleteLiveClass,
@@ -64,6 +64,7 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
     (live as any).sessionCapacity ?? 500,
   )
   const [language,      setLanguage]      = useState<string>(live.language ?? 'English')
+  const [recordingUrl,  setRecordingUrl]  = useState<string>(live.recordingUrl ?? '')
   const [error,         setError]         = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -89,6 +90,7 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
           durationMins,
           type,
           meetingUrl:      type === 'external' ? meetingUrl.trim() || undefined : undefined,
+          recordingUrl:    recordingUrl.trim() || undefined,
           status,
           instructorId:    instructorId || undefined,
           courseId:        activeCourseId !== originalCourseId ? activeCourseId : undefined,
@@ -326,6 +328,34 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
               <option value="Malayalam">🇮🇳 Malayalam (മലയാളം)</option>
               <option value="Urdu">🇵🇰 Urdu (اردو)</option>
             </select>
+          </div>
+
+          {/* Recording URL */}
+          <div>
+            <label className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: 'rgba(255,255,255,0.35)' }}>
+              <Video size={10} />
+              Recording URL
+              <span className="normal-case tracking-normal font-normal"
+                style={{ color: 'rgba(255,255,255,0.20)' }}>(optional)</span>
+            </label>
+            <div className="relative">
+              <Video size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                style={{ color: 'rgba(255,255,255,0.30)' }} />
+              <input
+                value={recordingUrl}
+                onChange={e => setRecordingUrl(e.target.value)}
+                type="url"
+                placeholder="https://drive.google.com/… or any video URL"
+                className={`${base} pl-9`}
+                style={iStyle}
+              />
+            </div>
+            {recordingUrl && (
+              <p className="mt-1 text-[10px]" style={{ color: 'rgba(255,255,255,0.30)' }}>
+                Students will see a "Watch Recording" button after class ends.
+              </p>
+            )}
           </div>
 
           {error && (

@@ -4,6 +4,7 @@ import { CourseRepository } from '@/repositories/course.repository.ts'
 import { EnrollmentRepository } from '@/repositories/enrollment.repository.ts'
 import { sendLiveClassScheduled } from '@/services/email.service.ts'
 import * as muxSvc from '@/services/mux.service.ts'
+import { fetchMeetRecordingUrl } from '@/services/googleMeet.service.ts'
 import { logger } from '@/utils/logger.ts'
 import { env } from '@/config/env.ts'
 import { EnrollmentModel, LiveClassModel, type ILiveClass, type LiveClassType } from '@/models/schema.ts'
@@ -109,6 +110,7 @@ export class LiveClassService {
     durationMins:    number
     type:            LiveClassType
     meetingUrl?:     string
+    googleMeetCode?: string
     sectionId?:      string
     sessionCapacity?: number
     language?:       string
@@ -160,6 +162,7 @@ export class LiveClassService {
 
     if (input.type === 'external') {
       doc.meetingUrl = input.meetingUrl!.trim()
+      if (input.googleMeetCode) doc.googleMeetCode = input.googleMeetCode
     }
 
     if (muxData) {
@@ -314,11 +317,12 @@ export class LiveClassService {
 
     if (live.type === 'external') {
       return {
-        type:        'external',
-        title:       live.title,
-        status:      live.status,
-        meetingUrl:  live.meetingUrl,
+        type:       'external',
+        title:      live.title,
+        status:     live.status,
+        meetingUrl: live.meetingUrl,
         viewerCount: 0,
+        // recordingUrl intentionally excluded — admin-only, not exposed to students
       }
     }
 
@@ -453,6 +457,7 @@ export class LiveClassService {
     scheduledStart:  Date
     durationMins:    number
     meetingUrl:      string
+    recordingUrl:    string
     status:          'scheduled' | 'live' | 'ended' | 'cancelled'
     sessionCapacity: number
     mentorNotes:     string
@@ -464,6 +469,10 @@ export class LiveClassService {
     if (!Types.ObjectId.isValid(id)) {
       throw new LiveClassError('INVALID_ID', 'Invalid id', 400)
     }
+
+    // Snapshot current doc so we can detect status transitions for recording poll
+    const current = await LiveClassModel.findById(id).select('type status googleMeetCode recordingUrl').lean()
+
     const patch: Partial<ILiveClass> = { ...(input as any) }
     if (input.instructorId != null) {
       if (!Types.ObjectId.isValid(input.instructorId)) throw new LiveClassError('INVALID_ID', 'Invalid instructorId', 400)
@@ -479,7 +488,44 @@ export class LiveClassService {
     }
     const updated = await this.liveRepo.updateByIdPopulated(id, patch)
     if (!updated) throw new LiveClassError('LIVE_CLASS_NOT_FOUND', 'Live class not found', 404)
+
+    // When an external class with a Meet code is marked "ended", auto-poll for recording
+    const isNewlyEnded = input.status === 'ended' && current?.status !== 'ended'
+    const hasCode      = !!(current as any)?.googleMeetCode
+    const noRecording  = !(current as any)?.recordingUrl
+    if (isNewlyEnded && current?.type === 'external' && hasCode && noRecording) {
+      void this.#pollForMeetRecording(id, (current as any).googleMeetCode)
+    }
+
     return updated
+  }
+
+  /* Polls Google Meet API for the recording of an external class.
+     Retries every 3 minutes for up to 30 minutes after the class ends. */
+  async #pollForMeetRecording(classId: string, meetingCode: string): Promise<void> {
+    const INTERVAL_MS  = 3 * 60 * 1000   // 3 minutes between attempts
+    const MAX_ATTEMPTS = 10              // up to 30 minutes total
+
+    // Give Meet a few minutes to process the recording before first poll
+    await new Promise(r => setTimeout(r, INTERVAL_MS))
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      try {
+        const url = await fetchMeetRecordingUrl(meetingCode)
+        if (url) {
+          await LiveClassModel.findByIdAndUpdate(classId, { recordingUrl: url })
+          logger.info({ classId, meetingCode, url }, 'meet-recording: auto-saved recording URL')
+          return
+        }
+      } catch (err) {
+        logger.warn({ err, classId, attempt }, 'meet-recording: poll error')
+      }
+
+      logger.debug({ classId, meetingCode, attempt }, 'meet-recording: recording not ready yet')
+      await new Promise(r => setTimeout(r, INTERVAL_MS))
+    }
+
+    logger.warn({ classId, meetingCode }, 'meet-recording: no recording found after 30 minutes')
   }
 
   /* ── Delete ──────────────────────────────────────── */

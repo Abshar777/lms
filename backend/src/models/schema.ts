@@ -579,6 +579,7 @@ export interface ILiveClass extends Document {
 
   /* External-only */
   meetingUrl?:    string           // required when type=external
+  googleMeetCode?: string          // e.g. "abc-def-ghij" — used to auto-fetch recording via Meet API v2
 
   /* Internal-only (Mux) */
   muxLiveStreamId?:  string       // Mux live stream ID
@@ -621,6 +622,7 @@ const LiveClassSchema = new Schema<ILiveClass>(
     status:         { type: String, enum: ['scheduled', 'live', 'ended', 'cancelled'], default: 'scheduled' },
 
     meetingUrl:        { type: String, maxlength: 2048 },
+    googleMeetCode:    { type: String, maxlength: 20 },
     muxLiveStreamId:   { type: String },
     muxStreamKey:      { type: String, select: false },   // never returned in standard queries
     muxPlaybackId:     { type: String },

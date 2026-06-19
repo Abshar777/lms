@@ -56,7 +56,7 @@ export interface WatchAccess {
   status:        LiveClassStatus
   meetingUrl?:   string      // external only
   playbackUrl?:  string      // internal only
-  recordingUrl?: string      // internal, after stream ends
+  recordingUrl?: string      // set by admin after class ends (Meet link, Drive, etc.)
   thumbnailUrl?: string
   viewerCount:   number
 }
