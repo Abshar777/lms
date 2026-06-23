@@ -9,7 +9,7 @@ import {
   AlertCircle, Tv2, ExternalLink, BookOpen, Star,
   ChevronRight, PlayCircle, CalendarDays, Pencil, Search, X, Plus,
   LayoutList, CalendarRange, ChevronLeft, GraduationCap,
-  UserCheck, LayoutGrid, Building2, MapPin,
+  UserCheck, LayoutGrid, Building2, MapPin, UserPlus,
 } from 'lucide-react'
 import { useAllLiveClasses, useCreateLiveClass, type LiveClass, type LiveClassType } from '@/lib/api/liveClasses'
 import { datetimeLocalToISO } from '@/lib/timezone'
@@ -19,6 +19,7 @@ import { useUsers } from '@/lib/api/users'
 import { useCurrentUser } from '@/lib/api/user'
 import { EditLiveClassModal } from '@/components/live-classes/EditLiveClassModal'
 import { CreateOfflineClassModal } from '@/components/live-classes/CreateOfflineClassModal'
+import { BookForStudentModal } from '@/components/live-classes/BookForStudentModal'
 import { Button, MotionButton } from '@/components/ui/button'
 
 /* ── Helpers ─────────────────────────────────────────── */
@@ -139,8 +140,11 @@ function TableRow({ live, index, showInstructor }: { live: LiveClass; index: num
   const isScheduled = live.status === 'scheduled'
   const isEnded     = live.status === 'ended'
   const isCancelled = live.status === 'cancelled'
-  const isInternal  = live.type === 'internal'
+  const isInternal   = live.type === 'internal'
+  const isOffline    = (live as any).isOnline === false
+  const canAdminBook = isOffline && live.status === 'scheduled' && new Date(live.scheduledStart) > new Date()
   const [editOpen, setEditOpen] = useState(false)
+  const [bookOpen, setBookOpen] = useState(false)
 
   const fillPct = live.sessionCapacity > 0 ? Math.min(100, (live.bookedCount / live.sessionCapacity) * 100) : 0
   const barColor = fillPct >= 90 ? '#EF4444' : fillPct >= 70 ? '#F59E0B' : '#22C55E'
@@ -301,6 +305,19 @@ function TableRow({ live, index, showInstructor }: { live: LiveClass; index: num
               <Pencil size={12} />
             </Button>
 
+            {/* Book for Student — offline scheduled classes only */}
+            {canAdminBook && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setBookOpen(true)}
+                className="h-7 w-7 rounded-lg"
+                style={{ color: '#34D399' }}
+                title="Book seat for student">
+                <UserPlus size={13} />
+              </Button>
+            )}
+
             {/* Course link */}
             {live.course && (
               <Link
@@ -319,6 +336,13 @@ function TableRow({ live, index, showInstructor }: { live: LiveClass; index: num
                 live={live}
                 onClose={() => setEditOpen(false)}
                 onSuccess={() => setEditOpen(false)}
+              />
+            )}
+            {bookOpen && (
+              <BookForStudentModal
+                live={live}
+                onClose={() => setBookOpen(false)}
+                onSuccess={() => setBookOpen(false)}
               />
             )}
           </AnimatePresence>
@@ -1374,7 +1398,6 @@ export default function LiveClassesPage() {
             categoryProgram={
               me?.role === '4x_admin' ? '4x-trading'
               : me?.role === 'digital_marketing_admin' ? 'digital-marketing'
-              : me?.role === 'ai_admin' ? 'ai'
               : undefined
             }
           />
@@ -1390,7 +1413,6 @@ export default function LiveClassesPage() {
             categoryProgram={
               me?.role === '4x_admin' ? '4x-trading'
               : me?.role === 'digital_marketing_admin' ? 'digital-marketing'
-              : me?.role === 'ai_admin' ? 'ai'
               : undefined
             }
           />

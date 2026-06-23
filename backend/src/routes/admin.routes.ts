@@ -462,6 +462,130 @@ router.post  ('/live-classes/:id/end',                    live.adminEnd)
 router.post  ('/live-classes/:id/recreate',               live.adminRecreate)
 router.get   ('/live-classes/:id/stream-credentials',     live.adminGetStreamCredentials)
 
+/* ─── Admin book-for-student (offline classes only) ──── */
+const bookForStudentSchema = z.object({
+  liveClassId: z.string().min(1),
+  studentId:   z.string().min(1),
+})
+
+router.post('/bookings/book-for-student', requireAnyAdmin, validate(bookForStudentSchema), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { ClassBookingModel, LiveClassModel, UserModel } = await import('@/models/schema.ts')
+    const { Types } = await import('mongoose')
+    const { NotificationService } = await import('@/services/notification.service.ts')
+
+    const { liveClassId, studentId } = req.body as { liveClassId: string; studentId: string }
+
+    if (!Types.ObjectId.isValid(liveClassId) || !Types.ObjectId.isValid(studentId)) {
+      res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid liveClassId or studentId' } }); return
+    }
+
+    const session = await LiveClassModel.findById(liveClassId).lean()
+    if (!session) {
+      res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Session not found' } }); return
+    }
+
+    if ((session as any).isOnline !== false) {
+      res.status(400).json({ success: false, error: { code: 'ONLINE_CLASS', message: 'Admin booking is only available for offline (in-person) classes' } }); return
+    }
+
+    if (session.status === 'cancelled' || session.status === 'ended') {
+      res.status(400).json({ success: false, error: { code: 'SESSION_UNAVAILABLE', message: 'Session is no longer available for booking' } }); return
+    }
+
+    if (new Date(session.scheduledStart) <= new Date()) {
+      res.status(400).json({ success: false, error: { code: 'BOOKING_CLOSED', message: 'Booking is closed — this class has already started' } }); return
+    }
+
+    const student = await UserModel.findById(studentId).lean()
+    if (!student || (student as any).role !== 'student') {
+      res.status(404).json({ success: false, error: { code: 'STUDENT_NOT_FOUND', message: 'Student not found' } }); return
+    }
+
+    /* Enrollment gate — student must be enrolled in the session's course */
+    let enrollment = null
+    if (session.courseId) {
+      const { EnrollmentModel } = await import('@/models/schema.ts')
+      enrollment = await EnrollmentModel.findOne({
+        userId:   new Types.ObjectId(studentId),
+        courseId: session.courseId,
+        status:   'active',
+      }).lean()
+      if (!enrollment) {
+        res.status(403).json({ success: false, error: { code: 'NOT_ENROLLED', message: 'Student is not enrolled in this course' } }); return
+      }
+    }
+
+    /* Module blocking — cannot book if student's section is blocked */
+    if (enrollment && session.sectionId) {
+      const blockedIds = ((enrollment as any).blockedLessons ?? []).map((id: any) => String(id))
+      if (blockedIds.includes(String(session.sectionId))) {
+        res.status(403).json({ success: false, error: { code: 'MODULE_BLOCKED', message: 'Student does not have access to this module' } }); return
+      }
+    }
+
+    if (session.bookedCount >= session.sessionCapacity) {
+      res.status(400).json({ success: false, error: { code: 'SESSION_FULL', message: 'This session is fully booked' } }); return
+    }
+
+    const existing = await ClassBookingModel.findOne({
+      userId:      new Types.ObjectId(studentId),
+      liveClassId: new Types.ObjectId(liveClassId),
+    }).lean()
+
+    let bookingDoc
+    if (existing) {
+      if (existing.status === 'cancelled') {
+        await ClassBookingModel.findByIdAndUpdate(existing._id, {
+          status: 'booked', bookedAt: new Date(), cancelledAt: undefined,
+          reminderDayBeforeSent: false, reminderDayOfSent: false,
+          reminderPreSessionSent: false, reminder5MinSent: false, reminderAtTimeSent: false,
+        })
+        await LiveClassModel.findByIdAndUpdate(liveClassId, { $inc: { bookedCount: 1 } })
+        bookingDoc = await ClassBookingModel.findById(existing._id).lean({ virtuals: true })
+      } else {
+        res.status(409).json({ success: false, error: { code: 'ALREADY_BOOKED', message: 'Student already has a booking for this session' } }); return
+      }
+    } else {
+      const [booking] = await Promise.all([
+        ClassBookingModel.create({
+          userId:      new Types.ObjectId(studentId),
+          liveClassId: new Types.ObjectId(liveClassId),
+          status:      'booked',
+          bookedAt:    new Date(),
+        }),
+        LiveClassModel.findByIdAndUpdate(liveClassId, { $inc: { bookedCount: 1 } }),
+      ])
+      bookingDoc = await booking.populate([
+        { path: 'liveClassId', select: 'id title scheduledStart durationMins meetingUrl type' },
+      ])
+    }
+
+    sendSuccess(res, bookingDoc, 'Booking created for student', 201)
+
+    /* Post-booking: notify + email student (fire-and-forget) */
+    const notifSvc = new NotificationService()
+    const dateLabel = new Date(session.scheduledStart).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })
+    const joinUrl = (session as any).meetingUrl ?? `${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/live-classes/${liveClassId}/watch`
+
+    notifSvc.create(studentId, {
+      kind: 'booking-confirmed', title: `Booking confirmed: ${session.title}`,
+      body: `Your seat is confirmed for ${session.title} on ${dateLabel}.`, link: '/class-bookings',
+    }).catch(() => {/* non-fatal */})
+
+    import('@/services/email.service.ts').then(({ sendBookingConfirmation }) => {
+      sendBookingConfirmation((student as any).email, (student as any).name, session.title, dateLabel, joinUrl)
+        .catch(() => {/* non-fatal */})
+    }).catch(() => {/* non-fatal */})
+
+  } catch (err: any) {
+    if (err.code === 11000) {
+      res.status(409).json({ success: false, error: { code: 'ALREADY_BOOKED', message: 'Student already has a booking for this session' } }); return
+    }
+    next(err)
+  }
+})
+
 /* ─── Quiz management (admin + own-course instructor) ─── */
 const quizUpsertSchema = z.object({
   passPercent: z.coerce.number().int().min(0).max(100).optional(),
