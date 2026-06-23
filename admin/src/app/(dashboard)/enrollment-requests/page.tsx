@@ -16,10 +16,10 @@ import { useCurrentUser } from '@/lib/api/user'
 import { useToast } from '@/store/ui.store'
 
 /* ── Constants ─────────────────────────────────────── */
-const CATEGORY_META: Record<ProgramCategory, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
-  '4x-trading':        { label: 'FOREX Trading',     color: '#10B981', bg: 'rgba(16,185,129,0.14)',  icon: <TrendingUp size={10} /> },
-  'digital-marketing': { label: 'Digital Marketing', color: '#FF6B1A', bg: 'rgba(255,107,26,0.14)', icon: <Megaphone size={10} /> },
-  'ai':                { label: 'AI',                 color: '#8B5CF6', bg: 'rgba(139,92,246,0.14)', icon: <Cpu size={10} /> },
+const CATEGORY_META: Record<ProgramCategory, { label: string; color: string; bg: string; Icon: React.ComponentType<{ size?: number }> }> = {
+  '4x-trading':        { label: 'FOREX Trading',     color: '#10B981', bg: 'rgba(16,185,129,0.14)',  Icon: TrendingUp },
+  'digital-marketing': { label: 'Digital Marketing', color: '#FF6B1A', bg: 'rgba(255,107,26,0.14)', Icon: Megaphone  },
+  'ai':                { label: 'AI',                 color: '#8B5CF6', bg: 'rgba(139,92,246,0.14)', Icon: Cpu        },
 }
 
 const ALL_CATEGORIES: ProgramCategory[] = ['4x-trading', 'digital-marketing', 'ai']
@@ -44,7 +44,7 @@ function CategoryBadge({ cat }: { cat: ProgramCategory }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-semibold"
       style={{ background: m.bg, color: m.color }}>
-      {m.icon}{m.label}
+      <m.Icon size={10} />{m.label}
     </span>
   )
 }
@@ -60,7 +60,7 @@ function RemovableCategoryBadge({ cat, canRemove, removing, onRemove }: {
   return (
     <span className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-semibold"
       style={{ background: m.bg, color: m.color }}>
-      {m.icon}{m.label}
+      <m.Icon size={10} />{m.label}
       {canRemove && (
         <button
           type="button"
@@ -121,7 +121,7 @@ function AddCategoryDropdown({ existingCats, loading, onAdd }: {
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-white/06"
                     style={{ color: m.color }}
                   >
-                    {m.icon}<span>{m.label}</span>
+                    <m.Icon size={10} /><span>{m.label}</span>
                   </button>
                 )
               })}
@@ -191,7 +191,7 @@ function CategorySelect({ value, onChange, disabled }: {
                       {selected && <Check size={10} style={{ color: m.color }} />}
                     </div>
                     <span className="flex items-center gap-1.5" style={{ color: selected ? m.color : 'rgba(255,255,255,0.75)' }}>
-                      {m.icon}{m.label}
+                      <m.Icon size={10} />{m.label}
                     </span>
                   </button>
                 )
