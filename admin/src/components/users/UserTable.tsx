@@ -15,16 +15,18 @@ interface Props {
   label: string
 }
 
-type CategoryFilter = '' | '4x-trading' | 'digital-marketing'
+type CategoryFilter = '' | '4x-trading' | 'digital-marketing' | 'ai'
 
 const CATEGORY_LABELS: Record<string, string> = {
-  '4x-trading':        'FOREX Trading',
+  '4x-trading':        'FOREX',
   'digital-marketing': 'Digital Marketing',
+  'ai':                'AI',
 }
 
 const CATEGORY_STYLE: Record<string, { bg: string; color: string }> = {
-  '4x-trading':        { bg: 'rgba(96,165,250,0.12)',  color: '#60A5FA' },
-  'digital-marketing': { bg: 'rgba(52,211,153,0.12)',  color: '#34D399' },
+  '4x-trading':        { bg: 'rgba(16,185,129,0.12)',  color: '#10B981' },
+  'digital-marketing': { bg: 'rgba(255,107,26,0.12)',  color: '#FF6B1A' },
+  'ai':                { bg: 'rgba(139,92,246,0.12)',   color: '#8B5CF6' },
 }
 
 function fmtDate(d?: string) {
@@ -33,9 +35,10 @@ function fmtDate(d?: string) {
 }
 
 export function UserTable({ role, label }: Props) {
-  const [search,   setSearch]   = useState('')
-  const [page,     setPage]     = useState(1)
-  const [category, setCategory] = useState<CategoryFilter>('')
+  const [search,      setSearch]      = useState('')
+  const [page,        setPage]        = useState(1)
+  const [category,    setCategory]    = useState<CategoryFilter>('')
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
 
   const { data, isLoading } = useUsers(role, {
     search,
@@ -67,17 +70,20 @@ export function UserTable({ role, label }: Props) {
 
         {/* Category filter chips */}
         <div className="flex items-center gap-1.5">
-          {(['', '4x-trading', 'digital-marketing'] as CategoryFilter[]).map(cat => (
-            <button
-              key={cat || 'all'}
-              onClick={() => handleCategoryFilter(cat)}
-              className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
-              style={category === cat
-                ? { background: 'rgba(255,107,26,0.18)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.4)' }
-                : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.07)' }}>
-              {cat === '' ? 'All' : CATEGORY_LABELS[cat]}
-            </button>
-          ))}
+          {(['', '4x-trading', 'digital-marketing', 'ai'] as CategoryFilter[]).map(cat => {
+            const s = cat ? CATEGORY_STYLE[cat] : null
+            return (
+              <button
+                key={cat || 'all'}
+                onClick={() => handleCategoryFilter(cat)}
+                className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
+                style={category === cat
+                  ? { background: s ? `${s.bg}` : 'rgba(255,107,26,0.18)', color: s?.color ?? '#FF6B1A', border: `1px solid ${s?.color ?? '#FF6B1A'}50` }
+                  : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                {cat === '' ? 'All' : CATEGORY_LABELS[cat]}
+              </button>
+            )
+          })}
         </div>
 
         <p className="ml-auto text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
@@ -111,7 +117,7 @@ export function UserTable({ role, label }: Props) {
                 No {label.toLowerCase()} found
               </td></tr>
             )}
-            {!isLoading && data?.docs.map((u, i) => <UserRow key={u.id} user={u} index={i} />)}
+            {!isLoading && data?.docs.map((u, i) => <UserRow key={u.id} user={u} index={i} onEdit={setEditingUser} />)}
           </tbody>
         </table>
         </div>
@@ -137,15 +143,23 @@ export function UserTable({ role, label }: Props) {
           </div>
         )}
       </div>
+
+      {/* Modal rendered outside <table> to avoid invalid DOM nesting */}
+      {editingUser && (
+        <EditStudentModal
+          user={editingUser}
+          onClose={() => setEditingUser(null)}
+          onSuccess={() => setEditingUser(null)}
+        />
+      )}
     </div>
   )
 }
 
-function UserRow({ user, index }: { user: AdminUser; index: number }) {
+function UserRow({ user, index, onEdit }: { user: AdminUser; index: number; onEdit: (u: AdminUser) => void }) {
   const update    = useUpdateUser()
   const toast     = useToast()
-  const [menuOpen,  setMenuOpen]  = useState(false)
-  const [editOpen,  setEditOpen]  = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const setActive = async (active: boolean) => {
     setMenuOpen(false)
@@ -169,7 +183,10 @@ function UserRow({ user, index }: { user: AdminUser; index: number }) {
     }
   }
 
-  const catStyle = user.category ? CATEGORY_STYLE[user.category] : null
+  // Support multi-category display
+  const displayCats: string[] = (user as any).categories?.length
+    ? (user as any).categories
+    : user.category ? [user.category] : []
 
   return (
     <>
@@ -203,11 +220,18 @@ function UserRow({ user, index }: { user: AdminUser; index: number }) {
         </div>
       </td>
       <td className="px-4 py-3.5">
-        {catStyle ? (
-          <span className="inline-flex items-center rounded-lg px-2 py-1 text-[11px] font-semibold"
-            style={{ background: catStyle.bg, color: catStyle.color }}>
-            {CATEGORY_LABELS[user.category!]}
-          </span>
+        {displayCats.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {displayCats.map(cat => {
+              const s = CATEGORY_STYLE[cat]
+              return s ? (
+                <span key={cat} className="inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-semibold"
+                  style={{ background: s.bg, color: s.color }}>
+                  {CATEGORY_LABELS[cat] ?? cat}
+                </span>
+              ) : null
+            })}
+          </div>
         ) : (
           <span className="text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>—</span>
         )}
@@ -229,7 +253,7 @@ function UserRow({ user, index }: { user: AdminUser; index: number }) {
       </td>
       <td className="px-4 py-3.5 relative">
         <div className="flex items-center gap-1">
-          <button onClick={() => setEditOpen(true)}
+          <button onClick={() => onEdit(user)}
             className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/05"
             style={{ color: 'rgba(255,255,255,0.45)' }}
             title="Edit profile">
@@ -274,16 +298,6 @@ function UserRow({ user, index }: { user: AdminUser; index: number }) {
         </AnimatePresence>
       </td>
     </motion.tr>
-
-    <AnimatePresence>
-      {editOpen && (
-        <EditStudentModal
-          user={user}
-          onClose={() => setEditOpen(false)}
-          onSuccess={() => setEditOpen(false)}
-        />
-      )}
-    </AnimatePresence>
     </>
   )
 }

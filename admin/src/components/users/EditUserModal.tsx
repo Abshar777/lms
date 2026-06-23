@@ -58,7 +58,7 @@ function SelectField<T extends string>({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -4, scale: 0.97 }}
                 transition={{ duration: 0.1 }}
-                className="absolute left-0 top-full z-[61] mt-1 w-full overflow-hidden rounded-xl py-1"
+                className="absolute left-0 bottom-full z-[61] mb-1 w-full overflow-hidden rounded-xl py-1"
                 style={{
                   background: '#131525',
                   border: '1px solid rgba(255,255,255,0.12)',
@@ -124,12 +124,14 @@ const ROLE_OPTIONS_BY_EDITOR: Record<string, { value: AdminUserRole; label: stri
     { value: 'admin',                   label: 'Admin' },
     { value: '4x_admin',               label: 'FOREX Admin' },
     { value: 'digital_marketing_admin', label: 'DM Admin' },
+    { value: 'ai_admin',               label: 'AI Admin' },
     { value: 'instructor',              label: 'Instructor' },
   ],
   admin: [
     { value: 'admin',                   label: 'Admin' },
     { value: '4x_admin',               label: 'FOREX Admin' },
     { value: 'digital_marketing_admin', label: 'DM Admin' },
+    { value: 'ai_admin',               label: 'AI Admin' },
     { value: 'instructor',              label: 'Instructor' },
   ],
 }
@@ -138,10 +140,11 @@ const CATEGORY_OPTIONS = [
   { value: '' as const,                   label: 'No category' },
   { value: '4x-trading' as const,         label: 'FOREX Trading' },
   { value: 'digital-marketing' as const,  label: 'Digital Marketing' },
+  { value: 'ai' as const,                 label: 'AI' },
 ]
 
 function needsCategory(role: AdminUserRole) {
-  return role === '4x_admin' || role === 'digital_marketing_admin' || role === 'instructor'
+  return role === '4x_admin' || role === 'digital_marketing_admin' || role === 'ai_admin' || role === 'instructor'
 }
 
 /* ── Modal ───────────────────────────────────────── */
@@ -156,7 +159,7 @@ export function EditUserModal({ user, me, onClose, onSuccess }: Props) {
   const [name,       setName]       = useState(user.name)
   const [email,      setEmail]      = useState(user.email)
   const [role,       setRole]       = useState<AdminUserRole>(user.role)
-  const [category,   setCategory]   = useState<'4x-trading' | 'digital-marketing' | ''>(user.category ?? '')
+  const [category,   setCategory]   = useState<'4x-trading' | 'digital-marketing' | 'ai' | ''>(user.category ?? '')
   const [isActive,   setIsActive]   = useState(user.isActive)
   const [isVerified, setIsVerified] = useState(user.isVerified)
 
@@ -176,7 +179,7 @@ export function EditUserModal({ user, me, onClose, onSuccess }: Props) {
       }
       if (canEditRole && role !== user.role) dto.role = role
       dto.category = needsCategory(activeRole)
-        ? ((category || null) as '4x-trading' | 'digital-marketing' | null)
+        ? ((category || null) as '4x-trading' | 'digital-marketing' | 'ai' | null)
         : null
       await updateUser.mutateAsync(dto)
       toast.success('User updated')
@@ -217,7 +220,7 @@ export function EditUserModal({ user, me, onClose, onSuccess }: Props) {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 8 }}
           transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-          className="relative w-full max-w-md overflow-hidden rounded-2xl"
+          className="relative w-full max-w-md rounded-2xl"
           style={{
             background: 'linear-gradient(145deg, #0e1022 0%, #0a0c18 100%)',
             border: '1px solid rgba(255,255,255,0.1)',

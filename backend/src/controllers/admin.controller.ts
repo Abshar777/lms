@@ -47,7 +47,7 @@ export class AdminController {
         status:       (q['status'] as 'draft' | 'published' | 'archived' | 'all' | undefined) ?? 'all',
         level:        q['level'] as 'beginner' | 'intermediate' | 'advanced' | undefined,
         category:     q['category']?.trim() || undefined,
-        program:      scope ?? (q['program'] as '4x-trading' | 'digital-marketing' | undefined),
+        program:      scope ?? (q['program'] as string | undefined),
         free:         q['free'] === 'true',
         sort:         q['sort'] as 'popular' | 'rating' | 'newest' | 'price_lo' | 'price_hi' | undefined,
         instructorId: isTeachingStaff ? req.user!.id : undefined,
@@ -86,7 +86,7 @@ export class AdminController {
         tags?:         string[] | string
         categoryId?:   string
         instructorId?: string
-        program?:      '4x-trading' | 'digital-marketing'
+        program?:      '4x-trading' | 'digital-marketing' | 'ai'
       }
 
       const tags = typeof dto.tags === 'string'
@@ -184,11 +184,12 @@ export class AdminController {
       const q        = req.query as Record<string, string | undefined>
       const role             = q['role'] as UserRole | undefined
       const search           = q['search']?.trim() || undefined
-      const category         = q['category'] as '4x-trading' | 'digital-marketing' | undefined
-      const effectiveCategory = req.user!.categoryScope ? req.user!.categoryScope as '4x-trading' | 'digital-marketing' : category
+      const category         = q['category'] as string | undefined
+      const effectiveCategory = req.user!.categoryScope ? req.user!.categoryScope as string : category
       const status           = q['status'] as 'active' | 'inactive' | undefined
       const excludeStudents  = Boolean(q['exclude_students'])
-      const { docs, totalCount } = await this.userService.listByRole(role, { page, perPage: per_page, search, category: effectiveCategory, status, excludeStudents })
+      const enrollmentStatus = q['enrollmentStatus'] as 'pending' | 'approved' | 'rejected' | 'cancelled' | undefined
+      const { docs, totalCount } = await this.userService.listByRole(role, { page, perPage: per_page, search, category: effectiveCategory, status, excludeStudents, enrollmentStatus })
       const meta = buildPaginationMeta(totalCount, page, per_page)
       sendSuccess(res, docs, undefined, 200, meta)
     } catch (err) { next(err) }
@@ -256,7 +257,7 @@ export class AdminController {
   updateUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const id = String(req.params['id'] ?? '')
-      const dto = req.body as { role?: UserRole; isActive?: boolean; isVerified?: boolean; name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | null }
+      const dto = req.body as { role?: UserRole; isActive?: boolean; isVerified?: boolean; name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | 'ai' | null }
       const user = await this.userService.adminUpdate(id, dto)
       sendSuccess(res, user, 'User updated')
     } catch (err) { next(err) }
@@ -270,27 +271,30 @@ export class AdminController {
       const { page, per_page } = parsePagination(req.query as Record<string, unknown>)
       const q      = req.query as Record<string, string | undefined>
       const status = q['status'] ?? 'pending'
-      const scope  = req.user!.categoryScope as '4x-trading' | 'digital-marketing' | undefined
+      const scope  = req.user!.categoryScope as string | undefined
+      const role   = req.user!.role
 
-      const filter: Record<string, unknown> = { role: 'student' }
+      const filter: Record<string, unknown> = {
+        role:             'student',
+        enrollmentStatus: { $exists: true },
+      }
 
-      // Scoped admins only see their category; full admins can optionally filter
-      if (scope) {
-        filter['category'] = scope
-      } else if (q['category']) {
-        filter['category'] = q['category']
-      } else {
-        // Show only students who went through the approval flow (have a category)
-        filter['category'] = { $in: ['4x-trading', 'digital-marketing'] }
+      // For approved tab: scoped admins only see students in their category
+      if (status === 'approved' && scope) {
+        filter['$or'] = [{ category: scope }, { categories: scope }]
+      } else if (status === 'approved' && q['category']) {
+        filter['$or'] = [{ category: q['category'] }, { categories: q['category'] }]
       }
 
       if (status === 'all') {
-        // include any enrollmentStatus (including undefined = very old users before feature)
+        // no enrollmentStatus filter — but still requires enrollmentStatus to exist (set above)
+      } else if (status === 'rejected') {
+        filter['enrollmentStatus'] = { $in: ['rejected', 'cancelled'] }
       } else {
         filter['enrollmentStatus'] = status
       }
 
-      const projection = 'id name email avatarUrl category enrollmentStatus enrollmentCancellationReason isActive createdAt'
+      const projection = 'id name email avatarUrl category categories enrollmentStatus enrollmentCancellationReason rejectionReason approvedBy approvedByEmail approvedByName approvedByRole approvedAt rejectedByEmail rejectedAt isActive createdAt'
 
       const [docs, totalCount] = await Promise.all([
         UserModel.find(filter).select(projection).sort({ createdAt: -1 })
@@ -298,7 +302,12 @@ export class AdminController {
         UserModel.countDocuments(filter),
       ])
 
-      const mapped = (docs as any[]).map(d => ({ ...d, id: d.id ?? String(d._id) }))
+      const mapped = (docs as any[]).map(d => ({
+        ...d,
+        id:         d.id ?? String(d._id),
+        categories: d.categories ?? (d.category ? [d.category] : []),
+        rejectionReason: d.rejectionReason ?? d.enrollmentCancellationReason,
+      }))
       sendSuccess(res, mapped, undefined, 200, buildPaginationMeta(totalCount, page, per_page))
     } catch (err) { next(err) }
   }
@@ -311,55 +320,177 @@ export class AdminController {
 
       const userId = String(req.params['userId'] ?? '')
       const scope  = req.user!.categoryScope as string | undefined
+      const admin  = req.user!
 
       if (!Types.ObjectId.isValid(userId)) {
         res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid user ID' } }); return
       }
 
-      const existing = await UserModel.findById(userId).select('category email name').lean()
-      if (!existing) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'User not found' } }); return }
-      if (scope && existing.category !== scope) {
-        res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You can only manage users in your category.' } }); return
+      // Categories to assign: scoped admin uses their scope; full admins use body
+      let assignCategories: string[] = (req.body as { categories?: string[] }).categories ?? []
+      if (scope) assignCategories = [scope]
+      if (!assignCategories.length) {
+        res.status(400).json({ success: false, error: { code: 'MISSING_CATEGORIES', message: 'Select at least one category to assign.' } }); return
       }
 
+      const existing = await UserModel.findById(userId).select('email name categories category').lean()
+      if (!existing) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'User not found' } }); return }
+
+      // Merge new categories with existing ones (avoid duplicates)
+      const existingCats: string[] = (existing.categories as string[] | undefined) ?? (existing.category ? [existing.category as string] : [])
+      const mergedCats  = [...new Set([...existingCats, ...assignCategories])]
+      const primaryCat  = mergedCats[0]
+
+      // Look up admin's full info for metadata
+      const adminUser = await UserModel.findById(admin.id).select('name email role').lean()
+
       await UserModel.findByIdAndUpdate(userId, {
-        $set:   { enrollmentStatus: 'approved' },
-        $unset: { enrollmentCancellationReason: '' },
+        $set:   {
+          enrollmentStatus: 'approved',
+          categories:       mergedCats,
+          category:         primaryCat,
+          approvedBy:       admin.id,
+          approvedByEmail:  adminUser?.email ?? '',
+          approvedByName:   adminUser?.name ?? '',
+          approvedByRole:   admin.role,
+          approvedAt:       new Date(),
+        },
+        $unset: { enrollmentCancellationReason: '', rejectionReason: '' },
       })
 
-      void sendEnrollmentApproved(existing.email, existing.name, existing.category ?? '').catch(() => {})
+      void sendEnrollmentApproved(existing.email, existing.name, mergedCats.join(', ')).catch(() => {})
 
-      sendSuccess(res, { id: userId, enrollmentStatus: 'approved' }, 'Enrollment approved')
+      sendSuccess(res, { id: userId, enrollmentStatus: 'approved', categories: mergedCats }, 'Enrollment approved')
     } catch (err) { next(err) }
   }
 
-  cancelEnrollment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  rejectEnrollment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { UserModel } = await import('@/models/schema.ts')
       const { Types }     = await import('mongoose')
       const { sendEnrollmentCancelled } = await import('@/services/email.service.ts')
 
       const userId = String(req.params['userId'] ?? '')
-      const scope  = req.user!.categoryScope as string | undefined
+      const admin  = req.user!
+      const role   = admin.role
       const { reason } = req.body as { reason: string }
 
       if (!Types.ObjectId.isValid(userId)) {
         res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid user ID' } }); return
       }
 
-      const existing = await UserModel.findById(userId).select('category email name').lean()
+      const existing = await UserModel.findById(userId).select('email name approvedBy').lean()
       if (!existing) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'User not found' } }); return }
-      if (scope && existing.category !== scope) {
-        res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You can only manage users in your category.' } }); return
+
+      // Category admins can only revoke if the student is in exactly one category — their own.
+      // Multi-category students are protected: the admin must first remove the other categories.
+      const isCategoryAdmin = role === '4x_admin' || role === 'digital_marketing_admin' || role === 'ai_admin'
+      if (isCategoryAdmin) {
+        const adminScope   = (admin as any).categoryScope as string | undefined
+        const studentCats: string[] = (existing as any).categories?.length
+          ? (existing as any).categories
+          : (existing as any).category ? [(existing as any).category] : []
+
+        if (studentCats.length !== 1 || studentCats[0] !== adminScope) {
+          const msg = studentCats.length > 1
+            ? 'This student is enrolled in multiple programs. Remove the other programs first before revoking.'
+            : `You can only revoke students in your own program (${adminScope}).`
+          res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: msg } }); return
+        }
       }
 
+      const adminUser = await UserModel.findById(admin.id).select('name email').lean()
+
       await UserModel.findByIdAndUpdate(userId, {
-        $set: { enrollmentStatus: 'cancelled', enrollmentCancellationReason: reason },
+        $set: {
+          enrollmentStatus:  'rejected',
+          rejectionReason:   reason,
+          rejectedBy:        admin.id,
+          rejectedByEmail:   adminUser?.email ?? '',
+          rejectedByName:    adminUser?.name ?? '',
+          rejectedAt:        new Date(),
+        },
+        $unset: { approvedBy: '', approvedByEmail: '', approvedByName: '', approvedByRole: '', approvedAt: '' },
       })
 
-      void sendEnrollmentCancelled(existing.email, existing.name, existing.category ?? '', reason).catch(() => {})
+      void sendEnrollmentCancelled(existing.email, existing.name, '', reason).catch(() => {})
 
-      sendSuccess(res, { id: userId, enrollmentStatus: 'cancelled' }, 'Enrollment cancelled')
+      sendSuccess(res, { id: userId, enrollmentStatus: 'rejected' }, 'Enrollment rejected')
+    } catch (err) { next(err) }
+  }
+
+  /* Keep for backward compat alias */
+  cancelEnrollment = this.rejectEnrollment
+
+  revokeToViewer = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { UserModel } = await import('@/models/schema.ts')
+      const { Types }     = await import('mongoose')
+
+      const userId = String(req.params['userId'] ?? '')
+      if (!Types.ObjectId.isValid(userId)) {
+        res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid user ID' } }); return
+      }
+
+      const existing = await UserModel.findById(userId).select('email name enrollmentStatus').lean()
+      if (!existing) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'User not found' } }); return }
+
+      await UserModel.findByIdAndUpdate(userId, {
+        $set:   { enrollmentStatus: 'pending' },
+        $unset: {
+          approvedBy: '', approvedByEmail: '', approvedByName: '', approvedByRole: '', approvedAt: '',
+          rejectedBy: '', rejectedByEmail: '', rejectedByName: '', rejectedAt: '', rejectionReason: '',
+        },
+      })
+
+      sendSuccess(res, { id: userId, enrollmentStatus: 'pending' }, 'Student reverted to viewer')
+    } catch (err) { next(err) }
+  }
+
+  removeEnrollmentCategory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { UserModel } = await import('@/models/schema.ts')
+      const { Types }     = await import('mongoose')
+
+      const userId       = String(req.params['userId'] ?? '')
+      const { category } = req.body as { category: string }
+      const admin        = req.user!
+      const adminScope   = (admin as any).categoryScope as string | undefined
+
+      if (!Types.ObjectId.isValid(userId)) {
+        res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid user ID' } }); return
+      }
+
+      // Category-scoped admins can only remove students from their own program
+      if (adminScope && category !== adminScope) {
+        res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: `You can only remove students from your own program (${adminScope}).` } }); return
+      }
+
+      const existing = await UserModel.findById(userId).select('email name categories category').lean()
+      if (!existing) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'User not found' } }); return }
+
+      const existingCats: string[] = (existing.categories as string[] | undefined) ?? (existing.category ? [existing.category as string] : [])
+      const updatedCats = existingCats.filter(c => c !== category)
+      const primaryCat  = updatedCats[0] ?? null
+      const newStatus   = updatedCats.length === 0 ? 'rejected' : 'approved'
+
+      const adminUser = await UserModel.findById(admin.id).select('name email').lean()
+
+      const updateDoc: Record<string, any> = {
+        $set: { categories: updatedCats, category: primaryCat, enrollmentStatus: newStatus },
+      }
+      if (newStatus === 'rejected') {
+        updateDoc.$set.rejectionReason  = `Access to the ${category} program was removed by an admin.`
+        updateDoc.$set.rejectedBy       = admin.id
+        updateDoc.$set.rejectedByEmail  = (adminUser as any)?.email ?? ''
+        updateDoc.$set.rejectedByName   = (adminUser as any)?.name ?? ''
+        updateDoc.$set.rejectedAt       = new Date()
+        updateDoc.$unset = { approvedBy: '', approvedByEmail: '', approvedByName: '', approvedByRole: '', approvedAt: '' }
+      }
+
+      await UserModel.findByIdAndUpdate(userId, updateDoc)
+
+      sendSuccess(res, { id: userId, enrollmentStatus: newStatus, categories: updatedCats }, 'Category removed')
     } catch (err) { next(err) }
   }
 

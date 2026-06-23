@@ -16,6 +16,7 @@ import '@vidstack/react/player/styles/default/theme.css'
 import '@vidstack/react/player/styles/default/layouts/video.css'
 import { useCourse, type LessonOutline } from '@/lib/api/courses'
 import { useCourseProgress } from '@/lib/api/enrollments'
+import { useCurrentUser } from '@/lib/api/user'
 import { useMarkLessonComplete, recordWatchTime, useMyLessonProgress } from '@/lib/api/progress'
 import { useCreateBookmark } from '@/lib/api/bookmarks'
 import { useTranscript } from '@/lib/api/transcript'
@@ -38,6 +39,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<SidebarTab>('curriculum')
 
+  const { data: user } = useCurrentUser()
   const { data, isLoading, isError } = useCourse(slug)
   const { data: progress } = useCourseProgress(slug)
   const markComplete = useMarkLessonComplete(slug)
@@ -72,6 +74,27 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
         </div>
         <p className="text-base font-semibold" style={{ color: '#0D0F1A' }}>Course not found</p>
         <Link href="/courses" className="text-sm font-semibold" style={{ color: '#FF6B1A' }}>← Back to courses</Link>
+      </div>
+    )
+  }
+
+  /* ── Viewer gate — pending students cannot access lesson content ── */
+  if (user && user.role === 'student' && user.enrollmentStatus === 'pending') {
+    return (
+      <div className="flex h-[70vh] flex-col items-center justify-center gap-4">
+        <div className="flex h-14 w-14 items-center justify-center rounded-3xl"
+          style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.25)' }}>
+          <Lock size={22} style={{ color: '#F59E0B' }} />
+        </div>
+        <p className="text-base font-semibold" style={{ color: '#0D0F1A' }}>Lesson locked — viewer mode</p>
+        <p className="max-w-xs text-center text-sm" style={{ color: '#9CA3AF' }}>
+          Your account is pending admin approval. Course content will be unlocked once you're approved.
+        </p>
+        <Link href={`/courses/${slug}`}
+          className="rounded-xl px-5 py-2.5 text-sm font-bold text-white"
+          style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+          Back to course
+        </Link>
       </div>
     )
   }

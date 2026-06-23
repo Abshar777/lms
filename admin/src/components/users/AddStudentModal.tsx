@@ -76,6 +76,7 @@ function DarkSelect({ value, onChange, options, placeholder }: {
 const CATEGORY_OPTIONS = [
   { value: '4x-trading',        label: 'FOREX Trading' },
   { value: 'digital-marketing', label: 'Digital Marketing' },
+  { value: 'ai',                label: 'AI' },
 ]
 
 /* ── Zod schema for step 1 ─────────────────────────── */
@@ -218,7 +219,7 @@ export function AddStudentModal({ open, onClose }: Props) {
   const [success, setSuccess] = useState(false)
   const [blockState, setBlockState] = useState<BlockState>({})
   const [accountValues, setAccountValues] = useState<AccountValues | null>(null)
-  const [category, setCategory] = useState<'4x-trading' | 'digital-marketing' | ''>('')
+  const [category, setCategory] = useState<'4x-trading' | 'digital-marketing' | 'ai' | ''>('')
 
   const { mutateAsync, isPending, error: apiError } = useCreateInstructor()
   const { data: coursesData, isLoading: coursesLoading } = useCourses({ per_page: 50, status: 'published' })
@@ -307,7 +308,7 @@ export function AddStudentModal({ open, onClose }: Props) {
       email:    accountValues.email,
       password: accountValues.password,
       role:     'student',
-      category: (category || undefined) as '4x-trading' | 'digital-marketing' | undefined,
+      category: (category || undefined) as '4x-trading' | 'digital-marketing' | 'ai' | undefined,
       courses,
     })
     setSuccess(true)
@@ -428,7 +429,7 @@ export function AddStudentModal({ open, onClose }: Props) {
                       <Field label="Program Category">
                         <DarkSelect
                           value={category}
-                          onChange={v => setCategory(v as '4x-trading' | 'digital-marketing' | '')}
+                          onChange={v => setCategory(v as '4x-trading' | 'digital-marketing' | 'ai' | '')}
                           options={CATEGORY_OPTIONS}
                           placeholder="Select category…"
                         />

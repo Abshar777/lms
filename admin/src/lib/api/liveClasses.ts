@@ -39,6 +39,12 @@ export interface LiveClass {
 
   language:       string
 
+  /* Offline support */
+  isOnline?:          boolean
+  location?:          string
+  room?:              string
+  rescheduledReason?: string
+
   createdAt:      string
   updatedAt:      string
 }
@@ -102,28 +108,35 @@ export interface CreateLiveClassInput {
   scheduledStart:   string       // ISO
   durationMins:     number
   type:             LiveClassType
-  meetingUrl?:      string       // required when type=external
+  meetingUrl?:      string       // required when type=external and isOnline=true
   sectionId?:       string       // optional course module/section link
   instructorId?:    string       // optional override; defaults to current user
-  sessionCapacity?: number       // max bookings; defaults to 1000 (unlimited)
+  sessionCapacity?: number       // max bookings
   language?:        string
+  isOnline?:        boolean      // false = offline physical session
+  location?:        string       // venue address (offline only)
+  room?:            string       // classroom number (offline only)
 }
 
 export interface UpdateLiveClassInput {
-  courseId?:        string
-  sectionId?:       string
-  title?:           string
-  description?:     string
-  scheduledStart?:  string
-  durationMins?:    number
-  type?:            LiveClassType
-  meetingUrl?:      string
-  recordingUrl?:    string
-  sessionCapacity?: number
-  status?:          LiveClassStatus
-  mentorNotes?:     string
-  instructorId?:    string
-  language?:        string
+  courseId?:         string
+  sectionId?:        string
+  title?:            string
+  description?:      string
+  scheduledStart?:   string
+  durationMins?:     number
+  type?:             LiveClassType
+  meetingUrl?:       string
+  recordingUrl?:     string
+  sessionCapacity?:  number
+  status?:           LiveClassStatus
+  mentorNotes?:      string
+  instructorId?:     string
+  language?:         string
+  isOnline?:         boolean
+  location?:         string
+  room?:             string
+  rescheduleReason?: string
 }
 
 /* ── Availability types ─────────────────────── */
@@ -150,6 +163,9 @@ export interface ClassBooking {
     scheduledStart: string
     durationMins:   number
     language?:      string
+    isOnline?:      boolean
+    location?:      string
+    room?:          string
     courseId?:      { id: string; title: string }
     sectionId?:     { id: string; title: string }
     instructorId?:  { id: string; name: string; avatarUrl?: string }

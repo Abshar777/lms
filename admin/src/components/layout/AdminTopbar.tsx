@@ -95,14 +95,16 @@ export function AdminTopbar() {
       </div>
 
       {/* ── Category scope badge ───────────────────── */}
-      {user && (user.role === '4x_admin' || user.role === 'digital_marketing_admin') && (
+      {user && (user.role === '4x_admin' || user.role === 'digital_marketing_admin' || user.role === 'ai_admin') && (
         <div className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold flex-shrink-0"
           style={user.role === '4x_admin'
             ? { background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.3)', color: '#60A5FA' }
+            : user.role === 'ai_admin'
+            ? { background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.3)', color: '#8B5CF6' }
             : { background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.3)', color: '#34D399' }}>
           <span className="h-1.5 w-1.5 rounded-full flex-shrink-0"
-            style={{ background: user.role === '4x_admin' ? '#60A5FA' : '#34D399' }} />
-          {user.role === '4x_admin' ? 'FOREX Trading' : 'Digital Marketing'} scope
+            style={{ background: user.role === '4x_admin' ? '#60A5FA' : user.role === 'ai_admin' ? '#8B5CF6' : '#34D399' }} />
+          {user.role === '4x_admin' ? 'FOREX Trading' : user.role === 'ai_admin' ? 'AI' : 'Digital Marketing'} scope
         </div>
       )}
 

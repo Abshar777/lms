@@ -8,11 +8,11 @@ import {
   Search, BookOpen, Star, Users, Clock, X,
   ChevronDown, SlidersHorizontal, Sparkles,
   Play, ShoppingCart, Check, Loader2,
+  LayoutGrid, TrendingUp, Megaphone, Cpu,
 } from 'lucide-react'
 import { useCourses } from '@/lib/api/courses'
 import { useCategories } from '@/lib/api/categories'
 import { useMyEnrollments, useEnroll } from '@/lib/api/enrollments'
-import { useCurrentUser } from '@/lib/api/user'
 import { useUIStore } from '@/store/ui.store'
 import { FavoriteButton } from '@/components/courses/FavoriteButton'
 import { useCartStore } from '@/store/cart.store'
@@ -55,6 +55,37 @@ const CONTENT_TYPES = [
   { value: 'page',   label: 'Page',          color: '#7C3AED', bg: '#F5F3FF' },
 ]
 
+const PROGRAM_FILTERS = [
+  {
+    id: 'all', label: 'All', icon: LayoutGrid,
+    color: '#374151',
+    activeGrad: 'linear-gradient(135deg,#374151,#111827)',
+    shadow: 'rgba(17,24,39,0.25)',
+    ring: 'rgba(55,65,81,0.15)',
+  },
+  {
+    id: '4x-trading', label: 'Forex', icon: TrendingUp,
+    color: '#10B981',
+    activeGrad: 'linear-gradient(135deg,#10B981,#059669)',
+    shadow: 'rgba(16,185,129,0.35)',
+    ring: 'rgba(16,185,129,0.15)',
+  },
+  {
+    id: 'digital-marketing', label: 'Digital Marketing', icon: Megaphone,
+    color: '#FF6B1A',
+    activeGrad: 'linear-gradient(135deg,#FF6B1A,#FF8C42)',
+    shadow: 'rgba(255,107,26,0.35)',
+    ring: 'rgba(255,107,26,0.15)',
+  },
+  {
+    id: 'ai', label: 'AI', icon: Cpu,
+    color: '#8B5CF6',
+    activeGrad: 'linear-gradient(135deg,#8B5CF6,#6D28D9)',
+    shadow: 'rgba(139,92,246,0.35)',
+    ring: 'rgba(139,92,246,0.15)',
+  },
+]
+
 function fmt(mins: number) {
   const h = Math.floor(mins / 60); const m = mins % 60
   return h > 0 ? `${h}h ${m > 0 ? m + 'm' : ''}`.trim() : `${m}m`
@@ -82,7 +113,6 @@ function TypeBadge({ type }: { type: string }) {
 
 export default function CoursesPage() {
   const { rightPanelOpen } = useUIStore()
-  const { data: currentUser } = useCurrentUser()
   const [search,      setSearch]      = useState('')
   const [activeTab,   setActiveTab]   = useState('All Status')
   const [level,       setLevel]       = useState('all')
@@ -95,6 +125,7 @@ export default function CoursesPage() {
   const [contentType, setContentType] = useState('all')
   const [duration,    setDuration]    = useState<DurationKey>('any')
   const [priceRange,  setPriceRange]  = useState<PriceKey>('any')
+  const [program,     setProgram]     = useState('all')
 
   const lvl = level === 'all' ? '' : level
   const cat = category === 'all' ? '' : category
@@ -109,7 +140,7 @@ export default function CoursesPage() {
     duration_max: dur?.max,
     price_min:    pr?.min,
     price_max:    pr?.max,
-    program:      currentUser?.category ?? undefined,
+    program:      program === 'all' ? undefined : program,
   })
   const { data: categoriesData } = useCategories()
   const categories: string[] = ['all', ...(categoriesData?.map(c => c.slug) ?? [])]
@@ -145,6 +176,42 @@ export default function CoursesPage() {
             style={{ background: '#F3F4F6', color: '#374151' }}>
             {total}
           </span>
+        </div>
+      </motion.div>
+
+      {/* ── Program switch filters ───────────────── */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.04, type: 'spring', stiffness: 280, damping: 26 }}
+        className="mb-4">
+        <div className="flex items-center gap-2.5 overflow-x-auto scrollbar-none pb-0.5">
+          {PROGRAM_FILTERS.map(p => {
+            const Icon     = p.icon
+            const isActive = program === p.id
+            return (
+              <MotionButton
+                key={p.id}
+                onClick={() => { setProgram(p.id); setPage(1) }}
+                whileHover={{ y: -2, scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                variant="ghost"
+                className="flex shrink-0 items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold h-auto transition-all"
+                style={isActive ? {
+                  background: p.activeGrad,
+                  color: 'white',
+                  boxShadow: `0 6px 20px ${p.shadow}`,
+                  border: '1.5px solid transparent',
+                } : {
+                  background: 'white',
+                  color: '#6B7280',
+                  border: '1.5px solid #E5E7EB',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                }}
+              >
+                <Icon size={15} style={{ color: isActive ? 'white' : p.color }} />
+                {p.label}
+              </MotionButton>
+            )
+          })}
         </div>
       </motion.div>
 

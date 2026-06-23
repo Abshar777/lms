@@ -311,18 +311,14 @@ export async function sendBookingConfirmation(
         <strong>Date &amp; Time:</strong> ${escapeHtml(date)}
       </td></tr>
     </table>
-    <p style="font-size:14px;color:#374151;margin:16px 0">
-      🔗 Your <strong>join link</strong> will be sent to this email address <strong>5 minutes before the class starts</strong>.
-    </p>
     <p style="margin:24px 0">
-      <a href="${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/class-bookings"
-        style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
-        View my schedule →
+      <a href="${joinUrl}" style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
+        Join session →
       </a>
     </p>
-    <p style="font-size:12px;color:#9CA3AF">You'll receive a reminder email the day before and on the day of your session.</p>
+    <p style="font-size:12px;color:#9CA3AF">You'll receive reminder emails before the session starts.</p>
   `)
-  await sender.send({ to, subject, html, text: `Your seat is confirmed for ${sessionTitle} on ${date}. Your join link will be sent 5 minutes before the class starts.` })
+  await sender.send({ to, subject, html, text: `Your seat is confirmed for ${sessionTitle} on ${date}. Join: ${joinUrl}` })
 }
 
 export async function sendSessionLinkReminder(
@@ -341,17 +337,13 @@ export async function sendSessionLinkReminder(
         <strong>Date &amp; Time:</strong> ${escapeHtml(date)}
       </td></tr>
     </table>
-    <p style="font-size:14px;color:#374151;margin:16px 0">
-      🔗 Your <strong>join link</strong> will be sent to this email 5 minutes before the session starts.
-    </p>
     <p style="margin:24px 0">
-      <a href="${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/class-bookings"
-        style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
-        View my schedule →
+      <a href="${joinUrl}" style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
+        Join session →
       </a>
     </p>
   `)
-  await sender.send({ to, subject, html, text: `${sessionTitle} is tomorrow at ${date}. Your join link will be sent 5 minutes before the session.` })
+  await sender.send({ to, subject, html, text: `${sessionTitle} is tomorrow at ${date}. Join: ${joinUrl}` })
 }
 
 export async function sendDayOfReminder(
@@ -365,18 +357,14 @@ export async function sendDayOfReminder(
   const html = wrap(subject, `
     <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">Session today! ⏰</h2>
     <p>Hi ${escapeHtml(name)}, <strong>${escapeHtml(sessionTitle)}</strong> is happening today at <strong>${escapeHtml(time)}</strong>.</p>
-    <p>Get ready and make sure your device and connection are stable.</p>
-    <p style="font-size:14px;color:#374151;margin:16px 0">
-      🔗 Your <strong>join link</strong> will be sent to this email 5 minutes before the session starts.
-    </p>
+    <p>Get ready and make sure your connection is stable.</p>
     <p style="margin:24px 0">
-      <a href="${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/class-bookings"
-        style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
-        View my schedule →
+      <a href="${joinUrl}" style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
+        Join session →
       </a>
     </p>
   `)
-  await sender.send({ to, subject, html, text: `${sessionTitle} is today at ${time}. Your join link will be sent 5 minutes before the session.` })
+  await sender.send({ to, subject, html, text: `${sessionTitle} is today at ${time}. Join: ${joinUrl}` })
 }
 
 /**
@@ -425,26 +413,25 @@ export async function sendFiveMinReminder(
   await sender.send({ to, subject, html, text: `${sessionTitle} starts in 5 minutes. Join: ${joinUrl}` })
 }
 
-/** At-time reminder — informational only; join link was already sent at the 5-min mark */
+/** At-time reminder — WITH join link, sent when class has just started */
 export async function sendClassStartingReminder(
   to: string,
   name: string,
   sessionTitle: string,
   joinUrl: string,
 ): Promise<void> {
-  const subject = `${sessionTitle} is starting now`
+  const subject = `Class is starting now: ${sessionTitle}`
   const html = wrap(subject, `
     <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">Your class is live! 🎯</h2>
     <p>Hi ${escapeHtml(name)}, <strong>${escapeHtml(sessionTitle)}</strong> has just started.</p>
-    <p>Check the join link that was sent to you 5 minutes ago and join now.</p>
+    <p>Don't miss it — join immediately using the button below.</p>
     <p style="margin:24px 0">
-      <a href="${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/class-bookings"
-        style="display:inline-block;background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff;font-weight:700;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:15px">
-        View my schedule →
+      <a href="${joinUrl}" style="display:inline-block;background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff;font-weight:700;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:15px">
+        Join class now →
       </a>
     </p>
   `)
-  await sender.send({ to, subject, html, text: `${sessionTitle} is starting now. Check your earlier email for the join link.` })
+  await sender.send({ to, subject, html, text: `${sessionTitle} is starting now. Join: ${joinUrl}` })
 }
 
 export async function sendRescheduledNotification(
@@ -469,6 +456,125 @@ export async function sendRescheduledNotification(
     <p>Your booking is automatically updated. We'll send you reminders for the new time.</p>
   `)
   await sender.send({ to, subject, html, text: `${sessionTitle} has been rescheduled from ${oldDate} to ${newDate}.` })
+}
+
+/* ── Reschedule email sequence (3 emails sent at different times) ── */
+
+interface RescheduledArgs {
+  to:      string
+  name:    string
+  title:   string
+  oldDate: string
+  newDate: string
+  reason:  string
+}
+
+export async function sendRescheduledEmail1(args: RescheduledArgs): Promise<void> {
+  const { to, name, title, oldDate, newDate, reason } = args
+  const subject = `Important: ${title} has been rescheduled`
+  const html = wrap(subject, `
+    <h2 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#0D0F1A">Session rescheduled</h2>
+    <p style="margin:0 0 20px;font-size:13px;color:#6B7280">Schedule change notification — please read carefully.</p>
+    <p>Hi ${escapeHtml(name)},</p>
+    <p>We sincerely apologize for the inconvenience. <strong>${escapeHtml(title)}</strong> has been rescheduled to a new date and time. Please review the updated details below.</p>
+    <table cellpadding="0" cellspacing="0" style="margin:20px 0;background:#F4F5F8;border-radius:12px;padding:0;width:100%;border-collapse:separate;overflow:hidden">
+      <tr style="background:#EFF0F4">
+        <td style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#6B7280;padding:10px 16px">Previous time</td>
+        <td style="font-size:14px;color:#9CA3AF;padding:10px 16px;text-align:right;text-decoration:line-through">${escapeHtml(oldDate)}</td>
+      </tr>
+      <tr>
+        <td style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#6B7280;padding:10px 16px;border-top:1px solid #E5E7EB">New time</td>
+        <td style="font-size:15px;font-weight:700;color:#059669;padding:10px 16px;border-top:1px solid #E5E7EB;text-align:right">${escapeHtml(newDate)}</td>
+      </tr>
+      <tr style="background:#EFF0F4">
+        <td colspan="2" style="font-size:13px;color:#374151;padding:12px 16px;border-top:1px solid #E5E7EB">
+          <strong>Reason for change:</strong><br>
+          <span style="color:#4B5563;margin-top:4px;display:block">${escapeHtml(reason)}</span>
+        </td>
+      </tr>
+    </table>
+    <p>Your booking has been <strong>automatically updated</strong> to the new time. No action is required — your seat is still reserved.</p>
+    <p>We will send you a reminder before the rescheduled session. We apologize once again for any disruption and truly appreciate your understanding.</p>
+    <div style="margin:20px 0;background:#FEF9C3;border:1px solid #FDE047;border-radius:10px;padding:14px 16px">
+      <p style="margin:0;font-size:13px;color:#854D0E">
+        🔗 <strong>Your join link</strong> will be sent to you <strong>5 minutes before</strong> the class begins — keep an eye on your inbox!
+      </p>
+    </div>
+    <p style="margin:24px 0">
+      <a href="${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/class-bookings"
+        style="display:inline-block;background:linear-gradient(135deg,#6366F1,#818CF8);color:#fff;font-weight:700;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:15px">
+        View my updated schedule →
+      </a>
+    </p>
+    <p style="font-size:12px;color:#9CA3AF">If you have any questions or concerns, please reach out to the admin team. We are happy to assist.</p>
+  `)
+  await sender.send({ to, subject, html, text: `${title} has been rescheduled from ${oldDate} to ${newDate}. Reason: ${reason}` })
+}
+
+export async function sendRescheduledEmail2(args: RescheduledArgs): Promise<void> {
+  const { to, name, title, newDate, reason } = args
+  const subject = `Following up: Updated schedule for "${title}"`
+  const html = wrap(subject, `
+    <h2 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#0D0F1A">A quick follow-up on your class</h2>
+    <p>Hi ${escapeHtml(name)},</p>
+    <p>We wanted to follow up to ensure you received our earlier notification about the schedule change for <strong>${escapeHtml(title)}</strong>.</p>
+    <table cellpadding="0" cellspacing="0" style="margin:20px 0;background:rgba(99,102,241,0.06);border-left:3px solid #6366F1;border-radius:0 12px 12px 0;padding:18px 20px;width:100%">
+      <tr><td style="font-size:15px;font-weight:700;color:#1F2937;padding:0 0 8px">
+        📅 ${escapeHtml(newDate)}
+      </td></tr>
+      <tr><td style="font-size:13px;color:#6B7280">
+        <strong style="color:#374151">Why we changed it:</strong> ${escapeHtml(reason)}
+      </td></tr>
+    </table>
+    <p>We understand that schedule changes can be inconvenient, and we truly appreciate your patience. Rest assured that the team is fully committed to delivering the best possible learning experience for you at this new time.</p>
+    <p><strong>You don't need to do anything</strong> — your seat is confirmed and your booking has already been updated automatically.</p>
+    <p style="margin:24px 0">
+      <a href="${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/class-bookings"
+        style="display:inline-block;background:linear-gradient(135deg,#6366F1,#818CF8);color:#fff;font-weight:700;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:15px">
+        Check my bookings →
+      </a>
+    </p>
+    <div style="margin:20px 0;background:#FEF9C3;border:1px solid #FDE047;border-radius:10px;padding:14px 16px">
+      <p style="margin:0;font-size:13px;color:#854D0E">
+        🔗 <strong>Your join link</strong> will be delivered to your inbox <strong>5 minutes before</strong> the session starts.
+      </p>
+    </div>
+    <p>We look forward to seeing you at the new time. Thank you for your continued trust and understanding.</p>
+  `)
+  await sender.send({ to, subject, html, text: `Reminder: ${title} has been rescheduled. New time: ${newDate}. Reason: ${reason}.` })
+}
+
+export async function sendRescheduledEmail3(args: RescheduledArgs): Promise<void> {
+  const { to, name, title, newDate, reason } = args
+  const subject = `Reminder: Your rescheduled class — ${title}`
+  const html = wrap(subject, `
+    <h2 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#0D0F1A">Your class is coming up 📚</h2>
+    <p>Hi ${escapeHtml(name)},</p>
+    <p>This is a friendly reminder that your rescheduled session of <strong>${escapeHtml(title)}</strong> is approaching. We want to make sure you are fully prepared and ready for a great learning experience.</p>
+    <table cellpadding="0" cellspacing="0" style="margin:20px 0;background:linear-gradient(135deg,rgba(5,150,105,0.08),rgba(16,185,129,0.06));border:1px solid rgba(5,150,105,0.2);border-radius:12px;padding:18px;width:100%">
+      <tr><td style="font-size:16px;font-weight:700;color:#059669;padding:0 0 6px">
+        📅 ${escapeHtml(newDate)}
+      </td></tr>
+      <tr><td style="font-size:12px;color:#6B7280">
+        This is the rescheduled time for your class. Original change reason: <em>${escapeHtml(reason)}</em>
+      </td></tr>
+    </table>
+    <p>To make the most of this session, we recommend reviewing any notes or materials from previous classes beforehand. The instructor will be fully prepared to deliver an outstanding lesson.</p>
+    <div style="margin:20px 0;background:#FEF9C3;border:1px solid #FDE047;border-radius:10px;padding:14px 16px">
+      <p style="margin:0;font-size:13px;color:#854D0E">
+        🔗 <strong>Your join link</strong> will arrive in your inbox <strong>5 minutes before</strong> the class begins — no action needed now.
+      </p>
+    </div>
+    <p>We would like to once again express our sincerest apologies for the rescheduling and thank you for your patience and flexibility. Your commitment to learning is truly appreciated.</p>
+    <p style="margin:24px 0">
+      <a href="${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/class-bookings"
+        style="display:inline-block;background:linear-gradient(135deg,#059669,#10B981);color:#fff;font-weight:700;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:15px">
+        View session details →
+      </a>
+    </p>
+    <p style="font-size:12px;color:#9CA3AF">We look forward to seeing you in class. See you soon! 🎓</p>
+  `)
+  await sender.send({ to, subject, html, text: `Reminder: ${title} is scheduled for ${newDate}. We look forward to seeing you in class!` })
 }
 
 export async function sendCancelledNotification(
@@ -516,11 +622,10 @@ export async function sendBookingCancelledByStudent(
   await sender.send({ to, subject, html, text: `Your booking for ${sessionTitle} on ${date} has been cancelled. Book again: ${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/class-bookings` })
 }
 
-/* ─── Enrollment approval emails ────────────────── */
-
 const CATEGORY_LABEL: Record<string, string> = {
   '4x-trading':        '4x Trading',
   'digital-marketing': 'Digital Marketing',
+  'ai':                'AI',
 }
 
 export async function sendEnrollmentApproved(

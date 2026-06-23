@@ -1,21 +1,22 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Clock, XCircle, ChevronRight } from 'lucide-react'
+import { Clock, XCircle, ChevronRight, Eye } from 'lucide-react'
 import { useCurrentUser } from '@/lib/api/user'
 
 const CATEGORY_LABEL: Record<string, string> = {
   '4x-trading':        'FOREX Trading',
   'digital-marketing': 'Digital Marketing',
+  'ai':                'AI',
 }
 
 export function EnrollmentStatusBanner() {
   const { data: user } = useCurrentUser()
 
-  if (!user || user.role !== 'student' || !user.category) return null
+  if (!user || user.role !== 'student') return null
   if (user.enrollmentStatus === 'approved' || !user.enrollmentStatus) return null
 
-  const prog = CATEGORY_LABEL[user.category] ?? user.category
+  const prog = user.category ? (CATEGORY_LABEL[user.category] ?? user.category) : null
 
   if (user.enrollmentStatus === 'pending') {
     return (
@@ -29,14 +30,17 @@ export function EnrollmentStatusBanner() {
       >
         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl"
           style={{ background: 'rgba(251,191,36,0.14)' }}>
-          <Clock size={14} style={{ color: '#F59E0B' }} />
+          <Eye size={14} style={{ color: '#F59E0B' }} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold" style={{ color: '#0D0F1A' }}>
-            Your {prog} access is pending approval
+          <p className="text-sm font-semibold" style={{ color: '#92400E' }}>
+            You're browsing in viewer mode
           </p>
-          <p className="mt-0.5 text-xs" style={{ color: '#6B7280' }}>
-            An admin is reviewing your request. You can browse courses in the meantime, but live session access will be unlocked once approved.
+          <p className="mt-0.5 text-xs" style={{ color: '#78350F' }}>
+            {prog
+              ? `Your ${prog} access is pending admin approval. `
+              : 'Your account is pending admin approval. '}
+            You can browse freely, but course content and live class booking are locked until approved.
           </p>
         </div>
         <ChevronRight size={14} className="mt-0.5 flex-shrink-0" style={{ color: '#D1D5DB' }} />
@@ -44,7 +48,8 @@ export function EnrollmentStatusBanner() {
     )
   }
 
-  if (user.enrollmentStatus === 'cancelled') {
+  if (user.enrollmentStatus === 'cancelled' || (user.enrollmentStatus as string) === 'rejected') {
+    const reason = user.enrollmentCancellationReason ?? (user as any).rejectionReason
     return (
       <motion.div
         initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
@@ -60,22 +65,22 @@ export function EnrollmentStatusBanner() {
             <XCircle size={14} style={{ color: '#EF4444' }} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold" style={{ color: '#0D0F1A' }}>
-              Your {prog} access request was not approved
+            <p className="text-sm font-semibold" style={{ color: '#991B1B' }}>
+              {prog ? `Your ${prog} access request was not approved` : 'Your access request was not approved'}
             </p>
-            <p className="mt-0.5 text-xs" style={{ color: '#6B7280' }}>
-              You can still browse course content, but live session access is restricted.
+            <p className="mt-0.5 text-xs" style={{ color: '#7F1D1D' }}>
+              You can browse course listings, but content access and bookings are restricted.
             </p>
           </div>
         </div>
-        {user.enrollmentCancellationReason && (
+        {reason && (
           <div className="mt-3 rounded-xl px-3 py-2.5"
             style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.12)' }}>
             <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: '#EF4444' }}>
               Reason from admin
             </p>
             <p className="mt-1 text-xs" style={{ color: '#374151' }}>
-              {user.enrollmentCancellationReason}
+              {reason}
             </p>
           </div>
         )}

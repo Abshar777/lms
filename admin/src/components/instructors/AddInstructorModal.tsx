@@ -19,7 +19,7 @@ const schema = z.object({
   headline: z.string().max(255).optional(),
   bio:      z.string().max(2000).optional(),
   role:     z.enum(['instructor', 'admin']).default('instructor'),
-  category: z.enum(['4x-trading', 'digital-marketing', '']).optional(),
+  category: z.enum(['4x-trading', 'digital-marketing', 'ai', '']).optional(),
 })
 type Values = z.infer<typeof schema>
 
@@ -81,7 +81,7 @@ export function AddInstructorModal({ open, onClose }: AddInstructorModalProps) {
       role:     values.role,
       headline: values.headline || undefined,
       bio:      values.bio      || undefined,
-      category: (values.category || undefined) as '4x-trading' | 'digital-marketing' | undefined,
+      category: (values.category || undefined) as '4x-trading' | 'digital-marketing' | 'ai' | undefined,
     })
     setSuccess(true)
     setTimeout(() => {
@@ -199,6 +199,7 @@ export function AddInstructorModal({ open, onClose }: AddInstructorModalProps) {
                     <option value="">Select category…</option>
                     <option value="4x-trading">FOREX Trading</option>
                     <option value="digital-marketing">Digital Marketing</option>
+                    <option value="ai">AI</option>
                   </select>
                 </Field>
 

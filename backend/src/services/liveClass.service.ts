@@ -114,6 +114,9 @@ export class LiveClassService {
     sectionId?:      string
     sessionCapacity?: number
     language?:       string
+    isOnline?:       boolean
+    location?:       string
+    room?:           string
   }): Promise<ILiveClass> {
     if (!Types.ObjectId.isValid(input.courseId)) {
       throw new LiveClassError('INVALID_COURSE_ID', 'Invalid course id', 400)
@@ -121,8 +124,8 @@ export class LiveClassService {
     const course = await this.courseRepo.findById(input.courseId)
     if (!course) throw new LiveClassError('COURSE_NOT_FOUND', 'Course not found', 404)
 
-    /* Validate meetingUrl is provided for external type */
-    if (input.type === 'external') {
+    /* Validate meetingUrl is provided for online external sessions */
+    if (input.type === 'external' && input.isOnline !== false) {
       if (!input.meetingUrl?.trim()) {
         throw new LiveClassError('MEETING_URL_REQUIRED', 'meetingUrl is required for external live classes', 400)
       }
@@ -130,8 +133,8 @@ export class LiveClassService {
 
     let muxData: { streamId: string; streamKey: string; playbackId: string } | null = null
 
-    /* Create Mux stream for internal type */
-    if (input.type === 'internal') {
+    /* Create Mux stream for online internal sessions */
+    if (input.type === 'internal' && input.isOnline !== false) {
       if (!env.MUX_TOKEN_ID || !env.MUX_TOKEN_SECRET) {
         throw new LiveClassError(
           'MUX_NOT_CONFIGURED',
@@ -154,14 +157,17 @@ export class LiveClassService {
       sessionCapacity: input.sessionCapacity ?? 30,
       bookedCount:     0,
       language:        input.language ?? 'English',
+      isOnline:        input.isOnline ?? true,
     }
+    if (input.location) (doc as any).location = input.location.trim()
+    if (input.room)     (doc as any).room     = input.room.trim()
 
     if (input.sectionId && Types.ObjectId.isValid(input.sectionId)) {
       doc.sectionId = new Types.ObjectId(input.sectionId)
     }
 
-    if (input.type === 'external') {
-      doc.meetingUrl = input.meetingUrl!.trim()
+    if (input.type === 'external' && input.meetingUrl) {
+      doc.meetingUrl = input.meetingUrl.trim()
       if (input.googleMeetCode) doc.googleMeetCode = input.googleMeetCode
     }
 
@@ -452,19 +458,23 @@ export class LiveClassService {
 
   /* ── Update ──────────────────────────────────────── */
   async update(id: string, input: Partial<{
-    title:           string
-    description:     string
-    scheduledStart:  Date
-    durationMins:    number
-    meetingUrl:      string
-    recordingUrl:    string
-    status:          'scheduled' | 'live' | 'ended' | 'cancelled'
-    sessionCapacity: number
-    mentorNotes:     string
-    instructorId:    string
-    courseId:        string
-    sectionId:       string
-    language:        string
+    title:             string
+    description:       string
+    scheduledStart:    Date
+    durationMins:      number
+    meetingUrl:        string
+    recordingUrl:      string
+    status:            'scheduled' | 'live' | 'ended' | 'cancelled'
+    sessionCapacity:   number
+    mentorNotes:       string
+    instructorId:      string
+    courseId:          string
+    sectionId:         string
+    language:          string
+    isOnline:          boolean
+    location:          string
+    room:              string
+    rescheduledReason: string
   }>): Promise<ILiveClass> {
     if (!Types.ObjectId.isValid(id)) {
       throw new LiveClassError('INVALID_ID', 'Invalid id', 400)

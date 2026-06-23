@@ -23,23 +23,26 @@ export type AdminUserRole =
   | 'admin'
   | '4x_admin'
   | 'digital_marketing_admin'
+  | 'ai_admin'
   | 'super_admin'
 
 export interface AdminUser {
-  id:            string
-  name:          string
-  email:         string
-  avatarUrl?:    string
-  role:          AdminUserRole
-  isVerified:    boolean
-  isActive:      boolean
-  headline?:     string
-  bio?:          string
-  category?:     '4x-trading' | 'digital-marketing'
-  lastLoginAt?:  string
-  createdAt:     string
-  updatedAt:     string
-  customRoleId?: string | { id: string; name: string }
+  id:               string
+  name:             string
+  email:            string
+  avatarUrl?:       string
+  role:             AdminUserRole
+  isVerified:       boolean
+  isActive:         boolean
+  headline?:        string
+  bio?:             string
+  category?:        '4x-trading' | 'digital-marketing' | 'ai'
+  categories?:      ('4x-trading' | 'digital-marketing' | 'ai')[]
+  enrollmentStatus?: 'pending' | 'approved' | 'rejected' | 'cancelled'
+  lastLoginAt?:     string
+  createdAt:        string
+  updatedAt:        string
+  customRoleId?:    string | { id: string; name: string }
 }
 
 export const userKeys = {
@@ -47,7 +50,7 @@ export const userKeys = {
 }
 
 export function useUsers(role: AdminUserRole | undefined, params: {
-  page?: number; per_page?: number; search?: string; category?: string; status?: 'active' | 'inactive'; exclude_students?: boolean
+  page?: number; per_page?: number; search?: string; category?: string; status?: 'active' | 'inactive'; exclude_students?: boolean; enrollmentStatus?: 'pending' | 'approved' | 'rejected' | 'cancelled'
 } = {}) {
   return useQuery({
     queryKey: userKeys.list(role ?? 'all', params),
@@ -151,7 +154,7 @@ export function useUpdateUser() {
   return useMutation({
     mutationFn: async ({
       id, ...dto
-    }: { id: string; role?: AdminUser['role']; isActive?: boolean; isVerified?: boolean; name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | null }) => {
+    }: { id: string; role?: AdminUser['role']; isActive?: boolean; isVerified?: boolean; name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | 'ai' | null }) => {
       const res = await api.patch<{ success: true; data: AdminUser }>(`/admin/users/${id}`, dto)
       return res.data.data
     },

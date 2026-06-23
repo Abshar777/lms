@@ -118,13 +118,13 @@ export const requireSuperAdmin = requireRole('super_admin')
 export const requireAdmin      = requireRole('super_admin', 'admin')
 
 /** Category admins + above */
-export const requireAnyAdmin   = requireRole('super_admin', 'admin', '4x_admin', 'digital_marketing_admin')
+export const requireAnyAdmin   = requireRole('super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin')
 
 /** Teaching staff + above */
-export const requireInstructor = requireRole('super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'instructor')
+export const requireInstructor = requireRole('super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'instructor')
 
 /** Any authenticated user */
-export const requireStudent    = requireRole('super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'instructor', 'student')
+export const requireStudent    = requireRole('super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'instructor', 'student')
 
 /* ─────────────────────────────────────────────────────
    authenticateAdmin
@@ -183,11 +183,12 @@ export async function injectCategoryScope(req: Request, _res: Response, next: Ne
   if (!req.user) { next(); return }
   if (req.user.role === '4x_admin')                     req.user.categoryScope = '4x-trading'
   else if (req.user.role === 'digital_marketing_admin') req.user.categoryScope = 'digital-marketing'
+  else if (req.user.role === 'ai_admin')                req.user.categoryScope = 'ai'
   else if (req.user.role === 'instructor') {
     const { UserModel } = await import('@/models/schema.ts')
     const user = await UserModel.findById(req.user.id).select('category').lean()
     const cat  = (user as any)?.category as string | undefined
-    if (cat === '4x-trading' || cat === 'digital-marketing') req.user.categoryScope = cat
+    if (cat === '4x-trading' || cat === 'digital-marketing' || cat === 'ai') req.user.categoryScope = cat
   }
   next()
 }
@@ -212,9 +213,9 @@ export async function requireEnrollmentApproval(
 
   const { UserModel } = await import('@/models/schema.ts')
   const user = await UserModel.findById(req.user.id)
-    .select('category enrollmentStatus enrollmentCancellationReason').lean()
+    .select('category categories enrollmentStatus enrollmentCancellationReason rejectionReason').lean()
 
-  if (!user || !user.category) { next(); return }
+  if (!user || !user.enrollmentStatus) { next(); return }
 
   if (user.enrollmentStatus === 'pending') {
     res.status(403).json({
@@ -226,13 +227,13 @@ export async function requireEnrollmentApproval(
     }); return
   }
 
-  if (user.enrollmentStatus === 'cancelled') {
+  if (user.enrollmentStatus === 'rejected' || user.enrollmentStatus === 'cancelled') {
     res.status(403).json({
       success: false,
       error: {
-        code:    'ACCESS_CANCELLED',
-        message: 'Your access has been cancelled by an admin.',
-        reason:  user.enrollmentCancellationReason ?? '',
+        code:    'ACCESS_REJECTED',
+        message: 'Your access request was not approved.',
+        reason:  (user as any).rejectionReason ?? (user as any).enrollmentCancellationReason ?? '',
       },
     }); return
   }

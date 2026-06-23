@@ -14,7 +14,7 @@ export interface CourseListParams {
   searchMode?:   'text' | 'prefix'
   level?:        'beginner' | 'intermediate' | 'advanced'
   category?:     string   // category slug
-  program?:      '4x-trading' | 'digital-marketing'
+  program?:      string
   free?:         boolean
   instructorId?: string
   durationMin?:  number

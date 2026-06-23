@@ -136,14 +136,24 @@ router.post('/', authenticate, requireEnrollmentApproval, validate(createBooking
     }
 
     /* Enrollment gate — student must be enrolled in the session's course */
+    let enrollment = null
     if (session.courseId) {
-      const enrollment = await EnrollmentModel.findOne({
+      enrollment = await EnrollmentModel.findOne({
         userId:   new Types.ObjectId(userId),
         courseId: session.courseId,
         status:   'active',
       }).lean()
       if (!enrollment) {
         res.status(403).json({ success: false, error: { code: 'NOT_ENROLLED', message: 'You must be enrolled in this course to book the session' } }); return
+      }
+    }
+
+    /* Module access gate — block if the session's section is in the student's blocked list.
+       Note: blockedLessons actually stores section/module IDs (field name is a legacy misnomer). */
+    if (enrollment && session.sectionId) {
+      const blockedIds = (enrollment.blockedLessons ?? []).map((id: any) => String(id))
+      if (blockedIds.includes(String(session.sectionId))) {
+        res.status(403).json({ success: false, error: { code: 'MODULE_BLOCKED', message: 'You don\'t have access to this module. Contact your admin.' } }); return
       }
     }
 

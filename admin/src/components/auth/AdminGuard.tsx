@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Loader2, ShieldOff } from 'lucide-react'
 import { useCurrentUser, logout } from '@/lib/api/user'
 
-const ALLOWED_ROLES = ['super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'instructor']
+const ALLOWED_ROLES = ['super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'instructor']
 
 export function AdminGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()

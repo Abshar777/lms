@@ -7,7 +7,7 @@ export interface CurrentAdmin {
   name:       string
   email:      string
   avatarUrl?: string
-  role:       'student' | 'instructor' | 'admin' | '4x_admin' | 'digital_marketing_admin' | 'super_admin'
+  role:       'student' | 'instructor' | 'admin' | '4x_admin' | 'digital_marketing_admin' | 'ai_admin' | 'super_admin'
   headline?:  string
   bio?:       string
   isVerified: boolean

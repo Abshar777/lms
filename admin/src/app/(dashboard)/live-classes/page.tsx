@@ -9,7 +9,7 @@ import {
   AlertCircle, Tv2, ExternalLink, BookOpen, Star,
   ChevronRight, PlayCircle, CalendarDays, Pencil, Search, X, Plus,
   LayoutList, CalendarRange, ChevronLeft, GraduationCap,
-  UserCheck,
+  UserCheck, LayoutGrid, Building2, MapPin,
 } from 'lucide-react'
 import { useAllLiveClasses, useCreateLiveClass, type LiveClass, type LiveClassType } from '@/lib/api/liveClasses'
 import { datetimeLocalToISO } from '@/lib/timezone'
@@ -18,6 +18,8 @@ import { useCourseOutline } from '@/lib/api/outline'
 import { useUsers } from '@/lib/api/users'
 import { useCurrentUser } from '@/lib/api/user'
 import { EditLiveClassModal } from '@/components/live-classes/EditLiveClassModal'
+import { CreateOfflineClassModal } from '@/components/live-classes/CreateOfflineClassModal'
+import { Button, MotionButton } from '@/components/ui/button'
 
 /* ── Helpers ─────────────────────────────────────────── */
 function fmtDate(iso: string): string {
@@ -183,14 +185,21 @@ function TableRow({ live, index, showInstructor }: { live: LiveClass; index: num
                   {fmtCountdown(live.scheduledStart)}
                 </span>
               )}
-              {/* Type badge */}
-              <span className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
-                style={{
-                  background: isInternal ? 'rgba(255,107,26,0.10)' : 'rgba(99,102,241,0.10)',
-                  color:      isInternal ? '#FF6B1A' : '#818CF8',
-                }}>
-                {isInternal ? 'In-App' : 'External'}
-              </span>
+              {/* Type / delivery badge */}
+              {(live as any).isOnline === false ? (
+                <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
+                  style={{ background: 'rgba(52,211,153,0.12)', color: '#34D399' }}>
+                  <Building2 size={8} />Offline
+                </span>
+              ) : (
+                <span className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
+                  style={{
+                    background: isInternal ? 'rgba(255,107,26,0.10)' : 'rgba(99,102,241,0.10)',
+                    color:      isInternal ? '#FF6B1A' : '#818CF8',
+                  }}>
+                  {isInternal ? 'In-App' : 'External'}
+                </span>
+              )}
             </div>
             <span className={`text-sm font-semibold text-white leading-tight max-w-[220px] truncate ${isCancelled ? 'line-through opacity-40' : ''}`}>
               {live.title}
@@ -241,14 +250,6 @@ function TableRow({ live, index, showInstructor }: { live: LiveClass; index: num
           </div>
         </td>
 
-        {/* Language */}
-        <td className="px-4 py-3 text-sm">
-          <span className="rounded-md px-2 py-0.5 text-[10px] font-semibold"
-            style={{ background: 'rgba(16,185,129,0.12)', color: '#34D399' }}>
-            {live.language ?? 'English'}
-          </span>
-        </td>
-
         {/* Seats */}
         <td className="px-4 py-3 text-sm">
           <div className="flex flex-col gap-1 min-w-[80px]">
@@ -278,23 +279,27 @@ function TableRow({ live, index, showInstructor }: { live: LiveClass; index: num
 
             {/* Monitor / Go Live — internal + live or scheduled only */}
             {isInternal && (isLiveNow || isScheduled) && (
-              <button
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => router.push(`/live-classes/${live.id}/monitor`)}
-                className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/10"
+                className="h-7 w-7 rounded-lg"
                 style={{ color: isLiveNow ? '#EF4444' : '#FF6B1A' }}
                 title={isLiveNow ? 'Monitor' : 'Go Live'}>
                 {isLiveNow ? <Radio size={13} /> : <PlayCircle size={13} />}
-              </button>
+              </Button>
             )}
 
             {/* Edit */}
-            <button
+            <Button
+              variant="ghost"
+              size="icon-sm"
               onClick={() => setEditOpen(true)}
-              className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/10"
+              className="h-7 w-7 rounded-lg"
               style={{ color: 'rgba(255,255,255,0.4)' }}
               title="Edit session">
               <Pencil size={12} />
-            </button>
+            </Button>
 
             {/* Course link */}
             {live.course && (
@@ -323,260 +328,168 @@ function TableRow({ live, index, showInstructor }: { live: LiveClass; index: num
   )
 }
 
-/* ── Calendar view — premium monthly grid ─────────────── */
+/* ── Calendar view ───────────────────────────────────── */
 function CalendarView({ items, onSlotClick }: { items: LiveClass[]; onSlotClick: (date: Date) => void }) {
-  const todayRef     = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d }, [])
-  const [monthDate,  setMonthDate]  = useState<Date>(() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d })
-  const [editLive,   setEditLive]   = useState<LiveClass | null>(null)
-  const [hoveredDay, setHoveredDay] = useState<string | null>(null)
+  const todayRef = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d }, [])
+
+  const [monthDate, setMonthDate] = useState<Date>(() => {
+    const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d
+  })
+  const [editLive, setEditLive] = useState<LiveClass | null>(null)
 
   const year  = monthDate.getFullYear()
   const month = monthDate.getMonth()
 
+  /* Sunday-anchored grid start (matches reference design) */
   const gridStart = useMemo(() => {
     const first = new Date(year, month, 1)
-    const d = new Date(first); d.setDate(first.getDate() - first.getDay()); return d
+    const dow   = first.getDay() // 0 = Sun
+    const d     = new Date(first)
+    d.setDate(first.getDate() - dow)
+    return d
   }, [year, month])
 
+  /* Always 42 cells = 6 rows × 7 cols so layout never shifts */
   const calDays = useMemo(() =>
-    Array.from({ length: 42 }, (_, i) => { const d = new Date(gridStart); d.setDate(gridStart.getDate() + i); return d })
+    Array.from({ length: 42 }, (_, i) => {
+      const d = new Date(gridStart); d.setDate(gridStart.getDate() + i); return d
+    })
   , [gridStart])
 
+  /* Split into weeks for row-based rendering */
   const weeks = useMemo(() =>
     Array.from({ length: 6 }, (_, wi) => calDays.slice(wi * 7, wi * 7 + 7))
   , [calDays])
 
   const prevMonth = () => { const d = new Date(monthDate); d.setMonth(month - 1); setMonthDate(d) }
   const nextMonth = () => { const d = new Date(monthDate); d.setMonth(month + 1); setMonthDate(d) }
-  const goToday   = () => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); setMonthDate(d) }
+  const goToday   = () => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); setMonthDate(d) }
 
   const monthLabel = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-
-  const monthCount = useMemo(() =>
-    items.filter(l => { const d = new Date(l.scheduledStart); return d.getMonth() === month && d.getFullYear() === year }).length
-  , [items, month, year])
+  const DAY_ABBRS  = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const MAX_CHIPS  = 3
 
   const getSessionsForDay = (day: Date) =>
     items.filter(l => new Date(l.scheduledStart).toDateString() === day.toDateString())
 
-  /* Event pill: separate border sides so left accent never fights the wrapper border */
-  const eventStyle = (status: LiveClass['status']) => {
-    switch (status) {
-      case 'live':
-        return { bg: 'rgba(239,68,68,0.09)', bar: '#EF4444', borderColor: 'rgba(239,68,68,0.20)', text: '#F87171', textMuted: 'rgba(248,113,113,0.60)' }
-      case 'scheduled':
-        return { bg: 'rgba(255,107,26,0.08)', bar: '#FF6B1A', borderColor: 'rgba(255,107,26,0.20)', text: '#FF9C5B', textMuted: 'rgba(255,156,91,0.60)' }
-      case 'ended':
-        return { bg: 'rgba(255,255,255,0.03)', bar: 'rgba(255,255,255,0.25)', borderColor: 'rgba(255,255,255,0.08)', text: 'rgba(255,255,255,0.40)', textMuted: 'rgba(255,255,255,0.22)' }
-      default:
-        return { bg: 'rgba(255,255,255,0.015)', bar: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.06)', text: 'rgba(255,255,255,0.24)', textMuted: 'rgba(255,255,255,0.14)' }
+  const chipColor = (live: LiveClass) => {
+    const isOffline = (live as any).isOnline === false
+    if (live.status === 'live')      return { bg: 'rgba(239,68,68,0.18)',   color: '#EF4444',                border: 'rgba(239,68,68,0.30)' }
+    if (live.status === 'scheduled') {
+      if (isOffline) return { bg: 'rgba(16,185,129,0.15)', color: '#10B981', border: 'rgba(16,185,129,0.28)' }
+      return { bg: 'rgba(255,107,26,0.15)', color: '#FF6B1A', border: 'rgba(255,107,26,0.28)' }
     }
+    if (live.status === 'ended')     return { bg: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.35)', border: 'rgba(255,255,255,0.08)' }
+    /* cancelled */                  return { bg: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.20)', border: 'rgba(255,255,255,0.06)' }
   }
 
-  const DAY_ABBRS   = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  const CELL_BORDER = '1px solid rgba(255,255,255,0.055)'
-  const MAX_VISIBLE = 2
+  const BORDER = '1px solid rgba(255,255,255,0.07)'
 
   return (
-    <div className="select-none">
-
-      {/* ── Header ─────────────────────────────────────────── */}
-      <div className="mb-6 flex items-start justify-between gap-4">
-
-        {/* Left: month title + count badge + status legend */}
-        <div className="flex flex-col gap-2.5">
-          <div className="flex items-baseline gap-3">
-            <h2 className="text-3xl font-bold tracking-tight text-white">{monthLabel}</h2>
-            {monthCount > 0 && (
-              <span className="rounded-full px-2.5 py-0.5 text-xs font-bold"
-                style={{ background: 'rgba(255,107,26,0.14)', color: '#FF8040', border: '1px solid rgba(255,107,26,0.24)' }}>
-                {monthCount} {monthCount === 1 ? 'session' : 'sessions'}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-4">
-            {([
-              { label: 'Live',      dot: '#EF4444' },
-              { label: 'Upcoming',  dot: '#FF6B1A' },
-              { label: 'Ended',     dot: 'rgba(255,255,255,0.30)' },
-              { label: 'Cancelled', dot: 'rgba(255,255,255,0.15)' },
-            ] as const).map(l => (
-              <span key={l.label} className="flex items-center gap-1.5 text-[11px]"
-                style={{ color: 'rgba(255,255,255,0.36)' }}>
-                <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: l.dot }} />
-                {l.label}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Right: nav pill */}
-        <div className="flex items-center gap-1 rounded-xl p-1"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <button onClick={prevMonth}
-            className="flex h-8 w-8 items-center justify-center rounded-lg transition-all hover:bg-white/10"
-            style={{ color: 'rgba(255,255,255,0.55)' }}>
-            <ChevronLeft size={14} />
-          </button>
-          <button onClick={goToday}
-            className="h-8 rounded-lg px-3.5 text-xs font-semibold transition-all hover:bg-white/10"
-            style={{ color: 'rgba(255,255,255,0.65)' }}>
-            Today
-          </button>
-          <button onClick={nextMonth}
-            className="flex h-8 w-8 items-center justify-center rounded-lg transition-all hover:bg-white/10"
-            style={{ color: 'rgba(255,255,255,0.55)' }}>
-            <ChevronRight size={14} />
-          </button>
-        </div>
+    <div>
+      {/* Month navigation */}
+      <div className="mb-5 flex items-center gap-3">
+        <Button
+          variant="outline"
+          size="icon-sm"
+          onClick={prevMonth}
+          className="h-8 w-8 rounded-xl"
+          style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.10)' }}>
+          <ChevronLeft size={14} />
+        </Button>
+        <span className="min-w-[150px] text-center text-base font-bold text-white">{monthLabel}</span>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          onClick={nextMonth}
+          className="h-8 w-8 rounded-xl"
+          style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.10)' }}>
+          <ChevronRight size={14} />
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={goToday}
+          className="rounded-xl px-4 py-1.5 text-xs font-semibold"
+          style={{ color: 'rgba(255,255,255,0.50)', border: '1px solid rgba(255,255,255,0.10)' }}>
+          Today
+        </Button>
       </div>
 
-      {/* ── Grid ───────────────────────────────────────────── */}
-      <div className="overflow-hidden rounded-2xl"
-        style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(11,13,23,0.70)', backdropFilter: 'blur(6px)' }}>
+      {/* Calendar table */}
+      <div className="overflow-hidden rounded-2xl" style={{ border: BORDER }}>
 
-        {/* Day-of-week header */}
-        <div className="grid grid-cols-7"
-          style={{ borderBottom: CELL_BORDER, background: 'rgba(255,255,255,0.018)' }}>
-          {DAY_ABBRS.map((d, i) => {
-            const isWknd = i === 0 || i === 6
-            return (
-              <div key={d} className="py-3 text-center"
-                style={{
-                  borderRight: i < 6 ? CELL_BORDER : 'none',
-                  background: isWknd ? 'rgba(255,255,255,0.007)' : 'transparent',
-                }}>
-                <span className="text-[10px] font-bold uppercase tracking-[0.13em]"
-                  style={{ color: isWknd ? 'rgba(255,255,255,0.20)' : 'rgba(255,255,255,0.34)' }}>
-                  {d}
-                </span>
-              </div>
-            )
-          })}
+        {/* Day-of-week header row */}
+        <div className="grid grid-cols-7" style={{ background: 'rgba(255,255,255,0.025)', borderBottom: BORDER }}>
+          {DAY_ABBRS.map((d, i) => (
+            <div
+              key={d}
+              className="py-3 text-center text-[11px] font-bold uppercase tracking-widest"
+              style={{
+                color: 'rgba(255,255,255,0.32)',
+                borderRight: i < 6 ? BORDER : 'none',
+              }}>
+              {d}
+            </div>
+          ))}
         </div>
 
         {/* Week rows */}
         {weeks.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-7"
-            style={{ borderBottom: wi < 5 ? CELL_BORDER : 'none' }}>
-
+          <div
+            key={wi}
+            className="grid grid-cols-7"
+            style={{ borderBottom: wi < 5 ? BORDER : 'none' }}>
             {week.map((day, di) => {
-              const inMonth   = day.getMonth() === month
-              const isToday   = day.toDateString() === todayRef.toDateString()
-              const isWeekend = di === 0 || di === 6
-              const dayKey    = day.toDateString()
-              const hovered   = hoveredDay === dayKey && inMonth
-              const sessions  = getSessionsForDay(day)
-              const overflow  = sessions.length - MAX_VISIBLE
-
-              /* Inset box-shadow encodes both the hover border glow and today glow without layout shift */
-              const cellShadow = isToday && inMonth
-                ? 'inset 0 0 0 1.5px rgba(255,107,26,0.50), inset 0 0 28px rgba(255,107,26,0.06)'
-                : hovered
-                ? 'inset 0 0 0 1px rgba(255,255,255,0.14), inset 0 0 16px rgba(255,255,255,0.025)'
-                : 'none'
+              const isCurrentMonth = day.getMonth() === month
+              const isToday        = day.toDateString() === todayRef.toDateString()
+              const sessions       = getSessionsForDay(day)
+              const overflow       = sessions.length - MAX_CHIPS
 
               return (
-                <div key={di}
-                  onMouseEnter={() => setHoveredDay(dayKey)}
-                  onMouseLeave={() => setHoveredDay(null)}
+                <div
+                  key={di}
                   onClick={() => onSlotClick(day)}
-                  className="relative cursor-pointer"
+                  className="cursor-pointer transition-colors hover:bg-white/[0.025]"
                   style={{
-                    borderRight: di < 6 ? CELL_BORDER : 'none',
-                    minHeight:   118,
-                    transition:  'background 0.16s ease, box-shadow 0.16s ease',
-                    boxShadow:   cellShadow,
-                    /* Out-of-month: darker overlay so current month pops; no cell-level opacity */
-                    background: !inMonth
-                      ? 'rgba(0,0,0,0.18)'
-                      : isToday
-                      ? 'rgba(255,107,26,0.055)'
-                      : hovered
-                      ? 'rgba(255,255,255,0.028)'
-                      : isWeekend
-                      ? 'rgba(255,255,255,0.007)'
-                      : 'transparent',
+                    borderRight: di < 6 ? BORDER : 'none',
+                    minHeight: 128,
+                    background: isToday ? 'rgba(255,107,26,0.05)' : 'transparent',
                   }}>
 
-                  {/* Today: thin top accent bar */}
-                  {isToday && inMonth && (
-                    <div className="absolute inset-x-0 top-0 h-[2px] rounded-t-sm"
-                      style={{ background: 'linear-gradient(90deg, #FF6B1A 40%, rgba(255,107,26,0.15))' }} />
-                  )}
-
-                  {/* Day number + hover + button row */}
-                  <div className="flex items-center justify-between px-2.5 pt-2.5 pb-1">
+                  {/* Day number — top-left, orange circle for today */}
+                  <div className="px-3 pt-2.5 pb-1.5">
                     <span
-                      className="inline-flex h-[26px] w-[26px] flex-shrink-0 items-center justify-center rounded-full text-[12px] font-bold leading-none"
-                      style={isToday && inMonth
-                        ? { background: '#FF6B1A', color: '#fff', boxShadow: '0 0 11px rgba(255,107,26,0.55)' }
-                        : inMonth
-                        ? { color: 'rgba(255,255,255,0.72)' }
-                        /* Padding days: muted gray, clearly secondary */
-                        : { color: 'rgba(255,255,255,0.18)' }}>
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold leading-none"
+                      style={isToday
+                        ? { background: '#FF6B1A', color: '#fff' }
+                        : { color: isCurrentMonth ? 'rgba(255,255,255,0.60)' : 'rgba(255,255,255,0.16)' }}>
                       {day.getDate()}
                     </span>
-
-                    <AnimatePresence>
-                      {hovered && (
-                        <motion.button
-                          initial={{ opacity: 0, scale: 0.60 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.60 }}
-                          transition={{ duration: 0.10 }}
-                          onClick={e => { e.stopPropagation(); onSlotClick(day) }}
-                          className="flex h-[18px] w-[18px] items-center justify-center rounded-full"
-                          style={{ background: 'rgba(255,107,26,0.18)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.30)' }}>
-                          <Plus size={9} />
-                        </motion.button>
-                      )}
-                    </AnimatePresence>
                   </div>
 
-                  {/* Session pills — max 2 visible, then "+X more" */}
-                  <div className="space-y-[2px] px-1.5 pb-1.5" onClick={e => e.stopPropagation()}>
-                    {sessions.slice(0, MAX_VISIBLE).map(s => {
-                      const es     = eventStyle(s.status)
-                      const isLive = s.status === 'live'
+                  {/* Session chips */}
+                  <div className="px-1.5 pb-2 space-y-0.5" onClick={e => e.stopPropagation()}>
+                    {sessions.slice(0, MAX_CHIPS).map(s => {
+                      const c = chipColor(s)
                       return (
-                        <button key={s.id}
+                        <Button
+                          key={s.id}
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setEditLive(s)}
-                          className="w-full overflow-hidden text-left transition-all hover:brightness-125"
-                          style={{
-                            background:    es.bg,
-                            borderTop:     `1px solid ${es.borderColor}`,
-                            borderRight:   `1px solid ${es.borderColor}`,
-                            borderBottom:  `1px solid ${es.borderColor}`,
-                            borderLeft:    `3px solid ${es.bar}`,
-                            borderRadius:  5,
-                          }}>
-                          <div className="flex items-center gap-1 py-[2.5px] pl-1.5 pr-1.5">
-                            {isLive && (
-                              <motion.span
-                                animate={{ opacity: [1, 0.2, 1] }}
-                                transition={{ duration: 1.1, repeat: Infinity }}
-                                className="h-[5px] w-[5px] flex-shrink-0 rounded-full"
-                                style={{ background: '#EF4444' }} />
-                            )}
-                            <span className="flex-shrink-0 text-[9px] font-bold tabular-nums" style={{ color: es.text }}>
-                              {fmtTime(s.scheduledStart)}
-                            </span>
-                            <span className="min-w-0 flex-1 truncate text-[9px] leading-tight" style={{ color: es.textMuted }}>
-                              {s.title}
-                            </span>
-                          </div>
-                        </button>
+                          className="w-full text-left rounded-md px-2 py-1 h-auto hover:brightness-125"
+                          style={{ background: c.bg, border: `1px solid ${c.border}` }}>
+                          <p className="truncate text-[10px] font-semibold leading-tight" style={{ color: c.color }}>
+                            {fmtTime(s.scheduledStart)} · {s.title}
+                          </p>
+                        </Button>
                       )
                     })}
-
                     {overflow > 0 && (
-                      <button
-                        onClick={e => { e.stopPropagation(); onSlotClick(day) }}
-                        className="w-full rounded-[4px] px-1.5 py-[2px] text-left transition-colors hover:bg-white/[0.06]"
-                        style={{ color: 'rgba(255,255,255,0.30)' }}>
-                        <span className="text-[9px] font-semibold">+{overflow} more</span>
-                      </button>
+                      <p className="px-2 text-[10px] font-medium" style={{ color: 'rgba(255,255,255,0.30)' }}>
+                        +{overflow} more
+                      </p>
                     )}
                   </div>
                 </div>
@@ -625,7 +538,6 @@ function QuickCreateModal({ onClose, onSuccess, categoryProgram }: { onClose: ()
 
   const base    = 'w-full rounded-xl px-3 py-2 text-sm text-white outline-none placeholder:text-white/30'
   const iStyle  = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' } as const
-  /* Selects need a solid dark bg so the browser-native dropdown popup renders dark (not white) */
   const selStyle = { background: '#1e2035', border: '1px solid rgba(255,255,255,0.12)', color: 'white' } as const
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -750,17 +662,15 @@ function QuickCreateModal({ onClose, onSuccess, categoryProgram }: { onClose: ()
           </div>
 
           {/* Module */}
-          {sections.length > 0 && (
-            <div>
-              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
-                style={{ color: 'rgba(255,255,255,0.35)' }}>Module (optional)</label>
-              <select value={sectionId} onChange={e => setSectionId(e.target.value)}
-                className={base} style={{ ...selStyle }}>
-                <option value="">No specific module</option>
-                {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
-              </select>
-            </div>
-          )}
+          <div>
+            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: 'rgba(255,255,255,0.35)' }}>Module (optional)</label>
+            <select value={sectionId} onChange={e => setSectionId(e.target.value)}
+              className={base} style={{ ...selStyle }}>
+              <option value="">No specific module</option>
+              {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
+            </select>
+          </div>
 
           {/* Instructor */}
           <div>
@@ -801,8 +711,8 @@ function QuickCreateModal({ onClose, onSuccess, categoryProgram }: { onClose: ()
               Cancel
             </button>
             <button type="submit" disabled={createMutation.isPending}
-              className="flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold text-white disabled:opacity-60 transition-all hover:brightness-110"
-              style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+              className="flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold disabled:opacity-60"
+              style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)', color: '#fff' }}>
               {createMutation.isPending
                 ? <><Loader2 size={14} className="animate-spin" />Creating…</>
                 : 'Create session'}
@@ -814,15 +724,235 @@ function QuickCreateModal({ onClose, onSuccess, categoryProgram }: { onClose: ()
   )
 }
 
+/* ── Grid calendar view ──────────────────────────────── */
+function GridCalendarView({ items, onEditClick }: { items: LiveClass[]; onEditClick: (live: LiveClass) => void }) {
+  const router = useRouter()
+  const [editLive, setEditLive] = useState<LiveClass | null>(null)
+
+  const sorted = useMemo(() =>
+    [...items].sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime())
+  , [items])
+
+  const groups = useMemo(() => {
+    const map = new Map<string, LiveClass[]>()
+    for (const item of sorted) {
+      const key = new Date(item.scheduledStart).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(item)
+    }
+    return Array.from(map.entries()).map(([label, list]) => ({ label, list }))
+  }, [sorted])
+
+  if (items.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-20 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-3xl"
+          style={{ background: 'rgba(255,107,26,0.08)', border: '1px solid rgba(255,107,26,0.15)' }}>
+          <Video size={26} style={{ color: '#FF6B1A' }} />
+        </div>
+        <p className="text-base font-bold text-white">No sessions found</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-8">
+      {groups.map(({ label, list }) => (
+        <div key={label}>
+          {/* Month group header */}
+          <div className="mb-4 flex items-center gap-3">
+            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#FF6B1A' }}>{label}</span>
+            <div className="h-px flex-1" style={{ background: 'rgba(255,107,26,0.15)' }} />
+            <span className="text-[10px] font-semibold" style={{ color: 'rgba(255,255,255,0.25)' }}>
+              {list.length} {list.length === 1 ? 'session' : 'sessions'}
+            </span>
+          </div>
+
+          {/* Session cards */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {list.map(live => {
+              const isLive      = live.status === 'live'
+              const isScheduled = live.status === 'scheduled'
+              const isEnded     = live.status === 'ended'
+              const isCancelled = live.status === 'cancelled'
+              const isInternal  = live.type === 'internal'
+              const fillPct     = live.sessionCapacity > 0 ? Math.min(100, (live.bookedCount / live.sessionCapacity) * 100) : 0
+              const barColor    = fillPct >= 90 ? '#EF4444' : fillPct >= 70 ? '#F59E0B' : '#22C55E'
+
+              const accentColor  = isLive ? '#EF4444' : isScheduled ? '#FF6B1A' : 'rgba(255,255,255,0.18)'
+              const cardBg       = isLive ? 'rgba(239,68,68,0.06)' : isScheduled ? 'rgba(255,107,26,0.05)' : 'rgba(255,255,255,0.025)'
+              const cardBorder   = isLive ? 'rgba(239,68,68,0.22)' : isScheduled ? 'rgba(255,107,26,0.18)' : 'rgba(255,255,255,0.07)'
+
+              return (
+                <motion.div
+                  key={live.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: isCancelled ? 0.45 : 1, y: 0 }}
+                  className="flex flex-col overflow-hidden rounded-2xl"
+                  style={{ background: cardBg, border: `1px solid ${cardBorder}` }}>
+
+                  {/* Top colour stripe */}
+                  <div className="h-[3px] w-full" style={{ background: accentColor }} />
+
+                  {/* Body */}
+                  <div className="flex flex-1 flex-col gap-2.5 p-4">
+                    {/* Badges */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {isLive && (
+                        <motion.span
+                          animate={{ opacity: [1, 0.5, 1] }}
+                          transition={{ duration: 1.4, repeat: Infinity }}
+                          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white"
+                          style={{ background: '#EF4444' }}>
+                          <span className="h-1 w-1 rounded-full bg-white" />LIVE
+                        </motion.span>
+                      )}
+                      {isScheduled && (
+                        <span className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
+                          style={{ background: 'rgba(255,107,26,0.15)', color: '#FF6B1A' }}>
+                          {fmtCountdown(live.scheduledStart)}
+                        </span>
+                      )}
+                      {isEnded && (
+                        <span className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest"
+                          style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.35)' }}>
+                          Ended
+                        </span>
+                      )}
+                      {isCancelled && (
+                        <span className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest"
+                          style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.3)' }}>
+                          Cancelled
+                        </span>
+                      )}
+                      {(live as any).isOnline === false ? (
+                        <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
+                          style={{ background: 'rgba(52,211,153,0.12)', color: '#34D399' }}>
+                          <Building2 size={8} />Offline
+                        </span>
+                      ) : (
+                        <span className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
+                          style={{
+                            background: isInternal ? 'rgba(255,107,26,0.10)' : 'rgba(99,102,241,0.10)',
+                            color:      isInternal ? '#FF6B1A' : '#818CF8',
+                          }}>
+                          {isInternal ? 'In-App' : 'External'}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Title */}
+                    <h3 className={`text-sm font-bold leading-snug text-white ${isCancelled ? 'line-through opacity-40' : ''}`}>
+                      {live.title}
+                    </h3>
+
+                    {/* Course */}
+                    {live.course && (
+                      <p className="flex items-center gap-1.5 text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                        <BookOpen size={11} className="flex-shrink-0" style={{ color: 'rgba(255,255,255,0.25)' }} />
+                        <span className="truncate">{typeof live.course === 'object' ? live.course.title : ''}</span>
+                      </p>
+                    )}
+                    {/* Offline location */}
+                    {(live as any).isOnline === false && (live as any).location && (
+                      <p className="flex items-center gap-1.5 text-xs" style={{ color: 'rgba(52,211,153,0.75)' }}>
+                        <MapPin size={10} className="flex-shrink-0" />
+                        <span className="truncate">{(live as any).location}{(live as any).room ? ` · ${(live as any).room}` : ''}</span>
+                      </p>
+                    )}
+
+                    {/* Date · time · duration */}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs" style={{ color: 'rgba(255,255,255,0.40)' }}>
+                      <span className="flex items-center gap-1">
+                        <Calendar size={10} />{fmtDate(live.scheduledStart)}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock size={10} />{fmtTime(live.scheduledStart)}
+                      </span>
+                      <span style={{ color: 'rgba(255,255,255,0.25)' }}>{fmtDuration(live.durationMins)}</span>
+                    </div>
+
+                    {/* Seats progress */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[10px]" style={{ color: 'rgba(255,255,255,0.32)' }}>
+                        <span>Seats</span>
+                        <span>{live.bookedCount} / {live.sessionCapacity}</span>
+                      </div>
+                      <div className="h-1 w-full overflow-hidden rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                        <div className="h-full rounded-full transition-all" style={{ width: `${fillPct}%`, background: barColor }} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer actions */}
+                  <div className="flex items-center justify-between px-4 py-2.5"
+                    style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div className="flex items-center gap-1">
+                      <Link href={`/live-classes/${live.id}/attendance`}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/10"
+                        style={{ color: 'rgba(255,255,255,0.4)' }} title="Attendance">
+                        <UserCheck size={13} />
+                      </Link>
+                      {isInternal && (isLive || isScheduled) && (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => router.push(`/live-classes/${live.id}/monitor`)}
+                          className="h-7 w-7 rounded-lg"
+                          style={{ color: isLive ? '#EF4444' : '#FF6B1A' }}
+                          title={isLive ? 'Monitor' : 'Go Live'}>
+                          {isLive ? <Radio size={13} /> : <PlayCircle size={13} />}
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => setEditLive(live)}
+                        className="h-7 w-7 rounded-lg"
+                        style={{ color: 'rgba(255,255,255,0.4)' }}
+                        title="Edit">
+                        <Pencil size={12} />
+                      </Button>
+                    </div>
+                    {live.course && (
+                      <Link
+                        href={`/courses/${typeof live.course === 'object' ? live.course.id : live.courseId}/edit`}
+                        className="flex items-center gap-0.5 text-[10px] font-semibold transition-opacity hover:opacity-70"
+                        style={{ color: 'rgba(255,255,255,0.25)' }}>
+                        Course <ChevronRight size={10} />
+                      </Link>
+                    )}
+                  </div>
+                </motion.div>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+
+      <AnimatePresence>
+        {editLive && (
+          <EditLiveClassModal
+            live={editLive}
+            onClose={() => setEditLive(null)}
+            onSuccess={() => setEditLive(null)}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 /* ── Page ────────────────────────────────────────────── */
 export default function LiveClassesPage() {
-  const [activeFilter,  setActiveFilter]  = useState<FilterKey>('all')
-  const [typeFilter,    setTypeFilter]    = useState<'all' | 'internal' | 'external'>('all')
-  const [courseFilter,  setCourseFilter]  = useState('')
-  const [search,        setSearch]        = useState('')
-  const [createOpen,    setCreateOpen]    = useState(false)
-  const [view,          setView]          = useState<'table' | 'calendar'>('table')
-  const [mentorFilter,  setMentorFilter]  = useState('')
+  const [activeFilter,   setActiveFilter]   = useState<FilterKey>('all')
+  const [typeFilter,     setTypeFilter]     = useState<'all' | 'internal' | 'external'>('all')
+  const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'online' | 'offline'>('all')
+  const [courseFilter,   setCourseFilter]   = useState('')
+  const [search,         setSearch]         = useState('')
+  const [createOpen,         setCreateOpen]         = useState(false)
+  const [offlineCreateOpen,  setOfflineCreateOpen]  = useState(false)
+  const [view,               setView]               = useState<'table' | 'month' | 'grid'>('table')
 
   const { data: me } = useCurrentUser()
   const isInstructor = me?.role === 'instructor'
@@ -831,26 +961,21 @@ export default function LiveClassesPage() {
   const { data: coursesData } = useCourses({ per_page: 200 })
   const courses = coursesData?.docs ?? []
   /* Pre-fetch instructors so they're in TanStack cache before the modal mounts */
-  const { data: instructorsData } = useUsers('instructor', { per_page: 200 })
-  const instructors = instructorsData?.docs ?? []
+  useUsers('instructor', { per_page: 200 })
 
   /* For stats bar, always use the full unfiltered list */
   const { data: allItems = [] } = useAllLiveClasses('all')
 
-  /* Apply type + course + search + mentor + instructor filters client-side */
+  /* Apply type + course + search + instructor + delivery filters client-side */
   const items = useMemo(() => {
     let list = rawItems
     if (typeFilter !== 'all') list = list.filter(l => l.type === typeFilter)
+    if (deliveryFilter === 'online')  list = list.filter(l => (l as any).isOnline !== false)
+    if (deliveryFilter === 'offline') list = list.filter(l => (l as any).isOnline === false)
     if (courseFilter) {
       list = list.filter(l => {
         const cId = typeof l.course === 'object' ? l.course?.id : l.courseId
         return cId === courseFilter
-      })
-    }
-    if (mentorFilter) {
-      list = list.filter(l => {
-        const instrId = typeof l.instructor === 'object' ? l.instructor?.id : l.instructorId
-        return instrId === mentorFilter
       })
     }
     if (search.trim()) {
@@ -867,7 +992,17 @@ export default function LiveClassesPage() {
       })
     }
     return list
-  }, [rawItems, typeFilter, courseFilter, mentorFilter, search, isInstructor, me?.id])
+  }, [rawItems, typeFilter, deliveryFilter, courseFilter, search, isInstructor, me?.id])
+
+  /* Offline stats for the dashboard panel */
+  const offlineStats = useMemo(() => {
+    const offline = allItems.filter(l => (l as any).isOnline === false)
+    const todayStr = new Date().toDateString()
+    const upcoming = offline.filter(l => l.status === 'scheduled' && new Date(l.scheduledStart).toDateString() !== todayStr && new Date(l.scheduledStart) > new Date())
+    const todayClasses = offline.filter(l => new Date(l.scheduledStart).toDateString() === todayStr)
+    const totalSeats = offline.filter(l => l.status === 'scheduled').reduce((s, l) => s + Math.max(0, l.sessionCapacity - l.bookedCount), 0)
+    return { total: offline.length, today: todayClasses.length, upcoming: upcoming.length, availableSeats: totalSeats }
+  }, [allItems])
 
   /* Group by date */
   const grouped = useMemo(() => {
@@ -889,14 +1024,15 @@ export default function LiveClassesPage() {
   }
 
   /* Table column count depends on showInstructor */
-  const colSpan = isInstructor ? 7 : 8
+  const colSpan = isInstructor ? 6 : 7
 
   return (
     <div className="mx-auto max-w-6xl">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-        className="mb-6 flex items-center gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl"
+        className="mb-3">
+        <div className="flex items-center gap-4">
+        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl"
           style={{ background: 'rgba(255,107,26,0.12)', border: '1px solid rgba(255,107,26,0.22)' }}>
           <Video size={20} style={{ color: '#FF6B1A' }} />
         </div>
@@ -910,35 +1046,47 @@ export default function LiveClassesPage() {
         </div>
 
         <div className="ml-auto flex items-center gap-3">
-          {/* New session */}
-          <motion.button
+          {/* Add Offline Class */}
+          <MotionButton
+            variant="ghost"
+            onClick={() => setOfflineCreateOpen(true)}
+            whileHover={{ y: -1, boxShadow: '0 6px 20px rgba(52,211,153,0.20)' }}
+            whileTap={{ scale: 0.97 }}
+            className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold"
+            style={{ background: 'rgba(52,211,153,0.10)', color: '#34D399', border: '1px solid rgba(52,211,153,0.22)' }}>
+            <Building2 size={14} />Offline Class
+          </MotionButton>
+
+          {/* New online session */}
+          <MotionButton
+            variant="default"
             onClick={() => setCreateOpen(true)}
             whileHover={{ y: -1, boxShadow: '0 6px 20px rgba(255,107,26,0.28)' }}
             whileTap={{ scale: 0.97 }}
-            className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-white"
-            style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+            className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold">
             <Plus size={14} />New Session
-          </motion.button>
+          </MotionButton>
 
           {/* View toggle */}
-          <div className="flex items-center rounded-xl overflow-hidden"
+          <div className="flex items-center overflow-hidden rounded-xl"
             style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
-            <button
-              onClick={() => setView('table')}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-colors"
-              style={view === 'table'
-                ? { background: 'rgba(255,255,255,0.10)', color: 'white' }
-                : { background: 'transparent', color: 'rgba(255,255,255,0.40)' }}>
-              <LayoutList size={13} />Table
-            </button>
-            <button
-              onClick={() => setView('calendar')}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-colors"
-              style={view === 'calendar'
-                ? { background: 'rgba(255,255,255,0.10)', color: 'white' }
-                : { background: 'transparent', color: 'rgba(255,255,255,0.40)' }}>
-              <CalendarRange size={13} />Calendar
-            </button>
+            {([
+              { key: 'table', icon: <LayoutList size={13} />,   label: 'Table'  },
+              { key: 'month', icon: <CalendarRange size={13} />, label: 'Month'  },
+              { key: 'grid',  icon: <LayoutGrid size={13} />,    label: 'Grid'   },
+            ] as const).map(v => (
+              <Button
+                key={v.key}
+                variant="ghost"
+                size="sm"
+                onClick={() => setView(v.key)}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-none"
+                style={view === v.key
+                  ? { background: 'rgba(255,255,255,0.10)', color: 'white' }
+                  : { background: 'transparent', color: 'rgba(255,255,255,0.40)' }}>
+                {v.icon}{v.label}
+              </Button>
+            ))}
           </div>
 
           {/* Live now badge */}
@@ -955,20 +1103,82 @@ export default function LiveClassesPage() {
             </motion.div>
           )}
         </div>
+        </div>
+
+        {/* Delivery mode selector — under heading */}
+        <div className="mt-4 flex items-center gap-2">
+          <div className="flex items-center gap-0.5 rounded-2xl p-1"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            {([
+              { k: 'all' as const,     label: 'All Sessions', icon: <LayoutGrid size={11} /> },
+              { k: 'online' as const,  label: 'Online',        icon: <Radio size={11} /> },
+              { k: 'offline' as const, label: 'In-Person',     icon: <Building2 size={11} /> },
+            ]).map(({ k, label, icon }) => (
+              <button key={k} onClick={() => setDeliveryFilter(k)}
+                className="flex items-center gap-1.5 rounded-xl px-4 py-1.5 text-[11px] font-semibold transition-all"
+                style={deliveryFilter === k
+                  ? k === 'offline'
+                    ? { background: 'rgba(16,185,129,0.18)', color: '#10B981' }
+                    : k === 'online'
+                    ? { background: 'rgba(255,107,26,0.18)', color: '#FF6B1A' }
+                    : { background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.85)' }
+                  : { background: 'transparent', color: 'rgba(255,255,255,0.30)' }}>
+                {icon}<span>{label}</span>
+              </button>
+            ))}
+          </div>
+          {deliveryFilter !== 'all' && (
+            <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
+              {deliveryFilter === 'online' ? 'Showing virtual sessions only' : 'Showing classroom sessions only'}
+            </span>
+          )}
+        </div>
       </motion.div>
 
-      {/* Stats */}
-      <StatsBar items={allItems} />
+      {/* Stats — hidden when In-Person mode is active (offline dashboard replaces it) */}
+      {deliveryFilter !== 'offline' && <StatsBar items={allItems} />}
+
+      {/* Offline dashboard — shown when delivery filter = offline */}
+      <AnimatePresence>
+        {deliveryFilter === 'offline' && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }} transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+            className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              { label: 'Total Sessions',    value: offlineStats.total,          color: 'rgba(255,255,255,0.6)', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.08)', pulse: false },
+              { label: "Today's Classes",   value: offlineStats.today,          color: '#FF6B1A', bg: 'rgba(255,107,26,0.08)',  border: 'rgba(255,107,26,0.18)',  pulse: false },
+              { label: 'Upcoming Sessions', value: offlineStats.upcoming,       color: '#818CF8', bg: 'rgba(99,102,241,0.08)', border: 'rgba(99,102,241,0.18)', pulse: false },
+              { label: 'Available Seats',   value: offlineStats.availableSeats, color: '#EF4444', bg: 'rgba(239,68,68,0.08)',  border: 'rgba(239,68,68,0.18)',  pulse: offlineStats.availableSeats > 0 },
+            ].map((s, i) => (
+              <motion.div key={s.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="rounded-2xl p-4"
+                style={{ background: s.bg, border: `1px solid ${s.border}` }}>
+                <div className="flex items-center gap-2">
+                  {s.pulse && (
+                    <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.4, repeat: Infinity }}
+                      className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: s.color }} />
+                  )}
+                  <p className="text-2xl font-bold" style={{ color: s.color }}>{s.value}</p>
+                </div>
+                <p className="mt-0.5 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>{s.label}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Filter row */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         {/* Status tabs */}
         <div className="flex flex-wrap gap-1.5">
           {FILTERS.map(f => (
-            <button
+            <Button
               key={f.key}
+              variant="ghost"
+              size="sm"
               onClick={() => setActiveFilter(f.key)}
-              className="rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all"
+              className="rounded-xl px-3.5 py-1.5 text-xs font-semibold"
               style={activeFilter === f.key
                 ? { background: 'rgba(255,107,26,0.18)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.30)' }
                 : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.07)' }}>
@@ -980,7 +1190,7 @@ export default function LiveClassesPage() {
                   {liveNowCount}
                 </motion.span>
               )}
-            </button>
+            </Button>
           ))}
         </div>
 
@@ -994,6 +1204,7 @@ export default function LiveClassesPage() {
             onChange={e => setCourseFilter(e.target.value)}
             className="rounded-xl px-3 py-1.5 text-xs font-semibold outline-none transition-all"
             style={{
+              /* Solid dark bg so the native dropdown popup renders dark (not white) */
               background: courseFilter ? '#2a1a0a' : '#1e2035',
               border: courseFilter ? '1px solid rgba(255,107,26,0.35)' : '1px solid rgba(255,255,255,0.10)',
               color: courseFilter ? '#FF6B1A' : 'rgba(255,255,255,0.65)',
@@ -1005,45 +1216,11 @@ export default function LiveClassesPage() {
           </select>
         )}
 
-        {/* Mentor filter — hidden for instructors (they only see their own sessions) */}
-        {!isInstructor && instructors.length > 0 && (
-          <div className="relative flex items-center">
-            <UserCheck
-              size={11}
-              className="pointer-events-none absolute left-2.5 z-10"
-              style={{ color: mentorFilter ? '#818CF8' : 'rgba(255,255,255,0.35)' }}
-            />
-            <select
-              value={mentorFilter}
-              onChange={e => setMentorFilter(e.target.value)}
-              className="rounded-xl py-1.5 pl-7 pr-3 text-xs font-semibold outline-none transition-all appearance-none"
-              style={{
-                background: mentorFilter ? '#0d0f22' : '#1e2035',
-                border: mentorFilter ? '1px solid rgba(129,140,248,0.40)' : '1px solid rgba(255,255,255,0.10)',
-                color: mentorFilter ? '#818CF8' : 'rgba(255,255,255,0.65)',
-                minWidth: 120,
-              }}>
-              <option value="">All mentors</option>
-              {instructors.map(i => (
-                <option key={i.id} value={i.id}>{i.name}</option>
-              ))}
-            </select>
-            {mentorFilter && (
-              <button
-                onClick={() => setMentorFilter('')}
-                className="absolute right-2 flex h-3.5 w-3.5 items-center justify-center rounded-full transition-opacity hover:opacity-70"
-                style={{ background: 'rgba(129,140,248,0.20)', color: '#818CF8' }}>
-                <X size={8} />
-              </button>
-            )}
-          </div>
-        )}
-
         {/* Type filter */}
         <div className="flex gap-1">
           {([['all','All'],['internal','In-App'],['external','External']] as const).map(([k, label]) => (
-            <button key={k} onClick={() => setTypeFilter(k)}
-              className="rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all"
+            <Button key={k} variant="ghost" size="sm" onClick={() => setTypeFilter(k)}
+              className="rounded-lg px-2.5 py-1 text-[11px] font-semibold"
               style={typeFilter === k
                 ? k === 'internal'
                   ? { background: 'rgba(255,107,26,0.15)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.25)' }
@@ -1054,7 +1231,7 @@ export default function LiveClassesPage() {
               {k === 'internal' && <Tv2 className="mr-1 inline-block" size={9} />}
               {k === 'external' && <ExternalLink className="mr-1 inline-block" size={9} />}
               {label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -1071,17 +1248,25 @@ export default function LiveClassesPage() {
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
         />
         {search && (
-          <button onClick={() => setSearch('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setSearch('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 h-auto p-0 hover:opacity-70"
             style={{ color: 'rgba(255,255,255,0.4)' }}>
             <X size={13} />
-          </button>
+          </Button>
         )}
       </div>
 
-      {/* Calendar view */}
-      {view === 'calendar' && (
+      {/* Monthly calendar view */}
+      {view === 'month' && (
         <CalendarView items={items} onSlotClick={handleCalendarSlotClick} />
+      )}
+
+      {/* Grid calendar view */}
+      {view === 'grid' && (
+        <GridCalendarView items={items} onEditClick={() => {}} />
       )}
 
       {/* Table view */}
@@ -1139,7 +1324,6 @@ export default function LiveClassesPage() {
                           <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>Instructor</th>
                         )}
                         <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>Date & Time</th>
-                        <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>Language</th>
                         <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>Seats</th>
                         <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.30)' }}>Actions</th>
                       </tr>
@@ -1181,7 +1365,7 @@ export default function LiveClassesPage() {
         </AnimatePresence>
       )}
 
-      {/* Quick create modal */}
+      {/* Quick create modal (online) */}
       <AnimatePresence>
         {createOpen && (
           <QuickCreateModal
@@ -1190,6 +1374,23 @@ export default function LiveClassesPage() {
             categoryProgram={
               me?.role === '4x_admin' ? '4x-trading'
               : me?.role === 'digital_marketing_admin' ? 'digital-marketing'
+              : me?.role === 'ai_admin' ? 'ai'
+              : undefined
+            }
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Offline class create modal */}
+      <AnimatePresence>
+        {offlineCreateOpen && (
+          <CreateOfflineClassModal
+            onClose={() => setOfflineCreateOpen(false)}
+            onSuccess={() => setOfflineCreateOpen(false)}
+            categoryProgram={
+              me?.role === '4x_admin' ? '4x-trading'
+              : me?.role === 'digital_marketing_admin' ? 'digital-marketing'
+              : me?.role === 'ai_admin' ? 'ai'
               : undefined
             }
           />

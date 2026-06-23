@@ -4,7 +4,7 @@ import { CourseController } from '@/controllers/course.controller.ts'
 import { EnrollmentController } from '@/controllers/enrollment.controller.ts'
 import { ReviewController } from '@/controllers/review.controller.ts'
 import { LiveClassController } from '@/controllers/liveClass.controller.ts'
-import { authenticate, optionalAuthenticate } from '@/middleware/auth.middleware.ts'
+import { authenticate, optionalAuthenticate, requireEnrollmentApproval } from '@/middleware/auth.middleware.ts'
 import { validate } from '@/middleware/validate.middleware.ts'
 
 const router  = Router()
@@ -30,7 +30,7 @@ const listQuerySchema = z.object({
   duration_max: z.coerce.number().int().min(0).optional(),
   price_min:    z.coerce.number().min(0).optional(),
   price_max:    z.coerce.number().min(0).optional(),
-  program:      z.enum(['4x-trading', 'digital-marketing']).optional(),
+  program:      z.enum(['4x-trading', 'digital-marketing', 'ai']).optional(),
   /* Accept presets OR `${field}:${dir}` from admin table column sorts. */
   sort:         z.string().optional(),
 })
@@ -44,7 +44,7 @@ router.get ('/:slug/ai-notes',          courses.getAINotes)
 router.get ('/:slug/recommendations',   courses.getRecommendations)
 router.get ('/:slug/rating-histogram', courses.getRatingHistogram)
 router.get ('/:slug/live-classes',     live.listForCourseSlug)
-router.get ('/:slug/progress',         authenticate, enroll.getCourseProgress)
+router.get ('/:slug/progress',         authenticate, requireEnrollmentApproval, enroll.getCourseProgress)
 router.get ('/:id/reviews',            reviews.listForCourse)
 router.post('/:id/reviews',            authenticate, validate(reviewSubmitSchema), reviews.submit)
 

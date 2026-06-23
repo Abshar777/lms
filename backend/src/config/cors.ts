@@ -1,7 +1,7 @@
 import type { CorsOptions } from 'cors'
 import { env } from './env.ts'
 
-const allowedOrigins = [env.CLIENT_URL, env.ADMIN_URL, 'http://localhost:3002']
+const allowedOrigins = [env.CLIENT_URL, env.ADMIN_URL, 'http://localhost:3002', 'http://localhost:3003']
 
 export const corsOptions: CorsOptions = {
   origin: (origin, callback) => {

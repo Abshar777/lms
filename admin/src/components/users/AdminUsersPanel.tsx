@@ -22,6 +22,7 @@ const ROLE_STYLE: Record<string, { bg: string; color: string; label: string }> =
   admin:                    { bg: 'rgba(251,146,60,0.14)',   color: '#FB923C', label: 'Admin' },
   '4x_admin':               { bg: 'rgba(96,165,250,0.14)',  color: '#60A5FA', label: 'FOREX Admin' },
   digital_marketing_admin:  { bg: 'rgba(52,211,153,0.14)',  color: '#34D399', label: 'DM Admin' },
+  ai_admin:                 { bg: 'rgba(168,85,247,0.14)',   color: '#C084FC', label: 'AI Admin' },
   instructor:               { bg: 'rgba(99,102,241,0.14)',   color: '#818CF8', label: 'Instructor' },
   student:                  { bg: 'rgba(156,163,175,0.14)', color: '#9CA3AF', label: 'Student' },
 }
@@ -29,11 +30,13 @@ const ROLE_STYLE: Record<string, { bg: string; color: string; label: string }> =
 const CATEGORY_LABELS: Record<string, string> = {
   '4x-trading':        'FOREX Trading',
   'digital-marketing': 'Digital Marketing',
+  'ai':                'AI',
 }
 
 const CATEGORY_STYLE: Record<string, { bg: string; color: string }> = {
   '4x-trading':        { bg: 'rgba(96,165,250,0.12)',  color: '#60A5FA' },
   'digital-marketing': { bg: 'rgba(52,211,153,0.12)',  color: '#34D399' },
+  'ai':                { bg: 'rgba(192,132,252,0.14)', color: '#C084FC' },
 }
 
 function fmtDate(d?: string) {

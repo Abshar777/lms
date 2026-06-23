@@ -8,7 +8,7 @@ function requester(req: Request) {
   return {
     id:            req.user!.id,
     role,
-    categoryScope: (req.user as any).categoryScope as '4x-trading' | 'digital-marketing' | undefined,
+    categoryScope: (req.user as any).categoryScope as '4x-trading' | 'digital-marketing' | 'ai' | undefined,
   }
 }
 
@@ -27,7 +27,7 @@ export class SupportController {
         const { UserModel } = await import('@/models/schema.ts')
         const user = await UserModel.findById(req.user!.id).select('category').lean()
         const cat = (user as any)?.category as string | undefined
-        if (cat === '4x-trading' || cat === 'digital-marketing') program = cat
+        if (cat === '4x-trading' || cat === 'digital-marketing' || cat === 'ai') program = cat
       }
 
       const ticket = await this.service.create(requester(req), { subject, category, message, program })

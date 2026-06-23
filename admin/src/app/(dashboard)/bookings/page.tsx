@@ -7,7 +7,7 @@ import {
   CheckCircle2, XCircle, Loader2, Search,
   BookOpen, User, GraduationCap, LayoutList, X,
   Download, TrendingUp, Users,
-  Filter, ChevronDown, Check,
+  Filter, ChevronDown, Check, Wifi, Building2, MapPin,
 } from 'lucide-react'
 import {
   useAdminBookings, useUpdateAttendance,
@@ -236,10 +236,13 @@ function StatsStrip({ bookings }: { bookings: ClassBooking[] }) {
 function BookingRow({ booking, index }: { booking: ClassBooking; index: number }) {
   const lc         = booking.liveClassId as typeof booking.liveClassId | null
   const student    = booking.userId
-  if (!lc) return null   // live class was deleted
+  if (!lc || !student) return null   // live class or user was deleted
   const instructor = lc.instructorId
   const course     = lc.courseId
   const lang       = lc.language
+  const isOffline  = lc.isOnline === false
+  const accentColor = isOffline ? '#10B981' : '#FF6B1A'
+  const accentBg    = isOffline ? 'rgba(16,185,129,0.06)' : 'rgba(255,107,26,0.04)'
 
   return (
     <motion.tr
@@ -248,12 +251,14 @@ function BookingRow({ booking, index }: { booking: ClassBooking; index: number }
       transition={{ delay: index * 0.018, duration: 0.14 }}
       className="group border-b last:border-b-0 transition-colors"
       style={{ borderColor: 'rgba(255,255,255,0.05)' }}
-      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.025)')}
+      onMouseEnter={e => (e.currentTarget.style.background = isOffline ? 'rgba(16,185,129,0.04)' : 'rgba(255,107,26,0.03)')}
       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
     >
       {/* Student */}
-      <td className="py-3 pl-5 pr-3">
+      <td className="py-3 pr-3" style={{ paddingLeft: 0 }}>
         <div className="flex items-center gap-2.5 min-w-0">
+          {/* Delivery accent bar */}
+          <div className="h-9 w-[3px] flex-shrink-0 rounded-full" style={{ background: accentColor, opacity: 0.7 }} />
           <Avatar name={student.name} url={student.avatarUrl} size={30} />
           <div className="min-w-0">
             <p className="text-sm font-semibold truncate" style={{ color: 'rgba(255,255,255,0.90)' }}>{student.name}</p>
@@ -264,8 +269,15 @@ function BookingRow({ booking, index }: { booking: ClassBooking; index: number }
 
       {/* Session */}
       <td className="py-3 px-3">
-        <p className="text-sm font-medium line-clamp-1" style={{ color: 'rgba(255,255,255,0.85)' }}>{lc.title}</p>
-        <div className="mt-0.5 flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 mb-0.5">
+          <p className="text-sm font-medium line-clamp-1" style={{ color: 'rgba(255,255,255,0.85)' }}>{lc.title}</p>
+          {/* Delivery badge */}
+          <span className="flex-shrink-0 flex items-center gap-0.5 rounded-md px-1.5 py-0 text-[9px] font-bold uppercase tracking-wide"
+            style={{ background: accentBg, color: accentColor, border: `1px solid ${accentColor}22` }}>
+            {isOffline ? <><Building2 size={8} />In-Person</> : <><Wifi size={8} />Online</>}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
             {fmtTime(lc.scheduledStart)} · {fmtDuration(lc.durationMins)}
           </span>
@@ -273,6 +285,11 @@ function BookingRow({ booking, index }: { booking: ClassBooking; index: number }
             <span className="rounded px-1.5 py-0 text-[10px] font-semibold"
               style={{ background: 'rgba(16,185,129,0.12)', color: '#6EE7B7' }}>
               {LANG_FLAG[lang] ?? '🌐'} {lang}
+            </span>
+          )}
+          {isOffline && lc.location && (
+            <span className="flex items-center gap-0.5 text-[10px]" style={{ color: '#10B981' }}>
+              <MapPin size={9} />{lc.location}{lc.room ? ` · ${lc.room}` : ''}
             </span>
           )}
         </div>
@@ -360,12 +377,13 @@ export default function BookingsPage() {
   const isInstructor    = me?.role === 'instructor'
   const userScope       = (me as any)?.categoryScope as string | undefined  // '4x-trading' | 'digital-marketing' | undefined
 
-  /* Date range — default today */
-  const [dateFrom, setDateFrom] = useState<Date>(() => { const d = new Date(); d.setHours(0,0,0,0);      return d })
-  const [dateTo,   setDateTo]   = useState<Date>(() => { const d = new Date(); d.setHours(23,59,59,999); return d })
+  /* Date range — default: past 30 days to 90 days ahead (shows upcoming bookings) */
+  const [dateFrom, setDateFrom] = useState<Date>(() => { const d = addDays(new Date(), -30); d.setHours(0,0,0,0);       return d })
+  const [dateTo,   setDateTo]   = useState<Date>(() => { const d = addDays(new Date(),  90); d.setHours(23,59,59,999); return d })
 
   /* Filters */
   const [statusFilter,     setStatusFilter]     = useState<BookingStatus | ''>('')
+  const [deliveryFilter,   setDeliveryFilter]   = useState<'all' | 'online' | 'offline'>('all')
   const [courseFilter,     setCourseFilter]     = useState('')
   const [instructorFilter, setInstructorFilter] = useState('')
   const [langFilter,       setLangFilter]       = useState('')
@@ -396,12 +414,16 @@ export default function BookingsPage() {
 
   const isCancelledView = statusFilter === 'cancelled'
 
-  /* Client-side search — guard against null liveClassId (deleted classes) */
+  /* Client-side search + delivery filter */
   const filtered = useMemo(() => {
-    if (!search.trim()) return bookings
-    const q = search.toLowerCase()
     return bookings.filter(b => {
       const lc = b.liveClassId as typeof b.liveClassId | null
+      // Delivery filter
+      if (deliveryFilter === 'online'  && lc?.isOnline === false) return false
+      if (deliveryFilter === 'offline' && lc?.isOnline !== false) return false
+      // Search
+      if (!search.trim()) return true
+      const q = search.toLowerCase()
       return (
         b.userId.name.toLowerCase().includes(q)
         || b.userId.email.toLowerCase().includes(q)
@@ -410,7 +432,7 @@ export default function BookingsPage() {
         || (lc?.instructorId?.name.toLowerCase().includes(q) ?? false)
       )
     })
-  }, [bookings, search])
+  }, [bookings, search, deliveryFilter])
 
   /* Group by date — cancelled bookings group by cancelledAt, others by scheduledStart */
   const dateGroups = useMemo(() => {
@@ -442,7 +464,7 @@ export default function BookingsPage() {
 
   const isSingleDay  = toYMD(dateFrom) === toYMD(dateTo)
   const isToday      = toYMD(dateFrom) === toYMD(new Date())
-  const hasFilters   = !!(search || statusFilter || courseFilter || instructorFilter || langFilter)
+  const hasFilters   = !!(search || statusFilter || deliveryFilter !== 'all' || courseFilter || instructorFilter || langFilter)
 
   function shiftDay(n: number) { setDateFrom(d => addDays(d, n)); setDateTo(d => addDays(d, n)); setPage(1) }
   function goToday() {
@@ -451,10 +473,10 @@ export default function BookingsPage() {
     setDateFrom(s); setDateTo(e); setPage(1)
   }
   function clearFilters() {
-    setSearch(''); setStatusFilter(''); setCourseFilter(''); setInstructorFilter(''); setLangFilter(''); setPage(1)
-    // Reset date range back to today when clearing
-    const s = new Date(); s.setHours(0,0,0,0)
-    const e = new Date(); e.setHours(23,59,59,999)
+    setSearch(''); setStatusFilter(''); setDeliveryFilter('all'); setCourseFilter(''); setInstructorFilter(''); setLangFilter(''); setPage(1)
+    // Restore default range: -30 days to +90 days
+    const s = addDays(new Date(), -30); s.setHours(0,0,0,0)
+    const e = addDays(new Date(),  90); e.setHours(23,59,59,999)
     setDateFrom(s); setDateTo(e)
   }
 
@@ -465,9 +487,9 @@ export default function BookingsPage() {
       setDateFrom(new Date('2020-01-01T00:00:00'))
       setDateTo(new Date(Date.now() + 365 * 86_400_000))
     } else if (statusFilter === 'cancelled') {
-      // Switching away from cancelled — snap back to today
-      const s = new Date(); s.setHours(0,0,0,0)
-      const e = new Date(); e.setHours(23,59,59,999)
+      // Switching away from cancelled — restore default -30/+90 range
+      const s = addDays(new Date(), -30); s.setHours(0,0,0,0)
+      const e = addDays(new Date(),  90); e.setHours(23,59,59,999)
       setDateFrom(s); setDateTo(e)
     }
   }
@@ -480,10 +502,11 @@ export default function BookingsPage() {
 
   /* Preset ranges */
   const presets = [
-    { label: 'Today',      from: toYMD(new Date()), to: toYMD(new Date()) },
-    { label: 'This week',  from: toYMD(addDays(new Date(), -6)), to: toYMD(new Date()) },
-    { label: 'This month', from: toYMD(new Date(new Date().getFullYear(), new Date().getMonth(), 1)), to: toYMD(new Date()) },
-    { label: 'All time',   from: '2020-01-01', to: toYMD(addDays(new Date(), 365)) },
+    { label: 'Today',      from: toYMD(new Date()),                                                                                   to: toYMD(new Date()) },
+    { label: 'This week',  from: toYMD(addDays(new Date(), -3)),                                                                      to: toYMD(addDays(new Date(), 3)) },
+    { label: 'This month', from: toYMD(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),                                  to: toYMD(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)) },
+    { label: 'Upcoming',   from: toYMD(new Date()),                                                                                   to: toYMD(addDays(new Date(), 90)) },
+    { label: 'All time',   from: '2020-01-01',                                                                                        to: toYMD(addDays(new Date(), 365)) },
   ]
 
   /* Styles */
@@ -611,6 +634,30 @@ export default function BookingsPage() {
             placeholder="All statuses"
             minWidth={130}
           />
+
+          {/* Delivery filter — Online / In-Person */}
+          <div className="flex items-center gap-0.5 rounded-2xl p-1"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            {([
+              { k: 'all'     as const, label: 'All',       icon: null },
+              { k: 'online'  as const, label: 'Online',    icon: <Wifi size={10} /> },
+              { k: 'offline' as const, label: 'In-Person', icon: <Building2 size={10} /> },
+            ]).map(({ k, label, icon }) => (
+              <button key={k} type="button"
+                onClick={() => { setDeliveryFilter(k); setPage(1) }}
+                className="flex items-center gap-1 rounded-xl px-3 py-1 text-[11px] font-semibold transition-all"
+                style={deliveryFilter === k
+                  ? k === 'offline'
+                    ? { background: 'rgba(16,185,129,0.18)', color: '#10B981' }
+                    : k === 'online'
+                    ? { background: 'rgba(255,107,26,0.18)', color: '#FF6B1A' }
+                    : { background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.85)' }
+                  : { background: 'transparent', color: 'rgba(255,255,255,0.35)' }
+                }>
+                {icon}{label}
+              </button>
+            ))}
+          </div>
 
           {/* More filters toggle */}
           <button type="button" onClick={() => setShowFilters(f => !f)}

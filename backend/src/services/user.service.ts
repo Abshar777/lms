@@ -19,7 +19,7 @@ export class UserService {
   private readonly repo         = new UserRepository()
   private readonly refreshRepo  = new RefreshTokenRepository()
 
-  async listByRole(role: UserRole | undefined, params: { page: number; perPage: number; search?: string; category?: '4x-trading' | 'digital-marketing'; status?: 'active' | 'inactive'; excludeStudents?: boolean }) {
+  async listByRole(role: UserRole | undefined, params: { page: number; perPage: number; search?: string; category?: string; status?: 'active' | 'inactive'; excludeStudents?: boolean; enrollmentStatus?: 'pending' | 'approved' | 'rejected' | 'cancelled' }) {
     return this.repo.listByRole(role, params)
   }
 
@@ -34,7 +34,7 @@ export class UserService {
      Deactivation also revokes all refresh tokens for that user. */
   async adminUpdate(
     id: string,
-    dto: { role?: UserRole; isActive?: boolean; isVerified?: boolean; name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | null },
+    dto: { role?: UserRole; isActive?: boolean; isVerified?: boolean; name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | 'ai' | null },
   ): Promise<IUser> {
     if (!Types.ObjectId.isValid(id)) {
       throw new UserError('INVALID_ID', 'Invalid user id', 400)
@@ -44,7 +44,12 @@ export class UserService {
     if (dto.isActive   !== undefined) update.isActive   = dto.isActive
     if (dto.isVerified !== undefined) update.isVerified = dto.isVerified
     if (dto.name       !== undefined) update.name       = dto.name.trim()
-    if (dto.category   !== undefined) update.category   = dto.category ?? undefined
+    if (dto.category !== undefined) {
+      update.category = dto.category ?? undefined
+      // Keep categories array in sync with single category field
+      if (dto.category) update.categories = [dto.category] as any
+      else update.categories = [] as any
+    }
     if (dto.email      !== undefined) {
       /* Check for duplicate email, excluding the current user */
       const existing = await this.repo.findByEmail(dto.email)
@@ -81,7 +86,7 @@ export class UserService {
     role:      UserRole
     bio?:      string
     headline?: string
-    category?: '4x-trading' | 'digital-marketing'
+    category?: '4x-trading' | 'digital-marketing' | 'ai'
   }): Promise<IUser> {
     const exists = await this.repo.emailExists(dto.email)
     if (exists) {

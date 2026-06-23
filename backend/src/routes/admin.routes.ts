@@ -39,7 +39,7 @@ router.get ('/auth/me',     authenticateAdmin, authCtrl.me)
 /* Admin routes are open to admins and instructors. Per-resource
    ownership checks inside the controllers reject instructors who
    try to mutate courses they don't own. */
-router.use(authenticateAdmin, requireRole('super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'instructor'), injectCategoryScope)
+router.use(authenticateAdmin, requireRole('super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'instructor'), injectCategoryScope)
 
 /* ─── Schemas ─────────────────────────────────────── */
 const courseCreateSchema = z.object({
@@ -56,7 +56,7 @@ const courseCreateSchema = z.object({
   tags:         z.union([z.string(), z.array(z.string())]).optional(),
   categoryId:   z.string().optional(),
   instructorId: z.string().optional(),
-  program:      z.enum(['4x-trading', 'digital-marketing']).optional(),
+  program:      z.enum(['4x-trading', 'digital-marketing', 'ai']).optional(),
 })
 
 const courseUpdateSchema = courseCreateSchema.partial().extend({
@@ -74,13 +74,14 @@ const categoryCreateSchema = z.object({
 const categoryUpdateSchema = categoryCreateSchema.partial()
 
 const usersQuerySchema = z.object({
-  page:             z.coerce.number().int().min(1).default(1),
-  per_page:         z.coerce.number().int().min(1).max(500).default(20),
-  role:             z.enum(['student', 'instructor', 'admin', '4x_admin', 'digital_marketing_admin', 'super_admin']).optional(),
-  search:           z.string().trim().optional(),
-  category:         z.enum(['4x-trading', 'digital-marketing']).optional(),
-  status:           z.enum(['active', 'inactive']).optional(),
-  exclude_students: z.coerce.boolean().optional(),
+  page:              z.coerce.number().int().min(1).default(1),
+  per_page:          z.coerce.number().int().min(1).max(500).default(20),
+  role:              z.enum(['student', 'instructor', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'super_admin']).optional(),
+  search:            z.string().trim().optional(),
+  category:          z.enum(['4x-trading', 'digital-marketing', 'ai']).optional(),
+  status:            z.enum(['active', 'inactive']).optional(),
+  exclude_students:  z.coerce.boolean().optional(),
+  enrollmentStatus:  z.enum(['pending', 'approved', 'rejected', 'cancelled']).optional(),
 })
 
 /* ─── Dashboard (admin-only) ─────────────────────── */
@@ -133,22 +134,22 @@ router.delete('/categories/:id', requireAdmin, audit('category.delete', 'Categor
 
 /* ─── Users (admin-only) ──────────────────────────── */
 const userUpdateSchema = z.object({
-  role:       z.enum(['student', 'instructor', 'admin', '4x_admin', 'digital_marketing_admin', 'super_admin']).optional(),
+  role:       z.enum(['student', 'instructor', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'super_admin']).optional(),
   isActive:   z.boolean().optional(),
   isVerified: z.boolean().optional(),
   name:       z.string().min(2).max(100).trim().optional(),
   email:      z.string().email().optional(),
-  category:   z.enum(['4x-trading', 'digital-marketing']).nullable().optional(),
+  category:   z.enum(['4x-trading', 'digital-marketing', 'ai']).nullable().optional(),
 }).refine(d => Object.keys(d).length > 0, { message: 'Provide at least one field' })
 
 const userCreateSchema = z.object({
   name:      z.string().min(2).max(100).trim(),
   email:     z.string().email(),
   password:  z.string().min(8, 'Password must be at least 8 characters'),
-  role:      z.enum(['student', 'instructor', 'admin', '4x_admin', 'digital_marketing_admin', 'super_admin']).default('instructor'),
+  role:      z.enum(['student', 'instructor', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'super_admin']).default('instructor'),
   bio:       z.string().max(2000).optional(),
   headline:  z.string().max(255).optional(),
-  category:  z.enum(['4x-trading', 'digital-marketing']).optional(),
+  category:  z.enum(['4x-trading', 'digital-marketing', 'ai']).optional(),
   courses:   z.array(z.object({
     courseId:       z.string().min(1),
     blockedLessons: z.array(z.string()).default([]),
@@ -173,7 +174,7 @@ router.post ('/users',          validate(userCreateSchema), audit('user.create',
       res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Instructors cannot create accounts.' } })
       return
     }
-    if ((role === '4x_admin' || role === 'digital_marketing_admin') && targetRole !== 'instructor') {
+    if ((role === '4x_admin' || role === 'digital_marketing_admin' || role === 'ai_admin') && targetRole !== 'instructor') {
       res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You can only create instructor accounts.' } })
       return
     }
@@ -181,8 +182,9 @@ router.post ('/users',          validate(userCreateSchema), audit('user.create',
       res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Only super admins can create super admin accounts.' } })
       return
     }
-    if (role === '4x_admin')               (req.body as any).category = '4x-trading'
+    if (role === '4x_admin')                    (req.body as any).category = '4x-trading'
     else if (role === 'digital_marketing_admin') (req.body as any).category = 'digital-marketing'
+    else if (role === 'ai_admin')               (req.body as any).category = 'ai'
     next()
   },
   async (req: Request, res: Response, next: NextFunction) => {
@@ -236,13 +238,17 @@ router.post  ('/users/:id/impersonate', requireRole('super_admin'), audit('user.
    for their program. super_admin / admin manage all.
 ──────────────────────────────────────────────────────────────────────── */
 const enrollmentRequestQuerySchema = z.object({
-  status:   z.enum(['pending', 'approved', 'cancelled', 'all']).default('pending'),
-  category: z.enum(['4x-trading', 'digital-marketing']).optional(),
+  status:   z.enum(['pending', 'approved', 'rejected', 'cancelled', 'all']).default('pending'),
+  category: z.enum(['4x-trading', 'digital-marketing', 'ai']).optional(),
   page:     z.coerce.number().min(1).default(1),
   per_page: z.coerce.number().min(1).max(100).default(20),
 })
 
-const cancelEnrollmentSchema = z.object({
+const approveEnrollmentSchema = z.object({
+  categories: z.array(z.enum(['4x-trading', 'digital-marketing', 'ai'])).optional(),
+})
+
+const rejectEnrollmentSchema = z.object({
   reason: z.string().min(5, 'Please provide a reason (min 5 characters)').max(1000),
 })
 
@@ -250,8 +256,15 @@ router.get ('/enrollment-requests',
   validate(enrollmentRequestQuerySchema, 'query'),
   ctrl.listEnrollmentRequests,
 )
-router.patch('/enrollment-requests/:userId/approve', requireAnyAdmin, ctrl.approveEnrollment)
-router.patch('/enrollment-requests/:userId/cancel',  requireAnyAdmin, validate(cancelEnrollmentSchema), ctrl.cancelEnrollment)
+router.patch('/enrollment-requests/:userId/approve',         requireAnyAdmin, validate(approveEnrollmentSchema), ctrl.approveEnrollment)
+router.patch('/enrollment-requests/:userId/reject',          requireAnyAdmin, validate(rejectEnrollmentSchema),  ctrl.rejectEnrollment)
+router.patch('/enrollment-requests/:userId/cancel',          requireAnyAdmin, validate(rejectEnrollmentSchema),  ctrl.rejectEnrollment)
+router.patch('/enrollment-requests/:userId/revoke-to-viewer', requireAnyAdmin, ctrl.revokeToViewer)
+
+const removeCategorySchema = z.object({
+  category: z.enum(['4x-trading', 'digital-marketing', 'ai']),
+})
+router.patch('/enrollment-requests/:userId/remove-category', requireAnyAdmin, validate(removeCategorySchema), ctrl.removeEnrollmentCategory)
 
 /* GET /admin/users/:id/enrollments — list a student's course enrollments */
 router.get('/users/:id/enrollments', requireAdmin,
@@ -409,8 +422,12 @@ const liveCreateSchema = z.object({
   /* meetingUrl is now auto-generated for external sessions — omit from create requests */
   instructorId:    z.string().optional(),
   sectionId:       z.string().optional(),
-  sessionCapacity: z.coerce.number().int().min(1).max(500).optional(),
+  sessionCapacity: z.coerce.number().int().min(1).max(10000).optional(),
   language:        z.enum(LIVE_LANGUAGES).default('English'),
+  /* Offline / in-person support */
+  isOnline:        z.boolean().optional(),
+  location:        z.string().max(500).optional(),
+  room:            z.string().max(100).optional(),
 })
 const liveUpdateSchema = z.object({
   title:           z.string().min(3).max(255).trim().optional(),
@@ -420,12 +437,17 @@ const liveUpdateSchema = z.object({
   meetingUrl:      z.string().url().max(2048).optional(),
   recordingUrl:    z.string().url().max(2048).optional().or(z.literal('')),
   status:          z.enum(['scheduled', 'live', 'ended', 'cancelled']).optional(),
-  sessionCapacity: z.coerce.number().int().min(1).max(500).optional(),
+  sessionCapacity: z.coerce.number().int().min(1).max(10000).optional(),
   mentorNotes:     z.string().max(5000).optional(),
   courseId:        z.string().optional(),
   sectionId:       z.string().optional(),
   instructorId:    z.string().optional(),
-  language:        z.enum(LIVE_LANGUAGES).optional(),
+  language:          z.enum(LIVE_LANGUAGES).optional(),
+  /* Offline / in-person support */
+  isOnline:          z.boolean().optional(),
+  location:          z.string().max(500).optional(),
+  room:              z.string().max(100).optional(),
+  rescheduleReason:  z.string().max(2000).optional(),
 })
 
 router.get   ('/courses/:courseId/live-classes',          live.adminListForCourse)
@@ -817,7 +839,7 @@ router.get('/bookings', requireInstructor, validate(bookingQuerySchema, 'query')
         .populate('userId', 'id name email avatarUrl')
         .populate({
           path:     'liveClassId',
-          select:   'id title scheduledStart durationMins language courseId sectionId instructorId',
+          select:   'id title scheduledStart durationMins language courseId sectionId instructorId isOnline location room',
           populate: [
             { path: 'courseId',     select: 'id title' },
             { path: 'sectionId',    select: 'id title' },

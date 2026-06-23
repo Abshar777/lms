@@ -34,7 +34,7 @@ export class SectionService {
   /* Ownership check: throws if the course is not editable by this user.
      - Admins always pass.
      - Instructors must own the course. */
-  async assertCourseEditable(courseId: string, userId: string, role: string, categoryScope?: '4x-trading' | 'digital-marketing'): Promise<void> {
+  async assertCourseEditable(courseId: string, userId: string, role: string, categoryScope?: string): Promise<void> {
     if (!Types.ObjectId.isValid(courseId)) {
       throw new OutlineError('INVALID_ID', 'Invalid course id', 400)
     }
@@ -57,7 +57,7 @@ export class SectionService {
   }
 
   /** Convenience: look up lesson → course, then assertCourseEditable. */
-  async assertLessonEditable(lessonId: string, userId: string, role: string, categoryScope?: '4x-trading' | 'digital-marketing'): Promise<void> {
+  async assertLessonEditable(lessonId: string, userId: string, role: string, categoryScope?: string): Promise<void> {
     if (!Types.ObjectId.isValid(lessonId)) {
       throw new OutlineError('INVALID_ID', 'Invalid lesson id', 400)
     }

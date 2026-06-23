@@ -8,16 +8,22 @@ export type LiveClassType   = 'external' | 'internal'
 export interface LiveClass {
   id:             string
   courseId:       string
-  course?:        { id: string; title: string; slug: string; thumbnailUrl?: string }
+  course?:        { id: string; title: string; slug: string; thumbnailUrl?: string; program?: string }
   instructorId:   string
   instructor?:    { id: string; name: string; avatarUrl?: string }
   title:          string
   description?:   string
   scheduledStart: string
   durationMins:   number
+  language?:      string
 
   type:           LiveClassType
   status:         LiveClassStatus
+
+  /* Delivery mode */
+  isOnline?:      boolean
+  location?:      string
+  room?:          string
 
   /* External-only */
   meetingUrl?:    string
@@ -38,8 +44,6 @@ export interface LiveClass {
   sessionCapacity: number
   bookedCount:     number
 
-  language:        string
-
   /**
    * Annotated by the backend — true when the logged-in student has an active
    * enrollment in this session's course. False = show "Purchase to join" prompt.
@@ -56,7 +60,7 @@ export interface WatchAccess {
   status:        LiveClassStatus
   meetingUrl?:   string      // external only
   playbackUrl?:  string      // internal only
-  recordingUrl?: string      // set by admin after class ends (Meet link, Drive, etc.)
+  recordingUrl?: string      // internal, after stream ends
   thumbnailUrl?: string
   viewerCount:   number
 }
@@ -105,7 +109,7 @@ function normalizeLiveClass(c: any): LiveClass {
   const courseRaw = c.courseId
   const course: LiveClass['course'] =
     typeof courseRaw === 'object' && courseRaw
-      ? { id: courseRaw.id ?? String(courseRaw._id ?? ''), title: courseRaw.title ?? '', slug: courseRaw.slug ?? '', thumbnailUrl: courseRaw.thumbnailUrl }
+      ? { id: courseRaw.id ?? String(courseRaw._id ?? ''), title: courseRaw.title ?? '', slug: courseRaw.slug ?? '', thumbnailUrl: courseRaw.thumbnailUrl, program: courseRaw.program }
       : (c.course ?? undefined)
 
   const instrRaw = c.instructorId

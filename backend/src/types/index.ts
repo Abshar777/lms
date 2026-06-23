@@ -15,7 +15,7 @@ export interface AuthUser {
   id: string
   email: string
   role: UserRole
-  categoryScope?: '4x-trading' | 'digital-marketing'
+  categoryScope?: '4x-trading' | 'digital-marketing' | 'ai'
 }
 
 /* ─────────────────────────────────────────────────────
@@ -27,6 +27,7 @@ export type UserRole =
   | 'admin'
   | '4x_admin'
   | 'digital_marketing_admin'
+  | 'ai_admin'
   | 'super_admin'
 
 export type EnrollmentStatus = 'active' | 'completed' | 'dropped'

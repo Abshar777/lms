@@ -137,7 +137,7 @@ export class CourseService {
     tags?:         string[]
     instructorId:  string
     categoryId?:   string
-    program?:      '4x-trading' | 'digital-marketing'
+    program?:      '4x-trading' | 'digital-marketing' | 'ai'
   }): Promise<ICourse> {
     if (await this.repo.slugExists(input.slug)) {
       throw new CourseError('SLUG_TAKEN', 'Another course already uses this slug.', 409)
@@ -181,7 +181,7 @@ export class CourseService {
       tags:         string[]
       categoryId:   string
       instructorId: string
-      program:      '4x-trading' | 'digital-marketing' | ''
+      program:      '4x-trading' | 'digital-marketing' | 'ai' | ''
     }>,
   ): Promise<ICourse> {
     if (!Types.ObjectId.isValid(id)) {

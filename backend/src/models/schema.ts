@@ -46,11 +46,26 @@ export interface IUser extends Document {
   /* Two-factor authentication (TOTP) */
   twoFactorEnabled: boolean
   twoFactorSecret?: string   // base32-encoded TOTP secret; select:false
-  /* Business category */
-  category?:     '4x-trading' | 'digital-marketing'
-  /* Enrollment approval workflow (students with a category only) */
-  enrollmentStatus?:              'pending' | 'approved' | 'cancelled'
-  enrollmentCancellationReason?:  string
+  /* Business category (legacy – first approved category; use categories[] for multi) */
+  category?:     '4x-trading' | 'digital-marketing' | 'ai'
+  /* Multi-category enrollment */
+  categories:    ('4x-trading' | 'digital-marketing' | 'ai')[]
+  /* Enrollment approval workflow */
+  enrollmentStatus?:   'pending' | 'approved' | 'rejected' | 'cancelled'
+  /* Approval metadata */
+  approvedBy?:         Types.ObjectId
+  approvedByEmail?:    string
+  approvedByName?:     string
+  approvedByRole?:     string
+  approvedAt?:         Date
+  /* Rejection metadata */
+  rejectedBy?:         Types.ObjectId
+  rejectedByEmail?:    string
+  rejectedByName?:     string
+  rejectedAt?:         Date
+  rejectionReason?:    string
+  /* Legacy cancellation reason (kept for backward compat) */
+  enrollmentCancellationReason?: string
   /* Custom role (fine-grained permissions) */
   customRoleId?: Types.ObjectId
   /* Meta */
@@ -65,7 +80,7 @@ const UserSchema = new Schema<IUser>(
     email:        { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, select: false },   // excluded from queries by default
     avatarUrl:    { type: String },
-    role:         { type: String, enum: ['student', 'instructor', 'admin', '4x_admin', 'digital_marketing_admin', 'super_admin'], default: 'student' },
+    role:         { type: String, enum: ['student', 'instructor', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'super_admin'], default: 'student' },
     isVerified:   { type: Boolean, default: false },
     isActive:     { type: Boolean, default: true },
     provider:     { type: String },
@@ -77,9 +92,20 @@ const UserSchema = new Schema<IUser>(
     lockedUntil:  { type: Date },
     twoFactorEnabled: { type: Boolean, default: false },
     twoFactorSecret:  { type: String, select: false },
-    category:                      { type: String, enum: ['4x-trading', 'digital-marketing'] },
-    enrollmentStatus:              { type: String, enum: ['pending', 'approved', 'cancelled'] },
-    enrollmentCancellationReason:  { type: String },
+    category:                { type: String, enum: ['4x-trading', 'digital-marketing', 'ai'] },
+    categories:              [{ type: String, enum: ['4x-trading', 'digital-marketing', 'ai'] }],
+    enrollmentStatus:        { type: String, enum: ['pending', 'approved', 'rejected', 'cancelled'] },
+    approvedBy:              { type: Schema.Types.ObjectId, ref: 'User' },
+    approvedByEmail:         { type: String },
+    approvedByName:          { type: String },
+    approvedByRole:          { type: String },
+    approvedAt:              { type: Date },
+    rejectedBy:              { type: Schema.Types.ObjectId, ref: 'User' },
+    rejectedByEmail:         { type: String },
+    rejectedByName:          { type: String },
+    rejectedAt:              { type: Date },
+    rejectionReason:         { type: String },
+    enrollmentCancellationReason: { type: String },
     customRoleId:                  { type: Schema.Types.ObjectId, ref: 'Role' },
     lastLoginAt:  { type: Date },
   },
@@ -266,7 +292,7 @@ export interface ICourse extends Document {
   instructorId:   Types.ObjectId
   categoryId?:    Types.ObjectId
   /* Business program */
-  program?:       '4x-trading' | 'digital-marketing'
+  program?:       '4x-trading' | 'digital-marketing' | 'ai'
   /* Denormalized stats */
   enrolledCount:  number
   ratingAvg:      number
@@ -291,7 +317,7 @@ const CourseSchema = new Schema<ICourse>(
     tags:          [{ type: String }],
     instructorId:  { type: Schema.Types.ObjectId, ref: 'User', required: true },
     categoryId:    { type: Schema.Types.ObjectId, ref: 'Category' },
-    program:       { type: String, enum: ['4x-trading', 'digital-marketing'] },
+    program:       { type: String, enum: ['4x-trading', 'digital-marketing', 'ai'] },
     enrolledCount: { type: Number, default: 0 },
     ratingAvg:     { type: Number, default: 0 },
     ratingCount:   { type: Number, default: 0 },
@@ -605,6 +631,14 @@ export interface ILiveClass extends Document {
 
   language:          string           // class language (English, Arabic, Hindi, Malayalam, Urdu)
 
+  /* Offline class support */
+  isOnline:          boolean          // false = physical classroom session
+  location?:         string           // venue / address (offline only)
+  room?:             string           // classroom / room number (offline only)
+
+  /* Reschedule tracking */
+  rescheduledReason?: string          // admin-provided reason when class is rescheduled
+
   createdAt:      Date
   updatedAt:      Date
 }
@@ -637,6 +671,10 @@ const LiveClassSchema = new Schema<ILiveClass>(
     sessionCapacity:   { type: Number, default: 30, min: 1, max: 500 },
     bookedCount:       { type: Number, default: 0, min: 0 },
     language:          { type: String, default: 'English' },
+    isOnline:          { type: Boolean, default: true },
+    location:          { type: String, maxlength: 500 },
+    room:              { type: String, maxlength: 100 },
+    rescheduledReason: { type: String, maxlength: 2000 },
   },
   baseSchemaOptions,
 )
@@ -1467,7 +1505,7 @@ export interface ISupportTicket extends Document {
   userId:        Types.ObjectId          // the client who opened the ticket
   subject:       string
   category:      SupportCategory
-  program?:      '4x-trading' | 'digital-marketing'  // inherited from student's category
+  program?:      '4x-trading' | 'digital-marketing' | 'ai'  // inherited from student's category
   status:        SupportTicketStatus
   messages:      ISupportMessage[]
   lastMessageAt: Date
@@ -1493,7 +1531,7 @@ const SupportTicketSchema = new Schema<ISupportTicket>(
     userId:         { type: Schema.Types.ObjectId, ref: 'User', required: true },
     subject:        { type: String, required: true, trim: true, maxlength: 200 },
     category:       { type: String, enum: ['technical', 'billing', 'course', 'account', 'other'], default: 'other' },
-    program:        { type: String, enum: ['4x-trading', 'digital-marketing'], required: false },
+    program:        { type: String, enum: ['4x-trading', 'digital-marketing', 'ai'], required: false },
     status:         { type: String, enum: ['open', 'pending', 'resolved', 'closed'], default: 'open' },
     messages:       { type: [SupportMessageSchema], default: [] },
     lastMessageAt:  { type: Date, default: Date.now },

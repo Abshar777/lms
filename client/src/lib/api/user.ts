@@ -13,8 +13,8 @@ export interface CurrentUser {
   websiteUrl?: string
   isVerified:  boolean
   isActive:    boolean
-  category?:   '4x-trading' | 'digital-marketing'
-  enrollmentStatus?:            'pending' | 'approved' | 'cancelled'
+  category?:   '4x-trading' | 'digital-marketing' | 'ai'
+  enrollmentStatus?:            'pending' | 'approved' | 'cancelled' | 'rejected'
   enrollmentCancellationReason?: string
   createdAt:   string
   updatedAt:   string

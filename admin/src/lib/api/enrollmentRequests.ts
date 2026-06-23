@@ -2,17 +2,31 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 
-export type EnrollmentRequestStatus = 'pending' | 'approved' | 'cancelled'
+export type EnrollmentRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
+export type ProgramCategory = '4x-trading' | 'digital-marketing' | 'ai'
 
 export interface EnrollmentRequest {
-  id:                           string
-  name:                         string
-  email:                        string
-  category:                     '4x-trading' | 'digital-marketing'
-  enrollmentStatus:             EnrollmentRequestStatus
+  id:                string
+  name:              string
+  email:             string
+  /** Legacy single category */
+  category?:         ProgramCategory
+  /** Multi-category (new) */
+  categories:        ProgramCategory[]
+  enrollmentStatus:  EnrollmentRequestStatus
+  rejectionReason?:  string
   enrollmentCancellationReason?: string
-  isActive:                     boolean
-  createdAt:                    string
+  /* Approval metadata */
+  approvedBy?:       string
+  approvedByEmail?:  string
+  approvedByName?:   string
+  approvedByRole?:   string
+  approvedAt?:       string
+  /* Rejection metadata */
+  rejectedByEmail?:  string
+  rejectedAt?:       string
+  isActive:          boolean
+  createdAt:         string
 }
 
 const KEYS = {
@@ -22,7 +36,7 @@ const KEYS = {
 
 export function useEnrollmentRequests(
   status: EnrollmentRequestStatus | 'all' = 'pending',
-  category?: '4x-trading' | 'digital-marketing',
+  category?: ProgramCategory,
 ) {
   return useQuery({
     queryKey: KEYS.list(status, category),
@@ -42,26 +56,87 @@ export function useEnrollmentRequests(
 export function useApproveEnrollment() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (userId: string) => {
-      const res = await api.patch<{ success: true; data: { id: string; enrollmentStatus: string } }>(
+    mutationFn: async ({ userId, categories }: { userId: string; categories?: ProgramCategory[] }) => {
+      const res = await api.patch<{ success: true; data: { id: string; enrollmentStatus: string; categories: string[] } }>(
         `/admin/enrollment-requests/${userId}/approve`,
+        categories ? { categories } : {},
       )
       return res.data.data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'enrollment-requests'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'enrollment-requests'] })
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] })
+    },
   })
 }
 
-export function useCancelEnrollment() {
+export function useRejectEnrollment() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ userId, reason }: { userId: string; reason: string }) => {
       const res = await api.patch<{ success: true; data: { id: string; enrollmentStatus: string } }>(
-        `/admin/enrollment-requests/${userId}/cancel`,
+        `/admin/enrollment-requests/${userId}/reject`,
         { reason },
       )
       return res.data.data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'enrollment-requests'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'enrollment-requests'] })
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] })
+    },
   })
 }
+
+export function useRemoveEnrollmentCategory() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ userId, category }: { userId: string; category: ProgramCategory }) => {
+      const res = await api.patch<{ success: true; data: { id: string; enrollmentStatus: string; categories: string[] } }>(
+        `/admin/enrollment-requests/${userId}/remove-category`,
+        { category },
+      )
+      return res.data.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'enrollment-requests'] })
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] })
+    },
+  })
+}
+
+export function useToggleBlock() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ userId, isActive }: { userId: string; isActive: boolean }) => {
+      const res = await api.patch<{ success: true; data: { id: string; isActive: boolean } }>(
+        `/admin/users/${userId}`,
+        { isActive },
+      )
+      return res.data.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'enrollment-requests'] })
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] })
+    },
+  })
+}
+
+export function useRevokeToViewer() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ userId }: { userId: string }) => {
+      const res = await api.patch<{ success: true; data: { id: string; enrollmentStatus: string } }>(
+        `/admin/enrollment-requests/${userId}/revoke-to-viewer`,
+        {},
+      )
+      return res.data.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'enrollment-requests'] })
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] })
+    },
+  })
+}
+
+/** Backward compat alias */
+export const useCancelEnrollment = useRejectEnrollment

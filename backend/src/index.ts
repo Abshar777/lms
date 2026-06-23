@@ -6,6 +6,7 @@ import { connectDatabase, disconnectDatabase } from '@/config/database.ts'
 import { logger } from '@/utils/logger.ts'
 import { startReminderJobs } from '@/jobs/reminders.job.ts'
 import { seedDefaultRoles } from '@/utils/seedRoles.ts'
+import { UserModel } from '@/models/schema.ts'
 
 async function bootstrap() {
   /* 1. Connect to MongoDB before accepting traffic */
@@ -13,6 +14,15 @@ async function bootstrap() {
 
   /* 1a. Ensure system roles exist (idempotent — skips existing) */
   await seedDefaultRoles()
+
+  /* 1b. Migrate legacy student accounts that predate the enrollmentStatus field */
+  const migrated = await UserModel.updateMany(
+    { role: 'student', enrollmentStatus: { $exists: false } },
+    { $set: { enrollmentStatus: 'approved' } },
+  )
+  if (migrated.modifiedCount > 0) {
+    logger.info(`✅  Migrated ${migrated.modifiedCount} legacy student(s) → enrollmentStatus: approved`)
+  }
 
   /* 2. Start HTTP server */
   const server = app.listen(env.PORT, () => {

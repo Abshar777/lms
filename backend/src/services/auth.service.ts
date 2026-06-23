@@ -44,34 +44,24 @@ export class AuthService {
     const existingUser = await this.userRepo.findByEmail(dto.email)
 
     if (existingUser) {
-      /* Cancelled students may re-apply: reset their account to pending */
-      if (existingUser.enrollmentStatus === 'cancelled') {
+      /* Rejected/cancelled students may re-apply: reset their account to pending */
+      if (existingUser.enrollmentStatus === 'cancelled' || existingUser.enrollmentStatus === 'rejected') {
         const passwordHash = await hashPassword(dto.password)
-        const incomingCategory = (dto as { category?: '4x-trading' | 'digital-marketing' }).category
-        const category = incomingCategory ?? (existingUser.category as '4x-trading' | 'digital-marketing' | undefined)
         const { UserModel } = await import('@/models/schema.ts')
         const updated = await UserModel.findByIdAndUpdate(
           existingUser.id,
           {
-            $set: {
-              passwordHash,
-              name: dto.name.trim(),
-              enrollmentStatus: 'pending',
-              ...(category ? { category } : {}),
-            },
-            $unset: { enrollmentCancellationReason: '' },
+            $set:   { passwordHash, name: dto.name.trim(), enrollmentStatus: 'pending' },
+            $unset: { enrollmentCancellationReason: '', rejectionReason: '', rejectedBy: '', rejectedByEmail: '', rejectedByName: '', rejectedAt: '' },
           },
           { new: true },
         ).exec()
         if (!updated) throw new AuthError('USER_NOT_FOUND', 'Account not found.', 404)
         const tokens = await this.#issueTokens(updated.id, updated.email, updated.role, meta)
-        const effectiveCategory = (updated.category ?? category) as '4x-trading' | 'digital-marketing' | undefined
-        if (effectiveCategory) {
-          void this.#notifyCategoryAdmins(effectiveCategory, updated.name, updated.email).catch(err =>
-            logger.warn({ err, userId: updated.id }, 'admin enrollment notification failed'),
-          )
-        }
-        logger.info({ userId: updated.id }, 'Cancelled student re-registered')
+        void this.#notifyAllAdmins(updated.name, updated.email).catch(err =>
+          logger.warn({ err, userId: updated.id }, 'admin enrollment notification failed'),
+        )
+        logger.info({ userId: updated.id }, 'Rejected student re-registered')
         return { user: toSafeUser(updated), tokens }
       }
       throw new AuthError('EMAIL_TAKEN', 'An account with this email already exists.', 409)
@@ -80,16 +70,14 @@ export class AuthService {
     /* 2. Hash password */
     const passwordHash = await hashPassword(dto.password)
 
-    /* 3. Create user */
-    const category = (dto as { category?: '4x-trading' | 'digital-marketing' }).category
+    /* 3. Create user – all students start as pending awaiting admin approval */
     const user = await this.userRepo.createUser({
       name:             dto.name.trim(),
       email:            dto.email,
       passwordHash,
       role:             'student',
-      category,
-      /* Students who pick a program need admin approval before they can join sessions */
-      enrollmentStatus: category ? 'pending' : undefined,
+      enrollmentStatus: 'pending',
+      categories:       [],
     })
 
     /* 4. Issue tokens */
@@ -100,12 +88,10 @@ export class AuthService {
       logger.warn({ err, userId: user.id }, 'verification email failed'),
     )
 
-    /* 6. Notify category admins when a program-specific student signs up */
-    if (category) {
-      void this.#notifyCategoryAdmins(category, user.name, user.email).catch(err =>
-        logger.warn({ err, userId: user.id }, 'admin enrollment notification failed'),
-      )
-    }
+    /* 6. Notify all admins of new signup request */
+    void this.#notifyAllAdmins(user.name, user.email).catch(err =>
+      logger.warn({ err, userId: user.id }, 'admin enrollment notification failed'),
+    )
 
     logger.info({ userId: user.id }, 'User registered')
     return { user: toSafeUser(user), tokens }
@@ -432,10 +418,10 @@ export class AuthService {
   async #issueTokens(
     userId: string,
     email: string,
-    role: 'student' | 'instructor' | 'admin',
+    role: string,
     meta?: { userAgent?: string; ip?: string },
   ): Promise<TokenPair> {
-    const pair = await generateTokenPair({ id: userId, email, role })
+    const pair = await generateTokenPair({ id: userId, email, role: role as import('@/types/index.ts').UserRole })
 
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 30)
@@ -475,18 +461,16 @@ export class AuthService {
     return { raw }
   }
 
-  /* ── Notify category admins of a new enrollment request ── */
-  async #notifyCategoryAdmins(
-    category: '4x-trading' | 'digital-marketing',
-    studentName: string,
-    studentEmail: string,
-  ): Promise<void> {
-    const adminRole = category === '4x-trading' ? '4x_admin' : 'digital_marketing_admin'
+  /* ── Notify all admins of a new student signup request ── */
+  async #notifyAllAdmins(studentName: string, studentEmail: string): Promise<void> {
     const { UserModel } = await import('@/models/schema.ts')
-    const admins = await UserModel.find({ role: adminRole, isActive: true }).select('name email').lean()
+    const admins = await UserModel.find({
+      role: { $in: ['super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin'] },
+      isActive: true,
+    }).select('name email').lean()
     await Promise.allSettled(
       admins.map(a =>
-        sendNewEnrollmentRequestToAdmin(a.email, a.name, studentName, studentEmail, category),
+        sendNewEnrollmentRequestToAdmin(a.email, a.name, studentName, studentEmail, ''),
       ),
     )
   }

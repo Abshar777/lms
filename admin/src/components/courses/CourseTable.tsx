@@ -424,10 +424,12 @@ function CourseRow({ course, index, checked, onToggle, onDelete }: {
 const PROGRAM_LABELS: Record<string, string> = {
   '4x-trading':        'FOREX Trading',
   'digital-marketing': 'Digital Marketing',
+  'ai':                'AI',
 }
 const PROGRAM_STYLE: Record<string, { bg: string; color: string }> = {
   '4x-trading':        { bg: 'rgba(96,165,250,0.12)',  color: '#60A5FA' },
   'digital-marketing': { bg: 'rgba(52,211,153,0.12)',  color: '#34D399' },
+  'ai':                { bg: 'rgba(167,139,250,0.12)', color: '#A78BFA' },
 }
 
 export function CourseTable() {
@@ -529,7 +531,7 @@ export function CourseTable() {
 
           {/* Program filter */}
           <div className="flex items-center gap-1">
-            {(['', '4x-trading', 'digital-marketing'] as const).map(p => (
+            {(['', '4x-trading', 'digital-marketing', 'ai'] as const).map(p => (
               <button key={p || 'all'} onClick={() => { setProgram(p); setPage(1) }}
                 className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
                 style={program === p

@@ -1,113 +1,267 @@
 'use client'
 
-import { useState, Fragment } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Clock, CheckCircle2, XCircle, User, Mail,
-  Loader2, ChevronDown, AlertCircle, Search,
+  Clock, CheckCircle2, XCircle, Loader2, AlertCircle, Search,
+  TrendingUp, Megaphone, Cpu, LayoutGrid, ChevronDown, Check,
+  ShieldCheck, Mail, X, Plus, Eye, RotateCcw, ShieldOff,
 } from 'lucide-react'
 import {
-  useEnrollmentRequests, useApproveEnrollment, useCancelEnrollment,
-  type EnrollmentRequest, type EnrollmentRequestStatus,
+  useEnrollmentRequests, useApproveEnrollment, useRejectEnrollment, useRemoveEnrollmentCategory,
+  useRevokeToViewer, useToggleBlock,
+  type EnrollmentRequest, type EnrollmentRequestStatus, type ProgramCategory,
 } from '@/lib/api/enrollmentRequests'
 import { useCurrentUser } from '@/lib/api/user'
 import { useToast } from '@/store/ui.store'
 
-const CATEGORY_LABEL: Record<string, string> = {
-  '4x-trading':        'FOREX Trading',
-  'digital-marketing': 'Digital Marketing',
+/* ── Constants ─────────────────────────────────────── */
+export const CATEGORY_META: Record<ProgramCategory, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
+  '4x-trading':        { label: 'FOREX Trading',     color: '#10B981', bg: 'rgba(16,185,129,0.14)',  icon: <TrendingUp size={10} /> },
+  'digital-marketing': { label: 'Digital Marketing', color: '#FF6B1A', bg: 'rgba(255,107,26,0.14)', icon: <Megaphone size={10} /> },
+  'ai':                { label: 'AI',                 color: '#8B5CF6', bg: 'rgba(139,92,246,0.14)', icon: <Cpu size={10} /> },
 }
 
-const CATEGORY_COLOR: Record<string, { bg: string; color: string }> = {
-  '4x-trading':        { bg: 'rgba(96,165,250,0.14)',  color: '#60A5FA' },
-  'digital-marketing': { bg: 'rgba(52,211,153,0.14)',  color: '#34D399' },
+const ALL_CATEGORIES: ProgramCategory[] = ['4x-trading', 'digital-marketing', 'ai']
+
+const ROLE_LABEL: Record<string, string> = {
+  super_admin:             'Super Admin',
+  admin:                   'Admin',
+  '4x_admin':              'FOREX Admin',
+  digital_marketing_admin: 'DM Admin',
+  ai_admin:                'AI Admin',
 }
 
-const STATUS_STYLE: Record<string, { bg: string; color: string; icon: React.ReactNode; label: string }> = {
-  pending:   { bg: 'rgba(251,191,36,0.14)',  color: '#FBBF24', icon: <Clock size={11} />,        label: 'Pending' },
-  approved:  { bg: 'rgba(74,222,128,0.14)',  color: '#4ADE80', icon: <CheckCircle2 size={11} />, label: 'Approved' },
-  cancelled: { bg: 'rgba(248,113,113,0.14)', color: '#F87171', icon: <XCircle size={11} />,      label: 'Cancelled' },
+const CATEGORY_SCOPE: Record<string, ProgramCategory> = {
+  '4x_admin':               '4x-trading',
+  digital_marketing_admin:  'digital-marketing',
+  ai_admin:                 'ai',
 }
 
-type StatusFilter = EnrollmentRequestStatus | 'all'
+/* ── Category badge (plain) ─────────────────────────── */
+function CategoryBadge({ cat }: { cat: ProgramCategory }) {
+  const m = CATEGORY_META[cat]
+  return (
+    <span className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-semibold"
+      style={{ background: m.bg, color: m.color }}>
+      {m.icon}{m.label}
+    </span>
+  )
+}
 
-/* ── Cancel dialog ─────────────────────────────── */
-function CancelDialog({ user, onClose, onConfirm, loading }: {
-  user:      EnrollmentRequest
-  onClose:   () => void
-  onConfirm: (reason: string) => void
-  loading:   boolean
+/* ── Removable category badge ───────────────────────── */
+function RemovableCategoryBadge({ cat, canRemove, removing, onRemove }: {
+  cat:       ProgramCategory
+  canRemove: boolean
+  removing:  boolean
+  onRemove:  () => void
 }) {
-  const [reason, setReason] = useState('')
-  const catStyle = CATEGORY_COLOR[user.category] ?? CATEGORY_COLOR['4x-trading']
+  const m = CATEGORY_META[cat]
+  return (
+    <span className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-semibold"
+      style={{ background: m.bg, color: m.color }}>
+      {m.icon}{m.label}
+      {canRemove && (
+        <button
+          type="button"
+          onClick={e => { e.stopPropagation(); onRemove() }}
+          disabled={removing}
+          title={`Remove from ${m.label}`}
+          className="ml-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full transition-all hover:bg-black/20 disabled:opacity-30"
+        >
+          {removing ? <Loader2 size={8} className="animate-spin" /> : <X size={8} />}
+        </button>
+      )}
+    </span>
+  )
+}
+
+/* ── Add-category dropdown (for admin/super_admin) ───── */
+function AddCategoryDropdown({ existingCats, loading, onAdd }: {
+  existingCats: ProgramCategory[]
+  loading:      boolean
+  onAdd:        (cat: ProgramCategory) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const missing = ALL_CATEGORIES.filter(c => !existingCats.includes(c))
+  if (missing.length === 0) return null
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        disabled={loading}
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all hover:bg-white/08 disabled:opacity-40"
+        style={{ color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.12)' }}
+        title="Add to another program"
+      >
+        {loading ? <Loader2 size={10} className="animate-spin" /> : <Plus size={10} />}
+        Add Program
+      </button>
+      <AnimatePresence>
+        {open && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, y: -4, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -4, scale: 0.97 }}
+              transition={{ duration: 0.1 }}
+              className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-xl py-1"
+              style={{ background: '#131525', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 20px 50px rgba(0,0,0,0.7)' }}
+            >
+              {missing.map(cat => {
+                const m = CATEGORY_META[cat]
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => { onAdd(cat); setOpen(false) }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-white/06"
+                    style={{ color: m.color }}
+                  >
+                    {m.icon}<span>{m.label}</span>
+                  </button>
+                )
+              })}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+/* ── Multi-category select ──────────────────────────── */
+function CategorySelect({ value, onChange, disabled }: {
+  value:    ProgramCategory[]
+  onChange: (cats: ProgramCategory[]) => void
+  disabled?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const toggle = (cat: ProgramCategory) => {
+    onChange(value.includes(cat) ? value.filter(c => c !== cat) : [...value, cat])
+  }
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen(v => !v)}
+        className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm transition-all"
+        style={{
+          background: 'rgba(255,255,255,0.06)',
+          border: `1px solid ${open ? 'rgba(74,222,128,0.5)' : 'rgba(255,255,255,0.09)'}`,
+          boxShadow: open ? '0 0 0 3px rgba(74,222,128,0.08)' : 'none',
+          color: 'white',
+        }}
+      >
+        <span className="flex flex-wrap gap-1">
+          {value.length === 0
+            ? <span style={{ color: 'rgba(255,255,255,0.35)' }}>Select categories…</span>
+            : value.map(c => <CategoryBadge key={c} cat={c} />)}
+        </span>
+        <ChevronDown size={13} style={{ color: 'rgba(255,255,255,0.35)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <>
+            <div className="fixed inset-0 z-[70]" onClick={() => setOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, y: -4, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -4, scale: 0.97 }}
+              transition={{ duration: 0.1 }}
+              className="absolute left-0 bottom-full z-[71] mb-1 w-full overflow-hidden rounded-xl py-1"
+              style={{ background: '#131525', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 20px 50px rgba(0,0,0,0.7)' }}
+            >
+              {ALL_CATEGORIES.map(cat => {
+                const m = CATEGORY_META[cat]
+                const selected = value.includes(cat)
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => toggle(cat)}
+                    className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/06"
+                  >
+                    <div className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded"
+                      style={{ background: selected ? m.bg : 'rgba(255,255,255,0.06)', border: `1px solid ${selected ? m.color : 'rgba(255,255,255,0.15)'}` }}>
+                      {selected && <Check size={10} style={{ color: m.color }} />}
+                    </div>
+                    <span className="flex items-center gap-1.5" style={{ color: selected ? m.color : 'rgba(255,255,255,0.75)' }}>
+                      {m.icon}{m.label}
+                    </span>
+                  </button>
+                )
+              })}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+/* ── Approve dialog ─────────────────────────────────── */
+function ApproveDialog({ user, scopeCategory, onClose, onConfirm, loading }: {
+  user:          EnrollmentRequest
+  scopeCategory: ProgramCategory | null
+  onClose:       () => void
+  onConfirm:     (cats: ProgramCategory[]) => void
+  loading:       boolean
+}) {
+  const [cats, setCats] = useState<ProgramCategory[]>(
+    scopeCategory ? [scopeCategory] : (user.categories.length ? user.categories : []),
+  )
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         className="absolute inset-0"
         style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
-        onClick={onClose}
-      />
+        onClick={onClose} />
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 8 }}
         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-        className="relative w-full max-w-md overflow-hidden rounded-2xl"
-        style={{
-          background: 'linear-gradient(145deg, #0e1022 0%, #0a0c18 100%)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          boxShadow: '0 40px 80px rgba(0,0,0,0.8)',
-          zIndex: 1,
-        }}
+        className="relative w-full max-w-md rounded-2xl"
+        style={{ background: 'linear-gradient(145deg,#0e1022,#0a0c18)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 40px 80px rgba(0,0,0,0.8)', zIndex: 1 }}
       >
         <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-          <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#EF4444' }}>Cancel Access</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#4ADE80' }}>Approve Student</p>
           <h2 className="mt-0.5 text-base font-bold text-white">{user.name}</h2>
           <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{user.email}</p>
         </div>
-
-        <div className="p-5">
-          <div className="mb-4 flex items-center gap-2 rounded-xl p-3"
-            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
-            <AlertCircle size={14} style={{ color: '#EF4444', flexShrink: 0 }} />
-            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>
-              The student will receive an email explaining why their request was not approved.
-            </p>
+        <div className="p-5 space-y-4">
+          <div>
+            <label className="mb-1.5 block text-xs font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>
+              Assign program category {scopeCategory ? '(auto-set for your role)' : '(select one or more)'}
+            </label>
+            {scopeCategory ? (
+              <div className="flex items-center gap-2 rounded-xl px-3 py-2.5"
+                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <CategoryBadge cat={scopeCategory} />
+                <span className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>— locked to your program</span>
+              </div>
+            ) : (
+              <CategorySelect value={cats} onChange={setCats} />
+            )}
           </div>
-
-          <label className="mb-1.5 block text-xs font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>
-            Reason for cancellation
-          </label>
-          <textarea
-            value={reason}
-            onChange={e => setReason(e.target.value)}
-            placeholder="e.g. Incomplete information provided, please resubmit with valid details…"
-            rows={4}
-            className="w-full resize-none rounded-xl px-3 py-2.5 text-sm text-white outline-none transition-all placeholder:text-white/20"
-            style={{
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.09)',
-            }}
-            onFocus={e => { e.currentTarget.style.border = '1px solid rgba(239,68,68,0.4)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(239,68,68,0.08)' }}
-            onBlur={e => { e.currentTarget.style.border = '1px solid rgba(255,255,255,0.09)'; e.currentTarget.style.boxShadow = 'none' }}
-          />
-          <p className="mt-1 text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>{reason.length}/1000</p>
-
-          <div className="mt-5 flex justify-end gap-2">
+          <div className="flex justify-end gap-2 pt-1">
             <button onClick={onClose}
               className="rounded-xl px-4 py-2 text-sm font-medium transition-colors hover:bg-white/07"
-              style={{ color: 'rgba(255,255,255,0.5)' }}>
-              Cancel
-            </button>
+              style={{ color: 'rgba(255,255,255,0.5)' }}>Cancel</button>
             <button
-              onClick={() => reason.trim().length >= 5 && onConfirm(reason.trim())}
-              disabled={loading || reason.trim().length < 5}
+              onClick={() => cats.length > 0 && onConfirm(cats)}
+              disabled={loading || cats.length === 0}
               className="flex items-center gap-1.5 rounded-xl px-5 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40"
-              style={{ background: 'linear-gradient(135deg,#EF4444,#DC2626)' }}>
+              style={{ background: 'linear-gradient(135deg,#4ADE80,#22c55e)', boxShadow: '0 4px 14px rgba(74,222,128,0.3)' }}>
               {loading && <Loader2 size={13} className="animate-spin" />}
-              Confirm cancellation
+              <CheckCircle2 size={13} />
+              Approve
             </button>
           </div>
         </div>
@@ -116,87 +270,225 @@ function CancelDialog({ user, onClose, onConfirm, loading }: {
   )
 }
 
-/* ── Main page ─────────────────────────────────── */
+/* ── Reject / Revoke dialog ─────────────────────────── */
+function RejectDialog({ user, isRevoke, onClose, onConfirm, loading }: {
+  user:      EnrollmentRequest
+  isRevoke?: boolean
+  onClose:   () => void
+  onConfirm: (reason: string) => void
+  loading:   boolean
+}) {
+  const [reason, setReason] = useState('')
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="absolute inset-0"
+        style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
+        onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+        className="relative w-full max-w-md rounded-2xl"
+        style={{ background: 'linear-gradient(145deg,#0e1022,#0a0c18)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 40px 80px rgba(0,0,0,0.8)', zIndex: 1 }}
+      >
+        <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#EF4444' }}>
+            {isRevoke ? 'Revoke All Access' : 'Reject Request'}
+          </p>
+          <h2 className="mt-0.5 text-base font-bold text-white">{user.name}</h2>
+          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{user.email}</p>
+        </div>
+        <div className="p-5">
+          <div className="mb-4 flex items-center gap-2 rounded-xl p-3"
+            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+            <AlertCircle size={14} style={{ color: '#EF4444', flexShrink: 0 }} />
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>
+              {isRevoke
+                ? 'This will remove all program access for this student. They will be notified by email.'
+                : 'The student will be notified by email. They can re-apply later.'}
+            </p>
+          </div>
+          <label className="mb-1.5 block text-xs font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            {isRevoke ? 'Reason for revoking access' : 'Reason for rejection'}
+          </label>
+          <textarea
+            value={reason} onChange={e => setReason(e.target.value)}
+            placeholder={isRevoke ? 'e.g. Account policy violation…' : 'e.g. Incomplete information — please resubmit with valid details…'}
+            rows={4}
+            className="w-full resize-none rounded-xl px-3 py-2.5 text-sm text-white outline-none transition-all placeholder:text-white/20"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)' }}
+            onFocus={e => { e.currentTarget.style.border = '1px solid rgba(239,68,68,0.4)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(239,68,68,0.08)' }}
+            onBlur={e => { e.currentTarget.style.border = '1px solid rgba(255,255,255,0.09)'; e.currentTarget.style.boxShadow = 'none' }}
+          />
+          <p className="mt-1 text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>{reason.length}/1000</p>
+          <div className="mt-5 flex justify-end gap-2">
+            <button onClick={onClose}
+              className="rounded-xl px-4 py-2 text-sm font-medium transition-colors hover:bg-white/07"
+              style={{ color: 'rgba(255,255,255,0.5)' }}>Cancel</button>
+            <button
+              onClick={() => reason.trim().length >= 5 && onConfirm(reason.trim())}
+              disabled={loading || reason.trim().length < 5}
+              className="flex items-center gap-1.5 rounded-xl px-5 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40"
+              style={{ background: 'linear-gradient(135deg,#EF4444,#DC2626)' }}>
+              {loading && <Loader2 size={13} className="animate-spin" />}
+              {isRevoke ? 'Revoke All Access' : 'Confirm rejection'}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+/* ── Main page ─────────────────────────────────────── */
 export default function EnrollmentRequestsPage() {
   const { data: me } = useCurrentUser()
   const toast        = useToast()
 
-  const [statusFilter, setStatusFilter]  = useState<StatusFilter>('pending')
-  const [search,       setSearch]        = useState('')
-  const [cancelTarget, setCancelTarget]  = useState<EnrollmentRequest | null>(null)
+  const [statusFilter,   setStatusFilter]   = useState<EnrollmentRequestStatus | 'all'>('pending')
+  const [search,         setSearch]         = useState('')
+  const [approveTarget,  setApproveTarget]  = useState<EnrollmentRequest | null>(null)
+  const [rejectTarget,   setRejectTarget]   = useState<EnrollmentRequest | null>(null)
+  const [removingCat,    setRemovingCat]    = useState<{ userId: string; cat: ProgramCategory } | null>(null)
 
-  const approve = useApproveEnrollment()
-  const cancel  = useCancelEnrollment()
+  const approve         = useApproveEnrollment()
+  const reject          = useRejectEnrollment()
+  const revokeToViewer  = useRevokeToViewer()
+  const removeCategory  = useRemoveEnrollmentCategory()
+  const toggleBlock     = useToggleBlock()
 
-  const isScoped = me?.role === '4x_admin' || me?.role === 'digital_marketing_admin'
-  const scopeCategory = me?.role === '4x_admin'
-    ? '4x-trading' as const
-    : me?.role === 'digital_marketing_admin'
-      ? 'digital-marketing' as const
-      : undefined
+  // Category scope: category admins are locked to their program
+  const scopeCategory: ProgramCategory | null = me?.role ? (CATEGORY_SCOPE[me.role] ?? null) : null
 
-  const { data, isLoading } = useEnrollmentRequests(statusFilter, scopeCategory)
+  // Full admins (admin/super_admin) have no scope restriction
+  const isFullAdmin = me?.role === 'super_admin' || me?.role === 'admin'
 
-  const requests = (data?.data ?? []).filter(r =>
-    !search || r.name.toLowerCase().includes(search.toLowerCase()) ||
-    r.email.toLowerCase().includes(search.toLowerCase()),
-  )
+  // super_admin/admin: always yes
+  // category admin: only if student has exactly 1 category matching their scope
+  // (multi-category students are protected — remove other categories first)
+  const canRevokeStudent = (displayCats: ProgramCategory[]) =>
+    isFullAdmin || (!!scopeCategory && displayCats.length === 1 && displayCats[0] === scopeCategory)
 
-  const handleApprove = async (u: EnrollmentRequest) => {
+  const { data, isLoading } = useEnrollmentRequests(statusFilter)
+
+  const requests = (data?.data ?? []).filter(r => {
+    if (!search) return true
+    const q = search.toLowerCase()
+    return r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q)
+  })
+
+  const handleApprove = async (cats: ProgramCategory[]) => {
+    if (!approveTarget) return
     try {
-      await approve.mutateAsync(u.id)
-      toast.success(`${u.name} approved`, 'They can now access live sessions.')
+      await approve.mutateAsync({ userId: approveTarget.id, categories: cats })
+      toast.success(`${approveTarget.name} approved`, `Assigned to: ${cats.map(c => CATEGORY_META[c].label).join(', ')}`)
+      setApproveTarget(null)
     } catch (err: any) {
       toast.error('Approval failed', err?.response?.data?.error?.message)
     }
   }
 
-  const handleCancel = async (reason: string) => {
-    if (!cancelTarget) return
+  const handleReject = async (reason: string) => {
+    if (!rejectTarget) return
     try {
-      await cancel.mutateAsync({ userId: cancelTarget.id, reason })
-      toast.success('Request cancelled', `${cancelTarget.name} has been notified by email.`)
-      setCancelTarget(null)
+      await reject.mutateAsync({ userId: rejectTarget.id, reason })
+      toast.success(rejectTarget.enrollmentStatus === 'approved' ? 'Access revoked' : 'Request rejected', `${rejectTarget.name} has been notified.`)
+      setRejectTarget(null)
     } catch (err: any) {
-      toast.error('Cancellation failed', err?.response?.data?.error?.message)
+      toast.error('Action failed', err?.response?.data?.error?.message)
     }
   }
 
-  const STATUS_TABS: { value: StatusFilter; label: string }[] = [
-    { value: 'pending',   label: 'Pending' },
-    { value: 'approved',  label: 'Approved' },
-    { value: 'cancelled', label: 'Cancelled' },
-    { value: 'all',       label: 'All' },
+  const handleToggleBlock = async (r: EnrollmentRequest) => {
+    try {
+      await toggleBlock.mutateAsync({ userId: r.id, isActive: !r.isActive })
+      toast.success(
+        r.isActive ? `${r.name} blocked` : `${r.name} unblocked`,
+        r.isActive ? 'User can no longer log in.' : 'User can now log in again.',
+      )
+    } catch (err: any) {
+      toast.error('Action failed', err?.response?.data?.error?.message)
+    }
+  }
+
+  const handleRevokeToViewer = async (r: EnrollmentRequest) => {
+    try {
+      await revokeToViewer.mutateAsync({ userId: r.id })
+      toast.success('Reverted to viewer', `${r.name} is now in viewer mode and pending re-approval.`)
+    } catch (err: any) {
+      toast.error('Action failed', err?.response?.data?.error?.message)
+    }
+  }
+
+  const handleAddCategory = async (r: EnrollmentRequest, cat: ProgramCategory) => {
+    try {
+      await approve.mutateAsync({ userId: r.id, categories: [cat] })
+      toast.success(`Added to ${CATEGORY_META[cat].label}`, `${r.name} now has access to this program.`)
+    } catch (err: any) {
+      toast.error('Failed to add program', err?.response?.data?.error?.message)
+    }
+  }
+
+  const handleRemoveCategory = async (r: EnrollmentRequest, cat: ProgramCategory) => {
+    setRemovingCat({ userId: r.id, cat })
+    try {
+      const result = await removeCategory.mutateAsync({ userId: r.id, category: cat })
+      if (result.enrollmentStatus === 'rejected') {
+        toast.success('Category removed', `${r.name} had no remaining programs and has been moved to rejected.`)
+      } else {
+        toast.success(`Removed from ${CATEGORY_META[cat].label}`, `${r.name} still has access to other programs.`)
+      }
+    } catch (err: any) {
+      toast.error('Remove failed', err?.response?.data?.error?.message)
+    } finally {
+      setRemovingCat(null)
+    }
+  }
+
+  // Can current admin remove a specific category from a student?
+  const canRemoveCategory = (cat: ProgramCategory): boolean => {
+    if (isFullAdmin) return true
+    if (scopeCategory) return cat === scopeCategory
+    return false
+  }
+
+  const STATUS_TABS: { value: EnrollmentRequestStatus | 'all'; label: string; color: string }[] = [
+    { value: 'pending',  label: 'Pending',  color: '#FBBF24' },
+    { value: 'approved', label: 'Approved', color: '#4ADE80' },
+    { value: 'rejected', label: 'Rejected', color: '#F87171' },
+    { value: 'all',      label: 'All',      color: 'rgba(255,255,255,0.4)' },
   ]
 
-  const pendingCount = data?.meta?.total_count ?? 0
+  const pendingCount = statusFilter !== 'pending' ? (data?.meta?.total_count ?? 0) : 0
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-          Enrollment Requests
+          Student Requests
         </h1>
         <p className="mt-1 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
-          {isScoped
-            ? `Review student signup requests for the ${CATEGORY_LABEL[scopeCategory ?? ''] ?? ''} program.`
-            : 'Review student signup requests across all programs.'}
+          {scopeCategory
+            ? `Review student signup requests — your approvals assign them to ${CATEGORY_META[scopeCategory].label}.`
+            : 'Review and approve student signup requests across all programs.'}
         </p>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        {/* Status tabs */}
         <div className="flex overflow-hidden rounded-xl" style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
           {STATUS_TABS.map(t => (
             <button
               key={t.value}
               onClick={() => setStatusFilter(t.value)}
-              className="px-4 py-2 text-sm font-medium transition-all"
+              className="relative px-4 py-2 text-sm font-medium transition-all"
               style={{
-                color:      statusFilter === t.value ? '#FF6B1A' : 'rgba(255,255,255,0.45)',
-                background: statusFilter === t.value ? 'rgba(255,107,26,0.10)' : 'transparent',
+                color:      statusFilter === t.value ? t.color : 'rgba(255,255,255,0.45)',
+                background: statusFilter === t.value ? `${t.color}18` : 'transparent',
                 borderRight: '1px solid rgba(255,255,255,0.06)',
               }}
             >
@@ -211,13 +503,11 @@ export default function EnrollmentRequestsPage() {
           ))}
         </div>
 
-        {/* Search */}
         <div className="relative flex-1" style={{ minWidth: 180, maxWidth: 320 }}>
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
             style={{ color: 'rgba(255,255,255,0.3)' }} />
           <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
+            value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search by name or email…"
             className="w-full rounded-xl py-2 pl-9 pr-4 text-sm text-white outline-none transition-all placeholder:text-white/25"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
@@ -233,154 +523,295 @@ export default function EnrollmentRequestsPage() {
 
       {/* Table */}
       <div className="overflow-hidden rounded-2xl" style={{ border: '1px solid rgba(255,255,255,0.07)' }}>
-        <table className="w-full min-w-[600px] border-collapse">
-          <thead>
-            <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-              {['Student', 'Program', 'Status', 'Signed up', ''].map(h => (
-                <th key={h} className="px-4 py-3 text-left"
-                  style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading && (
-              <tr><td colSpan={5} className="px-4 py-14 text-center">
-                <div className="inline-flex items-center gap-2 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                  <Loader2 size={14} className="animate-spin" />Loading requests…
-                </div>
-              </td></tr>
-            )}
-            {!isLoading && requests.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-16 text-center">
-                <div style={{ color: 'rgba(255,255,255,0.3)' }}>
-                  <CheckCircle2 size={28} className="mx-auto mb-3 opacity-40" />
-                  <p className="text-sm font-medium">
-                    {statusFilter === 'pending' ? 'No pending requests' : `No ${statusFilter} requests`}
-                  </p>
-                </div>
-              </td></tr>
-            )}
-            {!isLoading && requests.map((r, i) => {
-              const catStyle  = CATEGORY_COLOR[r.category] ?? CATEGORY_COLOR['4x-trading']
-              const statStyle = STATUS_STYLE[r.enrollmentStatus ?? 'pending']
-              const isPending = r.enrollmentStatus === 'pending'
-              const date      = new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[700px] border-collapse">
+            <thead>
+              <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                {['Student', 'Programs', statusFilter === 'approved' ? 'Approved by' : statusFilter === 'rejected' ? 'Rejected by' : 'Status', 'Signed up', ''].map(h => (
+                  <th key={h} className="px-4 py-3 text-left"
+                    style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading && (
+                <tr><td colSpan={5} className="px-4 py-14 text-center">
+                  <div className="inline-flex items-center gap-2 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                    <Loader2 size={14} className="animate-spin" />Loading requests…
+                  </div>
+                </td></tr>
+              )}
+              {!isLoading && requests.length === 0 && (
+                <tr><td colSpan={5} className="px-4 py-16 text-center">
+                  <div style={{ color: 'rgba(255,255,255,0.3)' }}>
+                    <CheckCircle2 size={28} className="mx-auto mb-3 opacity-40" />
+                    <p className="text-sm font-medium">
+                      {statusFilter === 'pending' ? 'No pending requests' : `No ${statusFilter} requests`}
+                    </p>
+                  </div>
+                </td></tr>
+              )}
+              {!isLoading && requests.map((r, i) => {
+                const isPending  = r.enrollmentStatus === 'pending'
+                const isApproved = r.enrollmentStatus === 'approved'
+                const isRejected = r.enrollmentStatus === 'rejected' || r.enrollmentStatus === 'cancelled'
+                const date       = new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                const displayCats: ProgramCategory[] = r.categories?.length
+                  ? r.categories
+                  : r.category ? [r.category] : []
 
-              return (
-                <Fragment key={r.id}>
-                <motion.tr
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.03 }}
-                  style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
-                  className="group transition-colors hover:bg-white/[0.02]"
-                >
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
-                        style={{ background: 'rgba(255,107,26,0.15)', border: '1px solid rgba(255,107,26,0.25)' }}>
-                        <span className="text-xs font-bold" style={{ color: '#FF6B1A' }}>
-                          {r.name[0]?.toUpperCase() ?? '?'}
+                // For approved rows: can this admin add their scope category to this student?
+                const canAddOwn = isApproved && scopeCategory && !displayCats.includes(scopeCategory)
+                // Can this admin add any category (admin/super_admin) to this student?
+                const canAddAny = isApproved && isFullAdmin && displayCats.length < ALL_CATEGORIES.length
+
+                return (
+                  <motion.tr
+                    key={r.id}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.03 }}
+                    style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                    className="group transition-colors hover:bg-white/[0.02]"
+                  >
+                    {/* Student */}
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
+                          style={{ background: 'rgba(255,107,26,0.15)', border: '1px solid rgba(255,107,26,0.25)' }}>
+                          <span className="text-xs font-bold" style={{ color: '#FF6B1A' }}>
+                            {r.name[0]?.toUpperCase() ?? '?'}
+                          </span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-white" style={{ maxWidth: 180 }}>{r.name}</p>
+                          <p className="truncate text-xs" style={{ color: 'rgba(255,255,255,0.4)', maxWidth: 200 }}>{r.email}</p>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Programs */}
+                    <td className="px-4 py-3.5">
+                      {displayCats.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {displayCats.map(c => (
+                            isApproved
+                              ? <RemovableCategoryBadge
+                                  key={c}
+                                  cat={c}
+                                  canRemove={canRemoveCategory(c)}
+                                  removing={removingCat?.userId === r.id && removingCat?.cat === c}
+                                  onRemove={() => handleRemoveCategory(r, c)}
+                                />
+                              : <CategoryBadge key={c} cat={c} />
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>Not assigned</span>
+                      )}
+                    </td>
+
+                    {/* Status / Metadata */}
+                    <td className="px-4 py-3.5">
+                      {isPending && (
+                        <div className="flex flex-col gap-1">
+                          <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold"
+                            style={{ background: 'rgba(251,191,36,0.14)', color: '#FBBF24' }}>
+                            <Clock size={11} />Pending
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                            style={{ background: 'rgba(99,102,241,0.12)', color: '#818CF8' }}>
+                            <Eye size={9} />Viewer mode
+                          </span>
+                          {!r.isActive && (
+                            <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                              style={{ background: 'rgba(239,68,68,0.10)', color: '#F87171' }}>
+                              <ShieldOff size={9} />Blocked
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {isApproved && r.approvedByEmail && (
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1 text-[11px]" style={{ color: '#4ADE80' }}>
+                            <ShieldCheck size={11} />
+                            <span className="font-semibold">{r.approvedByName ?? r.approvedByEmail}</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                            <Mail size={9} />{r.approvedByEmail}
+                          </div>
+                          {r.approvedByRole && (
+                            <div className="text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                              {ROLE_LABEL[r.approvedByRole] ?? r.approvedByRole}
+                              {r.approvedAt && ` · ${new Date(r.approvedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {isApproved && !r.approvedByEmail && (
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold"
+                          style={{ background: 'rgba(74,222,128,0.14)', color: '#4ADE80' }}>
+                          <CheckCircle2 size={11} />Approved
                         </span>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-white" style={{ maxWidth: 180 }}>{r.name}</p>
-                        <p className="truncate text-xs" style={{ color: 'rgba(255,255,255,0.4)', maxWidth: 200 }}>{r.email}</p>
-                      </div>
-                    </div>
-                  </td>
+                      )}
+                      {isApproved && !r.isActive && (
+                        <div className="mt-1">
+                          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                            style={{ background: 'rgba(239,68,68,0.10)', color: '#F87171' }}>
+                            <ShieldOff size={9} />Blocked
+                          </span>
+                        </div>
+                      )}
+                      {isRejected && (
+                        <div className="space-y-0.5">
+                          <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold"
+                            style={{ background: 'rgba(248,113,113,0.14)', color: '#F87171' }}>
+                            <XCircle size={11} />Rejected
+                          </span>
+                          {r.rejectionReason && (
+                            <p className="max-w-[200px] truncate text-[10px]"
+                              title={r.rejectionReason}
+                              style={{ color: 'rgba(255,255,255,0.3)' }}>
+                              {r.rejectionReason}
+                            </p>
+                          )}
+                          {r.rejectedByEmail && (
+                            <div className="text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                              by {r.rejectedByEmail}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </td>
 
-                  <td className="px-4 py-3.5">
-                    <span className="inline-flex items-center rounded-lg px-2 py-1 text-[11px] font-semibold"
-                      style={{ background: catStyle.bg, color: catStyle.color }}>
-                      {CATEGORY_LABEL[r.category] ?? r.category}
-                    </span>
-                  </td>
+                    {/* Signed up */}
+                    <td className="px-4 py-3.5">
+                      <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{date}</span>
+                    </td>
 
-                  <td className="px-4 py-3.5">
-                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold"
-                      style={{ background: statStyle.bg, color: statStyle.color }}>
-                      {statStyle.icon}
-                      {statStyle.label}
-                    </span>
-                    {r.enrollmentCancellationReason && (
-                      <p className="mt-1 max-w-[220px] truncate text-[10px]"
-                        style={{ color: 'rgba(255,255,255,0.3)' }}
-                        title={r.enrollmentCancellationReason}>
-                        {r.enrollmentCancellationReason}
-                      </p>
-                    )}
-                  </td>
+                    {/* Actions */}
+                    <td className="px-4 py-3.5">
+                      {isPending && (
+                        <div className="flex items-center justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                          <button
+                            onClick={() => setApproveTarget(r)}
+                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
+                            style={{ background: 'rgba(74,222,128,0.85)' }}>
+                            <CheckCircle2 size={11} />Approve
+                          </button>
+                          <button
+                            onClick={() => handleToggleBlock(r)}
+                            disabled={toggleBlock.isPending}
+                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-40"
+                            style={r.isActive
+                              ? { color: '#F87171', border: '1px solid rgba(248,113,113,0.3)' }
+                              : { color: '#4ADE80', border: '1px solid rgba(74,222,128,0.3)' }}>
+                            {toggleBlock.isPending ? <Loader2 size={10} className="animate-spin" /> : r.isActive ? <ShieldOff size={10} /> : <ShieldCheck size={10} />}
+                            {r.isActive ? 'Block' : 'Unblock'}
+                          </button>
+                          <button
+                            onClick={() => setRejectTarget(r)}
+                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
+                            style={{ background: 'rgba(239,68,68,0.85)' }}>
+                            <XCircle size={11} />Reject
+                          </button>
+                        </div>
+                      )}
 
-                  <td className="px-4 py-3.5">
-                    <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{date}</span>
-                  </td>
+                      {isApproved && (
+                        <div className="flex items-center justify-end gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                          {/* Category admin: add their program to this student if not already present */}
+                          {canAddOwn && (
+                            <button
+                              onClick={() => handleAddCategory(r, scopeCategory!)}
+                              disabled={approve.isPending}
+                              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all hover:opacity-80 disabled:opacity-40"
+                              style={{
+                                background: CATEGORY_META[scopeCategory!].bg,
+                                color: CATEGORY_META[scopeCategory!].color,
+                                border: `1px solid ${CATEGORY_META[scopeCategory!].color}40`,
+                              }}>
+                              {approve.isPending ? <Loader2 size={10} className="animate-spin" /> : <Plus size={10} />}
+                              Add to {CATEGORY_META[scopeCategory!].label}
+                            </button>
+                          )}
 
-                  <td className="px-4 py-3.5">
-                    {isPending && (
-                      <div className="flex items-center justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                        <button
-                          onClick={() => handleApprove(r)}
-                          disabled={approve.isPending}
-                          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
-                          style={{ background: 'rgba(74,222,128,0.85)' }}>
-                          {approve.isPending
-                            ? <Loader2 size={11} className="animate-spin" />
-                            : <CheckCircle2 size={11} />}
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => setCancelTarget(r)}
-                          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
-                          style={{ background: 'rgba(239,68,68,0.85)' }}>
-                          <XCircle size={11} />
-                          Cancel
-                        </button>
-                      </div>
-                    )}
-                    {!isPending && r.enrollmentStatus === 'approved' && (
-                      <div className="flex justify-end">
-                        <button
-                          onClick={() => setCancelTarget(r)}
-                          className="rounded-lg px-3 py-1.5 text-xs font-medium opacity-0 transition-all group-hover:opacity-100 hover:bg-red-500/15"
-                          style={{ color: 'rgba(248,113,113,0.7)' }}>
-                          Revoke
-                        </button>
-                      </div>
-                    )}
-                    {r.enrollmentStatus === 'cancelled' && (
-                      <div className="flex items-center justify-end opacity-0 transition-opacity group-hover:opacity-100">
-                        <button
-                          onClick={() => handleApprove(r)}
-                          disabled={approve.isPending}
-                          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
-                          style={{ background: 'rgba(74,222,128,0.85)' }}>
-                          {approve.isPending
-                            ? <Loader2 size={11} className="animate-spin" />
-                            : <CheckCircle2 size={11} />}
-                          Accept
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </motion.tr>
-                </Fragment>
-              )
-            })}
-          </tbody>
-        </table>
+                          {/* Admin/super_admin: dropdown to add any missing category */}
+                          {canAddAny && (
+                            <AddCategoryDropdown
+                              existingCats={displayCats}
+                              loading={approve.isPending}
+                              onAdd={cat => handleAddCategory(r, cat)}
+                            />
+                          )}
+
+                          {/* Revoke to viewer — admin/super_admin always; category admin only if student is in exactly their 1 category */}
+                          {canRevokeStudent(displayCats) && (
+                            <button
+                              onClick={() => handleRevokeToViewer(r)}
+                              disabled={revokeToViewer.isPending}
+                              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all hover:bg-indigo-500/10 disabled:opacity-40"
+                              style={{ color: 'rgba(129,140,248,0.9)', border: '1px solid rgba(129,140,248,0.2)' }}>
+                              {revokeToViewer.isPending ? <Loader2 size={10} className="animate-spin" /> : <RotateCcw size={10} />}
+                              Revoke to Viewer
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleToggleBlock(r)}
+                            disabled={toggleBlock.isPending}
+                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-40"
+                            style={r.isActive
+                              ? { color: '#F87171', border: '1px solid rgba(248,113,113,0.3)' }
+                              : { color: '#4ADE80', border: '1px solid rgba(74,222,128,0.3)' }}>
+                            {toggleBlock.isPending ? <Loader2 size={10} className="animate-spin" /> : r.isActive ? <ShieldOff size={10} /> : <ShieldCheck size={10} />}
+                            {r.isActive ? 'Block' : 'Unblock'}
+                          </button>
+                        </div>
+                      )}
+
+                      {isRejected && (
+                        <div className="flex justify-end opacity-0 transition-opacity group-hover:opacity-100">
+                          <button
+                            onClick={() => setApproveTarget(r)}
+                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
+                            style={{ background: 'rgba(74,222,128,0.85)' }}>
+                            <CheckCircle2 size={11} />Re-approve
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </motion.tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Cancel dialog */}
+      {/* Approve dialog */}
       <AnimatePresence>
-        {cancelTarget && (
-          <CancelDialog
-            user={cancelTarget}
-            onClose={() => setCancelTarget(null)}
-            onConfirm={handleCancel}
-            loading={cancel.isPending}
+        {approveTarget && (
+          <ApproveDialog
+            user={approveTarget}
+            scopeCategory={scopeCategory}
+            onClose={() => setApproveTarget(null)}
+            onConfirm={handleApprove}
+            loading={approve.isPending}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Reject / Revoke dialog */}
+      <AnimatePresence>
+        {rejectTarget && (
+          <RejectDialog
+            user={rejectTarget}
+            isRevoke={rejectTarget.enrollmentStatus === 'approved'}
+            onClose={() => setRejectTarget(null)}
+            onConfirm={handleReject}
+            loading={reject.isPending}
           />
         )}
       </AnimatePresence>

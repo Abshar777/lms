@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, Loader2, AlertCircle, ExternalLink, Tv2,
   Link as LinkIcon, Trash2, CheckCircle2, Video,
+  MapPin, Building2, Wifi, Info,
 } from 'lucide-react'
 import {
   useUpdateLiveClass, useDeleteLiveClass,
@@ -16,7 +17,6 @@ import { useUsers } from '@/lib/api/users'
 import { isoToDatetimeLocal, datetimeLocalToISO } from '@/lib/timezone'
 
 /* ── Helpers ──────────────────────────────────────────── */
-/* Picker shows/reads UAE wall-clock (see lib/timezone). */
 const toLocalDatetime = isoToDatetimeLocal
 
 /* ── Props ──────────────────────────────────────────────── */
@@ -45,14 +45,19 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
   const { data: outline } = useCourseOutline(activeCourseId)
   const sections = outline?.sections ?? []
 
-  const [title,         setTitle]         = useState(live.title)
-  const [description,   setDescription]   = useState(live.description ?? '')
-  const [start,         setStart]         = useState(() => toLocalDatetime(live.scheduledStart))
-  const [durationMins,  setDurationMins]  = useState(live.durationMins)
-  const [type,          setType]          = useState<LiveClassType>(live.type)
-  const [meetingUrl,    setMeetingUrl]    = useState(live.meetingUrl ?? '')
-  const [status,        setStatus]        = useState<LiveClassStatus>(live.status)
-  const [instructorId,  setInstructorId]  = useState(
+  const [title,            setTitle]            = useState(live.title)
+  const [description,      setDescription]      = useState(live.description ?? '')
+  const [start,            setStart]            = useState(() => toLocalDatetime(live.scheduledStart))
+  const [originalStart]                         = useState(() => toLocalDatetime(live.scheduledStart))
+  const [durationMins,     setDurationMins]     = useState(live.durationMins)
+  const [isOnline,         setIsOnline]         = useState<boolean>((live as any).isOnline ?? true)
+  const [type,             setType]             = useState<LiveClassType>(live.type)
+  const [meetingUrl,       setMeetingUrl]       = useState(live.meetingUrl ?? '')
+  const [location,         setLocation]         = useState<string>((live as any).location ?? '')
+  const [room,             setRoom]             = useState<string>((live as any).room ?? '')
+  const [rescheduleReason, setRescheduleReason] = useState<string>('')
+  const [status,           setStatus]           = useState<LiveClassStatus>(live.status)
+  const [instructorId,     setInstructorId]     = useState(
     typeof live.instructor === 'object' ? (live.instructor?.id ?? '') : (live.instructorId ?? ''),
   )
   const [sectionId, setSectionId] = useState(() => {
@@ -63,10 +68,12 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
   const [sessionCapacity, setSessionCapacity] = useState<number | ''>(
     (live as any).sessionCapacity ?? 500,
   )
-  const [language,      setLanguage]      = useState<string>(live.language ?? 'English')
-  const [recordingUrl,  setRecordingUrl]  = useState<string>(live.recordingUrl ?? '')
-  const [error,         setError]         = useState<string | null>(null)
+  const [language,     setLanguage]     = useState<string>((live as any).language ?? 'English')
+  const [recordingUrl, setRecordingUrl] = useState<string>(live.recordingUrl ?? '')
+  const [error,        setError]        = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const timeChanged = start !== originalStart
 
   const base     = 'w-full rounded-xl px-3 py-2 text-sm text-white outline-none placeholder:text-white/30'
   const iStyle   = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' } as const
@@ -74,28 +81,42 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
 
   const handleCourseChange = (newCourseId: string) => {
     setActiveCourseId(newCourseId)
-    setSectionId('')  // reset module when course changes
+    setSectionId('')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    if (timeChanged && !rescheduleReason.trim()) {
+      setError('Please provide a reason for rescheduling this class.')
+      return
+    }
+    if (!isOnline && !location.trim()) {
+      setError('Please enter a venue/location for in-person classes.')
+      return
+    }
+
     try {
       await updateMutation.mutateAsync({
         id:   live.id,
         data: {
-          title:           title.trim(),
-          description:     description.trim() || undefined,
-          scheduledStart:  datetimeLocalToISO(start),
+          title:            title.trim(),
+          description:      description.trim() || undefined,
+          scheduledStart:   datetimeLocalToISO(start),
           durationMins,
           type,
-          meetingUrl:      type === 'external' ? meetingUrl.trim() || undefined : undefined,
-          recordingUrl:    recordingUrl.trim() || undefined,
+          isOnline,
+          meetingUrl:       isOnline && type === 'external' ? meetingUrl.trim() || undefined : undefined,
+          location:         !isOnline ? location.trim() || undefined : undefined,
+          room:             !isOnline ? room.trim() || undefined : undefined,
+          rescheduleReason: timeChanged ? rescheduleReason.trim() : undefined,
+          recordingUrl:     recordingUrl.trim() || undefined,
           status,
-          instructorId:    instructorId || undefined,
-          courseId:        activeCourseId !== originalCourseId ? activeCourseId : undefined,
-          sectionId:       sectionId || undefined,
-          sessionCapacity: sessionCapacity !== '' ? sessionCapacity : undefined,
+          instructorId:     instructorId || undefined,
+          courseId:         activeCourseId !== originalCourseId ? activeCourseId : undefined,
+          sectionId:        sectionId || undefined,
+          sessionCapacity:  sessionCapacity !== '' ? sessionCapacity : undefined,
           language,
         },
       })
@@ -212,9 +233,9 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
           <div>
             <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
               style={{ color: 'rgba(255,255,255,0.35)' }}>Description (optional)</label>
-            <input value={description} onChange={e => setDescription(e.target.value)}
-              maxLength={2000} placeholder="Short description…"
-              className={base} style={iStyle} />
+            <textarea value={description} onChange={e => setDescription(e.target.value)}
+              rows={3} maxLength={2000} placeholder="Short description…"
+              className={base} style={{ ...iStyle, resize: 'none' }} />
           </div>
 
           {/* Date + Duration + Capacity */}
@@ -243,35 +264,144 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
             </div>
           </div>
 
-          {/* Type */}
+          {/* Reschedule reason — appears only when time changes */}
+          <AnimatePresence>
+            {timeChanged && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                style={{ overflow: 'hidden' }}
+              >
+                <div style={{
+                  background: 'rgba(251,191,36,0.07)',
+                  border: '1px solid rgba(251,191,36,0.22)',
+                  borderRadius: 12,
+                  padding: '12px 14px',
+                }}>
+                  <div className="mb-2 flex items-center gap-1.5">
+                    <Info size={12} style={{ color: '#FBB724' }} />
+                    <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#FBB724' }}>
+                      Reason for rescheduling <span style={{ color: '#EF4444' }}>*</span>
+                    </span>
+                  </div>
+                  <textarea
+                    value={rescheduleReason}
+                    onChange={e => setRescheduleReason(e.target.value)}
+                    rows={2}
+                    maxLength={500}
+                    placeholder="e.g. Instructor unavailable due to emergency; system maintenance required…"
+                    className={base}
+                    style={{ ...iStyle, resize: 'none', fontSize: 13 }}
+                  />
+                  <p className="mt-1 text-[10px]" style={{ color: 'rgba(255,255,255,0.28)' }}>
+                    This reason will be included in 3 emails sent to all booked students over 24 hours.
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Delivery mode: Online / Offline */}
           <div>
             <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
-              style={{ color: 'rgba(255,255,255,0.35)' }}>Type</label>
+              style={{ color: 'rgba(255,255,255,0.35)' }}>Delivery mode</label>
             <div className="flex gap-2">
-              {(['external', 'internal'] as const).map(t => (
-                <button key={t} type="button" onClick={() => setType(t)}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all"
-                  style={type === t
-                    ? { background: t === 'internal' ? 'rgba(255,107,26,0.20)' : 'rgba(99,102,241,0.20)',
-                        color:      t === 'internal' ? '#FF6B1A' : '#818CF8',
-                        border:     `1px solid ${t === 'internal' ? 'rgba(255,107,26,0.35)' : 'rgba(99,102,241,0.35)'}` }
-                    : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)',
-                        border: '1px solid rgba(255,255,255,0.08)' }}>
-                  {t === 'internal' ? <Tv2 size={11} /> : <ExternalLink size={11} />}
-                  {t === 'internal' ? 'In-App Stream' : 'External Link'}
-                </button>
-              ))}
+              <button type="button" onClick={() => setIsOnline(true)}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all"
+                style={isOnline
+                  ? { background: 'rgba(99,102,241,0.20)', color: '#818CF8', border: '1px solid rgba(99,102,241,0.35)' }
+                  : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <Wifi size={11} />
+                Online
+              </button>
+              <button type="button" onClick={() => setIsOnline(false)}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all"
+                style={!isOnline
+                  ? { background: 'rgba(16,185,129,0.18)', color: '#34D399', border: '1px solid rgba(16,185,129,0.35)' }
+                  : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <Building2 size={11} />
+                Offline (In-person)
+              </button>
             </div>
           </div>
 
-          {/* Meeting URL — external only */}
-          {type === 'external' && (
-            <div className="relative">
-              <LinkIcon size={13} className="absolute left-3 top-1/2 -translate-y-1/2"
-                style={{ color: 'rgba(255,255,255,0.35)' }} />
-              <input value={meetingUrl} onChange={e => setMeetingUrl(e.target.value)}
-                type="url" placeholder="https://zoom.us/j/…"
-                className={`${base} pl-9`} style={iStyle} />
+          {/* Online: session type + meeting URL */}
+          {isOnline && (
+            <>
+              <div>
+                <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+                  style={{ color: 'rgba(255,255,255,0.35)' }}>Session type</label>
+                <div className="flex gap-2">
+                  {(['external', 'internal'] as const).map(t => (
+                    <button key={t} type="button" onClick={() => setType(t)}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all"
+                      style={type === t
+                        ? { background: t === 'internal' ? 'rgba(255,107,26,0.20)' : 'rgba(99,102,241,0.20)',
+                            color:      t === 'internal' ? '#FF6B1A' : '#818CF8',
+                            border:     `1px solid ${t === 'internal' ? 'rgba(255,107,26,0.35)' : 'rgba(99,102,241,0.35)'}` }
+                        : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)',
+                            border: '1px solid rgba(255,255,255,0.08)' }}>
+                      {t === 'internal' ? <Tv2 size={11} /> : <ExternalLink size={11} />}
+                      {t === 'internal' ? 'In-App Stream' : 'External Link'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {type === 'external' && (
+                <div className="relative">
+                  <LinkIcon size={13} className="absolute left-3 top-1/2 -translate-y-1/2"
+                    style={{ color: 'rgba(255,255,255,0.35)' }} />
+                  <input value={meetingUrl} onChange={e => setMeetingUrl(e.target.value)}
+                    type="url" placeholder="https://zoom.us/j/… or Google Meet link"
+                    className={`${base} pl-9`} style={iStyle} />
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Offline: Location + Room */}
+          {!isOnline && (
+            <div className="space-y-2">
+              <div>
+                <label className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest"
+                  style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  <MapPin size={10} />
+                  Venue / Location
+                </label>
+                <div className="relative">
+                  <MapPin size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                    style={{ color: 'rgba(255,255,255,0.30)' }} />
+                  <input
+                    value={location}
+                    onChange={e => setLocation(e.target.value)}
+                    maxLength={500}
+                    placeholder="e.g. Delta Learning Center, Building A, 2nd Floor"
+                    className={`${base} pl-9`}
+                    style={iStyle}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest"
+                  style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  <Building2 size={10} />
+                  Classroom / Room
+                </label>
+                <div className="relative">
+                  <Building2 size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                    style={{ color: 'rgba(255,255,255,0.30)' }} />
+                  <input
+                    value={room}
+                    onChange={e => setRoom(e.target.value)}
+                    maxLength={100}
+                    placeholder="e.g. Room 204 / Lab 3 / Auditorium"
+                    className={`${base} pl-9`}
+                    style={iStyle}
+                  />
+                </div>
+              </div>
             </div>
           )}
 

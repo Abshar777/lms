@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ChevronLeft, ChevronRight, Calendar, Clock, Users,
   Plus, X, Radio, Tv2, ExternalLink, Loader2,
-  AlertCircle, Link as LinkIcon, CalendarDays, Monitor, Pencil,
+  AlertCircle, CalendarDays, Monitor, Pencil, Video,
+  Building2, MapPin,
 } from 'lucide-react'
 import { useAllLiveClasses, useCreateLiveClass, type LiveClass, type LiveClassType } from '@/lib/api/liveClasses'
 import { useCourses } from '@/lib/api/courses'
@@ -15,38 +16,14 @@ import { useCourseOutline } from '@/lib/api/outline'
 import { useUsers } from '@/lib/api/users'
 import { useCurrentUser } from '@/lib/api/user'
 import { EditLiveClassModal } from '@/components/live-classes/EditLiveClassModal'
-
-/* ── Constants ──────────────────────────────────────── */
-const DAY_START_HOUR = 9          // 9 AM
-const DAY_END_HOUR   = 22         // 10 PM
-const TOTAL_HOURS    = DAY_END_HOUR - DAY_START_HOUR   // 13
-const PX_PER_HOUR    = 80         // pixels per hour
-const PX_PER_MIN     = PX_PER_HOUR / 60
-const GRID_HEIGHT    = TOTAL_HOURS * PX_PER_HOUR        // 1040px
-const SLOT_MINS      = 30
-const DAYS           = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const FULL_DAYS      = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+import { CreateOfflineClassModal } from '@/components/live-classes/CreateOfflineClassModal'
+import { Button } from '@/components/ui/button'
 
 /* ── Helpers ─────────────────────────────────────────── */
-function getMonday(d: Date): Date {
-  const date = new Date(d)
-  const day  = date.getDay()                          // 0=Sun
-  const diff = (day === 0 ? -6 : 1 - day)
-  date.setDate(date.getDate() + diff)
-  date.setHours(0, 0, 0, 0)
-  return date
-}
-
-function addDays(d: Date, n: number): Date {
-  const r = new Date(d)
-  r.setDate(r.getDate() + n)
-  return r
-}
-
 function sameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
+    a.getMonth()    === b.getMonth()    &&
+    a.getDate()     === b.getDate()
 }
 
 function isoLocal(d: Date): string {
@@ -54,108 +31,19 @@ function isoLocal(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-function fmtWeekRange(monday: Date): string {
-  const sunday = addDays(monday, 6)
-  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
-  if (monday.getMonth() === sunday.getMonth()) {
-    return `${monday.toLocaleDateString('en-US', opts)} – ${sunday.getDate()}, ${sunday.getFullYear()}`
-  }
-  return `${monday.toLocaleDateString('en-US', opts)} – ${sunday.toLocaleDateString('en-US', opts)}, ${sunday.getFullYear()}`
-}
-
-function topForTime(date: Date): number {
-  const mins = (date.getHours() - DAY_START_HOUR) * 60 + date.getMinutes()
-  return mins * PX_PER_MIN
-}
-
-function heightForMins(mins: number): number {
-  return Math.max(mins * PX_PER_MIN, 28)
-}
-
 function statusColor(s: LiveClass['status']): { bg: string; border: string; text: string; dot: string } {
   switch (s) {
-    case 'live':      return { bg: 'rgba(239,68,68,0.13)',  border: 'rgba(239,68,68,0.40)',  text: '#EF4444', dot: '#EF4444' }
-    case 'ended':     return { bg: 'rgba(34,197,94,0.10)',  border: 'rgba(34,197,94,0.30)',  text: '#22C55E', dot: '#22C55E' }
+    case 'live':      return { bg: 'rgba(239,68,68,0.13)',   border: 'rgba(239,68,68,0.40)',   text: '#EF4444',               dot: '#EF4444' }
+    case 'ended':     return { bg: 'rgba(34,197,94,0.10)',   border: 'rgba(34,197,94,0.30)',   text: '#22C55E',               dot: '#22C55E' }
     case 'cancelled': return { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.10)', text: 'rgba(255,255,255,0.35)', dot: 'rgba(255,255,255,0.3)' }
-    default:          return { bg: 'rgba(255,107,26,0.12)', border: 'rgba(255,107,26,0.35)', text: '#FF6B1A', dot: '#FF6B1A' }
+    default:          return { bg: 'rgba(255,107,26,0.12)',  border: 'rgba(255,107,26,0.35)',  text: '#FF6B1A',               dot: '#FF6B1A' }
   }
 }
 
-function fmtHour(h: number): string {
-  if (h === 0)  return '12 AM'
-  if (h < 12)   return `${h} AM`
-  if (h === 12) return '12 PM'
-  return `${h - 12} PM`
-}
-
-/* ── Now line ──────────────────────────────────────── */
-function NowLine() {
-  const now  = new Date()
-  const top  = topForTime(now)
-  if (top < 0 || top > GRID_HEIGHT) return null
-  return (
-    <div className="pointer-events-none absolute inset-x-0 z-20 flex items-center"
-      style={{ top }}>
-      <div className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ background: '#EF4444', marginLeft: -5 }} />
-      <div className="h-px flex-1" style={{ background: '#EF4444', opacity: 0.7 }} />
-    </div>
-  )
-}
-
-/* ── Event block ───────────────────────────────────── */
-function EventBlock({
-  live, onClick,
-}: {
-  live:    LiveClass
-  onClick: (l: LiveClass) => void
-}) {
-  const start  = new Date(live.scheduledStart)
-  const top    = topForTime(start)
-  const height = heightForMins(live.durationMins)
-  const colors = statusColor(live.status)
-  const isLiveNow = live.status === 'live'
-
-  if (top < 0 || top > GRID_HEIGHT) return null
-
-  return (
-    <motion.button
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      whileHover={{ scale: 1.02, zIndex: 30 }}
-      onClick={() => onClick(live)}
-      className="absolute inset-x-1 cursor-pointer overflow-hidden rounded-lg px-2 py-1 text-left"
-      style={{
-        top,
-        height,
-        background:  colors.bg,
-        border:      `1px solid ${colors.border}`,
-        zIndex:      10,
-      }}
-    >
-      {isLiveNow && (
-        <motion.div
-          animate={{ opacity: [1, 0.5, 1] }}
-          transition={{ duration: 1.4, repeat: Infinity }}
-          className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full"
-          style={{ background: '#EF4444' }}
-        />
-      )}
-      <p className="truncate text-[10px] font-bold leading-tight" style={{ color: colors.text }}>
-        {live.title}
-      </p>
-      {height > 36 && live.course && (
-        <p className="truncate text-[9px] leading-tight" style={{ color: 'rgba(255,255,255,0.45)' }}>
-          {live.course.title}
-        </p>
-      )}
-      {height > 52 && (
-        <p className="text-[9px] leading-tight" style={{ color: 'rgba(255,255,255,0.3)' }}>
-          {start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-          {' · '}{live.durationMins}m
-        </p>
-      )}
-    </motion.button>
-  )
+/* ── Slot draft ──────────────────────────────────────── */
+interface SlotDraft {
+  dayIndex: number   // always 0 in monthly view (weekDays is a 1-element array)
+  dateISO:  string   // YYYY-MM-DDTHH:MM local
 }
 
 /* ── Event detail popover ──────────────────────────── */
@@ -194,15 +82,26 @@ function EventPopover({
               style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.border}` }}>
               {live.status}
             </span>
-            <span className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
-              style={{ background: 'rgba(255,107,26,0.12)', color: '#FF6B1A' }}>
-              {live.type === 'internal' ? 'In-App' : 'External'}
-            </span>
+            {(live as any).isOnline === false ? (
+              <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
+                style={{ background: 'rgba(52,211,153,0.12)', color: '#34D399' }}>
+                <Building2 size={9} />Offline
+              </span>
+            ) : (
+              <span className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
+                style={{ background: 'rgba(255,107,26,0.12)', color: '#FF6B1A' }}>
+                {live.type === 'internal' ? 'In-App' : 'External'}
+              </span>
+            )}
           </div>
-          <button onClick={onClose} className="rounded-lg p-1 transition-colors hover:bg-white/10"
-            style={{ color: 'rgba(255,255,255,0.4)' }}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={onClose}
+            className="rounded-lg !text-white/40 hover:!bg-white/10"
+          >
             <X size={14} />
-          </button>
+          </Button>
         </div>
 
         <h3 className="text-base font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
@@ -228,25 +127,34 @@ function EventPopover({
               <Users size={11} style={{ color: '#818CF8' }} />{live.viewerCount.toLocaleString()} viewers
             </p>
           )}
+          {(live as any).isOnline === false && (live as any).location && (
+            <p className="flex items-center gap-2" style={{ color: '#34D399' }}>
+              <MapPin size={11} style={{ color: '#34D399' }} />
+              {(live as any).location}{(live as any).room ? ` · ${(live as any).room}` : ''}
+            </p>
+          )}
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
           {live.type === 'internal' && (live.status === 'scheduled' || live.status === 'live') && (
-            <button
+            <Button
+              variant={live.status === 'live' ? 'destructive' : 'default'}
+              size="sm"
               onClick={() => { router.push(`/live-classes/${live.id}/monitor`); onClose() }}
-              className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-white transition-all hover:brightness-110"
-              style={{ background: live.status === 'live' ? '#EF4444' : 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+              className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold"
+            >
               {live.status === 'live' ? <Radio size={11} /> : <Monitor size={11} />}
               {live.status === 'live' ? 'Monitor' : 'Go Live'}
-            </button>
+            </Button>
           )}
-          {/* Edit button */}
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => { onEdit(live); onClose() }}
-            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-white/10"
-            style={{ color: 'rgba(255,255,255,0.65)', border: '1px solid rgba(255,255,255,0.12)' }}>
+            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold !border-white/[0.12] !text-white/65 hover:!bg-white/10"
+          >
             <Pencil size={11} />Edit
-          </button>
+          </Button>
           {live.course?.id && (
             <Link
               href={`/courses/${live.course.id}/edit`}
@@ -263,25 +171,20 @@ function EventPopover({
 }
 
 /* ── Quick create modal ────────────────────────────── */
-interface SlotDraft {
-  dayIndex:  number   // 0=Mon … 6=Sun
-  dateISO:   string   // YYYY-MM-DDTHH:MM (local)
-}
-
 function QuickCreateModal({
   draft, weekDays, onClose, onSuccess, categoryProgram,
 }: {
-  draft:             SlotDraft
-  weekDays:          Date[]
-  onClose:           () => void
-  onSuccess:         () => void
-  categoryProgram?:  string
+  draft:            SlotDraft
+  weekDays:         Date[]
+  onClose:          () => void
+  onSuccess:        () => void
+  categoryProgram?: string
 }) {
   const { data: coursesData, isLoading: cLoading } = useCourses({ per_page: 200, ...(categoryProgram ? { program: categoryProgram } : {}) })
   const { data: instructorsData } = useUsers('instructor', { per_page: 200 })
   const createMutation = useCreateLiveClass()
 
-  const courses     = coursesData?.docs ?? []
+  const courses     = coursesData?.docs     ?? []
   const instructors = instructorsData?.docs ?? []
 
   const [courseId,        setCourseId]        = useState('')
@@ -291,8 +194,8 @@ function QuickCreateModal({
   const [durationMins,    setDurationMins]    = useState(60)
   const [sessionCapacity, setSessionCapacity] = useState<number | ''>(500)
   const [type,            setType]            = useState<LiveClassType>('external')
-  const [meetingUrl,      setMeetingUrl]      = useState('')
   const [instructorId,    setInstructorId]    = useState('')
+  const [language,        setLanguage]        = useState('English')
   const [error,           setError]           = useState<string | null>(null)
 
   const { data: outline } = useCourseOutline(courseId)
@@ -305,7 +208,6 @@ function QuickCreateModal({
     e.preventDefault()
     if (!courseId) { setError('Select a course'); return }
     if (!title.trim()) { setError('Enter a title'); return }
-    if (type === 'external' && !meetingUrl.trim()) { setError('Enter the meeting URL'); return }
     setError(null)
     try {
       await createMutation.mutateAsync({
@@ -315,9 +217,9 @@ function QuickCreateModal({
         durationMins,
         sessionCapacity: sessionCapacity !== '' ? sessionCapacity : undefined,
         type,
-        meetingUrl:      type === 'external' ? meetingUrl.trim() : undefined,
         sectionId:       sectionId || undefined,
         instructorId:    instructorId || undefined,
+        language,
       })
       onSuccess()
     } catch (err: any) {
@@ -329,7 +231,7 @@ function QuickCreateModal({
     }
   }
 
-  const day = weekDays[draft.dayIndex]
+  const day      = weekDays[draft.dayIndex]
   const dayLabel = day
     ? day.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
     : ''
@@ -348,8 +250,8 @@ function QuickCreateModal({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 8 }}
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-md rounded-2xl p-6 shadow-2xl"
-        style={{ background: '#161829', border: '1px solid rgba(255,255,255,0.10)' }}
+        className="w-full max-w-md overflow-y-auto rounded-2xl p-6 shadow-2xl"
+        style={{ background: '#161829', border: '1px solid rgba(255,255,255,0.10)', maxHeight: '90vh' }}
       >
         <div className="mb-5 flex items-center justify-between">
           <div>
@@ -376,75 +278,57 @@ function QuickCreateModal({
                 <Loader2 size={11} className="animate-spin" />Loading courses…
               </div>
             ) : (
-              <select
-                value={courseId}
+              <select value={courseId}
                 onChange={e => { setCourseId(e.target.value); setSectionId('') }}
-                required
-                className={`${base} cursor-pointer`}
-                style={{ ...selStyle }}>
+                required className={`${base} cursor-pointer`} style={selStyle}>
                 <option value="">Select a course…</option>
-                {courses.map(c => (
-                  <option key={c.id} value={c.id}>{c.title}</option>
-                ))}
+                {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
               </select>
             )}
           </div>
 
-          {/* Module (Section) — shown once a course is selected */}
-          {courseId && sections.length > 0 && (
-            <div>
-              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
-                style={{ color: 'rgba(255,255,255,0.35)' }}>Module (optional)</label>
-              <select
-                value={sectionId}
-                onChange={e => setSectionId(e.target.value)}
-                className={`${base} cursor-pointer`}
-                style={{ ...selStyle }}>
-                <option value="">No specific module</option>
-                {sections.map(s => (
-                  <option key={s.id} value={s.id}>{s.title}</option>
-                ))}
-              </select>
-            </div>
-          )}
+          {/* Module */}
+          <div>
+            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: 'rgba(255,255,255,0.35)' }}>Module (optional)</label>
+            <select value={sectionId} onChange={e => setSectionId(e.target.value)}
+              className={`${base} cursor-pointer`} style={selStyle}>
+              <option value="">No specific module</option>
+              {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
+            </select>
+          </div>
 
           {/* Title */}
           <div>
             <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
               style={{ color: 'rgba(255,255,255,0.35)' }}>Session title</label>
-            <input
-              value={title} onChange={e => setTitle(e.target.value)}
-              required minLength={3} maxLength={255}
-              placeholder="e.g. Week 3 Q&A"
+            <input value={title} onChange={e => setTitle(e.target.value)}
+              required minLength={3} maxLength={255} placeholder="e.g. Week 3 Q&A"
               className={base} style={iStyle} />
           </div>
 
-          {/* Date + Duration + Max seats */}
+          {/* Start · Duration · Seats */}
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
                 style={{ color: 'rgba(255,255,255,0.35)' }}>Start time</label>
-              <input
-                type="datetime-local" value={start} onChange={e => setStart(e.target.value)}
+              <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)}
                 required className={base} style={iStyle} />
             </div>
             <div>
               <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
                 style={{ color: 'rgba(255,255,255,0.35)' }}>Duration (mins)</label>
-              <input
-                type="number" min={5} max={600} step={5}
+              <input type="number" min={5} max={600} step={5}
                 value={durationMins} onChange={e => setDurationMins(Number(e.target.value))}
                 className={base} style={iStyle} />
             </div>
             <div>
               <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
                 style={{ color: 'rgba(255,255,255,0.35)' }}>Max seats</label>
-              <input
-                type="number" min={1} max={10000} step={1}
+              <input type="number" min={1} max={10000} step={1}
                 value={sessionCapacity}
                 onChange={e => setSessionCapacity(e.target.value === '' ? '' : Number(e.target.value))}
-                placeholder="1000"
-                className={base} style={iStyle} />
+                placeholder="1000" className={base} style={iStyle} />
             </div>
           </div>
 
@@ -453,45 +337,51 @@ function QuickCreateModal({
             <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
               style={{ color: 'rgba(255,255,255,0.35)' }}>Type</label>
             <div className="flex gap-2">
-              {(['external', 'internal'] as const).map(t => (
-                <button key={t} type="button" onClick={() => setType(t)}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all"
-                  style={type === t
-                    ? { background: t === 'internal' ? 'rgba(255,107,26,0.20)' : 'rgba(99,102,241,0.20)',
-                        color: t === 'internal' ? '#FF6B1A' : '#818CF8',
-                        border: `1px solid ${t === 'internal' ? 'rgba(255,107,26,0.35)' : 'rgba(99,102,241,0.35)'}` }
-                    : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)',
-                        border: '1px solid rgba(255,255,255,0.08)' }}>
-                  {t === 'internal' ? <Tv2 size={11} /> : <ExternalLink size={11} />}
-                  {t === 'internal' ? 'In-App Stream' : 'External Link'}
-                </button>
-              ))}
+              <button type="button" onClick={() => setType('external')}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all"
+                style={type === 'external'
+                  ? { background: 'rgba(34,197,94,0.15)', color: '#4ADE80', border: '1px solid rgba(34,197,94,0.30)' }
+                  : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <Video size={11} />Google Meet
+              </button>
+              <button type="button" onClick={() => setType('internal')}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all"
+                style={type === 'internal'
+                  ? { background: 'rgba(255,107,26,0.20)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.35)' }
+                  : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <Radio size={11} />In-App Stream
+              </button>
             </div>
+            {type === 'external' && (
+              <p className="mt-1.5 flex items-center gap-1 text-[10px]" style={{ color: 'rgba(74,222,128,0.65)' }}>
+                <span className="h-1.5 w-1.5 rounded-full bg-green-400 inline-block" />
+                Google Meet link will be auto-generated
+              </p>
+            )}
           </div>
-
-          {/* Meeting URL */}
-          {type === 'external' && (
-            <div className="relative">
-              <LinkIcon size={13} className="absolute left-3 top-1/2 -translate-y-1/2"
-                style={{ color: 'rgba(255,255,255,0.35)' }} />
-              <input
-                value={meetingUrl} onChange={e => setMeetingUrl(e.target.value)}
-                type="url" required placeholder="https://zoom.us/j/…"
-                className={`${base} pl-9`} style={iStyle} />
-            </div>
-          )}
 
           {/* Instructor */}
           <div>
             <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
               style={{ color: 'rgba(255,255,255,0.35)' }}>Instructor</label>
             <select value={instructorId} onChange={e => setInstructorId(e.target.value)}
-              className={`${base} cursor-pointer`}
-              style={{ ...selStyle }}>
+              className={`${base} cursor-pointer`} style={selStyle}>
               <option value="">Default (you)</option>
-              {instructors.map(i => (
-                <option key={i.id} value={i.id}>{i.name}</option>
-              ))}
+              {instructors.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+            </select>
+          </div>
+
+          {/* Language */}
+          <div>
+            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: 'rgba(255,255,255,0.35)' }}>Language</label>
+            <select value={language} onChange={e => setLanguage(e.target.value)}
+              className={base} style={selStyle}>
+              <option value="English">🇬🇧 English</option>
+              <option value="Arabic">🇦🇪 Arabic (عربي)</option>
+              <option value="Hindi">🇮🇳 Hindi (हिंदी)</option>
+              <option value="Malayalam">🇮🇳 Malayalam (മലയാളം)</option>
+              <option value="Urdu">🇵🇰 Urdu (اردو)</option>
             </select>
           </div>
 
@@ -516,61 +406,84 @@ function QuickCreateModal({
 
 /* ── Page ─────────────────────────────────────────── */
 export default function TimetablePage() {
-  const today    = new Date()
-  const [weekStart,    setWeekStart]    = useState(() => getMonday(today))
-  const [selected,     setSelected]     = useState<LiveClass | null>(null)
-  const [draft,        setDraft]        = useState<SlotDraft | null>(null)
-  const [editTarget,   setEditTarget]   = useState<LiveClass | null>(null)
+  const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d }, [])
+
+  const [monthDate,  setMonthDate]  = useState<Date>(() => {
+    const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d
+  })
+  const [selected,          setSelected]          = useState<LiveClass | null>(null)
+  const [draft,             setDraft]             = useState<SlotDraft | null>(null)
+  const [draftDay,          setDraftDay]          = useState<Date | null>(null)
+  const [editTarget,        setEditTarget]        = useState<LiveClass | null>(null)
+  const [offlineCreateOpen, setOfflineCreateOpen] = useState(false)
+  const [offlinePrefill,    setOfflinePrefill]    = useState<string | undefined>(undefined)
 
   const { data: me } = useCurrentUser()
   const categoryProgram =
     me?.role === '4x_admin' ? '4x-trading'
     : me?.role === 'digital_marketing_admin' ? 'digital-marketing'
+    : me?.role === 'ai_admin' ? 'ai'
     : undefined
 
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+  const year  = monthDate.getFullYear()
+  const month = monthDate.getMonth()
+
+  /* Sunday-anchored grid start */
+  const gridStart = useMemo(() => {
+    const first = new Date(year, month, 1)
+    const dow   = first.getDay()                 // 0 = Sun
+    const d     = new Date(first)
+    d.setDate(first.getDate() - dow)
+    return d
+  }, [year, month])
+
+  /* 42 cells = 6 weeks, layout never shifts */
+  const calDays = useMemo(() =>
+    Array.from({ length: 42 }, (_, i) => {
+      const d = new Date(gridStart); d.setDate(gridStart.getDate() + i); return d
+    })
+  , [gridStart])
+
+  const weeks = useMemo(() =>
+    Array.from({ length: 6 }, (_, wi) => calDays.slice(wi * 7, wi * 7 + 7))
+  , [calDays])
 
   const { data: allClasses, isLoading } = useAllLiveClasses('all')
 
-  /* Classes for this week, keyed by day-of-week (0=Mon) */
-  const byDay = weekDays.map(day =>
+  const getSessionsForDay = (day: Date) =>
     (allClasses ?? []).filter(l => sameDay(new Date(l.scheduledStart), day))
-  )
 
   const liveNowCount = (allClasses ?? []).filter(l => l.status === 'live').length
 
-  /* Time labels */
-  const timeLabels = Array.from({ length: TOTAL_HOURS + 1 }, (_, i) => ({
-    hour:  DAY_START_HOUR + i,
-    label: fmtHour(DAY_START_HOUR + i),
-    top:   i * PX_PER_HOUR,
-  }))
+  const monthLabel    = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const isThisMonth   = monthDate.getFullYear() === today.getFullYear() && monthDate.getMonth() === today.getMonth()
 
-  /* Slot click → open create modal */
-  const handleSlotClick = (dayIndex: number, slotTop: number) => {
-    const day  = weekDays[dayIndex]
-    if (!day) return
-    const totalMins = Math.round(slotTop / PX_PER_MIN)
-    const hour      = DAY_START_HOUR + Math.floor(totalMins / 60)
-    const min       = totalMins % 60
-    const snapped   = Math.round(min / SLOT_MINS) * SLOT_MINS
-    const d         = new Date(day)
-    d.setHours(hour, snapped === 60 ? 0 : snapped, 0, 0)
-    if (snapped === 60) d.setHours(hour + 1, 0, 0, 0)
-    setDraft({ dayIndex, dateISO: isoLocal(d) })
+  const DAY_ABBRS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const MAX_CHIPS = 3
+  const BORDER    = '1px solid rgba(255,255,255,0.07)'
+
+  const chipStyle = (status: LiveClass['status']) => {
+    const c = statusColor(status)
+    return { bg: c.bg, color: c.text, border: c.border }
   }
 
-  const handleColClick = (dayIndex: number, e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const y    = e.clientY - rect.top
-    handleSlotClick(dayIndex, y)
+  const handleDayClick = (day: Date) => {
+    const d = new Date(day); d.setHours(9, 0, 0, 0)
+    setDraftDay(day)
+    setDraft({ dayIndex: 0, dateISO: isoLocal(d) })
+    setSelected(null)
+    setEditTarget(null)
   }
+
+  const prevMonth = () => setMonthDate(d => { const n = new Date(d); n.setMonth(n.getMonth() - 1); return n })
+  const nextMonth = () => setMonthDate(d => { const n = new Date(d); n.setMonth(n.getMonth() + 1); return n })
+  const goToToday = () => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); setMonthDate(d) }
 
   return (
-    <div className="flex h-[calc(100vh-64px)] flex-col overflow-hidden">
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 64px)' }}>
 
       {/* ── Top bar ── */}
-      <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 px-1 pb-4">
+      <div className="mb-4 flex flex-shrink-0 flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl"
             style={{ background: 'rgba(255,107,26,0.15)', border: '1px solid rgba(255,107,26,0.25)' }}>
@@ -580,7 +493,7 @@ export default function TimetablePage() {
             <h1 className="text-lg font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
               Live Timetable
             </h1>
-            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>{fmtWeekRange(weekStart)}</p>
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>{monthLabel}</p>
           </div>
           {liveNowCount > 0 && (
             <motion.div
@@ -594,27 +507,34 @@ export default function TimetablePage() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Week nav */}
-          <div className="flex items-center rounded-xl overflow-hidden"
+          {/* Month navigation */}
+          <div className="flex items-center overflow-hidden rounded-xl"
             style={{ border: '1px solid rgba(255,255,255,0.10)' }}>
-            <button
-              onClick={() => setWeekStart(w => addDays(w, -7))}
-              className="flex h-8 w-8 items-center justify-center transition-colors hover:bg-white/10"
-              style={{ color: 'rgba(255,255,255,0.6)' }}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={prevMonth}
+              className="flex h-8 w-8 items-center justify-center !text-white/60 hover:!bg-white/10 rounded-none"
+            >
               <ChevronLeft size={14} />
-            </button>
-            <button
-              onClick={() => setWeekStart(getMonday(today))}
-              className="h-8 px-3 text-xs font-semibold transition-colors hover:bg-white/10"
-              style={{ color: sameDay(weekStart, getMonday(today)) ? '#FF6B1A' : 'rgba(255,255,255,0.6)' }}>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={goToToday}
+              className="h-8 px-3 text-xs font-semibold hover:!bg-white/10 rounded-none"
+              style={{ color: isThisMonth ? '#FF6B1A' : 'rgba(255,255,255,0.6)' }}
+            >
               Today
-            </button>
-            <button
-              onClick={() => setWeekStart(w => addDays(w, 7))}
-              className="flex h-8 w-8 items-center justify-center transition-colors hover:bg-white/10"
-              style={{ color: 'rgba(255,255,255,0.6)' }}>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={nextMonth}
+              className="flex h-8 w-8 items-center justify-center !text-white/60 hover:!bg-white/10 rounded-none"
+            >
               <ChevronRight size={14} />
-            </button>
+            </Button>
           </div>
 
           <Link href="/live-classes"
@@ -622,106 +542,113 @@ export default function TimetablePage() {
             style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.10)' }}>
             <CalendarDays size={12} />Overview
           </Link>
+
+          {/* Add Offline Class */}
+          <button
+            onClick={() => { setOfflinePrefill(undefined); setOfflineCreateOpen(true) }}
+            className="flex h-8 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold transition-all hover:opacity-90"
+            style={{ background: 'rgba(52,211,153,0.12)', color: '#34D399', border: '1px solid rgba(52,211,153,0.25)' }}>
+            <Building2 size={12} />Offline Class
+          </button>
         </div>
       </div>
 
-      {/* ── Grid ── */}
-      <div className="flex flex-1 overflow-hidden rounded-2xl"
-        style={{ border: '1px solid rgba(255,255,255,0.07)', background: '#0D0F1A' }}>
+      {/* ── Monthly Grid ── */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-auto rounded-2xl"
+        style={{ border: BORDER, background: '#0D0F1A' }}>
 
-        {/* Day columns — scrollable body */}
-        <div className="flex flex-1 flex-col overflow-hidden">
-          {/* Day headers */}
-          <div className="flex flex-shrink-0"
-            style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', height: 48 }}>
-            {weekDays.map((day, i) => {
-              const isToday   = sameDay(day, today)
-              const hasEvents = byDay[i] && byDay[i]!.length > 0
+        {/* Day-of-week header (sticky) */}
+        <div className="sticky top-0 z-10 grid grid-cols-7 flex-shrink-0"
+          style={{ background: '#0D0F1A', borderBottom: BORDER }}>
+          {DAY_ABBRS.map((d, i) => (
+            <div key={d}
+              className="py-3 text-center text-[11px] font-bold uppercase tracking-widest"
+              style={{
+                color:       'rgba(255,255,255,0.30)',
+                borderRight: i < 6 ? BORDER : 'none',
+              }}>
+              {d}
+            </div>
+          ))}
+        </div>
+
+        {/* Week rows */}
+        {weeks.map((week, wi) => (
+          <div key={wi} className="grid grid-cols-7"
+            style={{ borderBottom: wi < 5 ? BORDER : 'none' }}>
+            {week.map((day, di) => {
+              const inMonth  = day.getMonth() === month
+              const isToday  = sameDay(day, today)
+              const sessions = getSessionsForDay(day)
+              const overflow = sessions.length - MAX_CHIPS
+
               return (
-                <div key={i}
-                  className="flex flex-1 flex-col items-center justify-center"
+                <div
+                  key={di}
+                  onClick={() => handleDayClick(day)}
+                  className="cursor-pointer transition-colors hover:bg-white/[0.02]"
                   style={{
-                    borderRight: i < 6 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                    background:  isToday ? 'rgba(255,107,26,0.05)' : 'transparent',
+                    borderRight: di < 6 ? BORDER : 'none',
+                    minHeight:   120,
+                    background:  isToday ? 'rgba(255,107,26,0.04)' : 'transparent',
+                    opacity:     inMonth ? 1 : 0.30,
                   }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-widest"
-                    style={{ color: isToday ? '#FF6B1A' : 'rgba(255,255,255,0.3)' }}>
-                    {DAYS[i]}
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <p className={`text-sm font-bold ${isToday ? 'text-white' : ''}`}
-                      style={{ color: isToday ? 'white' : 'rgba(255,255,255,0.5)' }}>
+
+                  {/* Day number */}
+                  <div className="px-3 pt-2.5 pb-1.5">
+                    <span
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold leading-none"
+                      style={isToday
+                        ? { background: '#FF6B1A', color: '#fff' }
+                        : { color: inMonth ? 'rgba(255,255,255,0.60)' : 'rgba(255,255,255,0.20)' }}>
                       {day.getDate()}
-                    </p>
-                    {hasEvents && (
-                      <span className="h-1.5 w-1.5 rounded-full"
-                        style={{ background: isToday ? '#FF6B1A' : 'rgba(255,255,255,0.25)' }} />
+                    </span>
+                  </div>
+
+                  {/* Session chips */}
+                  <div className="space-y-0.5 px-1.5 pb-2" onClick={e => e.stopPropagation()}>
+                    {isLoading && inMonth && (
+                      <div className="h-5 animate-pulse rounded-md"
+                        style={{ background: 'rgba(255,255,255,0.04)' }} />
+                    )}
+                    {!isLoading && sessions.slice(0, MAX_CHIPS).map(s => {
+                      const isOffline = (s as any).isOnline === false
+                      const c = isOffline
+                        ? { bg: 'rgba(52,211,153,0.10)', border: 'rgba(52,211,153,0.25)', color: '#34D399' }
+                        : chipStyle(s.status)
+                      return (
+                        <Button
+                          key={s.id}
+                          variant="ghost"
+                          onClick={() => { setSelected(s); setDraft(null); setEditTarget(null) }}
+                          className="w-full text-left rounded-md px-2 py-1 h-auto transition-all hover:brightness-125 hover:!bg-transparent"
+                          style={{ background: c.bg, border: `1px solid ${c.border}` }}
+                        >
+                          <p className="flex items-center gap-1 truncate text-[10px] font-semibold leading-tight"
+                            style={{ color: c.color }}>
+                            {isOffline && <Building2 size={8} className="flex-shrink-0" />}
+                            {new Date(s.scheduledStart).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                            {' · '}{s.title}
+                          </p>
+                        </Button>
+                      )
+                    })}
+                    {overflow > 0 && (
+                      <p className="px-2 text-[10px] font-medium" style={{ color: 'rgba(255,255,255,0.30)' }}>
+                        +{overflow} more
+                      </p>
                     )}
                   </div>
                 </div>
               )
             })}
           </div>
-
-          {/* Scrollable day grid */}
-          <div
-            className="scrollbar-hide flex flex-1 overflow-y-scroll"
-            id="timetable-scroll"
-            style={{ height: 0 }}>
-            <div className="flex" style={{ height: GRID_HEIGHT, width: '100%' }}>
-              {weekDays.map((day, dayIndex) => {
-                const isToday = sameDay(day, today)
-                return (
-                  <div key={dayIndex}
-                    className="relative flex-1 cursor-cell overflow-hidden"
-                    style={{
-                      borderRight:  dayIndex < 6 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                      background:   isToday ? 'rgba(255,107,26,0.02)' : 'transparent',
-                      height:       GRID_HEIGHT,
-                    }}
-                    onClick={e => handleColClick(dayIndex, e)}
-                  >
-                    {/* Horizontal hour lines with time labels */}
-                    {timeLabels.map(t => (
-                      <div key={t.hour}
-                        className="pointer-events-none absolute inset-x-0 flex items-start"
-                        style={{ top: t.top, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                        <span
-                          className="select-none pl-1 text-[9px] font-semibold leading-none"
-                          style={{ color: 'rgba(255,255,255,0.22)', marginTop: 2 }}>
-                          {t.label}
-                        </span>
-                      </div>
-                    ))}
-
-                    {/* Current time line */}
-                    {isToday && <NowLine />}
-
-                    {/* Event blocks */}
-                    {(byDay[dayIndex] ?? []).map(live => (
-                      <EventBlock
-                        key={live.id}
-                        live={live}
-                        onClick={l => { setSelected(l); setDraft(null); setEditTarget(null) }}
-                      />
-                    ))}
-
-                    {/* Loading shimmer */}
-                    {isLoading && (
-                      <div className="absolute inset-2 animate-pulse rounded-lg"
-                        style={{ background: 'rgba(255,255,255,0.03)' }} />
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* ── Hint ── */}
       <p className="mt-2 flex-shrink-0 text-center text-[10px]" style={{ color: 'rgba(255,255,255,0.18)' }}>
-        Click any empty slot to schedule a session · Click an existing session for details
+        Click any day to schedule an online session · Click "Offline Class" to add an in-person session · Click a chip for details
       </p>
 
       {/* ── Modals ── */}
@@ -734,13 +661,13 @@ export default function TimetablePage() {
             onEdit={l => { setSelected(null); setEditTarget(l) }}
           />
         )}
-        {draft && (
+        {draft && draftDay && (
           <QuickCreateModal
             key="create"
             draft={draft}
-            weekDays={weekDays}
-            onClose={() => setDraft(null)}
-            onSuccess={() => setDraft(null)}
+            weekDays={[draftDay]}
+            onClose={() => { setDraft(null); setDraftDay(null) }}
+            onSuccess={() => { setDraft(null); setDraftDay(null) }}
             categoryProgram={categoryProgram}
           />
         )}
@@ -750,6 +677,15 @@ export default function TimetablePage() {
             live={editTarget}
             onClose={() => setEditTarget(null)}
             onSuccess={() => setEditTarget(null)}
+          />
+        )}
+        {offlineCreateOpen && (
+          <CreateOfflineClassModal
+            key="offline-create"
+            onClose={() => setOfflineCreateOpen(false)}
+            onSuccess={() => setOfflineCreateOpen(false)}
+            categoryProgram={categoryProgram}
+            prefillDate={offlinePrefill}
           />
         )}
       </AnimatePresence>

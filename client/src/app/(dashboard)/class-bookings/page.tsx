@@ -3,825 +3,679 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  ChevronLeft, ChevronRight, Calendar, Clock, Users,
-  ExternalLink, Radio, CheckCircle2, Loader2, Video,
-  BookOpen, AlertCircle, User, X, CalendarDays, Filter, Search,
+  ChevronLeft, ChevronRight, Calendar, Clock,
+  Radio, CheckCircle2, Loader2, Video, BookOpen,
+  AlertCircle, User, Users, X, CalendarDays, Search,
+  Building2, Lock, MapPin, Wifi, Flame, TrendingUp,
+  GraduationCap, UserCircle2, SlidersHorizontal, Zap, ChevronDown,
 } from 'lucide-react'
-import Link from 'next/link'
 import { useToast } from '@/store/ui.store'
 import { useAllLiveClasses, type LiveClass } from '@/lib/api/liveClasses'
 import { useMyBookings, useCreateBooking, useCancelBooking, type MyBooking } from '@/lib/api/bookings'
-import { useCourse } from '@/lib/api/courses'
 import { APP_TIMEZONE } from '@/lib/timezone'
 import { useServerNow } from '@/hooks/useServerNow'
-import { Button, MotionButton } from '@/components/ui/button'
 
-/* ─────────────────────────────────────────────────────────
-   DATE HELPERS
-───────────────────────────────────────────────────────── */
-/** Weekday + day-of-month for a slot, read in UAE time (e.g. "Mon 5").
- *  Uses an explicit timeZone because getDay()/getDate() would otherwise
- *  use the viewer's device timezone and could disagree with the UAE time shown. */
+/* ── Google Fonts ──────────────────────────────────────────── */
+const FONT_CSS = `@import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');.syne{font-family:'Syne',sans-serif}.dm{font-family:'DM Sans',sans-serif}`
+// eslint-disable-next-line react/no-danger
+const FontLoader = () => <style dangerouslySetInnerHTML={{ __html: FONT_CSS }} />
+
+/* ── Date helpers ──────────────────────────────────────────── */
 function zonedDayLabel(iso: string): string {
   const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: APP_TIMEZONE,
-    weekday:  'short',
-    day:      'numeric',
+    timeZone: APP_TIMEZONE, weekday: 'short', day: 'numeric',
   }).formatToParts(new Date(iso))
-  const weekday = parts.find(p => p.type === 'weekday')?.value ?? ''
-  const day     = parts.find(p => p.type === 'day')?.value ?? ''
-  return `${weekday} ${day}`
+  return `${parts.find(p => p.type === 'weekday')?.value ?? ''} ${parts.find(p => p.type === 'day')?.value ?? ''}`
 }
-
-function getMondayOfWeek(date: Date): Date {
-  const d = new Date(date)
-  const day = d.getDay()
-  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1))
-  d.setHours(0, 0, 0, 0)
-  return d
+function getMondayOfWeek(d: Date): Date {
+  const r = new Date(d); const day = r.getDay()
+  r.setDate(r.getDate() - (day === 0 ? 6 : day - 1)); r.setHours(0,0,0,0); return r
 }
-
-function addDays(date: Date, n: number): Date {
-  const d = new Date(date)
-  d.setDate(d.getDate() + n)
-  return d
-}
-
+function addDays(d: Date, n: number): Date { const r = new Date(d); r.setDate(r.getDate() + n); return r }
 function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth()    === b.getMonth()    &&
-    a.getDate()     === b.getDate()
-  )
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
 }
-
-function toDateKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+function toDateKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 }
-
-function fmtTime(iso: string): string {
-  // Hardcoded to Dubai (GST) — every user worldwide sees the same wall-clock time.
-  return new Date(iso).toLocaleTimeString('en-US', {
-    timeZone: APP_TIMEZONE, hour: 'numeric', minute: '2-digit', hour12: true,
-  })
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('en-US', { timeZone: APP_TIMEZONE, hour: 'numeric', minute: '2-digit', hour12: true })
 }
-
-function fmtSlotLabel(iso: string, durationMins: number): string {
-  const end = new Date(new Date(iso).getTime() + durationMins * 60_000)
+function fmtShortSlot(iso: string) { return `${zonedDayLabel(iso)}, ${fmtTime(iso)}` }
+function fmtSlotLabel(iso: string, dur: number) {
+  const end = new Date(new Date(iso).getTime() + dur * 60_000)
   return `${zonedDayLabel(iso)} · ${fmtTime(iso)}–${fmtTime(end.toISOString())}`
 }
-
-function fmtShortSlot(iso: string): string {
-  return `${zonedDayLabel(iso)}, ${fmtTime(iso)}`
+function fmtDateRange(s: Date, e: Date): string {
+  if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear())
+    return `${s.toLocaleDateString('en-US',{month:'long'})} ${s.getDate()}–${e.getDate()}, ${e.getFullYear()}`
+  return `${s.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${e.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`
 }
 
-function fmtDateRange(start: Date, end: Date): string {
-  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
-  if (isSameDay(start, end)) {
-    return start.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-  }
-  if (start.getFullYear() === end.getFullYear()) {
-    if (start.getMonth() === end.getMonth()) {
-      return `${start.toLocaleDateString('en-US', { month: 'long' })} ${start.getDate()} – ${end.getDate()}, ${end.getFullYear()}`
-    }
-    return `${start.toLocaleDateString('en-US', opts)} – ${end.toLocaleDateString('en-US', { ...opts, year: 'numeric' })}`
-  }
-  return `${start.toLocaleDateString('en-US', { ...opts, year: 'numeric' })} – ${end.toLocaleDateString('en-US', { ...opts, year: 'numeric' })}`
-}
-
-function fmtDuration(mins: number): string {
-  if (mins < 60) return `${mins}m`
-  const h = Math.floor(mins / 60)
-  const m = mins % 60
-  return m ? `${h}h ${m}m` : `${h}h`
-}
-
-/* ─────────────────────────────────────────────────────────
-   STATUS
-───────────────────────────────────────────────────────── */
-type SlotStatus =
-  | 'live' | 'booked' | 'bookable' | 'full' | 'locked'
-  | 'attended' | 'missed' | 'cancelled' | 'ended'
-
-/** Live-Now window: a session shows as "Live Now" from 15 min before its start
- *  until the class end time (scheduledStart + durationMins). */
-const LIVE_LEAD_MINS = 15   // minutes before start the session goes "Live Now"
-
+/* ── Status ────────────────────────────────────────────────── */
+type SlotStatus = 'live'|'booked'|'bookable'|'full'|'locked'|'attended'|'missed'|'cancelled'|'ended'
+const LIVE_LEAD_MINS = 15
 function isWithinLiveWindow(lc: LiveClass): boolean {
-  const start = new Date(lc.scheduledStart).getTime()
-  const end   = start + lc.durationMins * 60_000
-  const now   = Date.now()
-  return now >= start - LIVE_LEAD_MINS * 60_000 && now < end
+  const s = new Date(lc.scheduledStart).getTime()
+  return Date.now() >= s - LIVE_LEAD_MINS*60_000 && Date.now() < s + (lc.durationMins||60)*60_000
+}
+function isPastEnd(lc: LiveClass): boolean {
+  return Date.now() >= new Date(lc.scheduledStart).getTime() + (lc.durationMins||60)*60_000
+}
+function toZonedDateStr(d: Date): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: APP_TIMEZONE }).format(d)
+}
+function offlineDayOffset(scheduledStart: string): number {
+  const todayStr = toZonedDateStr(new Date())
+  const lcStr    = toZonedDateStr(new Date(scheduledStart))
+  const msPerDay = 86_400_000
+  return Math.round((new Date(lcStr).getTime() - new Date(todayStr).getTime()) / msPerDay)
 }
 
-function isPastBookingCutoff(lc: LiveClass): boolean {
-  const end = new Date(lc.scheduledStart).getTime() + lc.durationMins * 60_000
-  return Date.now() >= end
-}
-
-function getSlotStatus(
-  lc: LiveClass,
-  booking: MyBooking | undefined,
-  hasOtherGroupBooking: boolean,
-): SlotStatus {
+function getSlotStatus(lc: LiveClass, booking: MyBooking|undefined, hasOther: boolean): SlotStatus {
   if (lc.status === 'cancelled') return 'cancelled'
 
-  const endedStatus = (): SlotStatus => {
-    if (booking?.status === 'attended') return 'attended'
-    if (booking?.status === 'missed')   return 'missed'
-    return 'ended'
+  const isOffline = (lc as any).isOnline === false
+  const ended = (): SlotStatus => booking?.status === 'attended' ? 'attended' : booking?.status === 'missed' ? 'missed' : 'ended'
+
+  if (isOffline) {
+    if (lc.status === 'ended') return ended()
+    const offset = offlineDayOffset(lc.scheduledStart)
+    if (offset < 0) return ended()   // past calendar day → ended
+
+    if (offset === 0) {
+      // Today — booking window closed; only show existing booking status, no new bookings
+      if (booking?.status === 'booked')   return 'booked'
+      if (booking?.status === 'attended') return 'attended'
+      if (booking?.status === 'missed')   return 'missed'
+      return 'locked'   // no booking or cancelled → same-day booking not allowed
+    }
+
+    // offset > 0: future day — normal booking logic (book 1+ day in advance)
+    if (booking) {
+      if (booking.status === 'booked')    return 'booked'
+      if (booking.status === 'attended')  return 'attended'
+      if (booking.status === 'missed')    return 'missed'
+      if (booking.status === 'cancelled') {
+        if (hasOther) return 'locked'
+        if (lc.sessionCapacity > 0 && lc.bookedCount >= lc.sessionCapacity) return 'full'
+        return 'bookable'
+      }
+    }
+    if (hasOther) return 'locked'
+    if (lc.sessionCapacity > 0 && lc.bookedCount >= lc.sessionCapacity) return 'full'
+    return 'bookable'
   }
 
-  if (lc.status === 'ended') return endedStatus()
-
-  // Live Now: actively streaming, or within the 45-min window (30m before → 15m after start).
-  if (lc.status === 'live' || isWithinLiveWindow(lc)) return 'live'
-
-  // Past the 15-min grace and never went live → ended.
-  if (isPastBookingCutoff(lc)) return endedStatus()
-
+  const pastEnd = isPastEnd(lc)
+  const isLive  = lc.status === 'live' || (!pastEnd && isWithinLiveWindow(lc))
+  if (lc.status === 'ended' || (pastEnd && !isLive)) return ended()
+  if (isLive) return 'live'
   if (booking) {
     if (booking.status === 'booked')    return 'booked'
     if (booking.status === 'attended')  return 'attended'
     if (booking.status === 'missed')    return 'missed'
     if (booking.status === 'cancelled') {
-      if (hasOtherGroupBooking) return 'locked'
+      if (hasOther) return 'locked'
       if (lc.sessionCapacity > 0 && lc.bookedCount >= lc.sessionCapacity) return 'full'
       return 'bookable'
     }
   }
-  if (hasOtherGroupBooking) return 'locked'
+  if (hasOther) return 'locked'
   if (lc.sessionCapacity > 0 && lc.bookedCount >= lc.sessionCapacity) return 'full'
   return 'bookable'
 }
 
-/* ─────────────────────────────────────────────────────────
-   TYPES
-───────────────────────────────────────────────────────── */
+const SC: Record<SlotStatus,{color:string;bg:string;border:string;label:string}> = {
+  live:      {color:'#EF4444',bg:'rgba(239,68,68,0.08)',  border:'rgba(239,68,68,0.22)',  label:'Live Now'},
+  booked:    {color:'#059669',bg:'rgba(5,150,105,0.08)',  border:'rgba(5,150,105,0.22)',  label:'Reserved'},
+  bookable:  {color:'#FF6B1A',bg:'rgba(255,107,26,0.08)', border:'rgba(255,107,26,0.22)', label:'Open'},
+  full:      {color:'#6B7280',bg:'rgba(107,114,128,0.07)',border:'rgba(107,114,128,0.18)',label:'Full'},
+  locked:    {color:'#6B7280',bg:'rgba(107,114,128,0.07)',border:'rgba(107,114,128,0.15)',label:'Locked'},
+  attended:  {color:'#2563EB',bg:'rgba(37,99,235,0.08)',  border:'rgba(37,99,235,0.20)',  label:'Attended'},
+  missed:    {color:'#D97706',bg:'rgba(217,119,6,0.08)',  border:'rgba(217,119,6,0.20)',  label:'Missed'},
+  cancelled: {color:'#9CA3AF',bg:'rgba(156,163,175,0.06)',border:'rgba(156,163,175,0.15)',label:'Cancelled'},
+  ended:     {color:'#9CA3AF',bg:'rgba(156,163,175,0.06)',border:'rgba(156,163,175,0.15)',label:'Ended'},
+}
+
+/* ── Types ─────────────────────────────────────────────────── */
+type AccessFilter   = 'all'|'mine'
+type DeliveryFilter = 'all'|'online'|'offline'
+type ProgramFilter  = 'all'|'4x-trading'|'digital-marketing'|'ai'
+type StatusFilter   = 'all'|'live'|'upcoming'|'ended'
+
 interface ClassGroup {
-  title:         string
-  instructor:    { id: string; name: string; avatarUrl?: string } | null
-  slots:         LiveClass[]
-  bookedSlot:    LiveClass | undefined
-  courseSlug?:   string
-  courseTitle?:  string
-  moduleTitle?:  string
+  title:string; instructor:{id:string;name:string;avatarUrl?:string}|null
+  slots:LiveClass[]; bookedSlot:LiveClass|undefined
+  courseId?:string; courseTitle?:string; moduleTitle?:string
+}
+interface DateSection { dateKey:string; dateLabel:string; isToday:boolean; groups:ClassGroup[] }
+interface GroupKey { title:string; dateKey:string }
+
+const PROGRAM_LABELS: Record<string,string> = {
+  all:'All', '4x-trading':'4x Trading', 'digital-marketing':'Digital Marketing', ai:'AI',
 }
 
-interface DateSection {
-  dateKey:   string   // "2025-06-02"
-  dateLabel: string   // "Monday, Jun 2"
-  isToday:   boolean
-  groups:    ClassGroup[]
-}
-
-interface GroupKey {
-  title:   string
-  dateKey: string
-}
-
-/* ─────────────────────────────────────────────────────────
-   MINI CALENDAR  (inline date-range picker)
-───────────────────────────────────────────────────────── */
-function MiniCalendar({
-  rangeStart, rangeEnd, onRangeChange, onClose,
-}: {
-  rangeStart: Date
-  rangeEnd:   Date
-  onRangeChange: (start: Date, end: Date) => void
-  onClose:    () => void
+/* ── Panel chip ────────────────────────────────────────────── */
+function PanelChip({ active, onClick, count, children }: {
+  active:boolean; onClick:()=>void; count?:number; children:React.ReactNode
 }) {
-  const [month,  setMonth]  = useState(() => new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1))
-  const [anchor, setAnchor] = useState<Date | null>(null)
-  const [hover,  setHover]  = useState<Date | null>(null)
-
-  const today        = new Date()
-  const firstDay     = new Date(month.getFullYear(), month.getMonth(), 1).getDay()
-  const daysInMonth  = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate()
-
-  const cells: (Date | null)[] = []
-  for (let i = 0; i < firstDay; i++) cells.push(null)
-  for (let d = 1; d <= daysInMonth; d++) {
-    cells.push(new Date(month.getFullYear(), month.getMonth(), d))
-  }
-
-  const handleDay = (day: Date) => {
-    if (!anchor) {
-      setAnchor(day)
-    } else {
-      const [s, e] = day < anchor ? [day, anchor] : [anchor, day]
-      onRangeChange(s, e)
-      setAnchor(null)
-      setHover(null)
-      onClose()
-    }
-  }
-
-  const previewEnd = anchor ? (hover ?? anchor) : null
-
-  function inRange(day: Date): boolean {
-    if (anchor && previewEnd) {
-      const [s, e] = previewEnd < anchor ? [previewEnd, anchor] : [anchor, previewEnd]
-      return day > s && day < e
-    }
-    return day > rangeStart && day < rangeEnd
-  }
-
-  function isEndpoint(day: Date): boolean {
-    if (anchor) {
-      return isSameDay(day, anchor) || (previewEnd ? isSameDay(day, previewEnd) : false)
-    }
-    return isSameDay(day, rangeStart) || isSameDay(day, rangeEnd)
-  }
-
-  const presets: { label: string; fn: () => void }[] = [
-    {
-      label: 'This week',
-      fn: () => {
-        const m = getMondayOfWeek(new Date())
-        onRangeChange(m, addDays(m, 6))
-        onClose()
-      },
-    },
-    {
-      label: 'Next 7 days',
-      fn: () => {
-        const t = new Date(); t.setHours(0, 0, 0, 0)
-        onRangeChange(t, addDays(t, 6))
-        onClose()
-      },
-    },
-    {
-      label: 'This month',
-      fn: () => {
-        const t = new Date()
-        const s = new Date(t.getFullYear(), t.getMonth(), 1)
-        const e = new Date(t.getFullYear(), t.getMonth() + 1, 0)
-        onRangeChange(s, e)
-        onClose()
-      },
-    },
-  ]
-
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -8, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -6, scale: 0.97 }}
-      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-      className="absolute right-0 top-full mt-2 z-30 w-72 rounded-2xl bg-white p-4 shadow-xl"
-      style={{ border: '1px solid #E5E7EB' }}
-    >
-      {/* Month navigation */}
-      <div className="mb-3 flex items-center justify-between">
-        <Button type="button" variant="ghost" size="icon-sm"
-          onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>
-          <ChevronLeft size={14} style={{ color: '#6B7280' }} />
-        </Button>
-        <span className="text-sm font-bold"
-          style={{ color: '#111827', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-          {month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+    <button type="button" onClick={onClick}
+      className="dm inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-medium transition-all duration-150 select-none"
+      style={active ? {
+        background:'rgba(255,107,26,0.10)', color:'#EA6010',
+        border:'1.5px solid rgba(255,107,26,0.32)',
+        fontWeight:600,
+      } : {
+        background:'#F8FAFC', color:'#475569', border:'1px solid #E2EAF4',
+      }}>
+      {children}
+      {count !== undefined && (
+        <span className="rounded-full px-1.5 min-w-[18px] text-center text-[10px] font-semibold"
+          style={{
+            background:active?'rgba(255,107,26,0.15)':'#EEF2F7',
+            color:active?'#EA6010':'#94A3B8',
+          }}>
+          {count}
         </span>
-        <Button type="button" variant="ghost" size="icon-sm"
-          onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>
-          <ChevronRight size={14} style={{ color: '#6B7280' }} />
-        </Button>
-      </div>
+      )}
+    </button>
+  )
+}
 
-      {/* Day-of-week headers */}
+/* ── Panel section ─────────────────────────────────────────── */
+function PanelSection({ label, icon, children }: {
+  label:string; icon:React.ReactNode; children:React.ReactNode
+}) {
+  return (
+    <div>
+      <div className="mb-2 flex items-center gap-1.5">
+        <span style={{color:'#94A3B8'}}>{icon}</span>
+        <span className="dm text-[10px] font-bold uppercase tracking-widest" style={{color:'#94A3B8'}}>{label}</span>
+      </div>
+      <div className="flex flex-wrap gap-1.5">{children}</div>
+    </div>
+  )
+}
+
+/* ── Mini calendar ─────────────────────────────────────────── */
+function MiniCalendar({rangeStart,rangeEnd,onRangeChange,onClose}: {
+  rangeStart:Date; rangeEnd:Date; onRangeChange:(s:Date,e:Date)=>void; onClose:()=>void
+}) {
+  const [month,setMonth] = useState(()=>new Date(rangeStart.getFullYear(),rangeStart.getMonth(),1))
+  const [anchor,setAnchor] = useState<Date|null>(null)
+  const [hover,setHover]   = useState<Date|null>(null)
+  const today = new Date()
+  const firstDay = new Date(month.getFullYear(),month.getMonth(),1).getDay()
+  const daysInMonth = new Date(month.getFullYear(),month.getMonth()+1,0).getDate()
+  const cells:(Date|null)[] = []
+  for(let i=0;i<firstDay;i++) cells.push(null)
+  for(let d=1;d<=daysInMonth;d++) cells.push(new Date(month.getFullYear(),month.getMonth(),d))
+
+  const handleDay=(day:Date)=>{
+    if(!anchor){setAnchor(day);return}
+    const [s,e]=day<anchor?[day,anchor]:[anchor,day]
+    onRangeChange(s,e);setAnchor(null);setHover(null);onClose()
+  }
+  const endRef = anchor?(hover??anchor):null
+  const inRange=(d:Date)=>{
+    if(anchor&&endRef){const[s,e]=endRef<anchor?[endRef,anchor]:[anchor,endRef];return d>s&&d<e}
+    return d>rangeStart&&d<rangeEnd
+  }
+  const isEP=(d:Date)=>anchor
+    ?isSameDay(d,anchor)||(endRef?isSameDay(d,endRef):false)
+    :isSameDay(d,rangeStart)||isSameDay(d,rangeEnd)
+
+  const presets=[
+    {l:'This week',   f:()=>{const m=getMondayOfWeek(new Date());onRangeChange(m,addDays(m,6));onClose()}},
+    {l:'Next 7 days', f:()=>{const t=new Date();t.setHours(0,0,0,0);onRangeChange(t,addDays(t,6));onClose()}},
+    {l:'This month',  f:()=>{const t=new Date();onRangeChange(new Date(t.getFullYear(),t.getMonth(),1),new Date(t.getFullYear(),t.getMonth()+1,0));onClose()}},
+  ]
+  return(
+    <motion.div initial={{opacity:0,y:-6,scale:0.97}} animate={{opacity:1,y:0,scale:1}}
+      exit={{opacity:0,y:-4,scale:0.97}} transition={{type:'spring',stiffness:420,damping:32}}
+      className="absolute right-0 top-full mt-2 z-30 w-[270px] rounded-2xl p-4"
+      style={{background:'white',border:'1px solid #E2EAF4',boxShadow:'0 20px 48px rgba(0,0,0,0.13)'}}>
+      <div className="mb-3 flex items-center justify-between">
+        <button onClick={()=>setMonth(new Date(month.getFullYear(),month.getMonth()-1,1))}
+          className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-slate-50">
+          <ChevronLeft size={13} style={{color:'#94A3B8'}}/>
+        </button>
+        <span className="syne text-[13px] font-700" style={{color:'#0F172A'}}>
+          {month.toLocaleDateString('en-US',{month:'long',year:'numeric'})}
+        </span>
+        <button onClick={()=>setMonth(new Date(month.getFullYear(),month.getMonth()+1,1))}
+          className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-slate-50">
+          <ChevronRight size={13} style={{color:'#94A3B8'}}/>
+        </button>
+      </div>
       <div className="mb-1 grid grid-cols-7">
-        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
-          <div key={d} className="py-1 text-center text-[10px] font-bold" style={{ color: '#9CA3AF' }}>{d}</div>
+        {['S','M','T','W','T','F','S'].map((d,i)=>(
+          <div key={i} className="py-1 text-center text-[9px] font-bold tracking-wider" style={{color:'#CBD5E1'}}>{d}</div>
         ))}
       </div>
-
-      {/* Day cells */}
-      <div className="grid grid-cols-7">
-        {cells.map((day, i) => {
-          if (!day) return <div key={`e-${i}`} className="h-7" />
-          const endpoint = isEndpoint(day)
-          const range    = inRange(day)
-          const tod      = isSameDay(day, today)
-          return (
-            <Button key={day.toISOString()} type="button" variant="ghost"
-              onClick={() => handleDay(day)}
-              onMouseEnter={() => anchor && setHover(day)}
-              onMouseLeave={() => anchor && setHover(null)}
-              className="flex h-7 w-full items-center justify-center text-xs font-medium transition-all"
-              style={{
-                background:   endpoint ? '#FF6B1A' : range ? 'rgba(255,107,26,0.10)' : 'transparent',
-                color:        endpoint ? 'white'   : tod   ? '#FF6B1A'               : '#374151',
-                borderRadius: '6px',
-                fontWeight:   tod && !endpoint ? 700 : 500,
-              }}>
+      <div className="grid grid-cols-7 gap-px">
+        {cells.map((day,i)=>{
+          if(!day) return <div key={`e${i}`} className="h-7"/>
+          const ep=isEP(day);const rng=inRange(day);const tod=isSameDay(day,today)
+          return(
+            <button key={day.toISOString()} onClick={()=>handleDay(day)}
+              onMouseEnter={()=>anchor&&setHover(day)} onMouseLeave={()=>anchor&&setHover(null)}
+              className="flex h-7 w-full items-center justify-center rounded-lg text-[11px] transition-all"
+              style={{background:ep?'#FF6B1A':rng?'rgba(255,107,26,0.10)':'transparent',
+                color:ep?'white':tod?'#FF6B1A':'#374151',fontWeight:tod&&!ep?700:400}}>
               {day.getDate()}
-            </Button>
+            </button>
           )
         })}
       </div>
-
-      {/* Hint */}
-      <p className="my-2 text-center text-[10px]" style={{ color: '#9CA3AF' }}>
-        {anchor ? 'Now click an end date' : 'Click a start date'}
+      <p className="my-2 text-center text-[9px]" style={{color:'#CBD5E1'}}>
+        {anchor?'Now pick the end date':'Click to set start date'}
       </p>
-
-      {/* Quick presets */}
       <div className="flex flex-wrap gap-1.5">
-        {presets.map(p => (
-          <Button key={p.label} type="button" variant="ghost" size="sm" onClick={p.fn}
-            className="rounded-lg px-2.5 py-1 text-[11px] font-semibold hover:brightness-95"
-            style={{
-              background: 'rgba(255,107,26,0.06)',
-              color:      '#FF6B1A',
-              border:     '1px solid rgba(255,107,26,0.15)',
-            }}>
-            {p.label}
-          </Button>
+        {presets.map(p=>(
+          <button key={p.l} onClick={p.f}
+            className="rounded-full px-2.5 py-1 text-[10px] font-semibold"
+            style={{background:'rgba(255,107,26,0.07)',color:'#FF6B1A',border:'1px solid rgba(255,107,26,0.16)'}}>
+            {p.l}
+          </button>
         ))}
       </div>
     </motion.div>
   )
 }
 
-/* ─────────────────────────────────────────────────────────
-   SLOT CHIP  (inside modal)
-───────────────────────────────────────────────────────── */
-function SlotChip({ lc, status, isSelected, onClick }: {
-  lc: LiveClass; status: SlotStatus; isSelected: boolean; onClick: () => void
+/* ── Slot chip ─────────────────────────────────────────────── */
+function SlotChip({lc,status,isSelected,onClick}: {
+  lc:LiveClass; status:SlotStatus; isSelected:boolean; onClick:()=>void
 }) {
-  const d       = new Date(lc.scheduledStart)
-  const isToday = isSameDay(d, new Date())
-  const clickable = ['bookable', 'booked', 'attended', 'ended'].includes(status)
-
-  const colors: Record<SlotStatus, { border: string; bg: string; label: string }> = {
-    booked:    { border: '#10B981', bg: 'rgba(16,185,129,0.06)',  label: '#10B981' },
-    live:      { border: '#EF4444', bg: 'rgba(239,68,68,0.06)',   label: '#EF4444' },
-    bookable:  { border: isSelected ? '#FF6B1A' : '#E5E7EB', bg: isSelected ? 'rgba(255,107,26,0.05)' : 'white', label: '#FF6B1A' },
-    full:      { border: '#E5E7EB', bg: '#F9FAFB', label: '#9CA3AF' },
-    locked:    { border: '#E5E7EB', bg: '#F9FAFB', label: '#9CA3AF' },
-    attended:  { border: '#3B82F6', bg: 'rgba(59,130,246,0.05)',  label: '#3B82F6' },
-    missed:    { border: '#F59E0B', bg: 'rgba(245,158,11,0.05)',  label: '#F59E0B' },
-    cancelled: { border: '#E5E7EB', bg: '#F9FAFB', label: '#D1D5DB' },
-    ended:     { border: '#E5E7EB', bg: '#F9FAFB', label: '#9CA3AF' },
-  }
-  const c      = colors[status]
-  const capPct = lc.sessionCapacity > 0 ? Math.min(100, (lc.bookedCount / lc.sessionCapacity) * 100) : 0
-
-  const statusLabel: Record<SlotStatus, string> = {
-    live:      '🔴 LIVE',
-    booked:    '✓ Booked',
-    bookable:  lc.sessionCapacity > 0 ? `${lc.sessionCapacity - lc.bookedCount} left` : 'Open',
-    full:      'Full',
-    locked:    '—',
-    attended:  '✓ Attended',
-    missed:    'Missed',
-    cancelled: 'Cancelled',
-    ended:     'Ended',
-  }
-
-  return (
-    <MotionButton
-      type="button"
-      variant="ghost"
-      onClick={clickable ? onClick : undefined}
-      whileHover={clickable ? { scale: 1.02 } : undefined}
-      whileTap={clickable ? { scale: 0.97 } : undefined}
-      className="relative flex h-auto flex-col rounded-2xl p-3 text-left"
+  const clickable = ['bookable','booked','attended','ended','live'].includes(status)
+  const c = SC[status]
+  const capPct = lc.sessionCapacity>0 ? Math.min(100,(lc.bookedCount/lc.sessionCapacity)*100) : 0
+  return(
+    <motion.button type="button" onClick={clickable?onClick:undefined}
+      whileHover={clickable?{scale:1.02}:undefined} whileTap={clickable?{scale:0.97}:undefined}
+      className="relative flex flex-col rounded-xl p-2.5 text-left"
       style={{
-        background: c.bg,
-        border: `1.5px solid ${isSelected && status === 'bookable' ? '#FF6B1A' : c.border}`,
-        boxShadow: isSelected && status === 'bookable' ? '0 0 0 3px rgba(255,107,26,0.12)' : 'none',
-        cursor: clickable ? 'pointer' : 'default',
-        opacity: ['full', 'cancelled', 'ended', 'locked'].includes(status) ? 0.55 : 1,
-        minWidth: 0,
-      }}
-    >
-      <div className="mb-0.5 flex items-center gap-1">
-        {isToday && (
-          <span className="rounded px-1 text-[8px] font-bold uppercase text-white" style={{ background: '#FF6B1A' }}>
-            Today
-          </span>
-        )}
-        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#9CA3AF' }}>
-          {zonedDayLabel(lc.scheduledStart)}
-        </span>
-        {lc.language && (
-          <span className="ml-auto rounded px-1 text-[8px] font-bold uppercase"
-            style={{ background: 'rgba(16,185,129,0.12)', color: '#10B981' }}>
-            {lc.language}
-          </span>
-        )}
-      </div>
-
-      <div className="mb-2 flex items-center gap-1">
-        <Clock size={10} style={{ color: '#9CA3AF' }} />
-        <span className="text-[13px] font-bold leading-none" style={{ color: '#111827' }}>
-          {fmtTime(lc.scheduledStart)}
-        </span>
-      </div>
-
-      <div className="flex items-center gap-1">
-        {status === 'live' && (
-          <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.2, repeat: Infinity }}
-            className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: '#EF4444' }} />
-        )}
-        {status === 'booked' && <CheckCircle2 size={9} style={{ color: '#10B981' }} strokeWidth={3} />}
-        <span className="text-[9px] font-bold" style={{ color: c.label }}>{statusLabel[status]}</span>
-      </div>
-
-      {lc.sessionCapacity > 0 && ['bookable', 'booked', 'full', 'live'].includes(status) && (
-        <div className="mt-2">
-          <div className="h-1 overflow-hidden rounded-full" style={{ background: '#F3F4F6' }}>
-            <motion.div initial={{ width: 0 }} animate={{ width: `${capPct}%` }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
-              className="h-full rounded-full"
-              style={{ background: capPct >= 100 ? '#EF4444' : capPct >= 80 ? '#F59E0B' : '#10B981' }} />
-          </div>
-          <span className="mt-0.5 text-[9px]" style={{ color: '#D1D5DB' }}>
-            <Users size={7} className="mr-0.5 inline" />{lc.bookedCount}/{lc.sessionCapacity}
-          </span>
+        background:isSelected?c.bg:'#F8FAFC', border:`1.5px solid ${isSelected?c.border:'#E2EAF4'}`,
+        boxShadow:isSelected?`0 0 0 3px ${c.bg}`:'none',
+        cursor:clickable?'pointer':'default',
+        opacity:['full','cancelled','ended','locked','missed'].includes(status)?0.55:1,
+      }}>
+      <span className="mb-1 text-[9px] font-bold uppercase tracking-wider" style={{color:'#94A3B8'}}>
+        {zonedDayLabel(lc.scheduledStart)}
+      </span>
+      <span className="syne mb-2 text-[14px] font-700" style={{color:'#0F172A'}}>{fmtTime(lc.scheduledStart)}</span>
+      <span className="self-start rounded-full px-1.5 py-0.5 text-[9px] font-bold"
+        style={{background:c.bg,color:c.color,border:`1px solid ${c.border}`}}>
+        {status==='bookable'&&lc.sessionCapacity>0 ? `${lc.sessionCapacity-lc.bookedCount} left` : c.label}
+      </span>
+      {lc.sessionCapacity>0&&['bookable','booked','live'].includes(status)&&(
+        <div className="mt-2 h-0.5 w-full overflow-hidden rounded-full" style={{background:'#E2EAF4'}}>
+          <motion.div initial={{width:0}} animate={{width:`${capPct}%`}} transition={{duration:0.6}}
+            style={{height:'100%',borderRadius:99,background:capPct>=90?'#EF4444':capPct>=70?'#D97706':'#059669'}}/>
         </div>
       )}
-
-      {isSelected && status === 'bookable' && (
-        <div className="absolute right-2 top-2 h-2 w-2 rounded-full" style={{ background: '#FF6B1A' }} />
+      {status==='live'&&(
+        <motion.span animate={{opacity:[1,0.1,1]}} transition={{duration:1,repeat:Infinity}}
+          className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full" style={{background:'#EF4444'}}/>
       )}
-    </MotionButton>
+    </motion.button>
   )
 }
 
-/* ─────────────────────────────────────────────────────────
-   CLASS CARD  (grid item — opens modal on click)
-───────────────────────────────────────────────────────── */
-function ClassCard({ group, bookingMap, onClick }: {
-  group: ClassGroup; bookingMap: Map<string, MyBooking>; onClick: () => void
+/* ── Class card ────────────────────────────────────────────── */
+function ClassCard({group,bookingMap,onClick}: {
+  group:ClassGroup; bookingMap:Map<string,MyBooking>; onClick:()=>void
 }) {
-  const { slots, bookedSlot, instructor, courseTitle, moduleTitle } = group
-  const hasLive = slots.some(s => s.status === 'live')
+  const {slots,bookedSlot,instructor,courseTitle,moduleTitle} = group
+  const first = slots[0]
+  const isOffline  = (first as any)?.isOnline===false
+  const isEnrolled = (first as any)?.isEnrolled!==false
+  const hasLive    = slots.some(s=>s.status==='live')
+  const bookable   = slots.filter(s=>getSlotStatus(s,bookingMap.get(s.id),false)==='bookable').length
+  const allEnded   = slots.every(s=>['ended','attended','missed','cancelled'].includes(getSlotStatus(s,bookingMap.get(s.id),false)))
+  const nextSlot   = bookedSlot??slots.find(s=>s.status==='live')
+    ??slots.find(s=>getSlotStatus(s,bookingMap.get(s.id),false)==='bookable')
 
-  const nextSlot =
-    bookedSlot ??
-    slots.find(s => s.status === 'live') ??
-    slots.find(s => s.status === 'scheduled')
+  type S='live'|'booked'|'ended'|'open'
+  const state: S = hasLive?'live':bookedSlot?'booked':allEnded?'ended':'open'
+  const accentMap: Record<S,string> = { live:'#EF4444', booked:'#059669', ended:'#CBD5E1', open:'#FF6B1A' }
+  const accent = accentMap[state]
 
-  const bookableCount = slots.filter(s =>
-    getSlotStatus(s, bookingMap.get(s.id), false) === 'bookable'
-  ).length
+  return(
+    <motion.button type="button" onClick={onClick}
+      whileHover={{y:-2,boxShadow:'0 14px 36px rgba(15,23,42,0.10)'}}
+      whileTap={{scale:0.985}}
+      className="dm flex h-full w-full flex-col rounded-2xl text-left overflow-hidden"
+      style={{
+        background:'white', border:'1px solid #E8EEF4',
+        borderTop:`3px solid ${accent}`,
+        boxShadow:'0 2px 8px rgba(15,23,42,0.05)',
+        opacity:allEnded?0.65:1,
+      }}>
 
-  type CardState = 'live' | 'booked' | 'open'
-  const state: CardState =
-    hasLive    ? 'live'   :
-    bookedSlot ? 'booked' : 'open'
-
-  const pal: Record<CardState, { border: string; iconBg: string; iconColor: string }> = {
-    live:   { border: 'rgba(239,68,68,0.22)',  iconBg: 'rgba(239,68,68,0.10)',  iconColor: '#EF4444' },
-    booked: { border: 'rgba(16,185,129,0.22)', iconBg: 'rgba(16,185,129,0.10)', iconColor: '#10B981' },
-    open:   { border: '#E5E7EB',               iconBg: 'rgba(255,107,26,0.08)', iconColor: '#FF6B1A' },
-  }
-  const p = pal[state]
-
-  return (
-    <MotionButton
-      type="button"
-      variant="ghost"
-      onClick={onClick}
-      whileHover={{ y: -3, boxShadow: '0 10px 28px rgba(0,0,0,0.09)' }}
-      whileTap={{ scale: 0.97 }}
-      className="flex h-auto w-full flex-col rounded-2xl bg-white p-4 text-left"
-      style={{ border: `1px solid ${p.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
-    >
-      {/* Top row: icon + pill */}
-      <div className="mb-3 flex items-start justify-between">
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl"
-          style={{ background: p.iconBg }}>
-          {hasLive     ? <Radio        size={15} style={{ color: p.iconColor }} />
-           : bookedSlot ? <CheckCircle2 size={15} style={{ color: p.iconColor }} />
-           :              <BookOpen    size={15} style={{ color: p.iconColor }} />}
+      {/* Status strip */}
+      <div className="flex items-center justify-between px-3.5 pt-3 pb-2">
+        <div className="flex items-center gap-1.5">
+          {hasLive&&(
+            <>
+              <motion.span animate={{scale:[1,1.5,1],opacity:[0.8,0,0.8]}}
+                transition={{duration:1.8,repeat:Infinity}}
+                className="h-2 w-2 rounded-full flex-shrink-0" style={{background:'#EF4444'}}/>
+              <span className="text-[9px] font-bold tracking-widest uppercase" style={{color:'#EF4444'}}>Live Now</span>
+            </>
+          )}
+          {!hasLive&&bookedSlot&&(
+            <div className="flex items-center gap-1">
+              <CheckCircle2 size={9} style={{color:'#059669'}} strokeWidth={3}/>
+              <span className="text-[9px] font-bold uppercase tracking-wider" style={{color:'#059669'}}>Reserved</span>
+            </div>
+          )}
+          {!hasLive&&!bookedSlot&&bookable>0&&(
+            <span className="text-[9px] font-bold uppercase tracking-wider" style={{color:'#FF6B1A'}}>{bookable} open</span>
+          )}
+          {allEnded&&<span className="text-[9px] font-bold uppercase tracking-wider" style={{color:'#94A3B8'}}>Ended</span>}
         </div>
-
-        {hasLive ? (
-          <motion.span animate={{ opacity: [1, 0.45, 1] }} transition={{ duration: 1.4, repeat: Infinity }}
-            className="rounded-full px-1.5 py-0.5 text-[9px] font-bold"
-            style={{ background: 'rgba(239,68,68,0.10)', color: '#EF4444' }}>
-            LIVE
-          </motion.span>
-        ) : bookedSlot ? (
-          <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold"
-            style={{ background: 'rgba(16,185,129,0.10)', color: '#10B981' }}>
-            BOOKED
+        {isOffline?(
+          <span className="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[8px] font-bold"
+            style={{background:'rgba(5,150,105,0.08)',color:'#059669',border:'1px solid rgba(5,150,105,0.18)'}}>
+            <Building2 size={7}/>In-Person
           </span>
-        ) : bookableCount > 0 ? (
-          <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold"
-            style={{ background: 'rgba(255,107,26,0.08)', color: '#FF6B1A' }}>
-            {bookableCount} open
+        ):(
+          <span className="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[8px] font-bold"
+            style={{background:'rgba(99,102,241,0.08)',color:'#6366F1',border:'1px solid rgba(99,102,241,0.16)'}}>
+            <Wifi size={7}/>Online
           </span>
-        ) : null}
+        )}
       </div>
 
       {/* Title */}
-      <h3 className="mb-1 line-clamp-2 text-sm font-bold leading-snug"
-        style={{ color: '#111827', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-        {group.title}
-      </h3>
+      <div className="px-3.5 pb-2">
+        <h3 className="syne line-clamp-2 text-[13px] font-700 leading-snug" style={{color:allEnded?'#94A3B8':'#0F172A'}}>
+          {group.title}
+        </h3>
+      </div>
 
-      {/* Instructor */}
-      {instructor && (
-        <p className="mb-1 flex min-w-0 items-center gap-1 text-[11px]" style={{ color: '#9CA3AF' }}>
-          <User size={9} className="flex-shrink-0" />
-          <span className="truncate">{instructor.name}</span>
-        </p>
-      )}
-
-      {/* Course */}
-      {courseTitle && (
-        <p className="mb-1 flex min-w-0 items-center gap-1 text-[11px]" style={{ color: '#9CA3AF' }}>
-          <BookOpen size={9} className="flex-shrink-0" />
-          <span className="truncate">{courseTitle}</span>
-        </p>
-      )}
-
-      {/* Module */}
-      {moduleTitle && (
-        <p className="mb-3 flex min-w-0 items-center gap-1 text-[11px]" style={{ color: '#FF6B1A' }}>
-          <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: '#FF6B1A' }} />
-          <span className="truncate">{moduleTitle}</span>
-        </p>
-      )}
-
-      {/* Spacer when no module (keeps footer alignment) */}
-      {!moduleTitle && <div className="mb-3" />}
-
-      {/* Footer */}
-      <div className="mt-auto flex flex-col gap-1 pt-3" style={{ borderTop: '1px solid #F3F4F6' }}>
-        {nextSlot && (
+      {/* Meta */}
+      <div className="flex flex-col gap-1 px-3.5 pb-2">
+        {courseTitle&&(
           <div className="flex items-center gap-1.5">
-            <Clock size={10} style={{ color: state === 'booked' ? '#10B981' : '#9CA3AF' }} />
-            <span className="truncate text-[11px] font-medium"
-              style={{ color: state === 'booked' ? '#10B981' : '#374151' }}>
-              {fmtShortSlot(nextSlot.scheduledStart)}
+            <BookOpen size={9} style={{color:'#CBD5E1'}} className="flex-shrink-0"/>
+            <span className="truncate text-[10px]" style={{color:'#94A3B8'}}>{courseTitle}</span>
+            {isEnrolled
+              ?<CheckCircle2 size={9} style={{color:'#059669'}} className="ml-auto flex-shrink-0" strokeWidth={3}/>
+              :<Lock size={9} style={{color:'#CBD5E1'}} className="ml-auto flex-shrink-0"/>}
+          </div>
+        )}
+        {instructor&&(
+          <div className="flex items-center gap-1.5">
+            <User size={9} style={{color:'#CBD5E1'}} className="flex-shrink-0"/>
+            <span className="truncate text-[10px]" style={{color:'#94A3B8'}}>{instructor.name}</span>
+          </div>
+        )}
+        {isOffline&&(first as any)?.location&&(
+          <div className="flex items-center gap-1.5">
+            <MapPin size={9} style={{color:'#34D399'}} className="flex-shrink-0"/>
+            <span className="truncate text-[10px]" style={{color:'#059669'}}>
+              {(first as any).location}{(first as any).room?` · ${(first as any).room}`:''}
             </span>
           </div>
         )}
+        {moduleTitle&&(
+          <div className="flex items-center gap-1.5">
+            <span className="h-1 w-1 rounded-full flex-shrink-0" style={{background:'#FF6B1A'}}/>
+            <span className="truncate text-[10px] font-medium" style={{color:'#FF6B1A'}}>{moduleTitle}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="mt-auto flex items-center justify-between px-3.5 py-2.5"
+        style={{borderTop:'1px solid #F1F5F9'}}>
+        {nextSlot?(
+          <div className="flex items-center gap-1">
+            <Clock size={9} style={{color:bookedSlot?'#059669':'#CBD5E1'}}/>
+            <span className="text-[10px] font-semibold" style={{color:bookedSlot?'#059669':'#64748B'}}>
+              {fmtShortSlot(nextSlot.scheduledStart)}
+            </span>
+          </div>
+        ):<div/>}
         <div className="flex items-center gap-1">
-          <CalendarDays size={9} style={{ color: '#D1D5DB' }} />
-          <span className="text-[10px]" style={{ color: '#D1D5DB' }}>
-            {slots.length} slot{slots.length !== 1 ? 's' : ''}
-          </span>
+          <CalendarDays size={9} style={{color:'#CBD5E1'}}/>
+          <span className="text-[9px]" style={{color:'#CBD5E1'}}>{slots.length}s</span>
         </div>
       </div>
-    </MotionButton>
+    </motion.button>
   )
 }
 
-/* ─────────────────────────────────────────────────────────
-   SLOT MODAL
-───────────────────────────────────────────────────────── */
-interface SlotModalProps {
-  group:         ClassGroup
-  bookingMap:    Map<string, MyBooking>
-  onBook:        (liveClassId: string) => Promise<void>
-  onCancel:      (bookingId: string, label: string) => Promise<void>
-  bookPending:   Set<string>
-  cancelPending: Set<string>
-  onClose:       () => void
-}
-
-function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPending, onClose }: SlotModalProps) {
-  const { slots, bookedSlot, instructor, courseTitle } = group
-
-  const defaultId = useMemo(() => {
-    if (bookedSlot) return bookedSlot.id
-    return slots.find(s => {
-      const st = getSlotStatus(s, bookingMap.get(s.id), false)
-      return st === 'bookable' || st === 'live'
-    })?.id ?? slots[0]?.id ?? null
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const [selectedId, setSelectedId] = useState<string | null>(defaultId)
-
-  /* Server-anchored clock (ticks every 30 s). The link gate / countdown compare
-   * the class start against the SERVER's current time, so they're correct even if
-   * the user's device clock is wrong — and independent of their timezone. */
+/* ── Slot modal ────────────────────────────────────────────── */
+function SlotModal({group,bookingMap,onBook,onCancel,bookPending,cancelPending,onClose}: {
+  group:ClassGroup; bookingMap:Map<string,MyBooking>
+  onBook:(id:string)=>Promise<void>; onCancel:(id:string,label:string)=>Promise<void>
+  bookPending:Set<string>; cancelPending:Set<string>; onClose:()=>void
+}) {
+  const {slots,bookedSlot,instructor,courseTitle,moduleTitle} = group
+  const defaultId = useMemo(()=>{
+    if(bookedSlot) return bookedSlot.id
+    return slots.find(s=>{const st=getSlotStatus(s,bookingMap.get(s.id),false);return st==='bookable'||st==='live'})?.id??slots[0]?.id??null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[])
+  const [selectedId,setSelectedId] = useState<string|null>(defaultId)
   const now = useServerNow(30_000)
+  useEffect(()=>{if(bookedSlot)setSelectedId(bookedSlot.id)},[bookedSlot?.id])
+  useEffect(()=>{
+    const h=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose()}
+    window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)
+  },[onClose])
 
-  useEffect(() => {
-    if (bookedSlot) setSelectedId(bookedSlot.id)
-  }, [bookedSlot?.id])
+  const sel   = slots.find(s=>s.id===selectedId)??null
+  const selBk = sel?bookingMap.get(sel.id):undefined
+  const selSt = sel?getSlotStatus(sel,selBk,!!bookedSlot&&sel.id!==bookedSlot?.id):null
+  const sAny  = sel as any
+  const isOff = sAny?.isOnline===false
+  const isEnr = sel?(sAny?.isEnrolled!==false):false
+  const cfg   = selSt?SC[selSt]:null
 
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', h)
-    return () => window.removeEventListener('keydown', h)
-  }, [onClose])
-
-  const selectedSlot    = slots.find(s => s.id === selectedId) ?? null
-  const selectedBooking = selectedSlot ? bookingMap.get(selectedSlot.id) : undefined
-  const selectedStatus  = selectedSlot
-    ? getSlotStatus(selectedSlot, selectedBooking, !!bookedSlot && selectedSlot.id !== bookedSlot.id)
-    : null
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
-      <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        transition={{ duration: 0.18 }}
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 40 }}
-        transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-        onClick={e => e.stopPropagation()}
-        className="relative w-full rounded-t-3xl bg-white sm:max-w-md sm:rounded-3xl"
-        style={{ boxShadow: '0 -8px 40px rgba(0,0,0,0.14)', maxHeight: '88vh', overflowY: 'auto' }}
-      >
+  return(
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+        className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose}/>
+      <motion.div initial={{opacity:0,y:40}} animate={{opacity:1,y:0}} exit={{opacity:0,y:40}}
+        transition={{type:'spring',stiffness:360,damping:32}} onClick={e=>e.stopPropagation()}
+        className="dm relative w-full overflow-y-auto bg-white sm:max-w-md"
+        style={{borderRadius:'24px 24px 20px 20px',maxHeight:'92vh',boxShadow:'0 -8px 48px rgba(15,23,42,0.20)'}}>
         <div className="flex justify-center pb-1 pt-3 sm:hidden">
-          <div className="h-1 w-9 rounded-full" style={{ background: '#E5E7EB' }} />
+          <div className="h-1 w-10 rounded-full" style={{background:'#E2E8F0'}}/>
         </div>
-
-        <div className="flex items-start justify-between gap-3 px-5 pb-4 pt-4"
-          style={{ borderBottom: '1px solid #F3F4F6' }}>
-          <div className="min-w-0">
-            <h2 className="text-base font-bold leading-snug"
-              style={{ color: '#111827', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-              {group.title}
-            </h2>
-            {instructor && (
-              <p className="mt-0.5 flex items-center gap-1 text-xs" style={{ color: '#9CA3AF' }}>
-                <User size={10} />{instructor.name}
-              </p>
-            )}
-            {courseTitle && (
-              <p className="mt-0.5 flex items-center gap-1 text-[11px]" style={{ color: '#9CA3AF' }}>
-                <BookOpen size={9} />{courseTitle}
-              </p>
-            )}
-            {(() => {
-              const sec = slots[0]?.sectionId
-              const secTitle = sec && typeof sec === 'object' ? sec.title : null
-              return secTitle ? (
-                <p className="mt-0.5 flex items-center gap-1 text-[11px]" style={{ color: '#D1D5DB' }}>
-                  <span style={{ color: '#FF6B1A', fontWeight: 600 }}>·</span>{secTitle}
+        <div className="px-5 pt-4 pb-4" style={{borderBottom:'1px solid #F1F5F9'}}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <h2 className="syne text-[17px] font-700 leading-tight" style={{color:'#0F172A'}}>{group.title}</h2>
+              {instructor&&<p className="mt-1 flex items-center gap-1 text-xs" style={{color:'#94A3B8'}}><User size={10}/>{instructor.name}</p>}
+              {courseTitle&&(
+                <p className="mt-0.5 flex items-center gap-1 text-[11px]" style={{color:'#94A3B8'}}>
+                  <BookOpen size={9}/>{courseTitle}
+                  {isEnr?<CheckCircle2 size={9} style={{color:'#059669'}} className="ml-1" strokeWidth={3}/>
+                        :<Lock size={9} style={{color:'#CBD5E1'}} className="ml-1"/>}
                 </p>
-              ) : null
-            })()}
-            {slots[0]?.language && (
-              <div className="mt-2 flex items-center gap-1.5">
-                <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                  style={{ background: 'rgba(16,185,129,0.10)', color: '#059669', border: '1px solid rgba(16,185,129,0.20)' }}>
-                  🌐 {slots[0].language}
-                </span>
+              )}
+              {moduleTitle&&(
+                <p className="mt-0.5 flex items-center gap-1 text-[11px] font-medium" style={{color:'#FF6B1A'}}>
+                  <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{background:'#FF6B1A'}}/>
+                  {moduleTitle}
+                </p>
+              )}
+              {isOff&&sAny?.location&&(
+                <p className="mt-1 flex items-center gap-1 text-[11px]" style={{color:'#059669'}}>
+                  <MapPin size={9}/>{sAny.location}{sAny.room?` · ${sAny.room}`:''}
+                </p>
+              )}
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {slots[0]?.language&&(
+                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    style={{background:'rgba(5,150,105,0.08)',color:'#059669',border:'1px solid rgba(5,150,105,0.18)'}}>
+                    🌐 {slots[0].language}
+                  </span>
+                )}
+                {isOff?(
+                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    style={{background:'rgba(5,150,105,0.08)',color:'#059669',border:'1px solid rgba(5,150,105,0.18)'}}>
+                    <Building2 size={9}/>In-Person
+                  </span>
+                ):(
+                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    style={{background:'rgba(99,102,241,0.08)',color:'#6366F1',border:'1px solid rgba(99,102,241,0.16)'}}>
+                    <Wifi size={9}/>Online
+                  </span>
+                )}
               </div>
-            )}
+            </div>
+            <button type="button" onClick={onClose}
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl hover:bg-slate-50">
+              <X size={14} style={{color:'#94A3B8'}}/>
+            </button>
           </div>
-          <Button type="button" variant="ghost" size="icon-sm" onClick={onClose}
-            className="flex-shrink-0 rounded-xl">
-            <X size={15} style={{ color: '#6B7280' }} />
-          </Button>
         </div>
-
-        <div className="px-5 pb-3 pt-4">
-          <p className="mb-3 text-xs font-semibold" style={{ color: '#6B7280' }}>
-            {bookedSlot ? 'Your booking · other available times:' : 'Select a time slot:'}
+        <div className="px-5 pt-4 pb-3">
+          <p className="mb-3 text-[10px] font-bold uppercase tracking-widest" style={{color:'#CBD5E1'}}>
+            {bookedSlot?'Your reservation · other times':'Choose a time slot'}
           </p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {slots.map(lc => {
-              const booking      = bookingMap.get(lc.id)
-              const isThisBooked = lc.id === bookedSlot?.id
-              const hasOther     = !!bookedSlot && !isThisBooked
-              const st           = getSlotStatus(lc, booking, hasOther)
-              return (
-                <SlotChip key={lc.id} lc={lc} status={st}
-                  isSelected={selectedId === lc.id}
-                  onClick={() => setSelectedId(lc.id)} />
-              )
+            {slots.map(lc=>{
+              const bk=bookingMap.get(lc.id)
+              const st=getSlotStatus(lc,bk,!!bookedSlot&&lc.id!==bookedSlot?.id)
+              return<SlotChip key={lc.id} lc={lc} status={st} isSelected={selectedId===lc.id} onClick={()=>setSelectedId(lc.id)}/>
             })}
           </div>
         </div>
-
-        <div className="px-5 pb-6 pt-2">
-          <AnimatePresence>
-            {selectedSlot && selectedStatus && (
-              <motion.div
-                key={selectedSlot.id + '-' + selectedStatus}
-                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.14 }}
-              >
-                {selectedStatus === 'bookable' && (
-                  <MotionButton
-                    type="button"
-                    variant="default"
-                    size="lg"
-                    whileHover={{ scale: 1.01, boxShadow: '0 6px 20px rgba(255,107,26,0.35)' }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => onBook(selectedSlot.id)}
-                    disabled={bookPending.has(selectedSlot.id)}
-                    className="w-full gap-2 rounded-2xl py-3 text-sm font-bold">
-                    {bookPending.has(selectedSlot.id)
-                      ? <><Loader2 size={14} className="animate-spin" /> Booking…</>
-                      : <><BookOpen size={14} /> Book {fmtShortSlot(selectedSlot.scheduledStart)}</>}
-                  </MotionButton>
-                )}
-
-                {selectedStatus === 'live' && (
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-start gap-2 rounded-2xl px-4 py-3"
-                      style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.18)' }}>
-                      <Radio size={14} style={{ color: '#EF4444', flexShrink: 0, marginTop: 2 }} />
+        <div className="px-5 pb-6 pt-1">
+          <AnimatePresence mode="wait">
+            {sel&&selSt&&cfg&&(
+              <motion.div key={sel.id+'-'+selSt}
+                initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-4}}
+                transition={{duration:0.12}} className="space-y-2">
+                {selSt==='live'&&(()=>{
+                  const booked=!!selBk&&(selBk.status==='booked'||selBk.status==='attended')
+                  return(
+                    <div className="rounded-2xl p-4" style={{background:cfg.bg,border:`1px solid ${cfg.border}`}}>
+                      <div className="mb-2 flex items-center gap-2">
+                        <motion.div animate={{opacity:[1,0.3,1]}} transition={{duration:1.2,repeat:Infinity}}>
+                          <Radio size={14} style={{color:cfg.color}}/>
+                        </motion.div>
+                        <p className="syne text-[13px] font-700" style={{color:cfg.color}}>Class is Live Now</p>
+                      </div>
+                      {booked?(
+                        <div className="rounded-xl px-3 py-2.5 text-[11px] leading-relaxed"
+                          style={{background:'rgba(5,150,105,0.08)',color:'#064E3B',border:'1px solid rgba(5,150,105,0.18)'}}>
+                          <CheckCircle2 size={11} className="mr-1.5 inline" style={{color:'#059669'}} strokeWidth={3}/>
+                          You reserved a seat. Your <strong>join link was emailed 5 min before</strong> class — check your inbox!
+                        </div>
+                      ):(
+                        <p className="text-[11px] leading-relaxed" style={{color:'#64748B'}}>
+                          Booking is closed. Only students who reserved beforehand receive an email join link.
+                        </p>
+                      )}
+                    </div>
+                  )
+                })()}
+                {selSt==='bookable'&&(
+                  isEnr?(
+                    <motion.button type="button"
+                      whileHover={{scale:1.01,boxShadow:'0 8px 28px rgba(255,107,26,0.32)'}}
+                      whileTap={{scale:0.98}}
+                      onClick={()=>onBook(sel.id)} disabled={bookPending.has(sel.id)}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white disabled:opacity-60"
+                      style={{background:'linear-gradient(135deg,#FF6B1A 0%,#FF9044 100%)'}}>
+                      {bookPending.has(sel.id)
+                        ?<><Loader2 size={14} className="animate-spin"/>Booking…</>
+                        :<><BookOpen size={14}/>Reserve Seat · {fmtShortSlot(sel.scheduledStart)}</>}
+                    </motion.button>
+                  ):(
+                    <div className="flex items-start gap-3 rounded-2xl px-4 py-3" style={{background:'#F8FAFC',border:'1px solid #E8EEF4'}}>
+                      <Lock size={14} style={{color:'#94A3B8',flexShrink:0,marginTop:1}}/>
                       <div>
-                        <p className="text-[12px] font-bold" style={{ color: '#EF4444' }}>This class is live now</p>
-                        <p className="text-[11px] mt-0.5" style={{ color: '#6B7280' }}>
-                          Booking is closed. If you booked this class, check your email — the join link was sent 5 minutes before the class started.
+                        <p className="text-[12px] font-semibold" style={{color:'#334155'}}>Enroll to Reserve</p>
+                        <p className="mt-0.5 text-[11px] leading-relaxed" style={{color:'#94A3B8'}}>
+                          Purchase this course to reserve seats and get email join links before class.
                         </p>
                       </div>
                     </div>
-                  </div>
+                  )
                 )}
-
-                {selectedStatus === 'booked' && selectedBooking && (() => {
-                  const msUntil  = new Date(selectedSlot.scheduledStart).getTime() - now
-                  const minsLeft = Math.max(0, Math.ceil(msUntil / 60_000))
-                  return (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 rounded-2xl px-4 py-2.5"
-                      style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)' }}>
-                      <CheckCircle2 size={14} style={{ color: '#10B981' }} />
-                      <p className="text-[12px] font-semibold" style={{ color: '#059669' }}>
-                        Booked · {fmtSlotLabel(selectedSlot.scheduledStart, selectedSlot.durationMins)}
-                      </p>
+                {selSt==='booked'&&selBk&&(()=>{
+                  const msLeft=new Date(sel.scheduledStart).getTime()-now
+                  const mins=Math.max(0,Math.ceil(msLeft/60_000))
+                  return(
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 rounded-2xl px-4 py-2.5" style={{background:cfg.bg,border:`1px solid ${cfg.border}`}}>
+                        <CheckCircle2 size={14} style={{color:cfg.color}} strokeWidth={3}/>
+                        <p className="text-[12px] font-semibold" style={{color:cfg.color}}>Reserved · {fmtSlotLabel(sel.scheduledStart,sel.durationMins)}</p>
+                      </div>
+                      <div className="rounded-2xl px-4 py-3 text-[11px] leading-relaxed" style={{background:'#F8FAFC',border:'1px solid #E8EEF4',color:'#64748B'}}>
+                        <Clock size={11} className="mr-1.5 inline" style={{color:'#94A3B8'}}/>
+                        {mins<=5?'Join link sent — check your inbox!':<>Your <strong>join link will be emailed 5 min before</strong> class.</>}
+                      </div>
+                      {!(isOff && offlineDayOffset(sel.scheduledStart) === 0) && (
+                        <button type="button" onClick={()=>onCancel(selBk.id,fmtShortSlot(sel.scheduledStart))} disabled={cancelPending.has(selBk.id)}
+                          className="flex w-full items-center justify-center gap-1.5 rounded-2xl py-2 text-xs font-medium disabled:opacity-50"
+                          style={{color:'#EF4444',border:'1px solid rgba(239,68,68,0.18)'}}>
+                          {cancelPending.has(selBk.id)?<Loader2 size={11} className="animate-spin"/>:<X size={11}/>}Cancel reservation
+                        </button>
+                      )}
                     </div>
-                    <div className="flex items-start gap-2 rounded-2xl px-4 py-2.5"
-                      style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
-                      <Clock size={13} style={{ color: '#9CA3AF', flexShrink: 0, marginTop: 1 }} />
-                      <p className="text-[11px]" style={{ color: '#6B7280' }}>
-                        {minsLeft <= 5
-                          ? 'Your join link was sent by email. Check your inbox.'
-                          : <>Your join link will be <strong>emailed to you 5 minutes</strong> before the class starts.</>}
-                      </p>
-                    </div>
-                    <Button type="button" variant="ghost"
-                      onClick={() => onCancel(selectedBooking.id, fmtShortSlot(selectedSlot.scheduledStart))}
-                      disabled={cancelPending.has(selectedBooking.id)}
-                      className="w-full gap-1.5 rounded-2xl py-2 text-xs font-medium hover:bg-red-50 disabled:opacity-50"
-                      style={{ color: '#EF4444', border: '1px solid rgba(239,68,68,0.18)' }}>
-                      {cancelPending.has(selectedBooking.id)
-                        ? <Loader2 size={11} className="animate-spin" />
-                        : <X size={11} />}
-                      Cancel booking
-                    </Button>
-                  </div>
                   )
                 })()}
-
-                {selectedStatus === 'full' && (
+                {selSt==='full'&&(
+                  <div className="flex items-center justify-center gap-2 rounded-2xl py-3 text-sm" style={{background:'#F8FAFC',color:'#94A3B8',border:'1px solid #E8EEF4'}}>
+                    <Users size={14}/>Fully booked
+                  </div>
+                )}
+                {selSt==='locked'&&(
+                  isOff && offlineDayOffset(sel.scheduledStart) === 0 ? (
+                    <div className="flex items-start gap-2 rounded-2xl px-4 py-3" style={{background:'rgba(99,102,241,0.06)',border:'1px solid rgba(99,102,241,0.18)'}}>
+                      <Lock size={14} style={{color:'#6366F1',flexShrink:0,marginTop:1}}/>
+                      <div>
+                        <p className="text-[12px] font-semibold" style={{color:'#4338CA'}}>Same-day registration closed</p>
+                        <p className="mt-0.5 text-[11px] leading-relaxed" style={{color:'#6366F1'}}>
+                          Bookings must be made at least <strong>1 day in advance</strong>. Register tomorrow for an upcoming session.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-2 rounded-2xl px-4 py-3" style={{background:'#FFFBEB',border:'1px solid rgba(217,119,6,0.25)'}}>
+                      <AlertCircle size={14} style={{color:'#D97706',flexShrink:0,marginTop:1}}/>
+                      <span className="text-xs" style={{color:'#92400E'}}>You already have a reservation. Cancel it first to pick a different time.</span>
+                    </div>
+                  )
+                )}
+                {selSt==='attended'&&(
+                  <div className="flex items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold"
+                    style={{background:'rgba(37,99,235,0.07)',color:'#1D4ED8',border:'1px solid rgba(37,99,235,0.18)'}}>
+                    <CheckCircle2 size={14} strokeWidth={3}/>Attended — great work!
+                  </div>
+                )}
+                {selSt==='missed'&&(
                   <div className="flex items-center justify-center gap-2 rounded-2xl py-3 text-sm"
-                    style={{ background: '#F9FAFB', color: '#9CA3AF', border: '1px solid #E5E7EB' }}>
-                    <Users size={14} /> This slot is fully booked
+                    style={{background:'rgba(217,119,6,0.07)',color:'#92400E',border:'1px solid rgba(217,119,6,0.20)'}}>
+                    <AlertCircle size={14}/>Missed this session
                   </div>
                 )}
-
-                {selectedStatus === 'locked' && (
-                  <div className="flex items-center gap-2 rounded-2xl px-4 py-3"
-                    style={{ background: '#FFF7ED', border: '1px solid rgba(245,158,11,0.25)' }}>
-                    <AlertCircle size={14} style={{ color: '#F59E0B' }} className="flex-shrink-0" />
-                    <span className="text-xs" style={{ color: '#92400E' }}>
-                      You already have a booking for this class. Cancel your current slot to pick a different time.
-                    </span>
-                  </div>
-                )}
-
-                {selectedStatus === 'attended' && (
-                  <div className="flex items-center justify-center gap-2 rounded-2xl py-3 text-sm"
-                    style={{ background: 'rgba(59,130,246,0.07)', color: '#2563EB', border: '1px solid rgba(59,130,246,0.18)' }}>
-                    <CheckCircle2 size={14} /> Attended — great work!
-                  </div>
-                )}
-
-                {selectedStatus === 'missed' && (
-                  <div className="flex items-center justify-center gap-2 rounded-2xl py-3 text-sm"
-                    style={{ background: 'rgba(245,158,11,0.07)', color: '#92400E', border: '1px solid rgba(245,158,11,0.20)' }}>
-                    <AlertCircle size={14} /> Missed this session
-                  </div>
-                )}
-
-                {selectedStatus === 'ended' && selectedSlot.recordingUrl && (
-                  <a href={selectedSlot.recordingUrl} target="_blank" rel="noreferrer">
-                    <Button type="button" variant="outline"
-                      className="w-full gap-2 rounded-2xl py-2.5 text-sm font-medium"
-                      style={{ background: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}>
-                      <Video size={13} /> Watch Recording
-                    </Button>
-                  </a>
-                )}
-                {selectedStatus === 'ended' && !selectedSlot.recordingUrl && (
-                  <div className="flex items-center justify-center rounded-2xl py-3 text-xs"
-                    style={{ background: '#F9FAFB', color: '#D1D5DB', border: '1px solid #F3F4F6' }}>
-                    Session ended
-                  </div>
+                {selSt==='ended'&&(
+                  sel.recordingUrl?(
+                    <a href={sel.recordingUrl} target="_blank" rel="noreferrer"
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl py-2.5 text-sm font-medium"
+                      style={{background:'#F8FAFC',color:'#64748B',border:'1px solid #E8EEF4'}}>
+                      <Video size={13}/>Watch Recording
+                    </a>
+                  ):(
+                    <div className="flex items-center justify-center rounded-2xl py-3 text-xs"
+                      style={{background:'#F8FAFC',color:'#CBD5E1',border:'1px solid #F1F5F9'}}>
+                      Session ended · no recording
+                    </div>
+                  )
                 )}
               </motion.div>
             )}
@@ -832,596 +686,770 @@ function SlotModal({ group, bookingMap, onBook, onCancel, bookPending, cancelPen
   )
 }
 
-/* ─────────────────────────────────────────────────────────
-   GLOBAL STATS  (counts across ALL classes, not date-filtered)
-───────────────────────────────────────────────────────── */
-function GlobalStats({ allClasses, bookingMap }: {
-  allClasses: LiveClass[]
-  bookingMap: Map<string, MyBooking>
+/* ── Filter dropdown ───────────────────────────────────────── */
+function FilterSelect({ placeholder, value, onChange, options }: {
+  placeholder: string
+  value: string
+  onChange: (v: string) => void
+  options: { value: string; label: string }[]
 }) {
-  const liveNow   = allClasses.filter(lc => getSlotStatus(lc, bookingMap.get(lc.id), false) === 'live').length
-  const myBooked  = Array.from(bookingMap.values()).filter(b => b.status === 'booked').length
-  const openSlots = allClasses.filter(lc =>
-    getSlotStatus(lc, bookingMap.get(lc.id), false) === 'bookable'
-  ).length
-
-  const pills = [
-    { label: 'Total Classes', value: allClasses.length, color: '#374151', bg: '#F9FAFB',               border: '#E5E7EB' },
-    { label: 'Live Now',      value: liveNow,            color: '#EF4444', bg: 'rgba(239,68,68,0.05)',  border: 'rgba(239,68,68,0.15)' },
-    { label: 'My Bookings',   value: myBooked,           color: '#10B981', bg: 'rgba(16,185,129,0.05)', border: 'rgba(16,185,129,0.15)' },
-    { label: 'Open Slots',    value: openSlots,          color: '#FF6B1A', bg: 'rgba(255,107,26,0.05)', border: 'rgba(255,107,26,0.15)' },
-  ]
-
+  const active = value !== 'all'
   return (
-    <div className="mb-5 grid grid-cols-4 gap-2">
-      {pills.map((p, i) => (
-        <motion.div key={p.label}
-          initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.04, type: 'spring', stiffness: 320, damping: 28 }}
-          className="rounded-2xl px-3 py-2.5"
-          style={{ background: p.bg, border: `1px solid ${p.border}` }}>
-          <p className="text-xl font-bold" style={{ color: p.color, fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-            {p.value}
-          </p>
-          <p className="text-[10px] font-medium" style={{ color: '#9CA3AF' }}>{p.label}</p>
-        </motion.div>
-      ))}
+    <div className="relative">
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="dm appearance-none rounded-2xl py-2 pl-3.5 pr-7 text-[12px] font-semibold outline-none cursor-pointer transition-all"
+        style={{
+          background: active ? 'rgba(255,107,26,0.08)' : 'white',
+          color:      active ? '#EA6010'                : '#475569',
+          border:     active ? '1.5px solid rgba(255,107,26,0.30)' : '1px solid #E2EAF4',
+          boxShadow:  active ? '0 0 0 3px rgba(255,107,26,0.07)' : '0 1px 4px rgba(15,23,42,0.04)',
+        }}>
+        <option value="all">{placeholder}</option>
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+      <ChevronDown size={11} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2"
+        style={{ color: active ? '#FF6B1A' : '#94A3B8' }} />
     </div>
   )
 }
 
-/* ─────────────────────────────────────────────────────────
-   CONTACT ADMIN MODAL
-───────────────────────────────────────────────────────── */
-function ContactAdminModal({ onClose }: { onClose: () => void }) {
-  return (
+/* ── Contact admin modal ───────────────────────────────────── */
+function ContactAdminModal({onClose}:{onClose:()=>void}) {
+  return(
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <motion.div
-        initial={{ opacity: 0, scale: 0.92, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.92, y: 12 }}
-        transition={{ type: 'spring', stiffness: 360, damping: 30 }}
-        onClick={e => e.stopPropagation()}
-        className="relative w-full max-w-sm rounded-3xl bg-white p-6 text-center"
-        style={{ boxShadow: '0 24px 64px rgba(0,0,0,0.14)' }}>
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl"
-          style={{ background: 'rgba(255,107,26,0.08)', border: '1px solid rgba(255,107,26,0.20)' }}>
-          <AlertCircle size={24} style={{ color: '#FF6B1A' }} />
+      <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose}/>
+      <motion.div initial={{opacity:0,scale:0.93}} animate={{opacity:1,scale:1}}
+        exit={{opacity:0,scale:0.93}} onClick={e=>e.stopPropagation()}
+        className="dm relative w-full max-w-sm rounded-3xl bg-white p-6 text-center"
+        style={{boxShadow:'0 24px 64px rgba(15,23,42,0.18)'}}>
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl"
+          style={{background:'rgba(255,107,26,0.08)',border:'1px solid rgba(255,107,26,0.20)'}}>
+          <AlertCircle size={22} style={{color:'#FF6B1A'}}/>
         </div>
-        <h3 className="mb-2 text-lg font-bold"
-          style={{ fontFamily: 'Bricolage Grotesque, sans-serif', color: '#111827' }}>
-          Attendance Limit Reached
-        </h3>
-        <p className="mb-5 text-sm leading-relaxed" style={{ color: '#6B7280' }}>
-          You&apos;ve already attended this class twice. Please contact the admin team to arrange additional access.
+        <h3 className="syne mb-2 text-base font-700" style={{color:'#0F172A'}}>Attendance Limit Reached</h3>
+        <p className="mb-5 text-sm leading-relaxed" style={{color:'#64748B'}}>
+          You&apos;ve attended this class twice. Please contact the admin team for additional access.
         </p>
-        <Button type="button" variant="default" size="lg" onClick={onClose}
-          className="w-full rounded-2xl py-3 text-sm font-bold">
-          Got it, I&apos;ll contact admin
-        </Button>
+        <button type="button" onClick={onClose}
+          className="w-full rounded-2xl py-3 text-sm font-bold text-white"
+          style={{background:'linear-gradient(135deg,#FF6B1A,#FF9044)'}}>Got it</button>
       </motion.div>
     </div>
   )
 }
 
-/* ─────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════
    MAIN PAGE
-───────────────────────────────────────────────────────── */
+═══════════════════════════════════════════════════════════ */
 export default function ClassBookingsPage() {
-  /* ── Date range state ── */
-  const [rangeStart, setRangeStart] = useState<Date>(() => getMondayOfWeek(new Date()))
-  const [rangeEnd,   setRangeEnd]   = useState<Date>(() => addDays(getMondayOfWeek(new Date()), 6))
-  const [showCalendar, setShowCalendar] = useState(false)
-  const calendarRef = useRef<HTMLDivElement>(null)
+  const [rangeStart, setRangeStart] = useState<Date>(()=>getMondayOfWeek(new Date()))
+  const [rangeEnd,   setRangeEnd]   = useState<Date>(()=>addDays(getMondayOfWeek(new Date()),6))
+  const [showCal,    setShowCal]    = useState(false)
+  const [showPanel,  setShowPanel]  = useState(false)
 
-  /* ── Filter state ── */
   const [search,           setSearch]           = useState('')
-  const [filterCourse,     setFilterCourse]     = useState('')
-  const [filterModule,     setFilterModule]      = useState('')
-  const [filterInstructor, setFilterInstructor] = useState('')
+  const [filterStatus,     setFilterStatus]     = useState<StatusFilter>('all')
+  const [filterAccess,     setFilterAccess]     = useState<AccessFilter>('all')
+  const [filterDelivery,   setFilterDelivery]   = useState<DeliveryFilter>('all')
+  const [filterProgram,    setFilterProgram]    = useState<ProgramFilter>('all')
+  const [filterCourse,     setFilterCourse]     = useState('all')
+  const [filterInstructor, setFilterInstructor] = useState('all')
 
-  /* ── Modal state ── */
-  const [openGroupKey,      setOpenGroupKey]      = useState<GroupKey | null>(null)
-  const [showContactAdmin,  setShowContactAdmin]  = useState(false)
-  const [bookPending,       setBookPending]        = useState<Set<string>>(new Set())
-  const [cancelPending,     setCancelPending]      = useState<Set<string>>(new Set())
-  const toast = useToast()
+  const [openKey,    setOpenKey]    = useState<GroupKey|null>(null)
+  const [showAdmin,  setShowAdmin]  = useState(false)
+  const [bookPending,setBookPending]= useState<Set<string>>(new Set())
+  const [cancelPend, setCancelPend] = useState<Set<string>>(new Set())
 
-  /* ── Data ── */
-  const { data: allClasses = [], isLoading: loadingClasses } = useAllLiveClasses()
-  const { data: bookingsData, isLoading: loadingBookings }   = useMyBookings({ per_page: 100 })
-  const myBookings: MyBooking[] = bookingsData?.docs ?? []
+  const calRef   = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const toast    = useToast()
 
-  const bookingMap = useMemo(() => {
-    const m = new Map<string, MyBooking>()
-    myBookings.forEach(b => {
-      const lcId = typeof b.liveClassId === 'object'
-        ? (b.liveClassId?.id ?? (b.liveClassId as any)?._id)
-        : b.liveClassId
-      if (lcId) m.set(lcId, b)
+  const {data:allClasses=[],isLoading:loadCls} = useAllLiveClasses()
+  const {data:bkData,         isLoading:loadBk}  = useMyBookings({per_page:100})
+  const myBookings: MyBooking[] = bkData?.docs ?? []
+
+  const bookingMap = useMemo(()=>{
+    const m = new Map<string,MyBooking>()
+    myBookings.forEach(b=>{
+      const id = typeof b.liveClassId==='object'
+        ?(b.liveClassId?.id??(b.liveClassId as any)?._id)
+        :b.liveClassId
+      if(id) m.set(id,b)
     })
     return m
-  }, [myBookings])
+  },[myBookings])
 
-  /* ── Close calendar on outside click ── */
-  useEffect(() => {
-    if (!showCalendar) return
-    const h = (e: MouseEvent) => {
-      if (calendarRef.current && !calendarRef.current.contains(e.target as Node)) {
-        setShowCalendar(false)
-      }
+  /* Close popups on outside click */
+  useEffect(()=>{
+    const h=(e:MouseEvent)=>{
+      if(calRef.current&&!calRef.current.contains(e.target as Node)) setShowCal(false)
+      if(panelRef.current&&!panelRef.current.contains(e.target as Node)) setShowPanel(false)
     }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [showCalendar])
+    document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h)
+  },[])
 
-  /* ── Filter options — courses derived from live class data ──
-     Avoids a separate /courses API call and guarantees that the IDs in the
-     dropdown exactly match lc.courseId used in the filter. */
-  const availableCourses = useMemo(() => {
-    const seen = new Map<string, { id: string; title: string; slug: string }>()
-    allClasses.forEach(lc => {
-      const id    = lc.courseId
-      const title = lc.course?.title
-      const slug  = lc.course?.slug ?? ''
-      if (id && title && !seen.has(id)) seen.set(id, { id, title, slug })
+  /* ── Unique courses & instructors ── */
+  const uniqueCourses = useMemo(()=>{
+    const map = new Map<string,{id:string;title:string;count:number}>()
+    allClasses.forEach(lc=>{
+      if(!lc.course?.id) return
+      const ex = map.get(lc.course.id)
+      if(ex) ex.count++
+      else map.set(lc.course.id,{id:lc.course.id,title:lc.course.title,count:1})
     })
-    return Array.from(seen.values()).sort((a, b) => a.title.localeCompare(b.title))
-  }, [allClasses])
+    return Array.from(map.values()).sort((a,b)=>b.count-a.count)
+  },[allClasses])
 
-  // When a course is selected, find its slug so we can fetch its sections
-  const selectedCourseSlug = useMemo(
-    () => availableCourses.find(c => c.id === filterCourse)?.slug ?? '',
-    [availableCourses, filterCourse],
-  )
-  const { data: courseDetail } = useCourse(selectedCourseSlug)
-  const availableModules       = courseDetail?.sections ?? []
-
-  // Instructors derived from (now-normalized) live class data
-  const availableInstructors = useMemo(() => {
-    const seen = new Map<string, { id: string; name: string }>()
-    allClasses.forEach(lc => {
-      const id   = lc.instructor?.id
-      const name = lc.instructor?.name
-      if (id && name && !seen.has(id)) seen.set(id, { id, name })
+  const uniqueInstructors = useMemo(()=>{
+    const map = new Map<string,{id:string;name:string;count:number}>()
+    allClasses.forEach(lc=>{
+      if(!lc.instructor?.id) return
+      const ex = map.get(lc.instructor.id)
+      if(ex) ex.count++
+      else map.set(lc.instructor.id,{id:lc.instructor.id,name:lc.instructor.name??'',count:1})
     })
-    return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name))
-  }, [allClasses])
+    return Array.from(map.values()).sort((a,b)=>b.count-a.count)
+  },[allClasses])
 
-  /* ── Apply search + course/module/instructor filters ── */
-  const filteredClasses = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    return allClasses.filter(lc => {
-      /* Use lc.courseId (always a plain string after normalization) rather than
-         lc.course?.id — course may be undefined when courseId wasn't populated */
-      if (filterCourse && lc.courseId !== filterCourse) return false
-      if (filterModule) {
-        const secId = typeof lc.sectionId === 'object' ? lc.sectionId?.id : lc.sectionId
-        if (secId !== filterModule) return false
+  const programCounts = useMemo(()=>{
+    const c:Record<string,number> = {'4x-trading':0,'digital-marketing':0,'ai':0}
+    allClasses.forEach(lc=>{const p=lc.course?.program;if(p&&p in c)c[p]++})
+    return c
+  },[allClasses])
+
+  /* Program-scoped course & instructor options for dropdowns */
+  const programCourses = useMemo(()=>{
+    if(filterProgram==='all') return uniqueCourses
+    return uniqueCourses.filter(c=>allClasses.some(lc=>lc.course?.id===c.id&&lc.course?.program===filterProgram))
+  },[uniqueCourses,filterProgram,allClasses])
+
+  const programInstructors = useMemo(()=>{
+    if(filterProgram==='all') return uniqueInstructors
+    return uniqueInstructors.filter(ins=>allClasses.some(lc=>lc.instructor?.id===ins.id&&lc.course?.program===filterProgram))
+  },[uniqueInstructors,filterProgram,allClasses])
+
+  /* Reset course & instructor when program changes */
+  useEffect(()=>{ setFilterCourse('all'); setFilterInstructor('all') },[filterProgram])
+
+  /* ── Status counts for tabs ── */
+  const statusCounts = useMemo(()=>{
+    let live=0, upcoming=0, ended=0, today=0
+    allClasses.forEach(lc=>{
+      const a = lc as any
+      const isOffline = a.isOnline === false
+      if(filterDelivery==='online'  && isOffline)  return
+      if(filterDelivery==='offline' && !isOffline) return
+      // Apply content filters so tab counts match what renders
+      if(filterProgram!=='all'    && lc.course?.program!==filterProgram)   return
+      if(filterCourse!=='all'     && lc.course?.id!==filterCourse)         return
+      if(filterInstructor!=='all' && lc.instructor?.id!==filterInstructor) return
+
+      if(isOffline) {
+        if(lc.status==='cancelled') { ended++; return }
+        const offset = offlineDayOffset(lc.scheduledStart)
+        if(lc.status==='ended' || offset < 0) { ended++; return }
+        if(offset > 0) { upcoming++; return }
+        today++   // offset === 0 → today
+        return
       }
-      if (filterInstructor && lc.instructor?.id !== filterInstructor) return false
-      if (q) {
+      // Online
+      const isLiveNow = lc.status==='live'||(!isPastEnd(lc)&&isWithinLiveWindow(lc))
+      if(isLiveNow) { live++; return }
+      if(lc.status==='ended'||lc.status==='cancelled'||isPastEnd(lc)) { ended++; return }
+      upcoming++
+    })
+    return {live,upcoming,ended,today}
+  },[allClasses,filterDelivery,filterProgram,filterCourse,filterInstructor])
+
+  /* ── Offline dashboard stats ── */
+  const offlineStats = useMemo(()=>{
+    const offline = allClasses.filter(lc=>(lc as any).isOnline===false)
+    const todayStr = toZonedDateStr(new Date())
+    const now = Date.now()
+    const todayCount = offline.filter(lc=>toZonedDateStr(new Date(lc.scheduledStart))===todayStr).length
+    const myReservations = offline.filter(lc=>bookingMap.get(lc.id)?.status==='booked').length
+    const availableSeats = offline
+      .filter(lc=>lc.status==='scheduled'&&!isPastEnd(lc)&&!isWithinLiveWindow(lc))
+      .reduce((sum,lc)=>sum+Math.max(0,lc.sessionCapacity-lc.bookedCount),0)
+    return{total:offline.length,today:todayCount,myReservations,availableSeats}
+  },[allClasses,bookingMap])
+
+  /* ── Filtered classes ── */
+  const filteredClasses = useMemo(()=>{
+    const q = search.trim().toLowerCase()
+    return allClasses.filter(lc=>{
+      const a = lc as any
+      // Status filter
+      if(filterStatus==='live'){
+        if(filterDelivery==='offline'){
+          // In-Person "Today" tab — show all of today's in-person classes
+          if(toZonedDateStr(new Date(lc.scheduledStart))!==toZonedDateStr(new Date())) return false
+        } else {
+          const isLiveNow=lc.status==='live'||(!isPastEnd(lc)&&isWithinLiveWindow(lc))
+          if(!isLiveNow) return false
+        }
+      }
+      if(filterStatus==='upcoming'){
+        if(a.isOnline===false){
+          // Offline: upcoming = strictly future calendar day (not today)
+          if(lc.status==='cancelled') return false
+          const offset = offlineDayOffset(lc.scheduledStart)
+          if(offset <= 0) return false   // today or past = not upcoming
+        } else {
+          const isUpcoming=lc.status==='scheduled'&&!isWithinLiveWindow(lc)&&!isPastEnd(lc)
+          if(!isUpcoming) return false
+        }
+      }
+      if(filterStatus==='ended'){
+        if(a.isOnline===false){
+          // Offline: ended = past calendar day (not today, not future)
+          const isEndedOffline=lc.status==='ended'||lc.status==='cancelled'||offlineDayOffset(lc.scheduledStart)<0
+          if(!isEndedOffline) return false
+        } else {
+          const isEnded=lc.status==='ended'||lc.status==='cancelled'||isPastEnd(lc)
+          if(!isEnded) return false
+        }
+      }
+      // Delivery filter
+      if(filterDelivery==='online'  &&a.isOnline===false) return false
+      if(filterDelivery==='offline' &&a.isOnline!==false) return false
+      // Other filters
+      if(filterAccess==='mine'       && !a.isEnrolled)                      return false
+      if(filterProgram!=='all'       && lc.course?.program!==filterProgram) return false
+      if(filterCourse!=='all'        && lc.course?.id!==filterCourse)       return false
+      if(filterInstructor!=='all'    && lc.instructor?.id!==filterInstructor)return false
+      // Search
+      if(q){
         const sec = lc.sectionId
-        const moduleTitle = typeof sec === 'object' && sec ? (sec as any).title ?? '' : ''
-        const haystack = [
-          lc.title,
-          lc.instructor?.name ?? '',
-          lc.course?.title    ?? '',
-          moduleTitle,
-        ].join(' ').toLowerCase()
-        if (!haystack.includes(q)) return false
+        const mod = typeof sec==='object'&&sec?(sec as any).title??'':''
+        if(![lc.title,lc.instructor?.name??'',lc.course?.title??'',mod].join(' ').toLowerCase().includes(q)) return false
       }
       return true
     })
-  }, [allClasses, search, filterCourse, filterModule, filterInstructor])
+  },[allClasses,search,filterStatus,filterAccess,filterDelivery,filterProgram,filterCourse,filterInstructor])
 
-  /* ── Apply date range ── */
-  const rangeEndInclusive = useMemo(() => {
-    const d = new Date(rangeEnd)
-    d.setHours(23, 59, 59, 999)
-    return d
-  }, [rangeEnd])
+  const rangeEndIncl = useMemo(()=>{const d=new Date(rangeEnd);d.setHours(23,59,59,999);return d},[rangeEnd])
 
-  const windowClasses = useMemo(() =>
-    filteredClasses.filter(lc => {
-      const d = new Date(lc.scheduledStart)
-      return d >= rangeStart && d <= rangeEndInclusive
-    }),
-    [filteredClasses, rangeStart, rangeEndInclusive]
-  )
+  /* ── When status is live/upcoming/ended OR in-person mode OR any content filter active, bypass date range ── */
+  const useWindowRange = filterStatus==='all' && filterDelivery!=='offline' && filterProgram==='all' && filterCourse==='all' && filterInstructor==='all'
+  const windowClasses = useMemo(()=>{
+    if(!useWindowRange) return filteredClasses
+    return filteredClasses.filter(lc=>{const d=new Date(lc.scheduledStart);return d>=rangeStart&&d<=rangeEndIncl})
+  },[filteredClasses,useWindowRange,rangeStart,rangeEndIncl])
 
-  /* ── Group windowClasses by title ── */
-  const allGroups = useMemo((): ClassGroup[] => {
-    const map = new Map<string, LiveClass[]>()
-    windowClasses.forEach(lc => {
-      const key = lc.title.trim()
-      if (!map.has(key)) map.set(key, [])
-      map.get(key)!.push(lc)
+  const allGroups = useMemo(():ClassGroup[]=>{
+    const map = new Map<string,LiveClass[]>()
+    windowClasses.forEach(lc=>{const k=lc.title.trim();if(!map.has(k))map.set(k,[]);map.get(k)!.push(lc)})
+    const res:ClassGroup[] = []
+    map.forEach((slots,title)=>{
+      slots.sort((a,b)=>new Date(a.scheduledStart).getTime()-new Date(b.scheduledStart).getTime())
+      const bookedSlot = slots.find(s=>bookingMap.get(s.id)?.status==='booked')
+      const sec = slots[0].sectionId
+      res.push({title, instructor:slots[0].instructor??null, slots, bookedSlot,
+        courseId:slots[0].course?.id, courseTitle:slots[0].course?.title,
+        moduleTitle:typeof sec==='object'&&sec?sec.title:undefined})
     })
-
-    const result: ClassGroup[] = []
-    map.forEach((slots, title) => {
-      slots.sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime())
-
-      const instr       = slots[0].instructor ?? null
-      const bookedSlot  = slots.find(s => bookingMap.get(s.id)?.status === 'booked')
-      const courseTitle = slots[0].course?.title
-      const courseSlug  = slots[0].course?.slug
-      const sec         = slots[0].sectionId
-      const moduleTitle = typeof sec === 'object' && sec ? sec.title : undefined
-
-      result.push({ title, instructor: instr, slots, bookedSlot, courseSlug, courseTitle, moduleTitle })
+    res.sort((a,b)=>{
+      const r=(g:ClassGroup)=>g.slots.some(s=>s.status==='live')?0:g.bookedSlot?1:2
+      return r(a)-r(b)
     })
+    return res
+  },[windowClasses,bookingMap])
 
-    result.sort((a, b) => {
-      const rank = (g: ClassGroup) => {
-        if (g.slots.some(s => s.status === 'live')) return 0
-        if (g.bookedSlot)                           return 1
-        return 2
-      }
-      return rank(a) - rank(b)
-    })
-
-    return result
-  }, [windowClasses, bookingMap])
-
-  /* ── Organize groups into date sections ── */
-  const dateSections = useMemo((): DateSection[] => {
-    const byDate = new Map<string, ClassGroup[]>()
-    const today  = new Date()
-
-    allGroups.forEach(group => {
-      const firstSlot = group.slots
-        .filter(s => {
-          const d = new Date(s.scheduledStart)
-          return d >= rangeStart && d <= rangeEndInclusive
-        })
-        .sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime())[0]
-
-      if (!firstSlot) return
-
+  const dateSections = useMemo(():DateSection[]=>{
+    const by = new Map<string,ClassGroup[]>()
+    const tod = new Date()
+    allGroups.forEach(g=>{
+      const firstSlot=useWindowRange
+        ?g.slots.filter(s=>{const d=new Date(s.scheduledStart);return d>=rangeStart&&d<=rangeEndIncl})
+          .sort((a,b)=>new Date(a.scheduledStart).getTime()-new Date(b.scheduledStart).getTime())[0]
+        :g.slots.sort((a,b)=>new Date(a.scheduledStart).getTime()-new Date(b.scheduledStart).getTime())[0]
+      if(!firstSlot) return
       const dk = toDateKey(new Date(firstSlot.scheduledStart))
-      if (!byDate.has(dk)) byDate.set(dk, [])
-      byDate.get(dk)!.push(group)
+      if(!by.has(dk)) by.set(dk,[])
+      by.get(dk)!.push(g)
     })
+    return Array.from(by.keys()).sort().map(dk=>{
+      const [y,mo,d]=dk.split('-').map(Number)
+      const date = new Date(y,mo-1,d)
+      return{dateKey:dk,dateLabel:date.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'}),isToday:isSameDay(date,tod),groups:by.get(dk)!}
+    })
+  },[allGroups,rangeStart,rangeEndIncl,useWindowRange])
 
-    return Array.from(byDate.keys())
-      .sort()
-      .map(dk => {
-        const [y, mo, d] = dk.split('-').map(Number)
-        const date = new Date(y, mo - 1, d)
-        return {
-          dateKey:   dk,
-          dateLabel: date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }),
-          isToday:   isSameDay(date, today),
-          groups:    byDate.get(dk)!,
-        }
-      })
-  }, [allGroups, rangeStart, rangeEndInclusive])
+  const openGroup = useMemo(()=>{
+    if(!openKey) return null
+    return dateSections.find(s=>s.dateKey===openKey.dateKey)?.groups.find(g=>g.title===openKey.title)??null
+  },[openKey,dateSections])
 
-  /* ── Re-derive open group from fresh data so bookingMap updates flow in ── */
-  const openGroup = useMemo(() => {
-    if (!openGroupKey) return null
-    const section = dateSections.find(s => s.dateKey === openGroupKey.dateKey)
-    return section?.groups.find(g => g.title === openGroupKey.title) ?? null
-  }, [openGroupKey, dateSections])
+  /* ── Stats ── */
+  const stats = useMemo(()=>{
+    let liveNow=0,open=0,myBooked=0
+    allClasses.forEach(lc=>{const st=getSlotStatus(lc,bookingMap.get(lc.id),false);if(st==='live')liveNow++;if(st==='bookable')open++})
+    bookingMap.forEach(b=>{if(b.status==='booked')myBooked++})
+    return{liveNow,open,myBooked,total:allClasses.length}
+  },[allClasses,bookingMap])
 
   /* ── Mutations ── */
-  const createBooking = useCreateBooking()
-  const cancelBooking = useCancelBooking()
-
-  async function handleBook(liveClassId: string) {
-    setBookPending(prev => new Set(prev).add(liveClassId))
-    try {
-      await createBooking.mutateAsync(liveClassId)
-      toast.success('Seat booked!')
-      setOpenGroupKey(null)
-    } catch (err: any) {
-      const code = err?.response?.data?.error?.code
-      if (code === 'CONTACT_ADMIN')    { setShowContactAdmin(true) }
-      else if (code === 'SESSION_FULL')    { toast.error('This slot is full.') }
-      else if (code === 'ALREADY_BOOKED') { toast.info('You already have a booking for this slot.') }
-      else if (code === 'NOT_ENROLLED')   { toast.error('You must be enrolled in this course to book.') }
-      else { toast.error(err?.response?.data?.error?.message ?? 'Could not book seat.') }
-    } finally {
-      setBookPending(prev => { const s = new Set(prev); s.delete(liveClassId); return s })
-    }
+  const createBk = useCreateBooking()
+  const cancelBk = useCancelBooking()
+  async function handleBook(id:string){
+    setBookPending(p=>new Set(p).add(id))
+    try{await createBk.mutateAsync(id);toast.success('Seat reserved! Join link emailed 5 min before class.');setOpenKey(null)}
+    catch(e:any){
+      const code=e?.response?.data?.error?.code
+      if(code==='CONTACT_ADMIN')   setShowAdmin(true)
+      else if(code==='SESSION_FULL')    toast.error('Slot is full.')
+      else if(code==='ALREADY_BOOKED')  toast.info('Already booked.')
+      else if(code==='NOT_ENROLLED')    toast.error('Enroll in this course to book.')
+      else if(code==='MODULE_BLOCKED')   toast.error('This class belongs to a module you don\'t have access to. Contact your admin.')
+      else if(code==='PENDING_APPROVAL') toast.error('Your account is in viewer mode. Admin approval is required to book classes.')
+      else if(code==='ACCESS_REJECTED')  toast.error('Your access request was not approved. Contact support to appeal.')
+      else toast.error(e?.response?.data?.error?.message??'Could not book.')
+    }finally{setBookPending(p=>{const s=new Set(p);s.delete(id);return s})}
   }
-
-  async function handleCancel(bookingId: string, label: string) {
-    setCancelPending(prev => new Set(prev).add(bookingId))
-    try {
-      await cancelBooking.mutateAsync(bookingId)
-      toast.success(`Booking for ${label} cancelled.`)
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error?.message ?? 'Could not cancel booking.')
-    } finally {
-      setCancelPending(prev => { const s = new Set(prev); s.delete(bookingId); return s })
-    }
+  async function handleCancel(id:string,label:string){
+    setCancelPend(p=>new Set(p).add(id))
+    try{await cancelBk.mutateAsync(id);toast.success(`Reservation for ${label} cancelled.`)}
+    catch(e:any){toast.error(e?.response?.data?.error?.message??'Could not cancel.')}
+    finally{setCancelPend(p=>{const s=new Set(p);s.delete(id);return s})}
   }
 
   /* ── Helpers ── */
-  const isCurrentWeek = (
-    isSameDay(rangeStart, getMondayOfWeek(new Date())) &&
-    isSameDay(rangeEnd,   addDays(getMondayOfWeek(new Date()), 6))
-  )
-
-  function shiftRange(dir: 1 | -1) {
-    const span = Math.round((rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000) + 1
-    setRangeStart(addDays(rangeStart, dir * span))
-    setRangeEnd(addDays(rangeEnd,   dir * span))
+  const isCurrWeek = isSameDay(rangeStart,getMondayOfWeek(new Date()))&&isSameDay(rangeEnd,addDays(getMondayOfWeek(new Date()),6))
+  function shiftRange(dir:1|-1){
+    const span=Math.round((rangeEnd.getTime()-rangeStart.getTime())/86_400_000)+1
+    setRangeStart(addDays(rangeStart,dir*span));setRangeEnd(addDays(rangeEnd,dir*span))
+  }
+  function toggleDelivery(mode:'online'|'offline'){
+    setFilterDelivery(v=>v===mode?'all':mode)
   }
 
-  const hasFilters = !!(search || filterCourse || filterModule || filterInstructor)
-  const isLoading  = loadingClasses || loadingBookings
+  const panelFilterCount = [
+    filterAccess!=='all', filterProgram!=='all', filterCourse!=='all', filterInstructor!=='all',
+  ].filter(Boolean).length
 
-  const selectStyle = (active: boolean) => ({
-    background: active ? 'rgba(255,107,26,0.07)' : 'white',
-    color:      active ? '#FF6B1A'                : '#6B7280',
-    border:     `1px solid ${active ? 'rgba(255,107,26,0.25)' : '#E5E7EB'}`,
-  })
+  const hasAnyFilter = !!(search||filterAccess!=='all'||filterDelivery!=='all'||filterProgram!=='all'||filterCourse!=='all'||filterInstructor!=='all'||filterStatus!=='all')
+  const clearAll = ()=>{setSearch('');setFilterStatus('all');setFilterAccess('all');setFilterDelivery('all');setFilterProgram('all');setFilterCourse('all');setFilterInstructor('all')}
+  const clearPanel = ()=>{setFilterAccess('all');setFilterProgram('all');setFilterCourse('all');setFilterInstructor('all')}
+  const isLoading = loadCls||loadBk
 
-  return (
-    <div className="mx-auto max-w-4xl pb-16">
+  /* ── Status tab config ── */
+  const isOfflineMode = filterDelivery==='offline'
+  const liveTabLabel  = isOfflineMode ? 'Today' : 'Live Now'
+  const liveTabIcon   = isOfflineMode
+    ? <CalendarDays size={11} className="mr-1 flex-shrink-0" style={{color:'currentColor'}}/>
+    : statusCounts.live>0
+      ? <motion.span animate={{opacity:[1,0.3,1]}} transition={{duration:1.5,repeat:Infinity}} className="h-1.5 w-1.5 rounded-full inline-block mr-1 flex-shrink-0" style={{background:'#EF4444'}}/>
+      : <span className="h-1.5 w-1.5 rounded-full inline-block mr-1 flex-shrink-0" style={{background:'#EF4444'}}/>
 
-      {/* ── Header ── */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ type: 'spring', stiffness: 280, damping: 26 }}
-        className="mb-5 flex flex-wrap items-end justify-between gap-4"
-      >
-        <div>
-          <h1 className="text-2xl font-bold"
-            style={{ color: '#111827', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-            Class Schedule
-          </h1>
-          <p className="mt-0.5 text-sm" style={{ color: '#9CA3AF' }}>
-            {fmtDateRange(rangeStart, rangeEnd)}
-          </p>
-        </div>
+  const STATUS_TABS = [
+    {key:'live'     as StatusFilter, label:liveTabLabel, icon:liveTabIcon, color:'#EF4444', activeStyle:{background:'rgba(239,68,68,0.10)',color:'#EF4444',border:'1.5px solid rgba(239,68,68,0.28)'}},
+    {key:'upcoming' as StatusFilter, label:'Upcoming',   icon:<CalendarDays size={11} className="mr-1 flex-shrink-0"/>, color:'#FF6B1A', activeStyle:{background:'rgba(255,107,26,0.10)',color:'#EA6010',border:'1.5px solid rgba(255,107,26,0.28)'}},
+    {key:'ended'    as StatusFilter, label:'Completed',  icon:<CheckCircle2 size={11} className="mr-1 flex-shrink-0" strokeWidth={3}/>, color:'#6366F1', activeStyle:{background:'rgba(99,102,241,0.10)',color:'#6366F1',border:'1.5px solid rgba(99,102,241,0.28)'}},
+  ]
 
-        {/* Date range navigation */}
-        <div className="relative flex items-center gap-2" ref={calendarRef}>
-          {!isCurrentWeek && (
-            <Button type="button" variant="ghost" size="sm"
-              onClick={() => {
-                const m = getMondayOfWeek(new Date())
-                setRangeStart(m)
-                setRangeEnd(addDays(m, 6))
-              }}
-              className="rounded-xl px-3 py-2 text-xs font-semibold hover:brightness-105"
-              style={{ background: 'rgba(255,107,26,0.08)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.20)' }}>
-              This week
-            </Button>
-          )}
+  return(
+    <>
+      <FontLoader/>
+      <div className="dm mx-auto max-w-5xl pb-20">
 
-          <div className="flex items-center gap-1 rounded-2xl p-1"
-            style={{ background: 'white', border: '1px solid #E5E7EB' }}>
-            <Button type="button" variant="ghost" size="icon" onClick={() => shiftRange(-1)}
-              className="h-8 w-8 rounded-xl"
-              style={{ color: '#6B7280' }}>
-              <ChevronLeft size={15} />
-            </Button>
+        {/* ─── HERO ─────────────────────────────────────────────── */}
+        <motion.div initial={{opacity:0,y:-12}} animate={{opacity:1,y:0}}
+          transition={{type:'spring',stiffness:280,damping:26}} className="mb-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="mb-1 flex items-center gap-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded-lg"
+                  style={{background:'linear-gradient(135deg,#FF6B1A,#FF9044)',boxShadow:'0 3px 10px rgba(255,107,26,0.30)'}}>
+                  <CalendarDays size={12} color="white"/>
+                </div>
+                <span className="dm text-[10px] font-bold uppercase tracking-widest" style={{color:'#FF6B1A'}}>Class Schedule</span>
+              </div>
+              <h1 className="syne text-[26px] font-800 leading-none tracking-tight" style={{color:'#0F172A'}}>
+                {filterStatus==='all'?fmtDateRange(rangeStart,rangeEnd):filterStatus==='live'?(isOfflineMode?"Today's Classes":'Live Now'):filterStatus==='upcoming'?'Upcoming Sessions':'Completed Sessions'}
+              </h1>
+            </div>
 
-            <Button type="button" variant="ghost"
-              onClick={() => setShowCalendar(v => !v)}
-              className="flex items-center gap-1.5 rounded-xl px-2 py-1 hover:bg-gray-50"
-              style={{ color: '#374151' }}>
-              <Calendar size={12} style={{ color: showCalendar ? '#FF6B1A' : '#9CA3AF' }} />
-              <span className="whitespace-nowrap text-xs font-semibold">
-                {rangeStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                {' – '}
-                {rangeEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </span>
-            </Button>
-
-            <Button type="button" variant="ghost" size="icon" onClick={() => shiftRange(1)}
-              className="h-8 w-8 rounded-xl"
-              style={{ color: '#6B7280' }}>
-              <ChevronRight size={15} />
-            </Button>
+            {/* Date nav — only shown for 'all' status view */}
+            {filterStatus==='all'&&(
+              <div className="relative flex items-center gap-2" ref={calRef}>
+                {!isCurrWeek&&(
+                  <button type="button"
+                    onClick={()=>{const m=getMondayOfWeek(new Date());setRangeStart(m);setRangeEnd(addDays(m,6))}}
+                    className="rounded-full px-3 py-1.5 text-[11px] font-semibold"
+                    style={{background:'rgba(255,107,26,0.10)',color:'#FF6B1A',border:'1px solid rgba(255,107,26,0.22)'}}>
+                    ← Today
+                  </button>
+                )}
+                <div className="flex items-center gap-0.5 rounded-2xl bg-white p-1"
+                  style={{border:'1px solid #E2EAF4',boxShadow:'0 1px 4px rgba(15,23,42,0.05)'}}>
+                  <button type="button" onClick={()=>shiftRange(-1)}
+                    className="flex h-7 w-7 items-center justify-center rounded-xl hover:bg-slate-50">
+                    <ChevronLeft size={13} style={{color:'#64748B'}}/>
+                  </button>
+                  <button type="button" onClick={()=>setShowCal(v=>!v)}
+                    className="flex items-center gap-1.5 rounded-xl px-2 py-1 hover:bg-slate-50">
+                    <Calendar size={11} style={{color:showCal?'#FF6B1A':'#94A3B8'}}/>
+                    <span className="dm whitespace-nowrap text-[11px] font-semibold" style={{color:'#334155'}}>
+                      {rangeStart.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – {rangeEnd.toLocaleDateString('en-US',{month:'short',day:'numeric'})}
+                    </span>
+                  </button>
+                  <button type="button" onClick={()=>shiftRange(1)}
+                    className="flex h-7 w-7 items-center justify-center rounded-xl hover:bg-slate-50">
+                    <ChevronRight size={13} style={{color:'#64748B'}}/>
+                  </button>
+                </div>
+                <AnimatePresence>
+                  {showCal&&<MiniCalendar rangeStart={rangeStart} rangeEnd={rangeEnd}
+                    onRangeChange={(s,e)=>{setRangeStart(s);setRangeEnd(e)}} onClose={()=>setShowCal(false)}/>}
+                </AnimatePresence>
+              </div>
+            )}
           </div>
+        </motion.div>
 
-          {/* Inline calendar dropdown */}
+        {/* ─── STATS ────────────────────────────────────────────── */}
+        {!isLoading&&filterDelivery!=='offline'&&(
+          <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[
+              {icon:<CalendarDays size={13}/>,label:'Total Classes',   value:stats.total,    color:'#334155',accent:'#64748B',bg:'white',                         border:'#E2EAF4'},
+              {icon:<Flame size={13}/>,       label:'Live Now',        value:stats.liveNow,  color:'#EF4444',accent:'#EF4444',bg:'rgba(239,68,68,0.04)',           border:'rgba(239,68,68,0.15)'},
+              {icon:<CheckCircle2 size={13} strokeWidth={3}/>,label:'My Reservations',value:stats.myBooked,color:'#059669',accent:'#059669',bg:'rgba(5,150,105,0.04)',border:'rgba(5,150,105,0.15)'},
+              {icon:<TrendingUp size={13}/>,  label:'Open Slots',      value:stats.open,     color:'#FF6B1A',accent:'#FF6B1A',bg:'rgba(255,107,26,0.04)',          border:'rgba(255,107,26,0.15)'},
+            ].map((p,i)=>(
+              <motion.div key={p.label} initial={{opacity:0,y:8}} animate={{opacity:1,y:0}}
+                transition={{delay:i*0.05}}
+                className="flex flex-col rounded-2xl px-4 py-3"
+                style={{background:p.bg,border:`1px solid ${p.border}`}}>
+                <div className="mb-1.5 flex items-center gap-1.5" style={{color:p.accent}}>
+                  {i===1&&stats.liveNow>0
+                    ?<motion.div animate={{opacity:[1,0.3,1]}} transition={{duration:1.5,repeat:Infinity}}>{p.icon}</motion.div>
+                    :p.icon}
+                  <span className="dm text-[9px] font-semibold uppercase tracking-wider" style={{color:p.accent,opacity:0.75}}>{p.label}</span>
+                </div>
+                <span className="syne text-[26px] font-800 leading-none" style={{color:p.color}}>{p.value}</span>
+              </motion.div>
+            ))}
+          </div>
+        )}
+
+        {/* ─── OFFLINE DASHBOARD ────────────────────────────────── */}
+        <AnimatePresence>
+          {!isLoading&&filterDelivery==='offline'&&(
+            <motion.div initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-4}}
+              transition={{type:'spring',stiffness:320,damping:28}}
+              className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {[
+                {icon:<CalendarDays size={13}/>,label:'Total Sessions',    value:offlineStats.total,          color:'#334155',accent:'#64748B',bg:'white',                         border:'#E2EAF4'},
+                {icon:<Flame size={13}/>,       label:"Today's Classes",   value:offlineStats.today,          color:'#EF4444',accent:'#EF4444',bg:'rgba(239,68,68,0.04)',           border:'rgba(239,68,68,0.15)'},
+                {icon:<CheckCircle2 size={13} strokeWidth={3}/>,label:'My Reservations',value:offlineStats.myReservations,color:'#059669',accent:'#059669',bg:'rgba(5,150,105,0.04)',border:'rgba(5,150,105,0.15)'},
+                {icon:<TrendingUp size={13}/>,  label:'Available Seats',   value:offlineStats.availableSeats, color:'#FF6B1A',accent:'#FF6B1A',bg:'rgba(255,107,26,0.04)',          border:'rgba(255,107,26,0.15)'},
+              ].map((p,i)=>(
+                <motion.div key={p.label} initial={{opacity:0,y:8}} animate={{opacity:1,y:0}}
+                  transition={{delay:i*0.05}}
+                  className="flex flex-col rounded-2xl px-4 py-3"
+                  style={{background:p.bg,border:`1px solid ${p.border}`}}>
+                  <div className="mb-1.5 flex items-center gap-1.5" style={{color:p.accent}}>
+                    {p.icon}
+                    <span className="dm text-[9px] font-semibold uppercase tracking-wider" style={{color:p.accent,opacity:0.75}}>{p.label}</span>
+                  </div>
+                  <span className="syne text-[26px] font-800 leading-none" style={{color:p.color}}>{p.value}</span>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ─── STATUS TABS ──────────────────────────────────────── */}
+        <motion.div initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} transition={{delay:0.04}}
+          className="mb-3 flex items-center gap-2 flex-wrap">
+          {/* All tab */}
+          <button type="button" onClick={()=>setFilterStatus('all')}
+            className="dm inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[12px] font-semibold transition-all"
+            style={filterStatus==='all'
+              ?{background:'#0F172A',color:'white',border:'1.5px solid transparent',fontWeight:700}
+              :{background:'white',color:'#64748B',border:'1px solid #E2EAF4'}}>
+            All
+            <span className="rounded-full px-1.5 text-[10px] font-bold"
+              style={{background:filterStatus==='all'?'rgba(255,255,255,0.15)':'#EEF2F7',color:filterStatus==='all'?'white':'#94A3B8'}}>
+              {allClasses.length}
+            </span>
+          </button>
+          {STATUS_TABS.map(tab=>(
+            <button key={tab.key} type="button" onClick={()=>setFilterStatus(tab.key)}
+              className="dm inline-flex items-center rounded-full px-4 py-2 text-[12px] font-semibold transition-all"
+              style={filterStatus===tab.key
+                ?{...tab.activeStyle,fontWeight:700}
+                :{background:'white',color:'#64748B',border:'1px solid #E2EAF4'}}>
+              {tab.icon}
+              {tab.label}
+              {(()=>{const cnt=(isOfflineMode&&tab.key==='live')?statusCounts.today:(statusCounts as Record<string,number>)[tab.key];return cnt>0&&(
+                <span className="ml-1.5 rounded-full px-1.5 text-[10px] font-bold"
+                  style={{
+                    background:filterStatus===tab.key?'rgba(255,255,255,0.20)':'#EEF2F7',
+                    color:filterStatus===tab.key?'currentColor':'#94A3B8',
+                  }}>
+                  {cnt}
+                </span>
+              )})()}
+            </button>
+          ))}
+        </motion.div>
+
+        {/* ─── FILTER BAR ───────────────────────────────────────── */}
+        <div className="mb-4 relative" ref={panelRef}>
+          <motion.div initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} transition={{delay:0.08}}
+            className="flex items-center gap-2 rounded-2xl bg-white px-3 py-2.5"
+            style={{border:'1px solid #E2EAF4',boxShadow:'0 1px 6px rgba(15,23,42,0.05)'}}>
+
+            {/* Delivery toggles */}
+            <button type="button" onClick={()=>toggleDelivery('online')}
+              className="dm flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-all flex-shrink-0"
+              style={filterDelivery==='online'
+                ?{background:'rgba(99,102,241,0.12)',color:'#6366F1',border:'1.5px solid rgba(99,102,241,0.30)',fontWeight:600}
+                :{background:'#F8FAFC',color:'#64748B',border:'1px solid #E2EAF4'}}>
+              <Wifi size={12}/>Online
+            </button>
+            <button type="button" onClick={()=>toggleDelivery('offline')}
+              className="dm flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-all flex-shrink-0"
+              style={filterDelivery==='offline'
+                ?{background:'rgba(5,150,105,0.10)',color:'#059669',border:'1.5px solid rgba(5,150,105,0.28)',fontWeight:600}
+                :{background:'#F8FAFC',color:'#64748B',border:'1px solid #E2EAF4'}}>
+              <Building2 size={12}/>In-Person
+            </button>
+
+            <div className="h-5 w-px flex-shrink-0" style={{background:'#E2EAF4'}}/>
+
+            {/* Search */}
+            <div className="relative flex-1 min-w-0">
+              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                style={{color:search?'#FF6B1A':'#CBD5E1'}}/>
+              <input type="text" value={search} onChange={e=>setSearch(e.target.value)}
+                placeholder="Search classes, instructors…"
+                className="dm w-full rounded-xl py-1.5 pl-8 pr-7 text-[12px] outline-none"
+                style={{background:search?'rgba(255,107,26,0.04)':'#F8FAFC',color:'#334155',
+                  border:`1px solid ${search?'rgba(255,107,26,0.25)':'#E2EAF4'}`}}/>
+              {search&&(
+                <button type="button" onClick={()=>setSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2">
+                  <X size={10} style={{color:'#94A3B8'}}/>
+                </button>
+              )}
+            </div>
+
+            {/* Filters button */}
+            <button type="button" onClick={()=>setShowPanel(v=>!v)}
+              className="dm flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold flex-shrink-0 transition-all"
+              style={showPanel||panelFilterCount>0
+                ?{background:'rgba(255,107,26,0.10)',color:'#EA6010',border:'1.5px solid rgba(255,107,26,0.30)',fontWeight:600}
+                :{background:'#F8FAFC',color:'#64748B',border:'1px solid #E2EAF4'}}>
+              <SlidersHorizontal size={12}/>
+              Filters
+              {panelFilterCount>0&&(
+                <span className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white flex-shrink-0"
+                  style={{background:'#FF6B1A'}}>
+                  {panelFilterCount}
+                </span>
+              )}
+            </button>
+
+            {hasAnyFilter&&(
+              <button type="button" onClick={clearAll}
+                className="dm hidden sm:flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[11px] font-semibold flex-shrink-0"
+                style={{color:'#EF4444',border:'1px solid rgba(239,68,68,0.18)'}}>
+                <X size={10}/>Clear
+              </button>
+            )}
+          </motion.div>
+
+          {/* ─── FILTER PANEL (expandable) ──────────────────────── */}
           <AnimatePresence>
-            {showCalendar && (
-              <MiniCalendar
-                rangeStart={rangeStart}
-                rangeEnd={rangeEnd}
-                onRangeChange={(s, e) => { setRangeStart(s); setRangeEnd(e) }}
-                onClose={() => setShowCalendar(false)}
-              />
+            {showPanel&&(
+              <motion.div initial={{opacity:0,y:-6}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-6}}
+                transition={{type:'spring',stiffness:380,damping:30}}
+                className="mt-2 rounded-2xl bg-white overflow-hidden"
+                style={{border:'1px solid #E2EAF4',boxShadow:'0 8px 32px rgba(15,23,42,0.10)'}}>
+                <div className="p-5 space-y-5">
+
+                  <PanelSection label="Access" icon={<Lock size={11}/>}>
+                    <PanelChip active={filterAccess==='all'}  onClick={()=>setFilterAccess('all')}>All Classes</PanelChip>
+                    <PanelChip active={filterAccess==='mine'} onClick={()=>setFilterAccess('mine')}>✓ My Courses Only</PanelChip>
+                  </PanelSection>
+
+                  <PanelSection label="Program" icon={<GraduationCap size={11}/>}>
+                    <PanelChip active={filterProgram==='all'} onClick={()=>setFilterProgram('all')}>All Programs</PanelChip>
+                    {(['4x-trading','digital-marketing','ai'] as ProgramFilter[]).map(key=>(
+                      <PanelChip key={key} active={filterProgram===key} onClick={()=>setFilterProgram(key)}
+                        count={programCounts[key]??0}>
+                        {PROGRAM_LABELS[key]}
+                      </PanelChip>
+                    ))}
+                  </PanelSection>
+
+
+                  <div className="flex items-center justify-between pt-1" style={{borderTop:'1px solid #F1F5F9'}}>
+                    <span className="dm text-[11px]" style={{color:'#94A3B8'}}>
+                      {panelFilterCount>0?`${panelFilterCount} filter${panelFilterCount>1?'s':''} active`:'No filters active'}
+                    </span>
+                    <div className="flex gap-2">
+                      {panelFilterCount>0&&(
+                        <button type="button" onClick={clearPanel}
+                          className="dm rounded-full px-3 py-1 text-[11px] font-semibold"
+                          style={{color:'#EF4444',border:'1px solid rgba(239,68,68,0.18)'}}>
+                          Clear filters
+                        </button>
+                      )}
+                      <button type="button" onClick={()=>setShowPanel(false)}
+                        className="dm rounded-full px-3 py-1 text-[11px] font-semibold"
+                        style={{background:'#0F172A',color:'white'}}>
+                        Done
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
-      </motion.div>
 
-      {/* ── Filters ── */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        {/* Search input */}
-        <div className="relative flex-1 min-w-[180px] max-w-xs">
-          <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ color: search ? '#FF6B1A' : '#9CA3AF' }} />
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search classes…"
-            className="w-full rounded-xl py-1.5 pl-8 pr-3 text-xs font-medium outline-none"
-            style={{
-              background: search ? 'rgba(255,107,26,0.06)' : 'white',
-              color:      '#374151',
-              border:     `1px solid ${search ? 'rgba(255,107,26,0.30)' : '#E5E7EB'}`,
-            }}
-          />
-          {search && (
-            <Button type="button" variant="ghost" size="icon-sm"
-              onClick={() => setSearch('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full">
-              <X size={9} style={{ color: '#9CA3AF' }} />
-            </Button>
+        {/* ─── PROGRAM-SCOPED DROPDOWNS ─────────────────────────── */}
+        <AnimatePresence>
+          {filterProgram!=='all'&&(programCourses.length>0||programInstructors.length>0)&&(
+            <motion.div
+              initial={{opacity:0,y:-8,height:0}} animate={{opacity:1,y:0,height:'auto'}} exit={{opacity:0,y:-6,height:0}}
+              transition={{type:'spring',stiffness:360,damping:30}}
+              className="overflow-hidden mb-4">
+              <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                {/* Program label pill */}
+                <span className="dm flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold"
+                  style={{background:'rgba(255,107,26,0.08)',color:'#EA6010',border:'1px solid rgba(255,107,26,0.20)'}}>
+                  <GraduationCap size={11}/>{PROGRAM_LABELS[filterProgram]}
+                </span>
+                <ChevronRight size={12} style={{color:'#CBD5E1'}}/>
+                {/* Course dropdown */}
+                {programCourses.length>0&&(
+                  <FilterSelect
+                    placeholder="All Courses"
+                    value={filterCourse}
+                    onChange={v=>{setFilterCourse(v)}}
+                    options={programCourses.map(c=>({value:c.id,label:c.title.length>32?c.title.slice(0,30)+'…':c.title}))}
+                  />
+                )}
+                {/* Instructor dropdown */}
+                {programInstructors.length>0&&(
+                  <FilterSelect
+                    placeholder="All Instructors"
+                    value={filterInstructor}
+                    onChange={v=>{setFilterInstructor(v)}}
+                    options={programInstructors.map(i=>({value:i.id,label:i.name}))}
+                  />
+                )}
+                {/* Reset scoped filters */}
+                {(filterCourse!=='all'||filterInstructor!=='all')&&(
+                  <button type="button"
+                    onClick={()=>{setFilterCourse('all');setFilterInstructor('all')}}
+                    className="dm flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[11px] font-semibold"
+                    style={{color:'#EF4444',border:'1px solid rgba(239,68,68,0.18)'}}>
+                    <X size={10}/>Reset
+                  </button>
+                )}
+              </div>
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
 
-        <Filter size={12} style={{ color: '#9CA3AF' }} className="shrink-0" />
-
-        {/* Course filter */}
-        <select value={filterCourse}
-          onChange={e => { setFilterCourse(e.target.value); setFilterModule('') }}
-          className="rounded-xl px-3 py-1.5 text-xs font-medium outline-none cursor-pointer"
-          style={selectStyle(!!filterCourse)}>
-          <option value="">All courses</option>
-          {availableCourses.map(c => (
-            <option key={c.id} value={c.id}>{c.title}</option>
-          ))}
-        </select>
-
-        {/* Module filter — only when a course is selected and has sections */}
-        {availableModules.length > 0 && (
-          <select value={filterModule}
-            onChange={e => setFilterModule(e.target.value)}
-            className="rounded-xl px-3 py-1.5 text-xs font-medium outline-none cursor-pointer"
-            style={selectStyle(!!filterModule)}>
-            <option value="">All modules</option>
-            {availableModules.map(m => (
-              <option key={m.id} value={m.id}>{m.title}</option>
-            ))}
-          </select>
+        {/* ─── CONTENT ──────────────────────────────────────────── */}
+        {isLoading&&(
+          <div className="flex flex-col items-center justify-center gap-3 py-24">
+            <motion.div className="h-6 w-6 rounded-full border-2 border-transparent border-t-orange-500"
+              animate={{rotate:360}} transition={{duration:1,repeat:Infinity,ease:'linear'}}/>
+            <p className="dm text-sm" style={{color:'#94A3B8'}}>Loading schedule…</p>
+          </div>
         )}
 
-        {/* Instructor filter */}
-        <select value={filterInstructor}
-          onChange={e => setFilterInstructor(e.target.value)}
-          className="rounded-xl px-3 py-1.5 text-xs font-medium outline-none cursor-pointer"
-          style={selectStyle(!!filterInstructor)}>
-          <option value="">All instructors</option>
-          {availableInstructors.map(i => (
-            <option key={i.id} value={i.id}>{i.name}</option>
-          ))}
-        </select>
-
-        {hasFilters && (
-          <Button type="button" variant="link"
-            onClick={() => { setSearch(''); setFilterCourse(''); setFilterModule(''); setFilterInstructor('') }}
-            className="shrink-0 text-xs font-medium hover:opacity-80"
-            style={{ color: '#EF4444' }}>
-            × Clear
-          </Button>
-        )}
-      </div>
-
-      {/* ── Loading ── */}
-      {isLoading && (
-        <div className="flex items-center justify-center gap-2 py-24 text-sm" style={{ color: '#9CA3AF' }}>
-          <Loader2 size={20} className="animate-spin" style={{ color: '#FF6B1A' }} />
-          Loading your schedule…
-        </div>
-      )}
-
-      {!isLoading && (
-        <>
-          {/* Global stats — always based on all classes, not filtered by date */}
-          <GlobalStats allClasses={allClasses} bookingMap={bookingMap} />
-
+        {!isLoading&&(
           <AnimatePresence mode="wait">
             <motion.div
-              key={`${rangeStart.toISOString()}-${search}-${filterCourse}-${filterModule}-${filterInstructor}`}
-              initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.16 }}
-            >
-              {/* ── Empty state ── */}
-              {dateSections.length === 0 ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                  className="flex flex-col items-center gap-3 rounded-3xl bg-white py-16 text-center"
-                  style={{ border: '1px solid #E5E7EB' }}
-                >
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl"
-                    style={{ background: 'rgba(255,107,26,0.08)', border: '1px solid rgba(255,107,26,0.15)' }}>
-                    <Calendar size={22} style={{ color: '#FF6B1A' }} />
-                  </div>
+              key={`${rangeStart.toISOString()}-${search}-${filterStatus}-${filterAccess}-${filterDelivery}-${filterProgram}-${filterCourse}-${filterInstructor}`}
+              initial={{opacity:0,x:8}} animate={{opacity:1,x:0}} exit={{opacity:0,x:-8}} transition={{duration:0.13}}>
 
-                  {allClasses.length === 0 ? (
+              {dateSections.length===0?(
+                <motion.div initial={{opacity:0,y:10}} animate={{opacity:1,y:0}}
+                  className="flex flex-col items-center gap-4 rounded-3xl bg-white py-20 text-center"
+                  style={{border:'1px solid #E2EAF4'}}>
+                  <div className="flex h-16 w-16 items-center justify-center rounded-3xl"
+                    style={{background:'rgba(255,107,26,0.07)',border:'1px solid rgba(255,107,26,0.14)'}}>
+                    <Calendar size={26} style={{color:'#FF6B1A'}}/>
+                  </div>
+                  {allClasses.length===0?(
                     <>
-                      <p className="font-bold" style={{ color: '#111827' }}>No upcoming classes</p>
-                      <p className="max-w-xs text-sm" style={{ color: '#9CA3AF' }}>
-                        Enroll in a course to see your live class schedule here.
-                      </p>
+                      <p className="syne font-700 text-lg" style={{color:'#0F172A'}}>No classes yet</p>
+                      <p className="dm max-w-xs text-sm" style={{color:'#94A3B8'}}>Enroll in a course to see live sessions appear here.</p>
                     </>
-                  ) : hasFilters ? (
+                  ):filterDelivery==='offline'?(
                     <>
-                      <p className="font-bold" style={{ color: '#111827' }}>No classes match your filters</p>
-                      <Button type="button" variant="ghost"
-                        onClick={() => { setSearch(''); setFilterCourse(''); setFilterModule(''); setFilterInstructor('') }}
-                        className="rounded-xl px-4 py-2 text-sm font-semibold"
-                        style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.20)' }}>
-                        Clear filters
-                      </Button>
+                      <p className="syne font-700 text-lg" style={{color:'#0F172A'}}>No in-person classes found</p>
+                      <p className="dm text-sm" style={{color:'#94A3B8'}}>No classroom sessions have been scheduled yet. Check back soon.</p>
                     </>
-                  ) : (
+                  ):hasAnyFilter?(
                     <>
-                      <p className="font-bold" style={{ color: '#111827' }}>No classes in this period</p>
-                      {(() => {
-                        const futureCount = filteredClasses.filter(lc => new Date(lc.scheduledStart) > rangeEndInclusive).length
-                        return futureCount > 0 ? (
-                          <div className="flex flex-col items-center gap-2">
-                            <p className="text-sm" style={{ color: '#9CA3AF' }}>No sessions in the selected date range.</p>
-                            <Button type="button" variant="ghost"
-                              onClick={() => shiftRange(1)}
-                              className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold"
-                              style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.20)' }}>
-                              <Calendar size={13} />
-                              {futureCount} upcoming — go forward →
-                            </Button>
-                          </div>
-                        ) : (
-                          <p className="text-sm" style={{ color: '#9CA3AF' }}>
-                            No sessions scheduled for this period.
-                          </p>
-                        )
-                      })()}
+                      <p className="syne font-700 text-lg" style={{color:'#0F172A'}}>No classes match</p>
+                      <p className="dm text-sm" style={{color:'#94A3B8'}}>Try adjusting your filters{filterStatus==='all'?' or date range':''}.</p>
+                      <button type="button" onClick={clearAll}
+                        className="rounded-full px-4 py-2 text-sm font-semibold"
+                        style={{background:'rgba(255,107,26,0.10)',color:'#FF6B1A',border:'1px solid rgba(255,107,26,0.20)'}}>
+                        Clear all filters
+                      </button>
+                    </>
+                  ):(
+                    <>
+                      <p className="syne font-700 text-lg" style={{color:'#0F172A'}}>No classes this period</p>
+                      <button type="button" onClick={()=>shiftRange(1)}
+                        className="flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold"
+                        style={{background:'rgba(255,107,26,0.10)',color:'#FF6B1A',border:'1px solid rgba(255,107,26,0.20)'}}>
+                        <ChevronRight size={14}/>Next period
+                      </button>
                     </>
                   )}
                 </motion.div>
-              ) : (
-                /* ── Date-grouped class sections ── */
-                <div className="space-y-6">
-                  {dateSections.map((section, si) => (
-                    <motion.div key={section.dateKey}
-                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: si * 0.05, type: 'spring', stiffness: 300, damping: 28 }}>
-
-                      {/* Date heading */}
-                      <div className="mb-3 flex items-center gap-3">
-                        <span
-                          className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold"
+              ):(
+                <div className="space-y-10">
+                  {dateSections.map((sec,si)=>(
+                    <motion.div key={sec.dateKey} initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} transition={{delay:si*0.05}}>
+                      {/* Date header */}
+                      <div className="mb-4 flex items-center gap-3">
+                        <div className="flex items-center gap-2 rounded-2xl px-3.5 py-2"
                           style={{
-                            background: section.isToday ? 'rgba(255,107,26,0.08)' : '#F9FAFB',
-                            color:      section.isToday ? '#FF6B1A'                : '#6B7280',
-                            border:     `1px solid ${section.isToday ? 'rgba(255,107,26,0.20)' : '#E5E7EB'}`,
+                            background:sec.isToday?'linear-gradient(135deg,rgba(255,107,26,0.10),rgba(255,140,66,0.06))':'white',
+                            border:`1px solid ${sec.isToday?'rgba(255,107,26,0.22)':'#E2EAF4'}`,
+                            boxShadow:sec.isToday?'0 3px 10px rgba(255,107,26,0.10)':'0 1px 3px rgba(15,23,42,0.04)',
                           }}>
-                          {section.isToday && (
-                            <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: '#FF6B1A' }} />
+                          {sec.isToday&&(
+                            <motion.span animate={{opacity:[1,0.4,1]}} transition={{duration:2,repeat:Infinity}}
+                              className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{background:'#FF6B1A'}}/>
                           )}
-                          {section.dateLabel}
-                        </span>
-                        <div className="h-px flex-1" style={{ background: '#F3F4F6' }} />
-                        <span className="text-[11px]" style={{ color: '#D1D5DB' }}>
-                          {section.groups.length} class{section.groups.length !== 1 ? 'es' : ''}
+                          <span className="syne text-[12px] font-700" style={{color:sec.isToday?'#FF6B1A':'#475569'}}>
+                            {sec.dateLabel}
+                          </span>
+                          {sec.isToday&&(
+                            <span className="dm rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                              style={{background:'rgba(255,107,26,0.14)',color:'#FF6B1A'}}>Today</span>
+                          )}
+                        </div>
+                        <div className="h-px flex-1" style={{background:'linear-gradient(to right,#E2EAF4,transparent)'}}/>
+                        <span className="dm text-[10px]" style={{color:'#CBD5E1'}}>
+                          {sec.groups.length} class{sec.groups.length!==1?'es':''}
                         </span>
                       </div>
-
-                      {/* Class cards for this date */}
+                      {/* Cards */}
                       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                        {section.groups.map((group, i) => (
-                          <motion.div key={group.title}
-                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: si * 0.05 + i * 0.04, type: 'spring', stiffness: 300, damping: 28 }}>
-                            <ClassCard
-                              group={group}
-                              bookingMap={bookingMap}
-                              onClick={() => setOpenGroupKey({ title: group.title, dateKey: section.dateKey })}
-                            />
+                        {sec.groups.map((group,i)=>(
+                          <motion.div key={group.title} initial={{opacity:0,y:8}} animate={{opacity:1,y:0}}
+                            transition={{delay:si*0.04+i*0.03}} className="flex">
+                            <ClassCard group={group} bookingMap={bookingMap}
+                              onClick={()=>setOpenKey({title:group.title,dateKey:sec.dateKey})}/>
                           </motion.div>
                         ))}
                       </div>
@@ -1431,31 +1459,20 @@ export default function ClassBookingsPage() {
               )}
             </motion.div>
           </AnimatePresence>
-        </>
-      )}
-
-      {/* ── Slot modal ── */}
-      <AnimatePresence>
-        {openGroup && (
-          <SlotModal
-            key={openGroupKey!.title + ':' + openGroupKey!.dateKey}
-            group={openGroup}
-            bookingMap={bookingMap}
-            onBook={handleBook}
-            onCancel={handleCancel}
-            bookPending={bookPending}
-            cancelPending={cancelPending}
-            onClose={() => setOpenGroupKey(null)}
-          />
         )}
-      </AnimatePresence>
 
-      {/* ── Contact admin modal ── */}
-      <AnimatePresence>
-        {showContactAdmin && (
-          <ContactAdminModal onClose={() => setShowContactAdmin(false)} />
-        )}
-      </AnimatePresence>
-    </div>
+        {/* ─── MODALS ───────────────────────────────────────────── */}
+        <AnimatePresence>
+          {openGroup&&(
+            <SlotModal key={openKey!.title+':'+openKey!.dateKey} group={openGroup} bookingMap={bookingMap}
+              onBook={handleBook} onCancel={handleCancel} bookPending={bookPending} cancelPending={cancelPend}
+              onClose={()=>setOpenKey(null)}/>
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {showAdmin&&<ContactAdminModal onClose={()=>setShowAdmin(false)}/>}
+        </AnimatePresence>
+      </div>
+    </>
   )
 }

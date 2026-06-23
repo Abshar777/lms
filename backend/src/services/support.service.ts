@@ -21,12 +21,12 @@ export class SupportError extends Error {
 
 type Requester = {
   id:            string
-  role:          'student' | 'instructor' | 'admin' | '4x_admin' | 'digital_marketing_admin' | 'super_admin'
-  categoryScope?: '4x-trading' | 'digital-marketing'
+  role:          'student' | 'instructor' | 'admin' | '4x_admin' | 'digital_marketing_admin' | 'ai_admin' | 'super_admin'
+  categoryScope?: '4x-trading' | 'digital-marketing' | 'ai'
 }
 
 const isStaff = (r: Requester) =>
-  r.role === 'admin' || r.role === 'super_admin' || r.role === '4x_admin' || r.role === 'digital_marketing_admin'
+  r.role === 'admin' || r.role === 'super_admin' || r.role === '4x_admin' || r.role === 'digital_marketing_admin' || r.role === 'ai_admin'
 
 const notifSvc = new NotificationService()
 

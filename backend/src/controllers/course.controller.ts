@@ -31,7 +31,7 @@ export class CourseController {
         priceMin:     toNum(q['price_min']),
         priceMax:     toNum(q['price_max']),
         sort:         q['sort'],
-        program:      (q['program'] as '4x-trading' | 'digital-marketing' | undefined) || undefined,
+        program:      (q['program'] as '4x-trading' | 'digital-marketing' | 'ai' | undefined) || undefined,
       })
 
       /* For list view, fetch lesson counts in bulk so cards can show "N lessons" */

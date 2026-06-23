@@ -11,7 +11,7 @@ import { useCurrentUser } from '@/lib/api/user'
 export default function StudentsPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const { data: me } = useCurrentUser()
-  const canAddStudent = ['super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'instructor'].includes(me?.role ?? '')
+  const canAddStudent = ['super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'instructor'].includes(me?.role ?? '')
 
   return (
     <div>

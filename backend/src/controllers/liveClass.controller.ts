@@ -57,6 +57,12 @@ function toDTO(doc: any) {
 
     language:       j.language ?? 'English',
 
+    /* Offline support */
+    isOnline:          j.isOnline ?? true,
+    location:          j.location,
+    room:              j.room,
+    rescheduledReason: j.rescheduledReason,
+
     createdAt:      j.createdAt,
     updatedAt:      j.updatedAt,
   }
@@ -184,6 +190,9 @@ export class LiveClassController {
         sectionId?:       string
         sessionCapacity?: number
         language?:        string
+        isOnline?:        boolean
+        location?:        string
+        room?:            string
       }
 
       /* Category scope check — 4x_admin / digital_marketing_admin can only create for their program */
@@ -200,11 +209,12 @@ export class LiveClassController {
       }
 
       const sessionType = dto.type ?? 'external'
+      const isOnline    = dto.isOnline ?? true
 
-      /* Auto-generate a Google Meet link for external sessions */
+      /* Auto-generate a Google Meet link for online external sessions */
       let meetingUrl: string | undefined
       let googleMeetCode: string | undefined
-      if (sessionType === 'external') {
+      if (sessionType === 'external' && isOnline) {
         const meet = await createGoogleMeetLink({
           title:        dto.title,
           startISO:     String(dto.scheduledStart),
@@ -227,6 +237,9 @@ export class LiveClassController {
         sectionId:       dto.sectionId,
         sessionCapacity: dto.sessionCapacity,
         language:        dto.language,
+        isOnline,
+        location:        dto.location,
+        room:            dto.room,
       })
       sendSuccess(res, toDTO(live), 'Live class scheduled', 201)
     } catch (err) { next(err) }
@@ -247,19 +260,23 @@ export class LiveClassController {
       }
       const dto = req.body as Record<string, unknown>
       const data: Parameters<LiveClassService['update']>[1] = {}
-      if (typeof dto['title']           === 'string')  data.title           = dto['title']
-      if (typeof dto['description']     === 'string')  data.description     = dto['description']
-      if (typeof dto['scheduledStart']  === 'string')  data.scheduledStart  = new Date(dto['scheduledStart'])
-      if (typeof dto['durationMins']    === 'number')  data.durationMins    = dto['durationMins']
-      if (typeof dto['meetingUrl']      === 'string')  data.meetingUrl      = dto['meetingUrl']
-      if (typeof dto['recordingUrl']    === 'string')  data.recordingUrl    = dto['recordingUrl'] || undefined
-      if (typeof dto['status']          === 'string')  data.status          = dto['status'] as any
-      if (typeof dto['sessionCapacity'] === 'number')  data.sessionCapacity = dto['sessionCapacity']
-      if (typeof dto['mentorNotes']     === 'string')  data.mentorNotes     = dto['mentorNotes']
-      if (typeof dto['instructorId']    === 'string')  data.instructorId    = dto['instructorId']
-      if (typeof dto['courseId']        === 'string')  data.courseId        = dto['courseId']
-      if (typeof dto['sectionId']       === 'string')  data.sectionId       = dto['sectionId']
-      if (typeof dto['language']        === 'string')  data.language        = dto['language']
+      if (typeof dto['title']             === 'string')  data.title             = dto['title']
+      if (typeof dto['description']       === 'string')  data.description       = dto['description']
+      if (typeof dto['scheduledStart']    === 'string')  data.scheduledStart    = new Date(dto['scheduledStart'])
+      if (typeof dto['durationMins']      === 'number')  data.durationMins      = dto['durationMins']
+      if (typeof dto['meetingUrl']        === 'string')  data.meetingUrl        = dto['meetingUrl']
+      if (typeof dto['recordingUrl']      === 'string')  data.recordingUrl      = dto['recordingUrl'] || undefined
+      if (typeof dto['status']            === 'string')  data.status            = dto['status'] as any
+      if (typeof dto['sessionCapacity']   === 'number')  data.sessionCapacity   = dto['sessionCapacity']
+      if (typeof dto['mentorNotes']       === 'string')  data.mentorNotes       = dto['mentorNotes']
+      if (typeof dto['instructorId']      === 'string')  data.instructorId      = dto['instructorId']
+      if (typeof dto['courseId']          === 'string')  data.courseId          = dto['courseId']
+      if (typeof dto['sectionId']         === 'string')  data.sectionId         = dto['sectionId']
+      if (typeof dto['language']          === 'string')  data.language          = dto['language']
+      if (typeof dto['isOnline']          === 'boolean') data.isOnline          = dto['isOnline']
+      if (typeof dto['location']          === 'string')  data.location          = dto['location']
+      if (typeof dto['room']              === 'string')  data.room              = dto['room']
+      if (typeof dto['rescheduleReason']  === 'string')  data.rescheduledReason = dto['rescheduleReason']
 
       /* Snapshot old session BEFORE update for notification comparison */
       const { LiveClassModel, ClassBookingModel, UserModel } = await import('@/models/schema.ts')
@@ -275,10 +292,13 @@ export class LiveClassController {
       if (wasCancelled || wasRescheduled) {
         ;(async () => {
           try {
-            const { sendCancelledNotification, sendRescheduledNotification } = await import('@/services/email.service.ts')
+            const { sendCancelledNotification, sendRescheduledEmail1, sendRescheduledEmail2, sendRescheduledEmail3 } = await import('@/services/email.service.ts')
             const bookings = await ClassBookingModel.find({
               liveClassId: id, status: { $in: ['booked', 'attended'] },
             }).lean()
+            const reason = typeof dto['rescheduleReason'] === 'string' && (dto['rescheduleReason'] as string).trim()
+              ? (dto['rescheduleReason'] as string).trim()
+              : 'Schedule adjustment'
             for (const booking of bookings) {
               const user = await UserModel.findById(booking.userId).lean()
               if (!user?.email) continue
@@ -288,7 +308,10 @@ export class LiveClassController {
               if (wasCancelled) {
                 sendCancelledNotification(user.email, user.name, title, oldDate).catch(() => {})
               } else {
-                sendRescheduledNotification(user.email, user.name, title, oldDate, newDate).catch(() => {})
+                const emailArgs = { to: user.email, name: user.name, title, oldDate, newDate, reason }
+                sendRescheduledEmail1(emailArgs).catch(() => {})
+                setTimeout(() => { sendRescheduledEmail2(emailArgs).catch(() => {}) }, 2 * 60 * 60 * 1000)
+                setTimeout(() => { sendRescheduledEmail3(emailArgs).catch(() => {}) }, 24 * 60 * 60 * 1000)
               }
             }
           } catch (e) { console.error('[Notification] update notification failed:', e) }

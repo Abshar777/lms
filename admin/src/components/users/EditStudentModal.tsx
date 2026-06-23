@@ -163,8 +163,10 @@ function DarkSelect({ value, onChange, options, placeholder }: {
 }
 
 const CATEGORY_OPTIONS = [
+  { value: '',                   label: 'No category' },
   { value: '4x-trading',        label: 'FOREX Trading' },
   { value: 'digital-marketing', label: 'Digital Marketing' },
+  { value: 'ai',                label: 'AI' },
 ]
 
 /* ── Props ──────────────────────────────────────────── */
@@ -184,7 +186,7 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
   /* Profile fields */
   const [name,     setName]     = useState(user.name)
   const [email,    setEmail]    = useState(user.email)
-  const [category, setCategory] = useState<'4x-trading' | 'digital-marketing' | ''>(user.category ?? '')
+  const [category, setCategory] = useState<'4x-trading' | 'digital-marketing' | 'ai' | ''>(user.category ?? '')
   const [error,    setError]    = useState<string | null>(null)
 
   /* Keep category in sync if user prop changes (e.g. after refetch) */
@@ -276,7 +278,7 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
 
     const promises: Promise<unknown>[] = []
 
-    const dto: { name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | null } = {}
+    const dto: { name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | 'ai' | null } = {}
     if (name.trim()  !== user.name)              dto.name     = name.trim()
     if (email.trim() !== user.email)             dto.email    = email.trim().toLowerCase()
     if (category     !== (user.category ?? '')) dto.category = category === '' ? null : category
@@ -386,7 +388,7 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
                   style={{ color: 'rgba(255,255,255,0.35)' }}>Program Category</label>
                 <DarkSelect
                   value={category}
-                  onChange={v => setCategory(v as '4x-trading' | 'digital-marketing' | '')}
+                  onChange={v => setCategory(v as '4x-trading' | 'digital-marketing' | 'ai' | '')}
                   options={CATEGORY_OPTIONS}
                   placeholder="Select category…"
                 />
