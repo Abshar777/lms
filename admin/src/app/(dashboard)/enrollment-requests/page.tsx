@@ -16,7 +16,7 @@ import { useCurrentUser } from '@/lib/api/user'
 import { useToast } from '@/store/ui.store'
 
 /* ── Constants ─────────────────────────────────────── */
-export const CATEGORY_META: Record<ProgramCategory, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
+const CATEGORY_META: Record<ProgramCategory, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
   '4x-trading':        { label: 'FOREX Trading',     color: '#10B981', bg: 'rgba(16,185,129,0.14)',  icon: <TrendingUp size={10} /> },
   'digital-marketing': { label: 'Digital Marketing', color: '#FF6B1A', bg: 'rgba(255,107,26,0.14)', icon: <Megaphone size={10} /> },
   'ai':                { label: 'AI',                 color: '#8B5CF6', bg: 'rgba(139,92,246,0.14)', icon: <Cpu size={10} /> },
