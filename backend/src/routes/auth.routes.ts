@@ -10,6 +10,29 @@ const router = Router()
 const auth   = new AuthController()
 
 /* ─── Zod schemas ────────────────────────────────── */
+const enrollmentAppSchema = z.object({
+  phone:              z.string().max(30).optional(),
+  emergencyContact:   z.string().max(30).optional(),
+  gender:             z.enum(['Male', 'Female', 'Prefer not to say']).optional(),
+  dateOfBirth:        z.string().optional(),
+  nationality:        z.string().max(80).optional(),
+  homeCountry:        z.string().max(80).optional(),
+  occupation:         z.string().max(120).optional(),
+  emiratesId:         z.string().max(20).optional(),
+  countryAttendance:  z.string().max(80).optional(),
+  villa:              z.string().max(120).optional(),
+  city:               z.string().max(80).optional(),
+  addressCountry:     z.string().max(80).optional(),
+  passportUrl:        z.string().url().optional().or(z.literal('')),
+  photoUrl:           z.string().url().optional().or(z.literal('')),
+  experienceLevel:    z.enum(['Beginner', 'Intermediate', 'Advanced']).optional(),
+  preferredStartDate: z.string().optional(),
+  hearAboutUs:        z.string().max(80).optional(),
+  referralName:       z.string().max(120).optional(),
+  programs:           z.array(z.string().max(120)).optional(),
+  paymentMethod:      z.string().max(50).optional(),
+}).optional()
+
 const registerSchema = z.object({
   name:     z.string().min(2).max(120).trim(),
   email:    z.string().email().toLowerCase(),
@@ -18,7 +41,7 @@ const registerSchema = z.object({
     .min(8, 'Password must be at least 8 characters')
     .regex(/[A-Z]/, 'Must contain an uppercase letter')
     .regex(/[0-9]/, 'Must contain a number'),
-  category: z.enum(['4x-trading', 'digital-marketing', 'ai']).optional(),
+  enrollmentApplication: enrollmentAppSchema,
 })
 
 const loginSchema = z.object({
@@ -62,6 +85,12 @@ const updateMeSchema = z.object({
   websiteUrl: z.string().url().or(z.literal('')).optional(),
 })
 
+/* Enrollment docs update (passport + photo URLs after upload) */
+const enrollmentDocsSchema = z.object({
+  passportUrl: z.string().url().optional().or(z.literal('')),
+  photoUrl:    z.string().url().optional().or(z.literal('')),
+})
+
 /* Re-auth schema used by deactivate + delete */
 const reauthSchema = z.object({
   password: z.string().min(1, 'Password is required'),
@@ -83,6 +112,7 @@ router.use('/2fa', totpRoutes)
 router.post  ('/logout-all',          authenticate, auth.logoutAll)
 router.get   ('/me',                  authenticate, auth.me)
 router.patch ('/me',                  authenticate, validate(updateMeSchema), auth.updateMe)
+router.patch ('/me/enrollment-docs',  authenticate, validate(enrollmentDocsSchema), auth.updateEnrollmentDocs)
 router.patch ('/me/password',         authenticate, validate(changePasswordSchema), auth.changePassword)
 router.post  ('/resend-verification', authenticate, auth.resendVerification)
 router.get   ('/sessions',            authenticate, auth.listSessions)

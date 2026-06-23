@@ -62,7 +62,7 @@ export default function FavoritesPage() {
           </p>
           <Link href="/courses"
             className="mt-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white"
-            style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+            style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
             Browse courses
           </Link>
         </div>

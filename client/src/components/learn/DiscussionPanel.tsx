@@ -8,7 +8,6 @@ import {
   type DiscussionThread, type DiscussionComment, type DiscussionAuthor,
 } from '@/lib/api/discussion'
 import { useCurrentUser } from '@/lib/api/user'
-import { Button } from '@/components/ui/button'
 
 function authorInfo(a: DiscussionAuthor | string): { id?: string; name: string; avatarUrl?: string; role: string } {
   if (typeof a === 'string') return { id: a, name: 'User', avatarUrl: undefined, role: 'student' }
@@ -21,7 +20,7 @@ function Avatar({ author }: { author: DiscussionAuthor | string }) {
     ? <img src={avatarUrl} alt={name} className="h-6 w-6 rounded-full object-cover flex-shrink-0" />
     : (
       <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-        style={{ background: '#FF6B1A' }}>
+        style={{ background: '#0057b8' }}>
         {name.charAt(0).toUpperCase()}
       </div>
     )
@@ -36,7 +35,7 @@ function TimeAgo({ date }: { date: string }) {
   return <span className="text-[10px]" style={{ color: '#9CA3AF' }}>{label}</span>
 }
 
-/* ─── Comment list for a thread ─────────────────────────── */
+/* ─── Comment list for a thread ─────────────────── */
 function CommentList({ thread, lessonId }: { thread: DiscussionThread; lessonId: string }) {
   const { data: comments, isLoading } = useComments(thread.id)
   const { data: me } = useCurrentUser()
@@ -66,7 +65,7 @@ function CommentList({ thread, lessonId }: { thread: DiscussionThread; lessonId:
                   <span className="text-[11px] font-semibold" style={{ color: '#374151' }}>{auth.name}</span>
                   {auth.role === 'instructor' && (
                     <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold"
-                      style={{ background: 'rgba(255,107,26,0.12)', color: '#FF6B1A' }}>
+                      style={{ background: 'rgba(0,87,184,0.12)', color: '#0057b8' }}>
                       Instructor
                     </span>
                   )}
@@ -80,25 +79,17 @@ function CommentList({ thread, lessonId }: { thread: DiscussionThread; lessonId:
                 </div>
                 <p className="mt-0.5 text-xs leading-relaxed whitespace-pre-wrap" style={{ color: '#4B5563' }}>{c.body}</p>
                 <div className="mt-1 flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => upvoteComment.mutate(c.id)}
-                    className="flex items-center gap-1 text-[10px] transition-colors hover:text-orange-500 h-auto p-0"
-                    style={{ color: '#9CA3AF' }}
-                  >
+                  <button onClick={() => upvoteComment.mutate(c.id)}
+                    className="flex items-center gap-1 text-[10px] transition-colors hover:text-[#0057b8]"
+                    style={{ color: '#9CA3AF' }}>
                     <ThumbsUp size={10} />{c.upvoteCount > 0 ? c.upvoteCount : ''}
-                  </Button>
+                  </button>
                   {isOwn && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteComment.mutate(c.id)}
-                      className="flex items-center gap-1 text-[10px] transition-colors hover:text-red-500 h-auto p-0"
-                      style={{ color: '#D1D5DB' }}
-                    >
+                    <button onClick={() => deleteComment.mutate(c.id)}
+                      className="flex items-center gap-1 text-[10px] transition-colors hover:text-red-500"
+                      style={{ color: '#D1D5DB' }}>
                       <Trash2 size={10} />
-                    </Button>
+                    </button>
                   )}
                 </div>
               </div>
@@ -117,17 +108,13 @@ function CommentList({ thread, lessonId }: { thread: DiscussionThread; lessonId:
           className="flex-1 resize-none rounded-xl px-3 py-2 text-xs outline-none"
           style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', color: '#0D0F1A' }}
         />
-        <Button
-          variant="default"
-          size="icon"
-          onClick={submit}
-          disabled={!body.trim() || createComment.isPending}
-          className="h-8 w-8 rounded-xl disabled:opacity-40"
-        >
+        <button onClick={submit} disabled={!body.trim() || createComment.isPending}
+          className="flex h-8 w-8 items-center justify-center rounded-xl transition-opacity disabled:opacity-40"
+          style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
           {createComment.isPending
             ? <Loader2 size={12} className="animate-spin text-white" />
             : <Send size={12} className="text-white" />}
-        </Button>
+        </button>
       </div>
     </div>
   )
@@ -150,7 +137,7 @@ function ThreadCard({ thread, lessonId }: { thread: DiscussionThread; lessonId: 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[11px] font-semibold" style={{ color: '#374151' }}>{auth.name}</span>
-            {thread.isPinned && <span className="text-[9px] font-bold" style={{ color: '#FF6B1A' }}>📌 Pinned</span>}
+            {thread.isPinned && <span className="text-[9px] font-bold" style={{ color: '#0057b8' }}>📌 Pinned</span>}
             {thread.isResolved && <span className="text-[9px] font-bold" style={{ color: '#22C55E' }}>✓ Resolved</span>}
             <TimeAgo date={thread.createdAt} />
           </div>
@@ -159,44 +146,28 @@ function ThreadCard({ thread, lessonId }: { thread: DiscussionThread; lessonId: 
           )}
           <p className="mt-0.5 text-xs leading-relaxed line-clamp-3" style={{ color: '#4B5563' }}>{thread.body}</p>
           <div className="mt-2 flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => upvote.mutate(thread.id)}
-              className="flex items-center gap-1 text-[10px] transition-colors hover:text-orange-500 h-auto p-0"
-              style={{ color: '#9CA3AF' }}
-            >
+            <button onClick={() => upvote.mutate(thread.id)}
+              className="flex items-center gap-1 text-[10px] transition-colors hover:text-[#0057b8]"
+              style={{ color: '#9CA3AF' }}>
               <ThumbsUp size={10} />{thread.upvoteCount > 0 ? thread.upvoteCount : ''}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setExpanded(e => !e)}
-              className="flex items-center gap-1 text-[10px] transition-colors hover:text-orange-500 h-auto p-0"
-              style={{ color: '#9CA3AF' }}
-            >
+            </button>
+            <button onClick={() => setExpanded(e => !e)}
+              className="flex items-center gap-1 text-[10px] transition-colors hover:text-[#0057b8]"
+              style={{ color: '#9CA3AF' }}>
               <MessageSquare size={10} />{thread.commentCount} {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
-            </Button>
+            </button>
             {(isOwn || me?.role === 'admin') && (
               <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => resolve.mutate({ threadId: thread.id, isResolved: !thread.isResolved })}
-                  className="text-[10px] transition-colors hover:text-green-600 h-auto p-0"
-                  style={{ color: '#9CA3AF' }}
-                >
+                <button onClick={() => resolve.mutate({ threadId: thread.id, isResolved: !thread.isResolved })}
+                  className="text-[10px] transition-colors hover:text-green-600"
+                  style={{ color: '#9CA3AF' }}>
                   {thread.isResolved ? 'Reopen' : 'Mark resolved'}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => del.mutate(thread.id)}
-                  className="text-[10px] transition-colors hover:text-red-500 h-auto p-0"
-                  style={{ color: '#D1D5DB' }}
-                >
+                </button>
+                <button onClick={() => del.mutate(thread.id)}
+                  className="text-[10px] transition-colors hover:text-red-500"
+                  style={{ color: '#D1D5DB' }}>
                   Delete
-                </Button>
+                </button>
               </>
             )}
           </div>
@@ -227,14 +198,11 @@ export function DiscussionPanel({ lessonId }: { lessonId: string }) {
         <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>
           Questions & Answers
         </p>
-        <Button
-          variant="default"
-          size="sm"
-          onClick={() => setShowForm(f => !f)}
-          className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold"
-        >
+        <button onClick={() => setShowForm(f => !f)}
+          className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-white transition-opacity hover:opacity-80"
+          style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
           <PlusCircle size={11} /> Ask
-        </Button>
+        </button>
       </div>
 
       {showForm && (
@@ -249,24 +217,12 @@ export function DiscussionPanel({ lessonId }: { lessonId: string }) {
             className="w-full resize-none rounded-lg px-3 py-1.5 text-xs outline-none"
             style={{ background: 'white', border: '1px solid #E5E7EB', color: '#0D0F1A' }} />
           <div className="flex gap-2 justify-end">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowForm(false)}
-              className="text-xs h-auto py-1"
-              style={{ color: '#9CA3AF' }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={submit}
-              disabled={!form.body.trim() || createThread.isPending}
-              className="rounded-lg px-3 py-1.5 text-xs font-bold disabled:opacity-50"
-            >
+            <button onClick={() => setShowForm(false)} className="text-xs" style={{ color: '#9CA3AF' }}>Cancel</button>
+            <button onClick={submit} disabled={!form.body.trim() || createThread.isPending}
+              className="rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+              style={{ background: '#0057b8' }}>
               {createThread.isPending ? 'Posting…' : 'Post'}
-            </Button>
+            </button>
           </div>
         </div>
       )}

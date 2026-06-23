@@ -37,7 +37,7 @@ function CourseCard({
       {/* Step indicator */}
       <div className="flex-shrink-0 flex flex-col items-center">
         <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white"
-          style={{ background: isPrerequisiteBlocked ? '#E5E7EB' : 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+          style={{ background: isPrerequisiteBlocked ? '#E5E7EB' : 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
           {index + 1}
         </div>
         {index < 99 && (
@@ -74,7 +74,7 @@ function CourseCard({
                 </h3>
                 {item.isPrerequisite && (
                   <span className="flex-shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold"
-                    style={{ background: 'rgba(255,107,26,0.1)', color: '#FF6B1A' }}>
+                    style={{ background: 'rgba(0,87,184,0.1)', color: '#0057b8' }}>
                     Prerequisite
                   </span>
                 )}
@@ -114,7 +114,7 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ s
   if (isLoading) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-3">
-        <Loader2 size={28} className="animate-spin" style={{ color: '#FF6B1A' }} />
+        <Loader2 size={28} className="animate-spin" style={{ color: '#0057b8' }} />
       </div>
     )
   }
@@ -127,7 +127,7 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ s
           <AlertCircle size={24} style={{ color: '#EF4444' }} />
         </div>
         <p className="text-base font-semibold" style={{ color: '#0D0F1A' }}>Learning path not found</p>
-        <Link href="/learning-paths" className="text-sm font-semibold" style={{ color: '#FF6B1A' }}>
+        <Link href="/learning-paths" className="text-sm font-semibold" style={{ color: '#0057b8' }}>
           ← Back to paths
         </Link>
       </div>
@@ -154,7 +154,7 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ s
       {/* Hero */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
         className="overflow-hidden rounded-3xl"
-        style={{ background: 'linear-gradient(135deg, rgba(255,107,26,0.08) 0%, rgba(47,107,255,0.08) 100%)', border: '1px solid #E4E7ED' }}>
+        style={{ background: 'linear-gradient(135deg, rgba(0,87,184,0.08) 0%, rgba(47,107,255,0.08) 100%)', border: '1px solid #E4E7ED' }}>
         <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-start">
           {/* Thumbnail */}
           {path.thumbnailUrl && (
@@ -206,7 +206,7 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ s
       {/* Prerequisite legend */}
       {sortedCourses.some(c => c.isPrerequisite) && (
         <div className="flex items-center gap-2 rounded-xl px-4 py-3 text-xs"
-          style={{ background: 'rgba(255,107,26,0.06)', border: '1px solid rgba(255,107,26,0.15)', color: '#FF6B1A' }}>
+          style={{ background: 'rgba(0,87,184,0.06)', border: '1px solid rgba(0,87,184,0.15)', color: '#0057b8' }}>
           <Lock size={12} /> Prerequisite courses must be completed before advancing to the next step.
         </div>
       )}

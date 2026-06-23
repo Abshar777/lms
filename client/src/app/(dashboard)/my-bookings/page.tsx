@@ -8,7 +8,6 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useMyBookings, useCancelBooking, type BookingStatus, type MyBooking } from '@/lib/api/bookings'
-import { Button } from '@/components/ui/button'
 
 /* ── Helpers ─────────────────────────────────────────── */
 function fmtDate(iso: string) {
@@ -68,8 +67,8 @@ function BookingCard({ booking }: { booking: MyBooking }) {
         {/* Icon */}
         <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
           style={{
-            background: isLiveNow ? 'rgba(239,68,68,0.10)' : isExternal ? 'rgba(99,102,241,0.08)' : 'rgba(255,107,26,0.08)',
-            border:     isLiveNow ? '1px solid rgba(239,68,68,0.20)' : isExternal ? '1px solid rgba(99,102,241,0.15)' : '1px solid rgba(255,107,26,0.15)',
+            background: isLiveNow ? 'rgba(239,68,68,0.10)' : isExternal ? 'rgba(99,102,241,0.08)' : 'rgba(0,87,184,0.08)',
+            border:     isLiveNow ? '1px solid rgba(239,68,68,0.20)' : isExternal ? '1px solid rgba(99,102,241,0.15)' : '1px solid rgba(0,87,184,0.15)',
           }}>
           {isLiveNow
             ? <motion.div animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1.4, repeat: Infinity }}>
@@ -77,7 +76,7 @@ function BookingCard({ booking }: { booking: MyBooking }) {
               </motion.div>
             : isExternal
             ? <ExternalLink size={16} style={{ color: '#6366F1' }} />
-            : <Tv2 size={16} style={{ color: '#FF6B1A' }} />}
+            : <Tv2 size={16} style={{ color: '#0057b8' }} />}
         </div>
 
         {/* Info */}
@@ -113,14 +112,14 @@ function BookingCard({ booking }: { booking: MyBooking }) {
           {!isPast && isBooked && isExternal && session.meetingUrl && (
             <a href={session.meetingUrl} target="_blank" rel="noreferrer"
               className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-white"
-              style={{ background: isLiveNow ? '#EF4444' : 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+              style={{ background: isLiveNow ? '#EF4444' : 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>
               <ExternalLink size={11} />Join
             </a>
           )}
           {!isPast && isBooked && !isExternal && session.muxPlaybackId && (
             <a href={`/live-classes/${session.id}/watch`}
               className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-white"
-              style={{ background: isLiveNow ? '#EF4444' : 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+              style={{ background: isLiveNow ? '#EF4444' : 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>
               <Video size={11} />Watch
             </a>
           )}
@@ -128,7 +127,7 @@ function BookingCard({ booking }: { booking: MyBooking }) {
           {!isExternal && (
             <Link href={`/live-classes/${session.id}/watch`}
               className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold"
-              style={{ background: 'rgba(255,107,26,0.08)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.18)' }}>
+              style={{ background: 'rgba(0,87,184,0.08)', color: '#0057b8', border: '1px solid rgba(0,87,184,0.18)' }}>
               <FileText size={11} />Homework
             </Link>
           )}
@@ -136,31 +135,22 @@ function BookingCard({ booking }: { booking: MyBooking }) {
           {!isPast && isBooked && (
             confirming ? (
               <div className="flex items-center gap-1.5">
-                <Button
-                  variant="link"
-                  size="sm"
-                  onClick={() => setConfirming(false)}
-                  className="h-auto p-0 text-[10px] font-medium text-[#9CA3AF]">
+                <button onClick={() => setConfirming(false)} className="text-[10px] font-medium" style={{ color: '#9CA3AF' }}>
                   No
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleCancel}
-                  disabled={cancelMutation.isPending}
-                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold disabled:opacity-60">
+                </button>
+                <button onClick={handleCancel} disabled={cancelMutation.isPending}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold text-white disabled:opacity-60"
+                  style={{ background: '#EF4444' }}>
                   {cancelMutation.isPending ? <Loader2 size={9} className="animate-spin" /> : null}
                   Cancel booking
-                </Button>
+                </button>
               </div>
             ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setConfirming(true)}
-                className="h-auto p-0 text-[10px] font-medium text-[#9CA3AF] hover:text-red-500 hover:bg-transparent">
+              <button onClick={() => setConfirming(true)}
+                className="text-[10px] font-medium transition-colors hover:text-red-500"
+                style={{ color: '#9CA3AF' }}>
                 Cancel
-              </Button>
+              </button>
             )
           )}
         </div>
@@ -205,19 +195,15 @@ export default function MyBookingsPage() {
       {/* Tabs */}
       <div className="flex gap-1 mb-5 rounded-2xl p-1" style={{ background: '#F9FAFB' }}>
         {TABS.map(t => (
-          <Button
-            key={t.key}
-            variant="ghost"
-            size="sm"
-            onClick={() => setTab(t.key)}
-            className="flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition-all hover:bg-transparent"
+          <button key={t.key} onClick={() => setTab(t.key)}
+            className="flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition-all"
             style={{
               background: tab === t.key ? 'white' : 'transparent',
               color:      tab === t.key ? '#0D0F1A' : '#6B7280',
               boxShadow:  tab === t.key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
             }}>
             {t.label}
-          </Button>
+          </button>
         ))}
       </div>
 
@@ -230,8 +216,8 @@ export default function MyBookingsPage() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
           className="flex flex-col items-center gap-3 py-16">
           <div className="flex h-14 w-14 items-center justify-center rounded-3xl"
-            style={{ background: 'rgba(255,107,26,0.08)', border: '1px solid rgba(255,107,26,0.15)' }}>
-            <Video size={22} style={{ color: '#FF6B1A' }} />
+            style={{ background: 'rgba(0,87,184,0.08)', border: '1px solid rgba(0,87,184,0.15)' }}>
+            <Video size={22} style={{ color: '#0057b8' }} />
           </div>
           <p className="text-sm font-semibold" style={{ color: '#0D0F1A' }}>
             No {tab === 'upcoming' ? 'upcoming classes' : `${tab} sessions`}

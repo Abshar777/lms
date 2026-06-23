@@ -59,7 +59,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
   if (isLoading) {
     return (
       <div className="flex h-[70vh] flex-col items-center justify-center gap-3">
-        <Loader2 size={30} className="animate-spin" style={{ color: '#FF6B1A' }} />
+        <Loader2 size={30} className="animate-spin" style={{ color: '#0057b8' }} />
         <p className="text-sm" style={{ color: '#9CA3AF' }}>Loading lesson…</p>
       </div>
     )
@@ -73,7 +73,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
           <AlertCircle size={24} style={{ color: '#EF4444' }} />
         </div>
         <p className="text-base font-semibold" style={{ color: '#0D0F1A' }}>Course not found</p>
-        <Link href="/courses" className="text-sm font-semibold" style={{ color: '#FF6B1A' }}>← Back to courses</Link>
+        <Link href="/courses" className="text-sm font-semibold" style={{ color: '#0057b8' }}>← Back to courses</Link>
       </div>
     )
   }
@@ -92,7 +92,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
         </p>
         <Link href={`/courses/${slug}`}
           className="rounded-xl px-5 py-2.5 text-sm font-bold text-white"
-          style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+          style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
           Back to course
         </Link>
       </div>
@@ -105,13 +105,13 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
     return (
       <div className="flex h-[70vh] flex-col items-center justify-center gap-4">
         <div className="flex h-14 w-14 items-center justify-center rounded-3xl"
-          style={{ background: 'rgba(255,107,26,0.10)', border: '1px solid rgba(255,107,26,0.22)' }}>
-          <Lock size={22} style={{ color: '#FF6B1A' }} />
+          style={{ background: 'rgba(0,87,184,0.10)', border: '1px solid rgba(0,87,184,0.22)' }}>
+          <Lock size={22} style={{ color: '#0057b8' }} />
         </div>
         <p className="text-base font-semibold" style={{ color: '#0D0F1A' }}>You need to enroll to watch this lesson</p>
         <Link href={`/courses/${slug}`}
           className="rounded-xl px-5 py-2.5 text-sm font-bold text-white"
-          style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+          style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
           Go to course page
         </Link>
       </div>
@@ -154,7 +154,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
     return (
       <div className="flex h-[70vh] flex-col items-center justify-center gap-4">
         <p className="text-base font-semibold" style={{ color: '#0D0F1A' }}>Lesson not found in this course</p>
-        <Link href={`/courses/${slug}`} className="text-sm font-semibold" style={{ color: '#FF6B1A' }}>
+        <Link href={`/courses/${slug}`} className="text-sm font-semibold" style={{ color: '#0057b8' }}>
           ← Back to course
         </Link>
       </div>
@@ -182,8 +182,8 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
             variant="ghost"
             className="flex flex-1 flex-col items-center gap-0.5 px-1 py-2.5 text-[10px] font-semibold transition-colors h-auto rounded-none"
             style={{
-              color:        activeTab === t.key ? '#FF6B1A' : '#9CA3AF',
-              borderBottom: activeTab === t.key ? '2px solid #FF6B1A' : '2px solid transparent',
+              color:        activeTab === t.key ? '#0057b8' : '#9CA3AF',
+              borderBottom: activeTab === t.key ? '2px solid #0057b8' : '2px solid transparent',
             }}>
             {t.icon}{t.label}
           </Button>
@@ -218,16 +218,16 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
                       return (
                         <Link key={l.id} href={`/learn/${slug}/${l.id}`} onClick={() => setSidebarOpen(false)}>
                           <div className="group flex items-center gap-2.5 rounded-xl px-2 py-2 transition-colors"
-                            style={isCurrent ? { background: 'rgba(255,107,26,0.10)' } : {}}
+                            style={isCurrent ? { background: 'rgba(0,87,184,0.10)' } : {}}
                             onMouseEnter={e => { if (!isCurrent) e.currentTarget.style.background = '#F4F5F8' }}
                             onMouseLeave={e => { if (!isCurrent) e.currentTarget.style.background = 'transparent' }}>
                             <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
                               {done ? <CheckCircle2 size={16} style={{ color: '#22C55E' }} />
-                                : isCurrent ? <Play size={12} fill="#FF6B1A" color="#FF6B1A" />
+                                : isCurrent ? <Play size={12} fill="#0057b8" color="#0057b8" />
                                   : <Circle size={14} style={{ color: '#D1D5DB' }} />}
                             </span>
                             <p className="flex-1 text-xs leading-snug line-clamp-2"
-                              style={{ color: isCurrent ? '#FF6B1A' : done ? '#0D0F1A' : '#4B5563', fontWeight: isCurrent ? 600 : 500 }}>
+                              style={{ color: isCurrent ? '#0057b8' : done ? '#0D0F1A' : '#4B5563', fontWeight: isCurrent ? 600 : 500 }}>
                               {l.title}
                             </p>
                             <span className="text-[10px]" style={{ color: '#9CA3AF' }}>{fmt(l.durationMins)}</span>
@@ -321,7 +321,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
                 onClick={async () => { await markComplete.mutateAsync(lessonId); if (nextLesson) router.push(`/learn/${slug}/${nextLesson.id}`) }}
                 disabled={markComplete.isPending}
                 className="flex items-center gap-1 rounded-xl px-4 py-2 text-xs font-bold disabled:opacity-60"
-                style={{ background: isCompleted ? '#22C55E' : 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+                style={{ background: isCompleted ? '#22C55E' : 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
                 {markComplete.isPending
                   ? <><Loader2 size={13} className="animate-spin" />Saving…</>
                   : isCompleted
@@ -339,7 +339,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
               className="flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 h-auto"
               style={{ border: '1px solid #E4E7ED' }}>
               <span className="text-sm font-semibold" style={{ color: '#0D0F1A' }}>
-                <List size={14} className="inline mr-2 -mt-0.5" style={{ color: '#FF6B1A' }} />
+                <List size={14} className="inline mr-2 -mt-0.5" style={{ color: '#0057b8' }} />
                 Course content
               </span>
               <ChevronDown size={16} style={{ color: '#9CA3AF', transform: sidebarOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
@@ -521,7 +521,7 @@ function PlayerArea({
                 onClick={addBookmark}
                 disabled={bookmarking}
                 className="h-auto p-0 text-xs font-semibold hover:bg-transparent"
-                style={{ color: '#FF6B1A' }}>
+                style={{ color: '#0057b8' }}>
                 {bookmarking ? '…' : 'Save'}
               </Button>
               <Button

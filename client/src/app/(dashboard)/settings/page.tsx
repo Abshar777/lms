@@ -11,7 +11,6 @@ import {
 import { useUIStore } from '@/store/ui.store'
 import { useCurrentUser, useUpdateProfile, useChangePassword, logout as apiLogout } from '@/lib/api/user'
 import { PrivacySecuritySection } from '@/components/auth/PrivacySecuritySection'
-import { Button, MotionButton } from '@/components/ui/button'
 
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.05 } } }
 const fadeUp  = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 280, damping: 26 } } }
@@ -27,13 +26,13 @@ const MENU = [
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
-    <MotionButton onClick={onToggle} variant="ghost" size="icon"
-      className="relative flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors !p-0 !min-w-0"
-      style={{ background: on ? '#FF6B1A' : '#D1D5DB' }}>
+    <motion.button onClick={onToggle}
+      className="relative flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors"
+      style={{ background: on ? '#0057b8' : '#D1D5DB' }}>
       <motion.span animate={{ x: on ? 22 : 2 }}
         transition={{ type: 'spring', stiffness: 500, damping: 35 }}
         className="absolute h-4 w-4 rounded-full bg-white shadow-sm" />
-    </MotionButton>
+    </motion.button>
   )
 }
 
@@ -45,12 +44,12 @@ function LayoutCard({
   preview: React.ReactNode
 }) {
   return (
-    <MotionButton whileHover={{ y: -3 }} whileTap={{ scale: 0.98 }}
-      onClick={onSelect} variant="ghost"
-      className="relative flex flex-col overflow-hidden rounded-2xl text-left w-full transition-all h-auto !p-0"
+    <motion.button whileHover={{ y: -3 }} whileTap={{ scale: 0.98 }}
+      onClick={onSelect}
+      className="relative flex flex-col overflow-hidden rounded-2xl text-left w-full transition-all"
       style={{
-        border: selected ? '2px solid #FF6B1A' : '2px solid #E5E7EB',
-        boxShadow: selected ? '0 0 0 3px rgba(255,107,26,0.12)' : '0 2px 6px rgba(0,0,0,0.04)',
+        border: selected ? '2px solid #0057b8' : '2px solid #E5E7EB',
+        boxShadow: selected ? '0 0 0 3px rgba(0,87,184,0.12)' : '0 2px 6px rgba(0,0,0,0.04)',
       }}>
       <div className="h-36 w-full" style={{ background: '#F4F5F8' }}>{preview}</div>
       <div className="flex items-start justify-between p-4">
@@ -59,11 +58,11 @@ function LayoutCard({
           <p className="mt-0.5 text-xs" style={{ color: '#9CA3AF' }}>{desc}</p>
         </div>
         <div className="mt-0.5 ml-2 flex-shrink-0 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors"
-          style={{ borderColor: selected ? '#FF6B1A' : '#D1D5DB', background: selected ? '#FF6B1A' : 'transparent' }}>
+          style={{ borderColor: selected ? '#0057b8' : '#D1D5DB', background: selected ? '#0057b8' : 'transparent' }}>
           {selected && <Check size={11} color="white" strokeWidth={3} />}
         </div>
       </div>
-    </MotionButton>
+    </motion.button>
   )
 }
 
@@ -72,17 +71,17 @@ function SidebarPreview() {
     <div className="flex h-full w-full gap-2 p-3">
       <div className="flex w-14 flex-shrink-0 flex-col gap-1.5 rounded-xl p-2"
         style={{ background: 'white', border: '1px solid #E5E7EB' }}>
-        <div className="h-4 w-4 rounded-lg" style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }} />
+        <div className="h-4 w-4 rounded-lg" style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }} />
         {[0,1,2].map(i => (
           <div key={i} className="h-2 rounded-full"
-            style={{ background: i === 0 ? 'rgba(255,107,26,0.2)' : '#F3F4F6', width: i === 0 ? '100%' : '80%' }} />
+            style={{ background: i === 0 ? 'rgba(0,87,184,0.2)' : '#F3F4F6', width: i === 0 ? '100%' : '80%' }} />
         ))}
       </div>
       <div className="flex flex-1 flex-col gap-1.5">
         <div className="flex items-center justify-between rounded-xl px-2 py-1.5"
           style={{ background: 'white', border: '1px solid #E5E7EB' }}>
           <div className="h-2 w-16 rounded-full" style={{ background: '#F3F4F6' }} />
-          <div className="h-4 w-4 rounded-full" style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }} />
+          <div className="h-4 w-4 rounded-full" style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }} />
         </div>
         <div className="flex flex-1 flex-col gap-1">
           <div className="h-2 w-3/4 rounded-full" style={{ background: '#E5E7EB' }} />
@@ -101,11 +100,11 @@ function TopbarPreview() {
       <div className="rounded-xl overflow-hidden" style={{ background: 'white', border: '1px solid #E5E7EB' }}>
         <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: '1px solid #F3F4F6' }}>
           <div className="flex items-center gap-1.5">
-            <div className="h-4 w-4 rounded-lg" style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }} />
+            <div className="h-4 w-4 rounded-lg" style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }} />
             <div className="h-2 w-12 rounded-full" style={{ background: '#F3F4F6' }} />
           </div>
           <div className="flex gap-1">
-            <div className="h-4 w-10 rounded-lg" style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }} />
+            <div className="h-4 w-10 rounded-lg" style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }} />
             <div className="h-4 w-4 rounded-full" style={{ background: '#F3F4F6' }} />
           </div>
         </div>
@@ -114,7 +113,7 @@ function TopbarPreview() {
             <div key={t} className="relative px-2 py-1">
               <div className="h-1.5 rounded-full"
                 style={{ background: i === 0 ? '#111827' : '#D1D5DB', width: i === 0 ? 40 : 28 }} />
-              {i === 0 && <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full" style={{ background: '#FF6B1A' }} />}
+              {i === 0 && <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full" style={{ background: '#0057b8' }} />}
             </div>
           ))}
         </div>
@@ -174,6 +173,10 @@ function SettingsContent() {
   const { data: user, isLoading: userLoading } = useCurrentUser()
   const updateMutation = useUpdateProfile()
 
+  /* Prevent hydration mismatch: the loading indicator only renders after mount */
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
   /* Form state. role here maps to `headline` on the user document. */
   const [profile, setProfile] = useState({ name: '', email: '', role: '', bio: '' })
 
@@ -226,29 +229,29 @@ function SettingsContent() {
             const Icon  = item.icon
             const isAct = active === item.id
             return (
-              <Button key={item.id} onClick={() => setActive(item.id)} variant="ghost"
-                className="relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-left transition-colors justify-start h-auto"
+              <button key={item.id} onClick={() => setActive(item.id)}
+                className="relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-left transition-colors"
                 style={{ color: isAct ? '#111827' : '#6B7280' }}>
                 {isAct && (
                   <motion.div layoutId="settings-active"
                     className="absolute inset-0 rounded-xl"
-                    style={{ background: '#FFF7ED', border: '1px solid rgba(255,107,26,0.18)' }}
+                    style={{ background: '#FFF7ED', border: '1px solid rgba(0,87,184,0.18)' }}
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }} />
                 )}
                 <Icon size={15} className="relative z-10 flex-shrink-0"
-                  style={{ color: isAct ? '#FF6B1A' : '#9CA3AF' }} />
+                  style={{ color: isAct ? '#0057b8' : '#9CA3AF' }} />
                 <span className="relative z-10">{item.label}</span>
-              </Button>
+              </button>
             )
           })}
         </div>
         <div className="mt-3 pt-3" style={{ borderTop: '1px solid #F3F4F6' }}>
-          <Button
-            onClick={handleLogout} variant="ghost"
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-red-50 justify-start h-auto"
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-red-50"
             style={{ color: '#EF4444' }}>
             <LogOut size={15} />Logout
-          </Button>
+          </button>
         </div>
       </motion.div>
 
@@ -266,24 +269,23 @@ function SettingsContent() {
               <div className="mb-6 flex items-center gap-4">
                 <div className="relative">
                   <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full text-xl font-bold text-white"
-                    style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+                    style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>
                     {user?.avatarUrl
                       ? <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
                       : (profile.name?.trim()?.[0]?.toUpperCase() ?? '?')}
                   </div>
-                  <Button size="icon-sm" variant="outline"
-                    className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-md !p-0"
-                    style={{ border: '1px solid #E5E7EB', color: '#FF6B1A' }}
+                  <button className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-md"
+                    style={{ border: '1px solid #E5E7EB', color: '#0057b8' }}
                     title="Photo upload coming soon">
                     <Camera size={12} />
-                  </Button>
+                  </button>
                 </div>
                 <div>
                   <p className="text-sm font-semibold" style={{ color: '#111827' }}>Profile Photo</p>
                   <p className="text-xs" style={{ color: '#9CA3AF' }}>PNG, JPG up to 5MB</p>
                 </div>
               </div>
-              {userLoading && (
+              {mounted && userLoading && (
                 <div className="mb-4 flex items-center gap-2 text-xs" style={{ color: '#9CA3AF' }}>
                   <Loader2 size={12} className="animate-spin" />Loading your profile…
                 </div>
@@ -310,7 +312,7 @@ function SettingsContent() {
                         color: f.readOnly ? '#6B7280' : '#111827',
                         cursor: f.readOnly ? 'not-allowed' : 'text',
                       }}
-                      onFocus={e => { if (!f.readOnly) { e.currentTarget.style.border = '1.5px solid #FF6B1A'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.08)' } }}
+                      onFocus={e => { if (!f.readOnly) { e.currentTarget.style.border = '1.5px solid #0057b8'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,87,184,0.08)' } }}
                       onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none' }} />
                   </div>
                 ))}
@@ -320,7 +322,7 @@ function SettingsContent() {
                     rows={3} placeholder="Tell us a bit about yourself..."
                     className="w-full resize-none rounded-xl px-3.5 py-2.5 text-sm outline-none"
                     style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', color: '#111827' }}
-                    onFocus={e => { e.currentTarget.style.border = '1.5px solid #FF6B1A'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.08)' }}
+                    onFocus={e => { e.currentTarget.style.border = '1.5px solid #0057b8'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,87,184,0.08)' }}
                     onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none' }} />
                 </div>
               </div>
@@ -334,25 +336,25 @@ function SettingsContent() {
                 )}
               </AnimatePresence>
               <div className="mt-5 flex items-center justify-end gap-3">
-                <Button
-                  type="button" variant="outline"
+                <button
+                  type="button"
                   onClick={() => user && setProfile({ name: user.name, email: user.email, role: user.headline ?? '', bio: user.bio ?? '' })}
                   className="rounded-xl px-4 py-2 text-sm font-semibold transition-colors hover:bg-gray-50"
-                  style={{ color: '#6B7280', border: '1px solid #E5E7EB' }}>Cancel</Button>
-                <MotionButton whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
-                  onClick={handleSave} variant="default"
-                  disabled={updateMutation.isPending || userLoading}
+                  style={{ color: '#6B7280', border: '1px solid #E5E7EB' }}>Cancel</button>
+                <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
+                  onClick={handleSave}
+                  disabled={updateMutation.isPending || (mounted && userLoading)}
                   className="flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold text-white transition-all disabled:opacity-70"
                   style={{
-                    background: saved ? '#22C55E' : 'linear-gradient(135deg,#FF6B1A,#FF8C42)',
-                    boxShadow: saved ? '0 4px 14px rgba(34,197,94,0.28)' : '0 4px 14px rgba(255,107,26,0.28)',
+                    background: saved ? '#22C55E' : 'linear-gradient(135deg,#0057b8,#1a73e8)',
+                    boxShadow: saved ? '0 4px 14px rgba(34,197,94,0.28)' : '0 4px 14px rgba(0,87,184,0.28)',
                   }}>
                   {updateMutation.isPending
                     ? <><Loader2 size={14} className="animate-spin" />Saving…</>
                     : saved
                       ? <><Check size={14} />Saved!</>
                       : 'Save changes'}
-                </MotionButton>
+                </motion.button>
               </div>
             </motion.div>
           )}
@@ -364,7 +366,7 @@ function SettingsContent() {
               transition={{ duration: 0.2, delay: 0.08 }}
               className="rounded-2xl bg-white p-6" style={{ border: '1px solid #E5E7EB' }}>
               <div className="mb-5 flex items-center gap-2">
-                <Lock size={15} style={{ color: '#FF6B1A' }} />
+                <Lock size={15} style={{ color: '#0057b8' }} />
                 <h2 className="text-base font-bold" style={{ color: '#111827' }}>Change Password</h2>
               </div>
 
@@ -380,14 +382,14 @@ function SettingsContent() {
                       placeholder="Your current password"
                       className="w-full rounded-xl px-3.5 py-2.5 text-sm pr-10 outline-none"
                       style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', color: '#111827' }}
-                      onFocus={e => { e.currentTarget.style.border = '1.5px solid #FF6B1A'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.08)' }}
+                      onFocus={e => { e.currentTarget.style.border = '1.5px solid #0057b8'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,87,184,0.08)' }}
                       onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none' }}
                     />
-                    <Button type="button" variant="ghost" size="icon-sm" onClick={() => setShowCur(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70 h-auto w-auto !p-0"
+                    <button type="button" onClick={() => setShowCur(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
                       style={{ color: '#9CA3AF' }}>
                       {showCur ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </Button>
+                    </button>
                   </div>
                 </div>
 
@@ -402,14 +404,14 @@ function SettingsContent() {
                       placeholder="Min. 8 characters, 1 uppercase, 1 number"
                       className="w-full rounded-xl px-3.5 py-2.5 text-sm pr-10 outline-none"
                       style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', color: '#111827' }}
-                      onFocus={e => { e.currentTarget.style.border = '1.5px solid #FF6B1A'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.08)' }}
+                      onFocus={e => { e.currentTarget.style.border = '1.5px solid #0057b8'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,87,184,0.08)' }}
                       onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none' }}
                     />
-                    <Button type="button" variant="ghost" size="icon-sm" onClick={() => setShowNew(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70 h-auto w-auto !p-0"
+                    <button type="button" onClick={() => setShowNew(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
                       style={{ color: '#9CA3AF' }}>
                       {showNew ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </Button>
+                    </button>
                   </div>
                 </div>
 
@@ -423,7 +425,7 @@ function SettingsContent() {
                     placeholder="Repeat your new password"
                     className="w-full rounded-xl px-3.5 py-2.5 text-sm outline-none"
                     style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', color: '#111827' }}
-                    onFocus={e => { e.currentTarget.style.border = '1.5px solid #FF6B1A'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.08)' }}
+                    onFocus={e => { e.currentTarget.style.border = '1.5px solid #0057b8'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,87,184,0.08)' }}
                     onBlur={e => { e.currentTarget.style.border = '1px solid #E5E7EB'; e.currentTarget.style.boxShadow = 'none' }}
                   />
                 </div>
@@ -440,20 +442,20 @@ function SettingsContent() {
               </AnimatePresence>
 
               <div className="mt-5 flex justify-end">
-                <MotionButton whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
-                  onClick={handleChangePassword} variant="default"
+                <motion.button whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
+                  onClick={handleChangePassword}
                   disabled={changePasswordMutation.isPending || !pwForm.current || !pwForm.next || !pwForm.confirm}
                   className="flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold text-white transition-all disabled:opacity-50"
                   style={{
-                    background: pwSaved ? '#22C55E' : 'linear-gradient(135deg,#FF6B1A,#FF8C42)',
-                    boxShadow: pwSaved ? '0 4px 14px rgba(34,197,94,0.28)' : '0 4px 14px rgba(255,107,26,0.28)',
+                    background: pwSaved ? '#22C55E' : 'linear-gradient(135deg,#0057b8,#1a73e8)',
+                    boxShadow: pwSaved ? '0 4px 14px rgba(34,197,94,0.28)' : '0 4px 14px rgba(0,87,184,0.28)',
                   }}>
                   {changePasswordMutation.isPending
                     ? <><Loader2 size={14} className="animate-spin" />Updating…</>
                     : pwSaved
                       ? <><Check size={14} />Password updated!</>
                       : <><Lock size={14} />Update password</>}
-                </MotionButton>
+                </motion.button>
               </div>
             </motion.div>
           )}
@@ -466,7 +468,7 @@ function SettingsContent() {
               className="space-y-4">
               <div className="rounded-2xl bg-white p-6" style={{ border: '1px solid #E5E7EB' }}>
                 <div className="mb-1 flex items-center gap-2">
-                  <Monitor size={16} style={{ color: '#FF6B1A' }} />
+                  <Monitor size={16} style={{ color: '#0057b8' }} />
                   <h2 className="text-base font-bold" style={{ color: '#111827' }}>Navigation Layout</h2>
                 </div>
                 <p className="mb-6 text-xs" style={{ color: '#9CA3AF' }}>
@@ -487,10 +489,10 @@ function SettingsContent() {
                     initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
                     transition={{ duration: 0.2 }}
                     className="mt-5 flex items-center gap-3 rounded-2xl px-4 py-3"
-                    style={{ background: 'rgba(255,107,26,0.06)', border: '1px solid rgba(255,107,26,0.18)' }}>
+                    style={{ background: 'rgba(0,87,184,0.06)', border: '1px solid rgba(0,87,184,0.18)' }}>
                     {navLayout === 'sidebar'
-                      ? <PanelLeft size={16} style={{ color: '#FF6B1A' }} />
-                      : <AlignJustify size={16} style={{ color: '#FF6B1A' }} />}
+                      ? <PanelLeft size={16} style={{ color: '#0057b8' }} />
+                      : <AlignJustify size={16} style={{ color: '#0057b8' }} />}
                     <p className="text-sm" style={{ color: '#374151' }}>
                       {navLayout === 'sidebar'
                         ? <><span className="font-semibold">Sidebar layout active.</span> The left sidebar shows your main navigation. Use the collapse button to hide labels.</>
@@ -578,7 +580,7 @@ function SettingsContent() {
               className="rounded-2xl bg-white p-10 flex flex-col items-center gap-4"
               style={{ border: '1px solid #E5E7EB' }}>
               <div className="flex h-14 w-14 items-center justify-center rounded-3xl text-2xl"
-                style={{ background: '#FFF7ED', border: '1px solid rgba(255,107,26,0.18)' }}>
+                style={{ background: '#FFF7ED', border: '1px solid rgba(0,87,184,0.18)' }}>
                 {active === 'billing' ? '💳' : '🌍'}
               </div>
               <p className="text-base font-bold" style={{ color: '#111827' }}>Coming soon</p>
@@ -599,7 +601,7 @@ export default function SettingsPage() {
   return (
     <Suspense fallback={
       <div className="flex h-40 items-center justify-center">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-orange-200 border-t-orange-500" />
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-orange-200 border-t-blue-500" />
       </div>
     }>
       <SettingsContent />

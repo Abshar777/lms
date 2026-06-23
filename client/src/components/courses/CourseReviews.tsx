@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Star, Loader2, AlertCircle, MessageSquare, ThumbsUp, Flag, CornerDownRight } from 'lucide-react'
 import { useCourseReviews, useSubmitReview, useVoteHelpful, useReportReview, type Review } from '@/lib/api/reviews'
 import { RatingHistogram } from './RatingHistogram'
-import { Button, MotionButton } from '@/components/ui/button'
 
 interface Props {
   courseId:    string
@@ -73,10 +72,10 @@ export function CourseReviews({ courseId, slug, canReview, ratingAvg, ratingCoun
             {/* Reviewer row */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 overflow-hidden rounded-full" style={{ background: 'rgba(255,107,26,0.15)' }}>
+                <div className="h-8 w-8 overflow-hidden rounded-full" style={{ background: 'rgba(0,87,184,0.15)' }}>
                   {reviewerAvatar(r)
                     ? <img src={reviewerAvatar(r)} alt="" className="h-full w-full object-cover" />
-                    : <div className="flex h-full w-full items-center justify-center text-xs font-bold" style={{ color: '#FF6B1A' }}>
+                    : <div className="flex h-full w-full items-center justify-center text-xs font-bold" style={{ color: '#0057b8' }}>
                         {reviewerName(r)[0]}
                       </div>}
                 </div>
@@ -101,36 +100,32 @@ export function CourseReviews({ courseId, slug, canReview, ratingAvg, ratingCoun
 
             {/* Helpful / Report row */}
             <div className="mt-2 flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
                 onClick={() => voteHelpful.mutate(r.id)}
                 disabled={voteHelpful.isPending}
-                className="flex items-center gap-1 text-xs h-auto p-0 transition-colors hover:text-orange-500 disabled:opacity-50"
+                className="flex items-center gap-1 text-xs transition-colors hover:text-[#0057b8] disabled:opacity-50"
                 style={{ color: '#9CA3AF' }}>
                 <ThumbsUp size={11} />
                 Helpful{r.helpfulVotes > 0 ? ` (${r.helpfulVotes})` : ''}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
+              </button>
+              <button
                 onClick={() => {
                   if (!confirm('Report this review as inappropriate?')) return
                   reportReview.mutate(r.id)
                 }}
                 disabled={reportReview.isPending}
-                className="flex items-center gap-1 text-xs h-auto p-0 transition-colors hover:text-red-500 disabled:opacity-50"
+                className="flex items-center gap-1 text-xs transition-colors hover:text-red-500 disabled:opacity-50"
                 style={{ color: '#D1D5DB' }}>
                 <Flag size={11} />Report
-              </Button>
+              </button>
             </div>
 
             {/* Instructor reply (6.2) */}
             {r.instructorReply && (
-              <div className="mt-3 rounded-xl p-3" style={{ background: 'rgba(255,107,26,0.06)', border: '1px solid rgba(255,107,26,0.15)' }}>
+              <div className="mt-3 rounded-xl p-3" style={{ background: 'rgba(0,87,184,0.06)', border: '1px solid rgba(0,87,184,0.15)' }}>
                 <div className="flex items-center gap-1.5 mb-1.5">
-                  <CornerDownRight size={12} style={{ color: '#FF6B1A' }} />
-                  <span className="text-[11px] font-semibold" style={{ color: '#FF6B1A' }}>
+                  <CornerDownRight size={12} style={{ color: '#0057b8' }} />
+                  <span className="text-[11px] font-semibold" style={{ color: '#0057b8' }}>
                     {instructorName(r)} (Instructor)
                   </span>
                   {r.instructorReplyAt && (
@@ -180,12 +175,12 @@ function WriteReview({
       <p className="text-sm font-semibold mb-2" style={{ color: '#0D0F1A' }}>Share your experience</p>
       <div className="flex items-center gap-1">
         {[1,2,3,4,5].map(s => (
-          <Button key={s} type="button" variant="ghost" size="icon-sm"
+          <button key={s} type="button"
             onMouseEnter={() => setHover(s)} onMouseLeave={() => setHover(0)}
             onClick={() => setRating(s)}
-            className="transition-transform hover:scale-110 h-auto w-auto p-0">
+            className="transition-transform hover:scale-110">
             <Star size={20} fill={s <= (hover || rating) ? '#F59E0B' : 'none'} style={{ color: '#F59E0B' }} />
-          </Button>
+          </button>
         ))}
         <span className="ml-2 text-xs" style={{ color: '#9CA3AF' }}>{rating}/5</span>
       </div>
@@ -212,10 +207,11 @@ function WriteReview({
         <p className="text-[11px]" style={{ color: '#9CA3AF' }}>
           {done ? '✓ Review saved' : `${comment.length}/2000`}
         </p>
-        <Button type="submit" variant="default" size="default" disabled={pending}
-          className="rounded-xl px-4 py-1.5 text-xs font-bold text-white transition-all disabled:opacity-60">
+        <button type="submit" disabled={pending}
+          className="rounded-xl px-4 py-1.5 text-xs font-bold text-white transition-all disabled:opacity-60"
+          style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
           {pending ? 'Saving…' : 'Post review'}
-        </Button>
+        </button>
       </div>
     </form>
   )

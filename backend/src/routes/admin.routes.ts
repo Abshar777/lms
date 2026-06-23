@@ -267,6 +267,12 @@ const removeCategorySchema = z.object({
 })
 router.patch('/enrollment-requests/:userId/remove-category', requireAnyAdmin, validate(removeCategorySchema), ctrl.removeEnrollmentCategory)
 
+const enrollmentDocsAdminSchema = z.object({
+  passportUrl: z.string().url().optional().or(z.literal('')),
+  photoUrl:    z.string().url().optional().or(z.literal('')),
+})
+router.patch('/enrollment-requests/:userId/docs', requireAnyAdmin, validate(enrollmentDocsAdminSchema), ctrl.updateStudentDocs)
+
 /* GET /admin/users/:id/enrollments — list a student's course enrollments */
 router.get('/users/:id/enrollments', requireAdmin,
   async (req: Request, res: Response, next: NextFunction) => {

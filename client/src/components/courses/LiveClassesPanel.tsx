@@ -6,7 +6,6 @@ import { Calendar, Video, Loader2, Radio, Clock, AlertCircle } from 'lucide-reac
 import Link from 'next/link'
 import { Tv2 } from 'lucide-react'
 import { useLiveClassesForCourse, isLive, isUpcoming, fmtCountdown, type LiveClass } from '@/lib/api/liveClasses'
-import { Button } from '@/components/ui/button'
 
 function fmtDateTime(iso: string): string {
   return new Date(iso).toLocaleString('en-US', {
@@ -47,7 +46,7 @@ export function LiveClassesPanel({ slug }: { slug: string }) {
       transition={{ delay: 0.18, type: 'spring', stiffness: 260, damping: 26 }}
       className="mt-8 overflow-hidden rounded-2xl"
       style={{
-        background: 'linear-gradient(135deg, rgba(99,102,241,0.04) 0%, rgba(255,107,26,0.04) 100%)',
+        background: 'linear-gradient(135deg, rgba(99,102,241,0.04) 0%, rgba(0,87,184,0.04) 100%)',
         border: '1px solid rgba(99,102,241,0.18)',
       }}>
 
@@ -105,13 +104,13 @@ function LiveClassRow({ live, now, index }: { live: LiveClass; now: number; inde
 
       <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl"
         style={{
-          background: isLiveNow ? 'rgba(239,68,68,0.10)' : isInternal ? 'rgba(255,107,26,0.08)' : 'rgba(99,102,241,0.08)',
-          border: `1px solid ${isLiveNow ? 'rgba(239,68,68,0.25)' : isInternal ? 'rgba(255,107,26,0.18)' : 'rgba(99,102,241,0.18)'}`,
+          background: isLiveNow ? 'rgba(239,68,68,0.10)' : isInternal ? 'rgba(0,87,184,0.08)' : 'rgba(99,102,241,0.08)',
+          border: `1px solid ${isLiveNow ? 'rgba(239,68,68,0.25)' : isInternal ? 'rgba(0,87,184,0.18)' : 'rgba(99,102,241,0.18)'}`,
         }}>
         {isLiveNow
           ? <Radio size={18} style={{ color: '#EF4444' }} />
           : isInternal
-          ? <Tv2 size={18} style={{ color: '#FF6B1A' }} />
+          ? <Tv2 size={18} style={{ color: '#0057b8' }} />
           : <Calendar size={18} style={{ color: '#6366F1' }} />}
       </div>
 
@@ -134,32 +133,28 @@ function LiveClassRow({ live, now, index }: { live: LiveClass; now: number; inde
           <span className="flex items-center gap-1"><Clock size={10} />{fmtDuration(live.durationMins)}</span>
           {!isLiveNow && <>
             <span style={{ color: '#E4E7ED' }}>·</span>
-            <span style={{ color: '#FF6B1A' }}>{countdown}</span>
+            <span style={{ color: '#0057b8' }}>{countdown}</span>
           </>}
         </div>
       </div>
 
       {/* CTA — internal uses watch page, external opens link */}
       {isInternal ? (
-        <Button
-          asChild
-          variant={isLiveNow ? 'destructive' : 'default'}
-          size="sm"
-          className={isLiveNow ? 'shadow-[0_4px_16px_rgba(239,68,68,0.32)]' : ''}>
-          <Link href={`/live-classes/${live.id}/watch`}>
-            {isLiveNow ? 'Watch now' : 'View'}
-          </Link>
-        </Button>
+        <Link href={`/live-classes/${live.id}/watch`}
+          className="rounded-xl px-3.5 py-2 text-xs font-bold text-white transition-all"
+          style={isLiveNow
+            ? { background: 'linear-gradient(135deg, #EF4444, #DC2626)', boxShadow: '0 4px 16px rgba(239,68,68,0.32)' }
+            : { background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
+          {isLiveNow ? 'Watch now' : 'View'}
+        </Link>
       ) : (
-        <Button
-          asChild
-          variant={isLiveNow ? 'destructive' : 'secondary'}
-          size="sm"
-          className={isLiveNow ? 'shadow-[0_4px_16px_rgba(239,68,68,0.32)]' : ''}>
-          <a href={live.meetingUrl ?? '#'} target="_blank" rel="noreferrer noopener">
-            {isLiveNow ? 'Join now' : 'Open link'}
-          </a>
-        </Button>
+        <a href={live.meetingUrl ?? '#'} target="_blank" rel="noreferrer noopener"
+          className="rounded-xl px-3.5 py-2 text-xs font-bold text-white transition-all"
+          style={isLiveNow
+            ? { background: 'linear-gradient(135deg, #EF4444, #DC2626)', boxShadow: '0 4px 16px rgba(239,68,68,0.32)' }
+            : { background: 'linear-gradient(135deg, #6366F1, #818CF8)' }}>
+          {isLiveNow ? 'Join now' : 'Open link'}
+        </a>
       )}
     </motion.div>
   )

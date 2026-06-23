@@ -4,9 +4,9 @@
 
 /* ── Design tokens ──────────────────────────────── */
 :root {
-  --color-primary:        #FF6B1A;
-  --color-primary-hover:  #E55A0E;
-  --color-primary-light:  #FFF0E8;
+  --color-primary:        #0057b8;
+  --color-primary-hover:  #003d80;
+  --color-primary-light:  #EEF5FF;
   --color-secondary:      #2F6BFF;
   --color-secondary-hover:#1A53E0;
   --color-secondary-light:#EEF3FF;
@@ -51,7 +51,7 @@ body {
 
 /* ── Focus visible — only on interactive non-form elements ── */
 :focus-visible:not(input):not(textarea):not(select) {
-  outline: 2px solid #FF6B1A !important;
+  outline: 2px solid #0057b8 !important;
   outline-offset: 2px;
 }
 
@@ -71,8 +71,8 @@ select:focus, select:focus-visible {
 
 /* ── Selection ──────────────────────────────────── */
 ::selection {
-  background: rgba(255, 107, 26, 0.15);
-  color: #E55A0E;
+  background: rgba(0, 87, 184, 0.15);
+  color: #003d80;
 }
 
 /* ── Reduced motion ─────────────────────────────── */

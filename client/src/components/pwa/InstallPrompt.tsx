@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Download, X, Sparkles } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -71,8 +70,8 @@ export function InstallPrompt() {
           style={{ border: '1px solid #E5E7EB', boxShadow: '0 16px 40px rgba(13,15,26,0.15)' }}>
           <div className="flex items-start gap-3 p-4">
             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
-              style={{ background: 'rgba(255,107,26,0.10)', border: '1px solid rgba(255,107,26,0.25)' }}>
-              <Sparkles size={16} style={{ color: '#FF6B1A' }} />
+              style={{ background: 'rgba(0,87,184,0.10)', border: '1px solid rgba(0,87,184,0.25)' }}>
+              <Sparkles size={16} style={{ color: '#0057b8' }} />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold" style={{ color: '#111827' }}>
@@ -82,29 +81,23 @@ export function InstallPrompt() {
                 Add it to your home screen for a faster, full-screen learning experience.
               </p>
               <div className="mt-3 flex items-center gap-2">
-                <Button
-                  onClick={onInstall}
-                  variant="default"
-                  size="sm"
-                  className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold">
+                <button onClick={onInstall}
+                  className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-white transition-all hover:opacity-90"
+                  style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
                   <Download size={11} />Install
-                </Button>
-                <Button
-                  onClick={onDismiss}
-                  variant="ghost"
-                  size="sm"
-                  className="rounded-xl px-3 py-1.5 text-xs font-semibold">
+                </button>
+                <button onClick={onDismiss}
+                  className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-gray-50"
+                  style={{ color: '#6B7280' }}>
                   Not now
-                </Button>
+                </button>
               </div>
             </div>
-            <Button
-              onClick={onDismiss}
-              variant="ghost"
-              size="icon-sm"
-              className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg">
+            <button onClick={onDismiss}
+              className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-gray-50"
+              style={{ color: '#9CA3AF' }}>
               <X size={12} />
-            </Button>
+            </button>
           </div>
         </motion.div>
       )}

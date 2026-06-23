@@ -5,6 +5,29 @@ import { api } from '@/lib/axios'
 export type EnrollmentRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
 export type ProgramCategory = '4x-trading' | 'digital-marketing' | 'ai'
 
+export interface EnrollmentApplication {
+  phone?:              string
+  emergencyContact?:   string
+  gender?:             string
+  dateOfBirth?:        string
+  nationality?:        string
+  homeCountry?:        string
+  occupation?:         string
+  emiratesId?:         string
+  countryAttendance?:  string
+  villa?:              string
+  city?:               string
+  addressCountry?:     string
+  passportUrl?:        string
+  photoUrl?:           string
+  experienceLevel?:    string
+  preferredStartDate?: string
+  hearAboutUs?:        string
+  referralName?:       string
+  programs?:           string[]
+  paymentMethod?:      string
+}
+
 export interface EnrollmentRequest {
   id:                string
   name:              string
@@ -25,8 +48,9 @@ export interface EnrollmentRequest {
   /* Rejection metadata */
   rejectedByEmail?:  string
   rejectedAt?:       string
-  isActive:          boolean
-  createdAt:         string
+  isActive:               boolean
+  createdAt:              string
+  enrollmentApplication?: EnrollmentApplication
 }
 
 const KEYS = {

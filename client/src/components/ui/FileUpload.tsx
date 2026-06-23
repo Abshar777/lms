@@ -4,7 +4,6 @@ import { useCallback, useRef, useState } from 'react'
 import { motion, AnimatePresence }        from 'framer-motion'
 import { Upload, X, CheckCircle2, Film, Image as ImageIcon, AlertCircle } from 'lucide-react'
 import { useImageUpload, usePresignedUpload } from '@/lib/api/upload'
-import { Button } from '@/components/ui/button'
 
 /* ── Types ─────────────────────────────────────────────────── */
 export type FileUploadType = 'image' | 'video' | 'any'
@@ -136,8 +135,8 @@ export function FileUpload({
         onClick={() => !disabled && !isUploading && inputRef.current?.click()}
         className="relative flex min-h-[140px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed transition-all"
         style={{
-          borderColor: dragOver ? '#FF6B1A' : error ? '#EF4444' : '#E4E7ED',
-          background:  dragOver ? 'rgba(255,107,26,0.04)' : '#F9FAFB',
+          borderColor: dragOver ? '#0057b8' : error ? '#EF4444' : '#E4E7ED',
+          background:  dragOver ? 'rgba(0,87,184,0.04)' : '#F9FAFB',
           cursor:      disabled || isUploading ? 'default' : 'pointer',
           opacity:     disabled ? 0.6 : 1,
         }}
@@ -158,17 +157,17 @@ export function FileUpload({
               initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
               className="flex w-full flex-col items-center gap-3 px-6 py-4">
               <div className="h-10 w-10 rounded-full flex items-center justify-center"
-                style={{ background: 'rgba(255,107,26,0.1)' }}>
-                <Upload size={20} style={{ color: '#FF6B1A' }} className="animate-bounce" />
+                style={{ background: 'rgba(0,87,184,0.1)' }}>
+                <Upload size={20} style={{ color: '#0057b8' }} className="animate-bounce" />
               </div>
-              <p className="text-sm font-medium" style={{ color: '#FF6B1A' }}>Uploading…</p>
+              <p className="text-sm font-medium" style={{ color: '#0057b8' }}>Uploading…</p>
               {/* Progress bar — shown for presigned video uploads */}
               {presignUpload.isPending && (
                 <div className="w-full max-w-[240px] overflow-hidden rounded-full h-1.5"
                   style={{ background: '#E4E7ED' }}>
                   <motion.div
                     className="h-full rounded-full"
-                    style={{ background: 'linear-gradient(90deg,#FF6B1A,#FF8C42)' }}
+                    style={{ background: 'linear-gradient(90deg,#0057b8,#1a73e8)' }}
                     animate={{ width: `${progress}%` }}
                     transition={{ duration: 0.3 }}
                   />
@@ -189,9 +188,9 @@ export function FileUpload({
                 <img src={preview} alt="Uploaded" className="mx-auto max-h-[120px] rounded-xl object-cover" />
               ) : (
                 <div className="flex items-center justify-center gap-2 rounded-xl py-4"
-                  style={{ background: 'rgba(255,107,26,0.06)' }}>
-                  <Film size={20} style={{ color: '#FF6B1A' }} />
-                  <span className="text-sm font-medium" style={{ color: '#FF6B1A' }}>Video uploaded</span>
+                  style={{ background: 'rgba(0,87,184,0.06)' }}>
+                  <Film size={20} style={{ color: '#0057b8' }} />
+                  <span className="text-sm font-medium" style={{ color: '#0057b8' }}>Video uploaded</span>
                 </div>
               )}
               <div className="mt-2 flex items-center justify-center gap-1.5">
@@ -199,14 +198,12 @@ export function FileUpload({
                 <span className="text-xs font-medium" style={{ color: '#0ECC8E' }}>Upload complete</span>
               </div>
               {!disabled && (
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
+                <button
                   onClick={(e) => { e.stopPropagation(); clear() }}
-                  className="absolute right-2 top-2 h-6 w-6 rounded-full hover:bg-red-50"
+                  className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full transition-colors hover:bg-red-50"
                   style={{ color: '#9CA3AF' }}>
                   <X size={12} />
-                </Button>
+                </button>
               )}
             </motion.div>
           )}
@@ -217,8 +214,8 @@ export function FileUpload({
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="flex flex-col items-center gap-2 px-6 py-6 text-center">
               <div className="flex h-10 w-10 items-center justify-center rounded-full transition-colors"
-                style={{ background: dragOver ? 'rgba(255,107,26,0.12)' : 'rgba(255,107,26,0.08)' }}>
-                <TypeIcon size={20} style={{ color: '#FF6B1A' }} />
+                style={{ background: dragOver ? 'rgba(0,87,184,0.12)' : 'rgba(0,87,184,0.08)' }}>
+                <TypeIcon size={20} style={{ color: '#0057b8' }} />
               </div>
               <div>
                 <p className="text-sm font-semibold" style={{ color: '#111827' }}>

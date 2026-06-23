@@ -25,7 +25,7 @@ const ICON_COLORS: Record<Achievement['iconKey'], { fg: string; bg: string }> = 
   medal:      { fg: '#10B981', bg: 'rgba(16,185,129,0.10)' },
   crown:      { fg: '#A855F7', bg: 'rgba(168,85,247,0.10)' },
   heart:      { fg: '#EC4899', bg: 'rgba(236,72,153,0.10)' },
-  graduation: { fg: '#FF6B1A', bg: 'rgba(255,107,26,0.10)' },
+  graduation: { fg: '#0057b8', bg: 'rgba(0,87,184,0.10)' },
 }
 
 export default function AchievementsPage() {

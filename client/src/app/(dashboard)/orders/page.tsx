@@ -22,7 +22,7 @@ export default function OrdersPage() {
   if (isLoading) {
     return (
       <div className="flex h-[60vh] items-center justify-center gap-3">
-        <Loader2 size={20} className="animate-spin" style={{ color: '#FF6B1A' }} />
+        <Loader2 size={20} className="animate-spin" style={{ color: '#0057b8' }} />
         <p className="text-sm" style={{ color: '#9CA3AF' }}>Loading your orders…</p>
       </div>
     )
@@ -49,7 +49,7 @@ export default function OrdersPage() {
           <p className="text-sm" style={{ color: '#9CA3AF' }}>Purchase a course to see it here.</p>
           <Link href="/courses"
             className="mt-1 rounded-xl px-5 py-2 text-sm font-semibold transition-colors hover:opacity-90"
-            style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A' }}>
+            style={{ background: 'rgba(0,87,184,0.10)', color: '#0057b8' }}>
             Browse courses
           </Link>
         </div>

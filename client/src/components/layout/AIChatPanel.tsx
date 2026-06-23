@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Send, Sparkles, Bot, User, Loader2, RotateCcw } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useAIChat, type ChatMessage } from '@/lib/api/ai'
-import { Button, MotionButton } from '@/components/ui/button'
 
 /* ─── Context extraction from URL ───────────────────── */
 function useAIContext(): { lessonId?: string; courseSlug?: string } {
@@ -31,7 +30,7 @@ function Bubble({ msg }: { msg: ChatMessage }) {
       {/* Avatar */}
       <div className={`flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-full text-white
         ${isUser ? '' : ''}`}
-        style={{ background: isUser ? 'linear-gradient(135deg,#FF6B1A,#FF8C42)' : '#6B7280' }}>
+        style={{ background: isUser ? 'linear-gradient(135deg,#0057b8,#1a73e8)' : '#6B7280' }}>
         {isUser ? <User size={12} /> : <Bot size={12} />}
       </div>
 
@@ -42,7 +41,7 @@ function Bubble({ msg }: { msg: ChatMessage }) {
             ? 'rounded-tr-sm text-white'
             : 'rounded-tl-sm'}`}
         style={isUser
-          ? { background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }
+          ? { background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }
           : { background: '#F3F4F6', color: '#374151' }}>
         {msg.content}
       </div>
@@ -140,7 +139,7 @@ export function AIChatPanel({ open, onClose }: AIChatPanelProps) {
             <div className="flex items-center gap-3 px-4 py-3.5 flex-shrink-0"
               style={{ borderBottom: '1px solid #F3F4F6' }}>
               <div className="flex h-8 w-8 items-center justify-center rounded-xl"
-                style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+                style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>
                 <Sparkles size={14} className="text-white" />
               </div>
               <div className="flex-1 min-w-0">
@@ -148,22 +147,20 @@ export function AIChatPanel({ open, onClose }: AIChatPanelProps) {
                 <p className="text-[10px]" style={{ color: '#9CA3AF' }}>{contextLabel}</p>
               </div>
               {history.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
+                <button
                   onClick={clearHistory}
                   title="Clear chat"
-                  className="h-7 w-7 rounded-lg text-[#9CA3AF]">
+                  className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-gray-100"
+                  style={{ color: '#9CA3AF' }}>
                   <RotateCcw size={13} />
-                </Button>
+                </button>
               )}
-              <Button
-                variant="ghost"
-                size="icon-sm"
+              <button
                 onClick={onClose}
-                className="h-7 w-7 rounded-lg text-[#6B7280]">
+                className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-gray-100"
+                style={{ color: '#6B7280' }}>
                 <X size={15} />
-              </Button>
+              </button>
             </div>
 
             {/* Messages */}
@@ -172,7 +169,7 @@ export function AIChatPanel({ open, onClose }: AIChatPanelProps) {
                 <div className="flex flex-col items-center justify-center h-full text-center py-8">
                   <div className="flex h-14 w-14 items-center justify-center rounded-2xl mb-3"
                     style={{ background: 'linear-gradient(135deg,#FFF7ED,#FFEDD5)' }}>
-                    <Sparkles size={22} style={{ color: '#FF6B1A' }} />
+                    <Sparkles size={22} style={{ color: '#0057b8' }} />
                   </div>
                   <p className="text-sm font-semibold mb-1" style={{ color: '#111827' }}>
                     Hi, I&apos;m your AI tutor
@@ -187,14 +184,13 @@ export function AIChatPanel({ open, onClose }: AIChatPanelProps) {
                       'Can you give me a quick quiz question?',
                       'Explain this concept with a simple example',
                     ].map(suggestion => (
-                      <Button
+                      <button
                         key={suggestion}
-                        variant="ghost"
                         onClick={() => { setInput(suggestion); inputRef.current?.focus() }}
-                        className="text-left justify-start h-auto rounded-xl px-3 py-2 text-xs hover:bg-orange-50"
+                        className="text-left rounded-xl px-3 py-2 text-xs transition-colors hover:bg-blue-50"
                         style={{ border: '1px solid #E5E7EB', color: '#374151' }}>
                         {suggestion}
-                      </Button>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -239,16 +235,14 @@ export function AIChatPanel({ open, onClose }: AIChatPanelProps) {
                     minHeight: '20px',
                   }}
                 />
-                <MotionButton
-                  variant="default"
-                  size="icon-sm"
+                <motion.button
                   onClick={() => void send()}
                   disabled={!input.trim() || chat.isPending}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="flex-shrink-0 h-7 w-7 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed">
+                  whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                  className="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>
                   <Send size={12} />
-                </MotionButton>
+                </motion.button>
               </div>
               <p className="mt-1.5 text-center text-[9px]" style={{ color: '#D1D5DB' }}>
                 AI can make mistakes. Verify important information.

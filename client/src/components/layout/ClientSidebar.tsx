@@ -5,10 +5,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   BookOpen, GraduationCap, Trophy,
-  Settings, LogOut, Flame, Map, X, Video, CalendarDays, LifeBuoy,
+  Settings, LogOut, Flame, Map, X, Video, CalendarDays,
 } from 'lucide-react'
 import { useUIStore } from '@/store/ui.store'
-import { Button } from '@/components/ui/button'
 
 const navItems = [
   { label: 'My Learning',    href: '/my-learning',    icon: GraduationCap },
@@ -19,10 +18,7 @@ const navItems = [
   { label: 'Achievements',   href: '/achievements',    icon: Trophy },
   { label: 'Streaks',        href: '/streaks',         icon: Flame },
 ]
-const bottomItems = [
-  { label: 'Help & Support', href: '/support',  icon: LifeBuoy },
-  { label: 'Settings',       href: '/settings', icon: Settings },
-]
+const bottomItems = [{ label: 'Settings', href: '/settings', icon: Settings }]
 
 const itemVariants = {
   hidden: { opacity: 0, x: -14 },
@@ -43,21 +39,18 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
       <div className="flex h-[60px] flex-shrink-0 items-center gap-3 px-4"
         style={{ borderBottom: '1px solid #E4E7ED' }}>
         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl"
-          style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+          style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>
           <Flame size={15} color="#fff" strokeWidth={2.2} />
         </div>
         <span className="whitespace-nowrap font-bold"
           style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 16, color: '#0D0F1A' }}>
-          LearnOS
+          Delta
         </span>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={onClose}
-          className="ml-auto flex-shrink-0 hover:bg-orange-50"
-          style={{ color: '#FF6B1A' }}>
+        <button onClick={onClose}
+          className="ml-auto flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-blue-50"
+          style={{ color: '#0057b8' }}>
           <X size={15} />
-        </Button>
+        </button>
       </div>
 
       {/* ── Nav ──────────────────────────────── */}
@@ -73,10 +66,10 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
               <Link href={item.href} onClick={onClose}>
                 <motion.div whileTap={{ scale: 0.97 }}
                   className="relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors"
-                  style={{ background: active ? 'rgba(255,107,26,0.08)' : 'transparent', color: active ? '#FF6B1A' : '#4B5563' }}>
+                  style={{ background: active ? 'rgba(0,87,184,0.08)' : 'transparent', color: active ? '#0057b8' : '#4B5563' }}>
                   {active && (
                     <motion.div layoutId="mobile-sidebar-active" className="absolute inset-0 rounded-xl"
-                      style={{ background: 'rgba(255,107,26,0.08)', border: '1px solid rgba(255,107,26,0.18)' }}
+                      style={{ background: 'rgba(0,87,184,0.08)', border: '1px solid rgba(0,87,184,0.18)' }}
                       transition={{ type: 'spring', stiffness: 400, damping: 30 }} />
                   )}
                   <Icon size={17} className="relative z-10 flex-shrink-0" strokeWidth={active ? 2.2 : 1.8} />
@@ -94,7 +87,7 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
           const Icon = item.icon
           return (
             <Link key={item.href} href={item.href} onClick={onClose}>
-              <div className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-orange-50"
+              <div className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-blue-50"
                 style={{ color: '#9CA3AF' }}>
                 <Icon size={17} strokeWidth={1.8} className="flex-shrink-0" />
                 <span className="whitespace-nowrap text-sm font-medium">{item.label}</span>
@@ -108,7 +101,7 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
           style={{ background: '#F4F5F8', border: '1px solid #E4E7ED' }}>
           <div className="relative h-8 w-8 flex-shrink-0 overflow-hidden rounded-full">
             <div className="flex h-full w-full items-center justify-center text-xs font-bold text-white"
-              style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>A</div>
+              style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>A</div>
             <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white"
               style={{ background: '#0ECC8E' }} />
           </div>
@@ -116,14 +109,11 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
             <p className="truncate text-xs font-semibold" style={{ color: '#0D0F1A' }}>Adit Irwan</p>
             <p className="truncate text-[10px]" style={{ color: '#9CA3AF' }}>student@learnos.com</p>
           </div>
-          <Button
-            variant="ghost"
-            size="icon-sm"
+          <button
             onClick={() => { document.cookie = 'lms_at=; path=/; max-age=0'; window.location.href = '/login' }}
-            className="flex-shrink-0 hover:text-red-500"
-            style={{ color: '#9CA3AF' }}>
+            className="flex-shrink-0 transition-all hover:text-red-500" style={{ color: '#9CA3AF' }}>
             <LogOut size={14} />
-          </Button>
+          </button>
         </div>
       </div>
     </>

@@ -7,7 +7,6 @@ import { ArrowLeft, BookOpen, Star, Users, Play, Sparkles, Loader2 } from 'lucid
 import { useCourses } from '@/lib/api/courses'
 import { useCategories } from '@/lib/api/categories'
 import type { Course } from '@/types/index'
-import { Button } from '@/components/ui/button'
 
 const stagger  = { hidden: {}, show: { transition: { staggerChildren: 0.05 } } }
 const cardAnim = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 280, damping: 26 } } }
@@ -22,7 +21,7 @@ const CATEGORY_ICONS: Record<string, { fg: string; bg: string }> = {
   music:          { fg: '#A855F7', bg: 'rgba(168,85,247,0.08)' },
   language:       { fg: '#06B6D4', bg: 'rgba(6,182,212,0.08)' },
 }
-const fallback = { fg: '#FF6B1A', bg: 'rgba(255,107,26,0.08)' }
+const fallback = { fg: '#0057b8', bg: 'rgba(0,87,184,0.08)' }
 
 export default function CategoryLandingPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
@@ -117,7 +116,7 @@ export default function CategoryLandingPage({ params }: { params: Promise<{ slug
           <p className="text-sm" style={{ color: '#9CA3AF' }}>Check back soon — new content is added regularly.</p>
           <Link href="/courses"
             className="mt-1 rounded-xl px-5 py-2 text-sm font-semibold transition-colors hover:opacity-90"
-            style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A' }}>
+            style={{ background: 'rgba(0,87,184,0.10)', color: '#0057b8' }}>
             Browse all courses
           </Link>
         </div>
@@ -135,37 +134,25 @@ export default function CategoryLandingPage({ params }: { params: Promise<{ slug
       {/* Pagination */}
       {data && data.meta.total_pages > 1 && (
         <div className="mt-8 flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="default"
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={!data.meta.has_prev}
-            className="rounded-xl px-4 py-2 text-sm font-semibold bg-white hover:bg-gray-50 disabled:opacity-40"
+          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!data.meta.has_prev}
+            className="rounded-xl px-4 py-2 text-sm font-semibold bg-white transition-colors hover:bg-gray-50 disabled:opacity-40"
             style={{ border: '1px solid #E5E7EB', color: '#374151' }}>
             Previous
-          </Button>
+          </button>
           {Array.from({ length: data.meta.total_pages }, (_, i) => i + 1).map(p => (
-            <Button
-              key={p}
-              variant="ghost"
-              size="icon"
-              onClick={() => setPage(p)}
+            <button key={p} onClick={() => setPage(p)}
               className="h-9 w-9 rounded-xl text-sm font-semibold transition-all"
               style={p === page
                 ? { background: '#111827', color: 'white' }
                 : { color: '#6B7280', background: 'white', border: '1px solid #E5E7EB' }}>
               {p}
-            </Button>
+            </button>
           ))}
-          <Button
-            variant="outline"
-            size="default"
-            onClick={() => setPage(p => p + 1)}
-            disabled={!data.meta.has_next}
-            className="rounded-xl px-4 py-2 text-sm font-semibold bg-white hover:bg-gray-50 disabled:opacity-40"
+          <button onClick={() => setPage(p => p + 1)} disabled={!data.meta.has_next}
+            className="rounded-xl px-4 py-2 text-sm font-semibold bg-white transition-colors hover:bg-gray-50 disabled:opacity-40"
             style={{ border: '1px solid #E5E7EB', color: '#374151' }}>
             Next
-          </Button>
+          </button>
         </div>
       )}
     </div>

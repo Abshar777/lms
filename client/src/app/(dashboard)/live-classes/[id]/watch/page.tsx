@@ -53,8 +53,8 @@ function ScheduledPlaceholder({ thumbnailUrl }: { thumbnailUrl?: string }) {
       )}
       <div className="relative z-10 flex flex-col items-center gap-3 text-center px-6">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl"
-          style={{ background: 'rgba(255,107,26,0.15)', border: '1px solid rgba(255,107,26,0.25)' }}>
-          <Tv2 size={28} style={{ color: '#FF6B1A' }} />
+          style={{ background: 'rgba(0,87,184,0.15)', border: '1px solid rgba(0,87,184,0.25)' }}>
+          <Tv2 size={28} style={{ color: '#0057b8' }} />
         </div>
         <p className="text-lg font-bold text-white">Stream hasn&apos;t started yet</p>
         <p className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>
@@ -75,7 +75,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <Loader2 size={24} className="animate-spin" style={{ color: '#FF6B1A' }} />
+        <Loader2 size={24} className="animate-spin" style={{ color: '#0057b8' }} />
       </div>
     )
   }
@@ -104,7 +104,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
         </p>
         <Link href="/live-classes"
           className="mt-6 inline-flex items-center gap-2 text-sm font-semibold transition-opacity hover:opacity-70"
-          style={{ color: '#FF6B1A' }}>
+          style={{ color: '#0057b8' }}>
           <ChevronLeft size={14} />Back to Live Classes
         </Link>
       </div>
@@ -114,8 +114,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
   if (!data) return null
 
   /* ── External type — meeting link + homework sidebar ── */
-  if (data.type === 'external') {
-    const isExternalEnded = data.status === 'ended'
+  if (data.type === 'external' && data.meetingUrl) {
     return (
       <div className="mx-auto max-w-5xl">
         <Link href="/live-classes"
@@ -125,45 +124,23 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
         </Link>
 
         <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-          {/* ── Left: join panel or ended state ── */}
+          {/* ── Left: external join panel ── */}
           <div className="flex flex-col items-center justify-center rounded-2xl py-16 text-center"
-            style={{
-              background: isExternalEnded ? 'rgba(16,185,129,0.04)' : 'rgba(99,102,241,0.04)',
-              border: `1px solid ${isExternalEnded ? 'rgba(16,185,129,0.12)' : 'rgba(99,102,241,0.12)'}`,
-            }}>
-            {isExternalEnded ? (
-              <>
-                <div className="flex h-16 w-16 items-center justify-center rounded-3xl"
-                  style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.18)' }}>
-                  <BookOpen size={24} style={{ color: '#10B981' }} />
-                </div>
-                <p className="mt-4 text-lg font-bold" style={{ color: '#0D0F1A' }}>Session ended</p>
-                <p className="mt-2 max-w-xs text-sm" style={{ color: '#6B7280' }}>
-                  This session has concluded. Thank you for participating.
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="flex h-16 w-16 items-center justify-center rounded-3xl"
-                  style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.18)' }}>
-                  <ExternalLink size={24} style={{ color: '#6366F1' }} />
-                </div>
-                <p className="mt-4 text-lg font-bold" style={{ color: '#0D0F1A' }}>External live class</p>
-                <p className="mt-2 max-w-xs text-sm" style={{ color: '#6B7280' }}>
-                  This session is hosted on an external platform. Click below to join.
-                </p>
-                {data.meetingUrl && (
-                  <a href={data.meetingUrl} target="_blank" rel="noreferrer noopener"
-                    className="mt-6 inline-flex items-center gap-2 rounded-2xl px-6 py-3 text-sm font-bold text-white"
-                    style={{ background: 'linear-gradient(135deg,#6366F1,#818CF8)', boxShadow: '0 4px 14px rgba(99,102,241,0.30)' }}>
-                    <ExternalLink size={14} />Join Session
-                  </a>
-                )}
-              </>
-            )}
-            <div className="mt-4">
-              <StatusBadge status={data.status} />
+            style={{ background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.12)' }}>
+            <div className="flex h-16 w-16 items-center justify-center rounded-3xl"
+              style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.18)' }}>
+              <ExternalLink size={24} style={{ color: '#6366F1' }} />
             </div>
+            <p className="mt-4 text-lg font-bold" style={{ color: '#0D0F1A' }}>External live class</p>
+            <p className="mt-2 max-w-xs text-sm" style={{ color: '#6B7280' }}>
+              This session is hosted on an external platform. Click below to join.
+            </p>
+            <a href={data.meetingUrl} target="_blank" rel="noreferrer noopener"
+              className="mt-6 inline-flex items-center gap-2 rounded-2xl px-6 py-3 text-sm font-bold text-white"
+              style={{ background: 'linear-gradient(135deg,#6366F1,#818CF8)', boxShadow: '0 4px 14px rgba(99,102,241,0.30)' }}>
+              <ExternalLink size={14} />Join Session
+            </a>
+            <StatusBadge status={data.status} />
           </div>
 
           {/* ── Right: homework + info ── */}

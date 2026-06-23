@@ -8,18 +8,18 @@ const bodyFont    = DM_Sans({ subsets: ['latin'], variable: '--font-body', weigh
 const monoFont    = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', weight: ['400','500'], display: 'swap' })
 
 export const metadata: Metadata = {
-  title: { template: '%s — LearnOS Admin', default: 'LearnOS Admin' },
-  description: 'LearnOS administration portal',
+  title: { template: '%s — Delta Admin', default: 'Delta Institutions Admin' },
+  description: 'Delta Institutions administration portal',
   icons: {
     icon:     [{ url: '/icons/icon.svg', type: 'image/svg+xml' }],
     shortcut: '/icons/icon.svg',
     apple:    '/icons/icon.svg',
   },
   manifest:        '/manifest.webmanifest',
-  applicationName: 'LearnOS Admin',
+  applicationName: 'Delta Institutions Admin',
   appleWebApp: {
     capable:        true,
-    title:          'LearnOS Admin',
+    title:          'Delta Admin',
     statusBarStyle: 'default',
   },
 }

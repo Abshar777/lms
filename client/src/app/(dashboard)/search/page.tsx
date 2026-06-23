@@ -85,8 +85,8 @@ function SearchInner() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className="flex flex-col items-center gap-3 py-16 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-3xl"
-              style={{ background: '#FFF7ED', border: '1px solid rgba(255,107,26,0.18)' }}>
-              <Search size={22} style={{ color: '#FF6B1A' }} />
+              style={{ background: '#FFF7ED', border: '1px solid rgba(0,87,184,0.18)' }}>
+              <Search size={22} style={{ color: '#0057b8' }} />
             </div>
             <p className="text-sm" style={{ color: '#6B7280' }}>
               Use the search bar at the top to find courses.
@@ -125,7 +125,7 @@ export default function SearchPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center py-16">
-        <Loader2 size={18} className="animate-spin" style={{ color: '#FF6B1A' }} />
+        <Loader2 size={18} className="animate-spin" style={{ color: '#0057b8' }} />
       </div>
     }>
       <SearchInner />

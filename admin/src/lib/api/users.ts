@@ -26,6 +26,29 @@ export type AdminUserRole =
   | 'ai_admin'
   | 'super_admin'
 
+export interface AdminUserEnrollmentApplication {
+  phone?:              string
+  emergencyContact?:   string
+  gender?:             string
+  dateOfBirth?:        string
+  nationality?:        string
+  homeCountry?:        string
+  occupation?:         string
+  emiratesId?:         string
+  countryAttendance?:  string
+  villa?:              string
+  city?:               string
+  addressCountry?:     string
+  passportUrl?:        string
+  photoUrl?:           string
+  experienceLevel?:    string
+  preferredStartDate?: string
+  hearAboutUs?:        string
+  referralName?:       string
+  programs?:           string[]
+  paymentMethod?:      string
+}
+
 export interface AdminUser {
   id:               string
   name:             string
@@ -43,6 +66,7 @@ export interface AdminUser {
   createdAt:        string
   updatedAt:        string
   customRoleId?:    string | { id: string; name: string }
+  enrollmentApplication?: AdminUserEnrollmentApplication
 }
 
 export const userKeys = {

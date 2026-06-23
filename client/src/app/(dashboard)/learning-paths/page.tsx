@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { BookOpen, Users, ChevronRight, Loader2, Search, GraduationCap } from 'lucide-react'
 import { useLearningPaths } from '@/lib/api/learningpaths'
-import { Button } from '@/components/ui/button'
 
 export default function LearningPathsPage() {
   const [page, setPage] = useState(1)
@@ -49,7 +48,7 @@ export default function LearningPathsPage() {
       {/* Grid */}
       {isLoading ? (
         <div className="flex justify-center py-16">
-          <Loader2 size={26} className="animate-spin" style={{ color: '#FF6B1A' }} />
+          <Loader2 size={26} className="animate-spin" style={{ color: '#0057b8' }} />
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16">
@@ -71,12 +70,12 @@ export default function LearningPathsPage() {
                     style={{ border: '1px solid #E4E7ED' }}>
                     {/* Thumbnail */}
                     <div className="relative h-36 w-full overflow-hidden"
-                      style={{ background: 'linear-gradient(135deg, #FF6B1A18, #2F6BFF18)' }}>
+                      style={{ background: 'linear-gradient(135deg, #0057b818, #2F6BFF18)' }}>
                       {path.thumbnailUrl
                         ? <img src={path.thumbnailUrl} alt={path.title} className="h-full w-full object-cover" />
                         : (
                           <div className="flex h-full w-full items-center justify-center">
-                            <GraduationCap size={40} style={{ color: '#FF6B1A', opacity: 0.5 }} />
+                            <GraduationCap size={40} style={{ color: '#0057b8', opacity: 0.5 }} />
                           </div>
                         )}
                       <div className="absolute bottom-2 left-2">
@@ -124,19 +123,19 @@ export default function LearningPathsPage() {
       {/* Pagination */}
       {meta && meta.total_pages > 1 && (
         <div className="flex items-center justify-center gap-2">
-          <Button variant="ghost" size="sm" disabled={!meta.has_prev} onClick={() => setPage(p => p - 1)}
+          <button disabled={!meta.has_prev} onClick={() => setPage(p => p - 1)}
             className="rounded-xl px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-40"
             style={{ background: '#F4F5F8', color: '#374151' }}>
             ← Prev
-          </Button>
+          </button>
           <span className="text-sm" style={{ color: '#6B7280' }}>
             {meta.page} / {meta.total_pages}
           </span>
-          <Button variant="ghost" size="sm" disabled={!meta.has_next} onClick={() => setPage(p => p + 1)}
+          <button disabled={!meta.has_next} onClick={() => setPage(p => p + 1)}
             className="rounded-xl px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-40"
             style={{ background: '#F4F5F8', color: '#374151' }}>
             Next →
-          </Button>
+          </button>
         </div>
       )}
     </div>

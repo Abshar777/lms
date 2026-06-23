@@ -5,10 +5,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Eye, Search, Loader2, Mail, Calendar, CheckCircle2,
   XCircle, ShieldOff, ShieldCheck, ChevronLeft, ChevronRight,
-  Clock, TrendingUp, Megaphone, Cpu, RotateCcw,
+  Clock, Phone, MapPin, BookOpen, CreditCard, User, FileText,
+  ImageIcon, Trash2, AlertTriangle, ExternalLink, X,
 } from 'lucide-react'
-import { useUsers, useUpdateUser, type AdminUser } from '@/lib/api/users'
-import { useApproveEnrollment, useRejectEnrollment, useToggleBlock, useRevokeToViewer } from '@/lib/api/enrollmentRequests'
+import { useUsers, useDeleteUser, type AdminUser } from '@/lib/api/users'
+import { useApproveEnrollment, useRejectEnrollment, useToggleBlock } from '@/lib/api/enrollmentRequests'
 import { useCurrentUser } from '@/lib/api/user'
 import { useToast } from '@/store/ui.store'
 import { ApproveViewerDialog } from '@/components/viewers/ApproveViewerDialog'
@@ -32,13 +33,244 @@ function fmtDate(d?: string) {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+/* ── Inline document card ──────────────────────────── */
+function DocCard({ label, url }: { label: string; url?: string }) {
+  const [imgError, setImgError] = useState(false)
+
+  if (!url) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-2 rounded-xl p-4 text-center"
+        style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', minHeight: 120 }}>
+        <ImageIcon size={22} style={{ color: 'rgba(255,255,255,0.15)' }} />
+        <div>
+          <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.3)' }}>{label}</p>
+          <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.2)' }}>Not submitted</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.35)' }}>{label}</p>
+      <div className="relative overflow-hidden rounded-xl" style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
+        {!imgError ? (
+          <img
+            src={url}
+            alt={label}
+            className="w-full object-cover"
+            style={{ maxHeight: 160 }}
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-2 py-8"
+            style={{ background: 'rgba(255,255,255,0.03)' }}>
+            <FileText size={22} style={{ color: 'rgba(255,255,255,0.3)' }} />
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>PDF document</p>
+          </div>
+        )}
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute bottom-2 right-2 flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-semibold backdrop-blur-sm transition-opacity hover:opacity-90"
+          style={{ background: 'rgba(0,0,0,0.6)', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.15)' }}>
+          <ExternalLink size={9} />Open
+        </a>
+      </div>
+    </div>
+  )
+}
+
+/* ── Detail modal ──────────────────────────────────── */
+function ViewerDetailModal({ user, onClose }: { user: AdminUser; onClose: () => void }) {
+  const app = user.enrollmentApplication
+
+  function Row({ label, value }: { label: string; value?: string | null }) {
+    if (!value) return null
+    return (
+      <div className="flex flex-col gap-0.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>{label}</span>
+        <span className="text-sm" style={{ color: 'rgba(255,255,255,0.85)' }}>{value}</span>
+      </div>
+    )
+  }
+
+  function Section({ icon: Icon, title, children }: {
+    icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>
+    title: string
+    children: React.ReactNode
+  }) {
+    return (
+      <div className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <div className="mb-3 flex items-center gap-2">
+          <Icon size={13} style={{ color: 'rgba(255,255,255,0.4)' }} />
+          <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.4)' }}>{title}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-3">{children}</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="absolute inset-0"
+        style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }}
+        onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 12 }}
+        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+        className="relative flex w-full max-w-2xl flex-col rounded-2xl overflow-hidden"
+        style={{
+          background: 'linear-gradient(145deg,#0e1022,#0a0c18)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          boxShadow: '0 40px 80px rgba(0,0,0,0.85)',
+          zIndex: 1,
+          maxHeight: '90vh',
+        }}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between px-6 py-4 flex-shrink-0"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
+              style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)' }}>
+              <span className="text-sm font-bold" style={{ color: '#818CF8' }}>{user.name[0]?.toUpperCase() ?? '?'}</span>
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white">{user.name}</h2>
+              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{user.email}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+              style={{ background: 'rgba(251,191,36,0.12)', color: '#FBBF24' }}>
+              <Clock size={9} />Pending approval
+            </span>
+            <button onClick={onClose}
+              className="rounded-lg p-1.5 transition-colors hover:bg-white/[0.08]"
+              style={{ color: 'rgba(255,255,255,0.5)' }}>
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+          {!app ? (
+            <div className="flex flex-col items-center gap-2 py-8 text-center" style={{ color: 'rgba(255,255,255,0.3)' }}>
+              <FileText size={28} className="opacity-40" />
+              <p className="text-sm">No enrollment form data submitted</p>
+              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>
+                This account may have been created before the enrollment form was introduced.
+              </p>
+            </div>
+          ) : (
+            <>
+              <Section icon={User} title="Personal Information">
+                <Row label="Phone / WhatsApp"  value={app.phone} />
+                <Row label="Emergency Contact" value={app.emergencyContact} />
+                <Row label="Gender"            value={app.gender} />
+                <Row label="Date of Birth"     value={app.dateOfBirth} />
+                <Row label="Nationality"       value={app.nationality} />
+                <Row label="Home Country"      value={app.homeCountry} />
+                <Row label="Occupation"        value={app.occupation} />
+                <Row label="Emirates ID"       value={app.emiratesId} />
+              </Section>
+
+              <Section icon={MapPin} title="Address">
+                <Row label="Country of Attendance" value={app.countryAttendance} />
+                <Row label="Villa / Apartment"     value={app.villa} />
+                <Row label="City"                  value={app.city} />
+                <Row label="Country"               value={app.addressCountry} />
+              </Section>
+
+              <Section icon={BookOpen} title="Program Preferences">
+                <Row label="Experience Level"     value={app.experienceLevel} />
+                <Row label="Preferred Start Date" value={app.preferredStartDate} />
+                <Row label="How Did You Hear"     value={app.hearAboutUs} />
+                {app.referralName && <Row label="Referral Name" value={app.referralName} />}
+                {app.programs && app.programs.length > 0 && (
+                  <div className="col-span-2 flex flex-col gap-0.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                      Selected Programs
+                    </span>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {app.programs.map(p => (
+                        <span key={p} className="rounded-lg px-2.5 py-1 text-xs font-medium"
+                          style={{ background: 'rgba(99,102,241,0.12)', color: '#818CF8', border: '1px solid rgba(99,102,241,0.25)' }}>
+                          {p}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </Section>
+
+              <Section icon={CreditCard} title="Payment">
+                <Row label="Payment Method" value={app.paymentMethod} />
+              </Section>
+
+              {/* Documents */}
+              <div className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <div className="mb-3 flex items-center gap-2">
+                  <FileText size={13} style={{ color: 'rgba(255,255,255,0.4)' }} />
+                  <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                    Submitted Documents
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <DocCard label="Passport Copy"  url={app.passportUrl} />
+                  <DocCard label="Profile Photo"  url={app.photoUrl} />
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+/* ── Delete confirmation inline ────────────────────── */
+function DeleteConfirm({ onConfirm, onCancel, loading }: {
+  onConfirm: () => void
+  onCancel:  () => void
+  loading:   boolean
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-[10px]" style={{ color: 'rgba(248,113,113,0.8)' }}>Delete?</span>
+      <button
+        onClick={onConfirm}
+        disabled={loading}
+        className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold transition-all disabled:opacity-50"
+        style={{ background: 'rgba(239,68,68,0.15)', color: '#F87171', border: '1px solid rgba(239,68,68,0.3)' }}>
+        {loading ? <Loader2 size={8} className="animate-spin" /> : 'Yes'}
+      </button>
+      <button
+        onClick={onCancel}
+        className="rounded-lg px-2 py-1 text-[10px] font-medium transition-all"
+        style={{ color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.1)' }}>
+        No
+      </button>
+    </div>
+  )
+}
+
+/* ── Main page ─────────────────────────────────────── */
 export default function ViewersPage() {
   const { data: me } = useCurrentUser()
-  const toast = useToast()
+  const toast        = useToast()
 
-  const [search, setSearch]   = useState('')
-  const [page,   setPage]     = useState(1)
+  const [search,        setSearch]        = useState('')
+  const [page,          setPage]          = useState(1)
   const [approveTarget, setApproveTarget] = useState<AdminUser | null>(null)
+  const [detailTarget,  setDetailTarget]  = useState<AdminUser | null>(null)
+  const [deleteTarget,  setDeleteTarget]  = useState<string | null>(null)
 
   const scopeCategory: ProgramCategory | null = me?.role ? (CATEGORY_SCOPE[me.role] ?? null) : null
   const isFullAdmin = me?.role === 'super_admin' || me?.role === 'admin'
@@ -50,12 +282,13 @@ export default function ViewersPage() {
     enrollmentStatus: 'pending',
   })
 
-  const viewers = data?.docs ?? []
-  const meta    = data?.meta
+  const viewers      = data?.docs ?? []
+  const meta         = data?.meta
 
   const approve      = useApproveEnrollment()
   const reject       = useRejectEnrollment()
   const toggleBlock  = useToggleBlock()
+  const deleteUser   = useDeleteUser()
 
   const handleApprove = async (cats: ProgramCategory[]) => {
     if (!approveTarget) return
@@ -92,13 +325,25 @@ export default function ViewersPage() {
     }
   }
 
+  const handleDelete = async (userId: string) => {
+    try {
+      await deleteUser.mutateAsync(userId)
+      toast.success('Viewer deleted', 'The account has been permanently removed.')
+      setDeleteTarget(null)
+      refetch()
+    } catch (err: any) {
+      toast.error('Delete failed', err?.response?.data?.error?.message)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2.5" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl" style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)' }}>
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl"
+              style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)' }}>
               <Eye size={15} style={{ color: '#818CF8' }} />
             </div>
             Viewers
@@ -123,7 +368,7 @@ export default function ViewersPage() {
         <Eye size={14} className="mt-0.5 flex-shrink-0" style={{ color: '#818CF8' }} />
         <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.5)' }}>
           Viewers can browse the platform but cannot access course content or book live classes.
-          Approving a viewer assigns them a program and converts them into a full student.
+          Click a row to view their full application and submitted documents.
         </p>
       </div>
 
@@ -178,8 +423,9 @@ export default function ViewersPage() {
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.03 }}
-                  style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                  style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }}
                   className="group transition-colors hover:bg-white/[0.02]"
+                  onClick={() => setDetailTarget(user)}
                 >
                   {/* Name + avatar */}
                   <td className="px-4 py-3.5">
@@ -235,35 +481,54 @@ export default function ViewersPage() {
                   </td>
 
                   {/* Actions */}
-                  <td className="px-4 py-3.5">
+                  <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                      <button
-                        onClick={() => setApproveTarget(user)}
-                        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
-                        style={{ background: 'rgba(74,222,128,0.85)', boxShadow: '0 2px 8px rgba(74,222,128,0.25)' }}>
-                        <CheckCircle2 size={11} />Approve
-                      </button>
-                      <button
-                        onClick={() => handleToggleBlock(user)}
-                        disabled={toggleBlock.isPending}
-                        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-40"
-                        style={user.isActive
-                          ? { color: '#F87171', border: '1px solid rgba(248,113,113,0.3)' }
-                          : { color: '#4ADE80', border: '1px solid rgba(74,222,128,0.3)' }}>
-                        {toggleBlock.isPending
-                          ? <Loader2 size={10} className="animate-spin" />
-                          : user.isActive ? <ShieldOff size={10} /> : <ShieldCheck size={10} />}
-                        {user.isActive ? 'Block' : 'Unblock'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          const reason = prompt(`Reject ${user.name}? Enter reason:`)
-                          if (reason && reason.length >= 5) handleReject(user, reason)
-                        }}
-                        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all"
-                        style={{ color: 'rgba(248,113,113,0.7)', border: '1px solid rgba(248,113,113,0.2)' }}>
-                        <XCircle size={10} />Reject
-                      </button>
+                      {deleteTarget === user.id ? (
+                        <DeleteConfirm
+                          loading={deleteUser.isPending}
+                          onConfirm={() => handleDelete(user.id)}
+                          onCancel={() => setDeleteTarget(null)}
+                        />
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => setApproveTarget(user)}
+                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
+                            style={{ background: 'rgba(74,222,128,0.85)', boxShadow: '0 2px 8px rgba(74,222,128,0.25)' }}>
+                            <CheckCircle2 size={11} />Approve
+                          </button>
+                          <button
+                            onClick={() => handleToggleBlock(user)}
+                            disabled={toggleBlock.isPending}
+                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-40"
+                            style={user.isActive
+                              ? { color: '#F87171', border: '1px solid rgba(248,113,113,0.3)' }
+                              : { color: '#4ADE80', border: '1px solid rgba(74,222,128,0.3)' }}>
+                            {toggleBlock.isPending
+                              ? <Loader2 size={10} className="animate-spin" />
+                              : user.isActive ? <ShieldOff size={10} /> : <ShieldCheck size={10} />}
+                            {user.isActive ? 'Block' : 'Unblock'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              const reason = prompt(`Reject ${user.name}? Enter reason:`)
+                              if (reason && reason.length >= 5) handleReject(user, reason)
+                            }}
+                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all"
+                            style={{ color: 'rgba(248,113,113,0.7)', border: '1px solid rgba(248,113,113,0.2)' }}>
+                            <XCircle size={10} />Reject
+                          </button>
+                          {isFullAdmin && (
+                            <button
+                              onClick={() => setDeleteTarget(user.id)}
+                              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all"
+                              style={{ color: 'rgba(239,68,68,0.6)', border: '1px solid rgba(239,68,68,0.2)' }}
+                              title="Permanently delete this account">
+                              <Trash2 size={10} />
+                            </button>
+                          )}
+                        </>
+                      )}
                     </div>
                   </td>
                 </motion.tr>
@@ -303,6 +568,12 @@ export default function ViewersPage() {
             loading={approve.isPending}
             onClose={() => setApproveTarget(null)}
             onConfirm={handleApprove}
+          />
+        )}
+        {detailTarget && (
+          <ViewerDetailModal
+            user={detailTarget}
+            onClose={() => setDetailTarget(null)}
           />
         )}
       </AnimatePresence>

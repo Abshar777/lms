@@ -24,7 +24,7 @@ const config: Config = {
         sans:    ['DM Sans', 'sans-serif'],
       },
       colors: {
-        primary:   { DEFAULT: '#FF6B1A', hover: '#E55A0E', light: '#FFF0E8' },
+        primary:   { DEFAULT: '#0057b8', hover: '#003d80', light: '#EEF5FF' },
         secondary: { DEFAULT: '#2F6BFF', hover: '#1A53E0', light: '#EEF3FF' },
         success:   { DEFAULT: '#0ECC8E', light: '#E6FAF4' },
         warning:   { DEFAULT: '#F59E0B', light: '#FEF3C7' },

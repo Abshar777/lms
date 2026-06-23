@@ -28,16 +28,16 @@ export class UserRepository extends BaseRepository<IUser> {
 
   /* ── Create user (normalizes email) ─────────────── */
   async createUser(data: {
-    name:              string
-    email:             string
-    passwordHash?:     string
-    role?:             IUser['role']
-    provider?:         string
-    providerId?:       string
-    avatarUrl?:        string
-    category?:         IUser['category']
-    categories?:       IUser['categories']
-    enrollmentStatus?: IUser['enrollmentStatus']
+    name:                   string
+    email:                  string
+    passwordHash?:          string
+    role?:                  IUser['role']
+    provider?:              string
+    providerId?:            string
+    avatarUrl?:             string
+    enrollmentStatus?:      IUser['enrollmentStatus']
+    categories?:            IUser['categories']
+    enrollmentApplication?: IUser['enrollmentApplication']
   }): Promise<IUser> {
     return this.create({
       ...data,
@@ -57,8 +57,7 @@ export class UserRepository extends BaseRepository<IUser> {
 
   /* ── Login-lockout helpers ──────────────────────── */
   async incrementFailedLogin(id: string): Promise<{ attempts: number; lockedUntil?: Date }> {
-    const isDev         = process.env['NODE_ENV'] !== 'production'
-    const MAX_ATTEMPTS  = isDev ? 50 : 5
+    const MAX_ATTEMPTS  = 5
     const LOCK_DURATION = 15 * 60 * 1000  // 15 min
 
     const updated = await UserModel.findByIdAndUpdate(
@@ -95,35 +94,56 @@ export class UserRepository extends BaseRepository<IUser> {
     return this.exists({ email: email.toLowerCase().trim() })
   }
 
-  /* ── Paginated list (all roles, or filtered by role / category / status) */
+  /* ── Paginated list by role (admin / instructors / students) */
   async listByRole(
-    role: IUser['role'] | undefined,
-    params: { page: number; perPage: number; search?: string; category?: string; status?: 'active' | 'inactive'; excludeStudents?: boolean; enrollmentStatus?: 'pending' | 'approved' | 'rejected' | 'cancelled' },
+    role: IUser['role'],
+    params: {
+      page:              number
+      perPage:           number
+      search?:           string
+      category?:         string
+      enrollmentStatus?: string
+      status?:           'active' | 'inactive'
+      excludeStudents?:  boolean
+    },
   ): Promise<{ docs: IUser[]; totalCount: number }> {
     const filter: Record<string, unknown> = {}
-    if (role)                        filter['role']     = role
-    else if (params.excludeStudents) filter['role']     = { $ne: 'student' }
-    // Multi-category filter: match if category field OR categories array contains the scope
-    if (params.category) {
-      filter['$or'] = [{ category: params.category }, { categories: params.category }]
+
+    if (params.excludeStudents) {
+      filter['role'] = { $ne: 'student' }
+    } else if (role) {
+      filter['role'] = role
     }
-    if (params.status)   filter['isActive'] = params.status === 'active'
-    // Explicit enrollmentStatus filter takes priority; otherwise default approved for student role
-    if (params.enrollmentStatus)        filter['enrollmentStatus'] = params.enrollmentStatus
-    else if (role === 'student')        filter['enrollmentStatus'] = 'approved'
-    if (params.search) {
-      const searchCond = [
-        { name:  { $regex: params.search, $options: 'i' } },
-        { email: { $regex: params.search, $options: 'i' } },
-      ]
-      // Merge with existing $or if category filter already set one
-      if (filter['$or']) {
-        filter['$and'] = [{ $or: filter['$or'] as object[] }, { $or: searchCond }]
-        delete filter['$or']
-      } else {
-        filter['$or'] = searchCond
-      }
+
+    if (role === 'student') {
+      // Explicit enrollmentStatus overrides the default; default is 'approved' for student lists
+      filter['enrollmentStatus'] = params.enrollmentStatus ?? 'approved'
+    } else if (params.enrollmentStatus) {
+      filter['enrollmentStatus'] = params.enrollmentStatus
     }
+
+    if (params.status === 'active')   filter['isActive'] = true
+    if (params.status === 'inactive') filter['isActive'] = false
+
+    const categoryOr = params.category
+      ? [{ category: params.category }, { categories: params.category }]
+      : null
+
+    const searchOr = params.search
+      ? [
+          { name:  { $regex: params.search, $options: 'i' } },
+          { email: { $regex: params.search, $options: 'i' } },
+        ]
+      : null
+
+    if (categoryOr && searchOr) {
+      filter['$and'] = [{ $or: categoryOr }, { $or: searchOr }]
+    } else if (categoryOr) {
+      filter['$or'] = categoryOr
+    } else if (searchOr) {
+      filter['$or'] = searchOr
+    }
+
     return this.paginate(filter, params.page, params.perPage, { createdAt: -1 })
   }
 }

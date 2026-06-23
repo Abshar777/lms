@@ -13,7 +13,6 @@ import { useCurrentUser } from '@/lib/api/user'
 import { useMyEnrollments, useMyActivity, type MyEnrollment, type ActivityItem } from '@/lib/api/enrollments'
 import { useUpcomingLiveClasses, isLive, type LiveClass } from '@/lib/api/liveClasses'
 import { useUIStore } from '@/store/ui.store'
-import { Button, MotionButton } from '@/components/ui/button'
 
 /* ── Helpers ──────────────────────────────────────────── */
 function fmtMins(mins: number): string {
@@ -46,8 +45,8 @@ function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: 
   return (
     <div className="mb-2 flex items-center gap-1.5">
       <div className="flex h-4 w-4 items-center justify-center rounded-md"
-        style={{ background: 'rgba(255,107,26,0.10)' }}>
-        <Icon size={9} style={{ color: '#FF6B1A' }} />
+        style={{ background: 'rgba(0,87,184,0.10)' }}>
+        <Icon size={9} style={{ color: '#0057b8' }} />
       </div>
       <h3 className="text-[10px] font-bold uppercase tracking-[0.08em]"
         style={{ color: '#B0B7C3' }}>{title}</h3>
@@ -138,14 +137,14 @@ export function RightSidebar() {
                 className="m-3 rounded-2xl p-3.5"
                 style={{
                   background: 'linear-gradient(135deg,#fff8f2 0%,#fff 70%)',
-                  border: '1px solid rgba(255,107,26,0.14)',
+                  border: '1px solid rgba(0,87,184,0.14)',
                 }}>
                 {/* Close */}
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2.5">
                     <div className="relative flex-shrink-0">
                       <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl text-sm font-bold text-white"
-                        style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)', boxShadow: '0 2px 8px rgba(255,107,26,0.25)' }}>
+                        style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)', boxShadow: '0 2px 8px rgba(0,87,184,0.25)' }}>
                         {hasAvatarImage
                           ? <img src={user!.avatarUrl} alt="" className="h-full w-full object-cover" />
                           : avatarInitial}
@@ -162,17 +161,16 @@ export function RightSidebar() {
                       </p>
                     </div>
                   </div>
-                  <Button onClick={() => setRightPanel(false)} aria-label="Close"
-                    variant="ghost" size="icon-sm"
-                    className="ml-2 h-5 w-5 flex-shrink-0 rounded-lg hover:bg-white/80"
+                  <button onClick={() => setRightPanel(false)} aria-label="Close"
+                    className="ml-2 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-white/80"
                     style={{ color: '#C4C9D4' }}>
                     <X size={11} />
-                  </Button>
+                  </button>
                 </div>
 
                 {/* Stats */}
                 <div className="grid grid-cols-3 gap-1.5">
-                  <StatPill icon={Target}  value={stats.active}    label="Active"     color="#FF6B1A" bg="rgba(255,107,26,0.08)" />
+                  <StatPill icon={Target}  value={stats.active}    label="Active"     color="#0057b8" bg="rgba(0,87,184,0.08)" />
                   <StatPill icon={Trophy}  value={stats.completed} label="Done"       color="#22C55E" bg="rgba(34,197,94,0.08)"  />
                   <StatPill icon={Flame}   value={weekLessons}     label="This week"  color="#F59E0B" bg="rgba(245,158,11,0.08)" />
                 </div>
@@ -205,7 +203,7 @@ export function RightSidebar() {
                   <div className="rounded-xl px-3 py-2 text-xs"
                     style={{ background: '#F4F5F8', color: '#6B7280', border: '1px solid #EAECF0' }}>
                     Nothing queued.{' '}
-                    <Link href="/courses" className="font-semibold" style={{ color: '#FF6B1A' }}>Browse →</Link>
+                    <Link href="/courses" className="font-semibold" style={{ color: '#0057b8' }}>Browse →</Link>
                   </div>
                 )}
                 <div className="space-y-1">
@@ -215,15 +213,15 @@ export function RightSidebar() {
                       : `/courses/${t.course.slug}`
                     return (
                       <Link key={t.enrollment.id} href={href}>
-                        <div className="group flex items-center gap-2 rounded-xl px-2.5 py-2 transition-all hover:bg-orange-50"
+                        <div className="group flex items-center gap-2 rounded-xl px-2.5 py-2 transition-all hover:bg-blue-50"
                           style={{ border: '1px solid #F0F1F5', background: 'white' }}>
                           <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg"
                             style={{
-                              background: t.kind === 'continue' ? 'rgba(255,107,26,0.08)' : '#F4F5F8',
-                              border: t.kind === 'continue' ? '1px solid rgba(255,107,26,0.16)' : '1px solid #EAECF0',
+                              background: t.kind === 'continue' ? 'rgba(0,87,184,0.08)' : '#F4F5F8',
+                              border: t.kind === 'continue' ? '1px solid rgba(0,87,184,0.16)' : '1px solid #EAECF0',
                             }}>
                             {t.kind === 'continue'
-                              ? <Play size={9} fill="#FF6B1A" color="#FF6B1A" />
+                              ? <Play size={9} fill="#0057b8" color="#0057b8" />
                               : <Sparkles size={9} style={{ color: '#9CA3AF' }} />}
                           </div>
                           <div className="min-w-0 flex-1">
@@ -243,7 +241,7 @@ export function RightSidebar() {
                             )}
                           </div>
                           <ChevronRight size={10} className="flex-shrink-0 opacity-0 transition-opacity group-hover:opacity-60"
-                            style={{ color: '#FF6B1A' }} />
+                            style={{ color: '#0057b8' }} />
                         </div>
                       </Link>
                     )
@@ -284,7 +282,7 @@ export function RightSidebar() {
                           </p>
                           {c && (
                             <Link href={`/courses/${c.slug}`}
-                              className="mt-0.5 block line-clamp-1 text-[10px] transition-colors hover:text-orange-500"
+                              className="mt-0.5 block line-clamp-1 text-[10px] transition-colors hover:text-[#0057b8]"
                               style={{ color: '#B0B7C3' }}>
                               {c.title}
                             </Link>
@@ -308,7 +306,7 @@ export function RightSidebar() {
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="flex items-center gap-1.5 mb-1.5">
-                          <Flame size={10} style={{ color: '#FF6B1A' }} />
+                          <Flame size={10} style={{ color: '#0057b8' }} />
                           <span className="text-[9px] font-bold uppercase tracking-[0.09em]"
                             style={{ color: 'rgba(255,255,255,0.35)' }}>This week</span>
                         </div>
@@ -325,8 +323,8 @@ export function RightSidebar() {
                         )}
                       </div>
                       <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl"
-                        style={{ background: 'rgba(255,107,26,0.15)', border: '1px solid rgba(255,107,26,0.22)' }}>
-                        <TrendingUp size={13} style={{ color: '#FF6B1A' }} />
+                        style={{ background: 'rgba(0,87,184,0.15)', border: '1px solid rgba(0,87,184,0.22)' }}>
+                        <TrendingUp size={13} style={{ color: '#0057b8' }} />
                       </div>
                     </div>
                     <p className="mt-2 text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
@@ -383,7 +381,7 @@ function LiveRow({ live, index }: { live: LiveClass; index: number }) {
   })
   return (
     <a href={live.meetingUrl} target="_blank" rel="noreferrer noopener"
-      className="group flex items-center gap-2 rounded-xl px-2.5 py-2 transition-all hover:bg-orange-50"
+      className="group flex items-center gap-2 rounded-xl px-2.5 py-2 transition-all hover:bg-blue-50"
       style={{ border: '1px solid #F0F1F5', background: 'white' }}>
       <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg"
         style={{
@@ -429,15 +427,14 @@ export function RightSidebarToggle() {
   const { rightPanelOpen, setRightPanel } = useUIStore()
   if (rightPanelOpen) return null
   return (
-    <MotionButton
+    <motion.button
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       onClick={() => setRightPanel(true)}
       aria-label="Show activity panel"
-      variant="ghost" size="icon"
-      className="fixed right-4 bottom-6 z-20 h-10 w-10 rounded-full transition-shadow hover:shadow-xl lg:bottom-auto lg:top-[120px]"
+      className="fixed right-4 bottom-6 z-20 flex h-10 w-10 items-center justify-center rounded-full transition-shadow hover:shadow-xl lg:bottom-auto lg:top-[120px]"
       style={{ background: 'white', border: '1px solid #E5E7EB', boxShadow: '0 4px 14px rgba(0,0,0,0.10)' }}>
-      <Zap size={15} style={{ color: '#FF6B1A' }} />
-    </MotionButton>
+      <Zap size={15} style={{ color: '#0057b8' }} />
+    </motion.button>
   )
 }

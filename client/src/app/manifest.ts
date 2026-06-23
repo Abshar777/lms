@@ -3,14 +3,14 @@ import type { MetadataRoute } from 'next'
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name:             'LearnOS — Learn Without Limits',
-    short_name:       'LearnOS',
+    short_name:       'Delta Institutions',
     description:      'Expert-led courses, hands-on projects, and a community that grows with you.',
     start_url:        '/',
     scope:            '/',
     display:          'standalone',
     orientation:      'portrait',
     background_color: '#FFFFFF',
-    theme_color:      '#FF6B1A',
+    theme_color:      '#0057b8',
     categories:       ['education', 'productivity'],
     icons: [
       { src: '/icons/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },

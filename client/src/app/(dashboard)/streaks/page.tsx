@@ -7,7 +7,6 @@ import {
   Loader2, Check, TrendingUp,
 } from 'lucide-react'
 import { useMyStreak, useUpdateStreakGoal } from '@/lib/api/streaks'
-import { Button } from '@/components/ui/button'
 
 /* ─── Helpers ──────────────────────────────────────────── */
 function fmtDate(iso: string): string {
@@ -53,21 +52,21 @@ function WeekCalendar({ weekStartDate, weekProgress }: { weekStartDate: string; 
       {days.map(({ d, label, num, isToday, isActive }) => (
         <div key={d.toISOString()} className="flex flex-col items-center gap-1">
           <p className="text-[10px] font-semibold uppercase tracking-wide"
-            style={{ color: isToday ? '#FF6B1A' : '#9CA3AF' }}>
+            style={{ color: isToday ? '#0057b8' : '#9CA3AF' }}>
             {label}
           </p>
           <div className="flex h-9 w-9 items-center justify-center rounded-2xl transition-all"
             style={{
               background: isActive
-                ? 'linear-gradient(135deg,#FF6B1A,#FF8C42)'
+                ? 'linear-gradient(135deg,#0057b8,#1a73e8)'
                 : isToday
-                  ? 'rgba(255,107,26,0.12)'
+                  ? 'rgba(0,87,184,0.12)'
                   : '#F4F5F8',
-              border: isToday ? '2px solid rgba(255,107,26,0.40)' : '2px solid transparent',
+              border: isToday ? '2px solid rgba(0,87,184,0.40)' : '2px solid transparent',
             }}>
             {isActive
               ? <Check size={14} style={{ color: 'white' }} />
-              : <span className="text-xs font-bold" style={{ color: isToday ? '#FF6B1A' : '#6B7280' }}>{num}</span>}
+              : <span className="text-xs font-bold" style={{ color: isToday ? '#0057b8' : '#6B7280' }}>{num}</span>}
           </div>
         </div>
       ))}
@@ -120,7 +119,7 @@ function GoalEditor({ current }: { current: number }) {
     <div className="rounded-2xl bg-white p-5" style={{ border: '1px solid #E4E7ED' }}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Target size={16} style={{ color: '#FF6B1A' }} />
+          <Target size={16} style={{ color: '#0057b8' }} />
           <h3 className="text-sm font-bold" style={{ color: '#0D0F1A' }}>Weekly goal</h3>
         </div>
         {saved ? (
@@ -128,15 +127,11 @@ function GoalEditor({ current }: { current: number }) {
             <Check size={11} />Saved!
           </span>
         ) : !editing ? (
-          <Button
-            variant="link"
-            size="sm"
-            onClick={() => { setValue(current); setEditing(true) }}
-            className="h-auto p-0 text-xs font-semibold"
-            style={{ color: '#FF6B1A' }}
-          >
+          <button onClick={() => { setValue(current); setEditing(true) }}
+            className="text-xs font-semibold transition-opacity hover:opacity-70"
+            style={{ color: '#0057b8' }}>
             Edit
-          </Button>
+          </button>
         ) : null}
       </div>
 
@@ -154,28 +149,22 @@ function GoalEditor({ current }: { current: number }) {
                 value={value}
                 onChange={e => setValue(Math.max(1, Math.min(50, Number(e.target.value))))}
                 className="w-24 rounded-xl px-3 py-2 text-center text-lg font-bold outline-none"
-                style={{ background: '#F4F5F8', border: '1.5px solid #FF6B1A', color: '#0D0F1A' }}
+                style={{ background: '#F4F5F8', border: '1.5px solid #0057b8', color: '#0D0F1A' }}
               />
               <span className="text-sm" style={{ color: '#6B7280' }}>lessons / week</span>
             </div>
             <div className="mt-3 flex gap-2">
-              <Button
-                variant="default"
-                size="sm"
-                onClick={save}
-                disabled={update.isPending}
-                className="flex items-center gap-1.5"
-              >
+              <button onClick={save} disabled={update.isPending}
+                className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold text-white transition-all disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>
                 {update.isPending ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
                 {update.isPending ? 'Saving…' : 'Save goal'}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setEditing(false)}
-              >
+              </button>
+              <button onClick={() => setEditing(false)}
+                className="rounded-xl px-4 py-2 text-sm font-semibold transition-colors hover:bg-gray-50"
+                style={{ color: '#6B7280' }}>
                 Cancel
-              </Button>
+              </button>
             </div>
           </motion.div>
         ) : (
@@ -286,7 +275,7 @@ export default function StreaksPage() {
         style={{ border: '1px solid #E4E7ED' }}>
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Calendar size={15} style={{ color: '#FF6B1A' }} />
+            <Calendar size={15} style={{ color: '#0057b8' }} />
             <h3 className="text-sm font-bold" style={{ color: '#0D0F1A' }}>This week</h3>
           </div>
           <div className="flex items-center gap-2">
@@ -302,7 +291,7 @@ export default function StreaksPage() {
         <div className="mt-5">
           <div className="mb-1.5 flex items-center justify-between text-xs">
             <span style={{ color: '#6B7280' }}>{data.weekProgress} of {data.weeklyGoal} lessons done</span>
-            <span className="font-bold" style={{ color: progressPct >= 100 ? '#10B981' : '#FF6B1A' }}>
+            <span className="font-bold" style={{ color: progressPct >= 100 ? '#10B981' : '#0057b8' }}>
               {progressPct}%
             </span>
           </div>
@@ -312,7 +301,7 @@ export default function StreaksPage() {
               animate={{ width: `${progressPct}%` }}
               transition={{ duration: 0.8, ease: 'easeOut' }}
               className="h-full rounded-full"
-              style={{ background: progressPct >= 100 ? '#10B981' : 'linear-gradient(90deg,#FF6B1A,#FF8C42)' }}
+              style={{ background: progressPct >= 100 ? '#10B981' : 'linear-gradient(90deg,#0057b8,#1a73e8)' }}
             />
           </div>
           {progressPct >= 100 && (

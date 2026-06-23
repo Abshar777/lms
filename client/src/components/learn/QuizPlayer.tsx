@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle2, XCircle, Clock, Trophy, RotateCcw, ChevronRight, Loader2 } from 'lucide-react'
 import { useStudentQuiz, useQuizSummary, useSubmitQuiz, type QuizQuestion, type SubmitQuizResult } from '@/lib/api/quizzes'
-import { Button } from '@/components/ui/button'
 
 interface Props {
   lessonId: string
@@ -64,7 +63,7 @@ export function QuizPlayer({ lessonId, onPassed }: Props) {
   if (quizLoading || summaryLoading) {
     return (
       <div className="flex aspect-video items-center justify-center rounded-2xl bg-gray-50">
-        <Loader2 size={24} className="animate-spin text-orange-500" />
+        <Loader2 size={24} className="animate-spin text-[#0057b8]" />
       </div>
     )
   }
@@ -109,8 +108,8 @@ function SummaryPanel({ quiz, summary, onStart }: {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="p-8 text-center">
       <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl mx-auto"
-        style={{ background: hasPassed ? 'rgba(34,197,94,0.10)' : 'rgba(255,107,26,0.10)' }}>
-        <Trophy size={28} style={{ color: hasPassed ? '#22C55E' : '#FF6B1A' }} />
+        style={{ background: hasPassed ? 'rgba(34,197,94,0.10)' : 'rgba(0,87,184,0.10)' }}>
+        <Trophy size={28} style={{ color: hasPassed ? '#22C55E' : '#0057b8' }} />
       </div>
 
       <h2 className="mb-1 text-xl font-bold" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
@@ -143,9 +142,11 @@ function SummaryPanel({ quiz, summary, onStart }: {
         </div>
       )}
 
-      <Button variant="default" size="default" onClick={onStart} className="gap-2">
+      <button onClick={onStart}
+        className="inline-flex items-center gap-2 rounded-xl px-8 py-3 text-sm font-bold text-white"
+        style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
         {summary?.hasAttempted ? <><RotateCcw size={14} />Retry quiz</> : <><ChevronRight size={14} />Start quiz</>}
-      </Button>
+      </button>
     </motion.div>
   )
 }
@@ -181,7 +182,7 @@ function TakingPanel({ quiz, answers, timeLeft, onAnswer, onSubmit, isPending }:
         {/* Progress bar */}
         <div className="h-1.5 w-32 overflow-hidden rounded-full" style={{ background: '#F3F4F6' }}>
           <div className="h-full rounded-full transition-all"
-            style={{ width: `${(answered / quiz.questions.length) * 100}%`, background: '#FF6B1A' }} />
+            style={{ width: `${(answered / quiz.questions.length) * 100}%`, background: '#0057b8' }} />
         </div>
       </div>
 
@@ -194,16 +195,12 @@ function TakingPanel({ quiz, answers, timeLeft, onAnswer, onSubmit, isPending }:
 
       {/* Submit */}
       <div className="border-t px-6 py-4" style={{ borderColor: '#F0F1F5' }}>
-        <Button
-          variant="default"
-          size="lg"
-          className="w-full gap-2"
-          onClick={onSubmit}
-          disabled={isPending}
-        >
+        <button onClick={onSubmit} disabled={isPending}
+          className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white disabled:opacity-60"
+          style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
           {isPending ? <Loader2 size={14} className="animate-spin" /> : null}
           Submit quiz ({answered}/{quiz.questions.length} answered)
-        </Button>
+        </button>
       </div>
     </motion.div>
   )
@@ -219,7 +216,7 @@ function QuestionItem({ question: q, index, answer, onAnswer }: {
     <div>
       <p className="mb-3 text-sm font-semibold" style={{ color: '#0D0F1A' }}>
         <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold text-white"
-          style={{ background: '#FF6B1A' }}>{index + 1}</span>
+          style={{ background: '#0057b8' }}>{index + 1}</span>
         {q.text}
         {q.points > 1 && <span className="ml-2 text-[11px] font-normal" style={{ color: '#9CA3AF' }}>({q.points} pts)</span>}
       </p>
@@ -236,24 +233,19 @@ function QuestionItem({ question: q, index, answer, onAnswer }: {
             const val = String(ci)
             const chosen = answer === val
             return (
-              <Button
-                key={ci}
-                variant="outline"
-                size="default"
-                onClick={() => onAnswer(q.id, val)}
-                className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm h-auto justify-start"
+              <button key={ci} onClick={() => onAnswer(q.id, val)}
+                className="flex w-full items-center gap-3 rounded-xl border px-4 py-2.5 text-left text-sm transition-colors"
                 style={{
-                  borderColor: chosen ? '#FF6B1A' : '#E5E7EB',
-                  background:  chosen ? 'rgba(255,107,26,0.06)' : '#FAFAFA',
+                  borderColor: chosen ? '#0057b8' : '#E5E7EB',
+                  background:  chosen ? 'rgba(0,87,184,0.06)' : '#FAFAFA',
                   color:       '#374151',
-                }}
-              >
+                }}>
                 <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors"
-                  style={{ borderColor: chosen ? '#FF6B1A' : '#D1D5DB', background: chosen ? '#FF6B1A' : 'transparent' }}>
+                  style={{ borderColor: chosen ? '#0057b8' : '#D1D5DB', background: chosen ? '#0057b8' : 'transparent' }}>
                   {chosen && <span className="h-2 w-2 rounded-full bg-white" />}
                 </span>
                 {c}
-              </Button>
+              </button>
             )
           })}
         </div>
@@ -333,14 +325,11 @@ function ResultPanel({ result, passPercent, onRetry }: {
       </div>
 
       {!result.passed && (
-        <Button
-          variant="default"
-          size="lg"
-          className="w-full gap-2"
-          onClick={onRetry}
-        >
+        <button onClick={onRetry}
+          className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white"
+          style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
           <RotateCcw size={14} />Try again
-        </Button>
+        </button>
       )}
     </motion.div>
   )

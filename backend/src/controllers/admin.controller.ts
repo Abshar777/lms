@@ -294,7 +294,7 @@ export class AdminController {
         filter['enrollmentStatus'] = status
       }
 
-      const projection = 'id name email avatarUrl category categories enrollmentStatus enrollmentCancellationReason rejectionReason approvedBy approvedByEmail approvedByName approvedByRole approvedAt rejectedByEmail rejectedAt isActive createdAt'
+      const projection = 'id name email avatarUrl category categories enrollmentStatus enrollmentCancellationReason rejectionReason approvedBy approvedByEmail approvedByName approvedByRole approvedAt rejectedByEmail rejectedAt isActive createdAt enrollmentApplication'
 
       const [docs, totalCount] = await Promise.all([
         UserModel.find(filter).select(projection).sort({ createdAt: -1 })
@@ -382,20 +382,22 @@ export class AdminController {
       const existing = await UserModel.findById(userId).select('email name approvedBy').lean()
       if (!existing) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'User not found' } }); return }
 
-      // Category admins can only revoke if the student is in exactly one category — their own.
-      // Multi-category students are protected: the admin must first remove the other categories.
+      // Category admins can only revoke approved students in exactly their own program.
+      // Pending / rejected users have no categories yet — any admin level can reject them.
       const isCategoryAdmin = role === '4x_admin' || role === 'digital_marketing_admin' || role === 'ai_admin'
       if (isCategoryAdmin) {
-        const adminScope   = (admin as any).categoryScope as string | undefined
         const studentCats: string[] = (existing as any).categories?.length
           ? (existing as any).categories
           : (existing as any).category ? [(existing as any).category] : []
 
-        if (studentCats.length !== 1 || studentCats[0] !== adminScope) {
-          const msg = studentCats.length > 1
-            ? 'This student is enrolled in multiple programs. Remove the other programs first before revoking.'
-            : `You can only revoke students in your own program (${adminScope}).`
-          res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: msg } }); return
+        if (studentCats.length > 0) {
+          const adminScope = (admin as any).categoryScope as string | undefined
+          if (studentCats.length !== 1 || studentCats[0] !== adminScope) {
+            const msg = studentCats.length > 1
+              ? 'This student is enrolled in multiple programs. Remove the other programs first before revoking.'
+              : `You can only revoke students in your own program (${adminScope}).`
+            res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: msg } }); return
+          }
         }
       }
 
@@ -409,9 +411,17 @@ export class AdminController {
           rejectedByEmail:   adminUser?.email ?? '',
           rejectedByName:    adminUser?.name ?? '',
           rejectedAt:        new Date(),
+          categories:        [],
         },
-        $unset: { approvedBy: '', approvedByEmail: '', approvedByName: '', approvedByRole: '', approvedAt: '' },
+        $unset: {
+          category:        '',
+          approvedBy:      '', approvedByEmail: '', approvedByName: '', approvedByRole: '', approvedAt: '',
+        },
       })
+
+      // Remove all course enrollments so the user loses access to all course content
+      const { EnrollmentModel } = await import('@/models/schema.ts')
+      await EnrollmentModel.deleteMany({ userId })
 
       void sendEnrollmentCancelled(existing.email, existing.name, '', reason).catch(() => {})
 
@@ -436,8 +446,9 @@ export class AdminController {
       if (!existing) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'User not found' } }); return }
 
       await UserModel.findByIdAndUpdate(userId, {
-        $set:   { enrollmentStatus: 'pending' },
+        $set:   { enrollmentStatus: 'pending', categories: [] },
         $unset: {
+          category:    '',
           approvedBy: '', approvedByEmail: '', approvedByName: '', approvedByRole: '', approvedAt: '',
           rejectedBy: '', rejectedByEmail: '', rejectedByName: '', rejectedAt: '', rejectionReason: '',
         },
@@ -491,6 +502,26 @@ export class AdminController {
       await UserModel.findByIdAndUpdate(userId, updateDoc)
 
       sendSuccess(res, { id: userId, enrollmentStatus: newStatus, categories: updatedCats }, 'Category removed')
+    } catch (err) { next(err) }
+  }
+
+  updateStudentDocs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { UserModel } = await import('@/models/schema.ts')
+      const { Types }     = await import('mongoose')
+
+      const userId = String(req.params['userId'] ?? '')
+      if (!Types.ObjectId.isValid(userId)) {
+        res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid user ID' } }); return
+      }
+
+      const { passportUrl, photoUrl } = req.body as { passportUrl?: string; photoUrl?: string }
+      const update: Record<string, unknown> = {}
+      if (passportUrl !== undefined) update['enrollmentApplication.passportUrl'] = passportUrl
+      if (photoUrl    !== undefined) update['enrollmentApplication.photoUrl']    = photoUrl
+
+      await UserModel.findByIdAndUpdate(userId, { $set: update })
+      sendSuccess(res, { id: userId }, 'Documents updated')
     } catch (err) { next(err) }
   }
 

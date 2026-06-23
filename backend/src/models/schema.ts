@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Document, type Types } from 'mongoose'
-import type { UserRole, CourseStatus, LessonType, EnrollmentStatus, QuestionType, AchievementKind } from '@/types/index.ts'
+import type { UserRole, CourseStatus, LessonType, EnrollmentStatus, QuestionType, AchievementKind, StudentEnrollmentStatus, ProgramCategory } from '@/types/index.ts'
 
 /* ─────────────────────────────────────────────────────
    Shared schema transform
@@ -24,6 +24,30 @@ const baseSchemaOptions = {
 /* ─────────────────────────────────────────────────────
    USER
 ───────────────────────────────────────────────────── */
+/* ── Enrollment application data (23-question form) ── */
+export interface IEnrollmentApplication {
+  phone?:             string
+  emergencyContact?:  string
+  gender?:            string
+  dateOfBirth?:       string
+  nationality?:       string
+  homeCountry?:       string
+  occupation?:        string
+  emiratesId?:        string
+  countryAttendance?: string
+  villa?:             string
+  city?:              string
+  addressCountry?:    string
+  passportUrl?:       string
+  photoUrl?:          string
+  experienceLevel?:   string
+  preferredStartDate?: string
+  hearAboutUs?:       string
+  referralName?:      string
+  programs?:          string[]
+  paymentMethod?:     string
+}
+
 export interface IUser extends Document {
   id:            string
   name:          string
@@ -46,28 +70,25 @@ export interface IUser extends Document {
   /* Two-factor authentication (TOTP) */
   twoFactorEnabled: boolean
   twoFactorSecret?: string   // base32-encoded TOTP secret; select:false
-  /* Business category (legacy – first approved category; use categories[] for multi) */
-  category?:     '4x-trading' | 'digital-marketing' | 'ai'
-  /* Multi-category enrollment */
-  categories:    ('4x-trading' | 'digital-marketing' | 'ai')[]
-  /* Enrollment approval workflow */
-  enrollmentStatus?:   'pending' | 'approved' | 'rejected' | 'cancelled'
-  /* Approval metadata */
+  /* Custom role (fine-grained permissions) */
+  customRoleId?: Types.ObjectId
+  /* Student program categories (multi) */
+  category?:     ProgramCategory     // legacy single
+  categories:    ProgramCategory[]   // multi-category
+  /* Student enrollment approval */
+  enrollmentStatus?:   StudentEnrollmentStatus
   approvedBy?:         Types.ObjectId
   approvedByEmail?:    string
   approvedByName?:     string
   approvedByRole?:     string
   approvedAt?:         Date
-  /* Rejection metadata */
   rejectedBy?:         Types.ObjectId
   rejectedByEmail?:    string
   rejectedByName?:     string
   rejectedAt?:         Date
   rejectionReason?:    string
-  /* Legacy cancellation reason (kept for backward compat) */
-  enrollmentCancellationReason?: string
-  /* Custom role (fine-grained permissions) */
-  customRoleId?: Types.ObjectId
+  /* Enrollment application form data */
+  enrollmentApplication?: IEnrollmentApplication
   /* Meta */
   lastLoginAt?:  Date
   createdAt:     Date
@@ -80,7 +101,7 @@ const UserSchema = new Schema<IUser>(
     email:        { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, select: false },   // excluded from queries by default
     avatarUrl:    { type: String },
-    role:         { type: String, enum: ['student', 'instructor', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'super_admin'], default: 'student' },
+    role:         { type: String, enum: ['student', 'instructor', 'admin', 'super_admin', '4x_admin', 'digital_marketing_admin', 'ai_admin'], default: 'student' },
     isVerified:   { type: Boolean, default: false },
     isActive:     { type: Boolean, default: true },
     provider:     { type: String },
@@ -92,22 +113,46 @@ const UserSchema = new Schema<IUser>(
     lockedUntil:  { type: Date },
     twoFactorEnabled: { type: Boolean, default: false },
     twoFactorSecret:  { type: String, select: false },
-    category:                { type: String, enum: ['4x-trading', 'digital-marketing', 'ai'] },
-    categories:              [{ type: String, enum: ['4x-trading', 'digital-marketing', 'ai'] }],
-    enrollmentStatus:        { type: String, enum: ['pending', 'approved', 'rejected', 'cancelled'] },
-    approvedBy:              { type: Schema.Types.ObjectId, ref: 'User' },
-    approvedByEmail:         { type: String },
-    approvedByName:          { type: String },
-    approvedByRole:          { type: String },
-    approvedAt:              { type: Date },
-    rejectedBy:              { type: Schema.Types.ObjectId, ref: 'User' },
-    rejectedByEmail:         { type: String },
-    rejectedByName:          { type: String },
-    rejectedAt:              { type: Date },
-    rejectionReason:         { type: String },
-    enrollmentCancellationReason: { type: String },
-    customRoleId:                  { type: Schema.Types.ObjectId, ref: 'Role' },
+    customRoleId:     { type: Schema.Types.ObjectId, ref: 'Role' },
     lastLoginAt:  { type: Date },
+    category:         { type: String, enum: ['4x-trading', 'digital-marketing', 'ai'] },
+    categories:       [{ type: String, enum: ['4x-trading', 'digital-marketing', 'ai'] }],
+    enrollmentStatus: { type: String, enum: ['pending', 'approved', 'rejected', 'cancelled'] },
+    approvedBy:       { type: Schema.Types.ObjectId, ref: 'User' },
+    approvedByEmail:  { type: String },
+    approvedByName:   { type: String },
+    approvedByRole:   { type: String },
+    approvedAt:       { type: Date },
+    rejectedBy:       { type: Schema.Types.ObjectId, ref: 'User' },
+    rejectedByEmail:  { type: String },
+    rejectedByName:   { type: String },
+    rejectedAt:       { type: Date },
+    rejectionReason:  { type: String },
+    enrollmentApplication: {
+      type: new Schema<IEnrollmentApplication>({
+        phone:              { type: String },
+        emergencyContact:   { type: String },
+        gender:             { type: String },
+        dateOfBirth:        { type: String },
+        nationality:        { type: String },
+        homeCountry:        { type: String },
+        occupation:         { type: String },
+        emiratesId:         { type: String },
+        countryAttendance:  { type: String },
+        villa:              { type: String },
+        city:               { type: String },
+        addressCountry:     { type: String },
+        passportUrl:        { type: String },
+        photoUrl:           { type: String },
+        experienceLevel:    { type: String },
+        preferredStartDate: { type: String },
+        hearAboutUs:        { type: String },
+        referralName:       { type: String },
+        programs:           [{ type: String }],
+        paymentMethod:      { type: String },
+      }, { _id: false }),
+      default: undefined,
+    },
   },
   baseSchemaOptions,
 )
@@ -121,7 +166,7 @@ export const UserModel = mongoose.model<IUser>('User', UserSchema)
 ───────────────────────────────────────────────────── */
 export const PERMISSION_RESOURCES = [
   'users', 'courses', 'live-classes', 'bookings',
-  'orders', 'categories', 'coupons', 'reviews', 'reports', 'roles', 'support',
+  'orders', 'categories', 'coupons', 'reviews', 'reports', 'roles',
 ] as const
 export type PermissionResource = typeof PERMISSION_RESOURCES[number]
 
@@ -283,7 +328,6 @@ export interface ICourse extends Document {
   thumbnailUrl?:  string
   previewUrl?:    string
   price:          number
-  priceINR?:      number   // INR in rupees (Razorpay); absent = use Stripe USD price
   isFree:         boolean
   status:         CourseStatus
   level?:         string
@@ -292,8 +336,6 @@ export interface ICourse extends Document {
   tags?:          string[]
   instructorId:   Types.ObjectId
   categoryId?:    Types.ObjectId
-  /* Business program */
-  program?:       '4x-trading' | 'digital-marketing' | 'ai'
   /* Denormalized stats */
   enrolledCount:  number
   ratingAvg:      number
@@ -310,7 +352,6 @@ const CourseSchema = new Schema<ICourse>(
     thumbnailUrl:  { type: String },
     previewUrl:    { type: String },
     price:         { type: Number, default: 0, min: 0 },
-    priceINR:      { type: Number, min: 0 },
     isFree:        { type: Boolean, default: false },
     status:        { type: String, enum: ['draft', 'published', 'archived'], default: 'draft' },
     level:         { type: String, enum: ['beginner', 'intermediate', 'advanced'] },
@@ -319,7 +360,6 @@ const CourseSchema = new Schema<ICourse>(
     tags:          [{ type: String }],
     instructorId:  { type: Schema.Types.ObjectId, ref: 'User', required: true },
     categoryId:    { type: Schema.Types.ObjectId, ref: 'Category' },
-    program:       { type: String, enum: ['4x-trading', 'digital-marketing', 'ai'] },
     enrolledCount: { type: Number, default: 0 },
     ratingAvg:     { type: Number, default: 0 },
     ratingCount:   { type: Number, default: 0 },
@@ -607,7 +647,7 @@ export interface ILiveClass extends Document {
 
   /* External-only */
   meetingUrl?:    string           // required when type=external
-  googleMeetCode?: string          // e.g. "abc-def-ghij" — used to auto-fetch recording via Meet API v2
+  googleMeetCode?: string          // e.g. "abc-def-ghij"
 
   /* Internal-only (Mux) */
   muxLiveStreamId?:  string       // Mux live stream ID
@@ -984,42 +1024,30 @@ export const CouponModel = mongoose.model<ICoupon>('Coupon', CouponSchema)
    amount / discountAmount are stored in CENTS.
    status: pending → paid (webhook) → refunded (admin)
 ───────────────────────────────────────────────────── */
-export type OrderStatus  = 'pending' | 'paid' | 'refunded'
-export type OrderGateway = 'razorpay' | 'stripe'
+export type OrderStatus = 'pending' | 'paid' | 'refunded'
 
 export interface IOrder extends Document {
-  id:                       string
-  userId:                   Types.ObjectId
-  courseId:                 Types.ObjectId
-  gateway:                  OrderGateway
-  /* Razorpay fields */
-  razorpayOrderId?:         string
-  razorpayPaymentId?:       string
-  razorpaySignature?:       string
-  /* Stripe fields */
-  stripeCheckoutSessionId?: string
-  stripePaymentIntentId?:   string
-  stripeInvoiceUrl?:        string
-  /* Common */
-  amount:                   number    // paise (INR) or cents (USD)
-  currency:                 string
-  status:                   OrderStatus
-  couponId?:                Types.ObjectId
-  discountAmount:           number
-  refundedAt?:              Date
-  createdAt:                Date
-  updatedAt:                Date
+  id:                      string
+  userId:                  Types.ObjectId
+  courseId:                Types.ObjectId
+  stripeCheckoutSessionId: string
+  stripePaymentIntentId?:  string
+  amount:                  number    // charged amount in cents
+  currency:                string
+  status:                  OrderStatus
+  couponId?:               Types.ObjectId
+  discountAmount:          number    // cents saved by coupon (0 if none)
+  stripeInvoiceUrl?:       string
+  refundedAt?:             Date
+  createdAt:               Date
+  updatedAt:               Date
 }
 
 const OrderSchema = new Schema<IOrder>(
   {
     userId:                  { type: Schema.Types.ObjectId, ref: 'User',   required: true },
     courseId:                { type: Schema.Types.ObjectId, ref: 'Course', required: true },
-    gateway:                 { type: String, enum: ['razorpay', 'stripe'], default: 'stripe' },
-    razorpayOrderId:         { type: String },
-    razorpayPaymentId:       { type: String },
-    razorpaySignature:       { type: String },
-    stripeCheckoutSessionId: { type: String },
+    stripeCheckoutSessionId: { type: String, required: true, unique: true },
     stripePaymentIntentId:   { type: String },
     amount:                  { type: Number, required: true, min: 0 },
     currency:                { type: String, required: true, default: 'usd', maxlength: 3 },
@@ -1035,8 +1063,7 @@ const OrderSchema = new Schema<IOrder>(
 OrderSchema.index({ userId: 1, createdAt: -1 })
 OrderSchema.index({ courseId: 1 })
 OrderSchema.index({ status: 1 })
-OrderSchema.index({ razorpayOrderId: 1 }, { sparse: true, unique: true })
-OrderSchema.index({ stripeCheckoutSessionId: 1 }, { sparse: true, unique: true })
+OrderSchema.index({ stripeCheckoutSessionId: 1 })
 
 export const OrderModel = mongoose.model<IOrder>('Order', OrderSchema)
 
@@ -1275,7 +1302,6 @@ export type AuditAction =
   | 'course.create'   | 'course.update'   | 'course.delete'
   | 'course.publish'  | 'course.archive'
   | 'user.create'     | 'user.ban'        | 'user.unban'      | 'user.roleChange'
-  | 'user.delete'     | 'user.impersonate'
   | 'review.delete'
   | 'coupon.create'   | 'coupon.delete'
   | 'order.refund'
@@ -1501,63 +1527,58 @@ ClassFeedbackSchema.set('toJSON', { virtuals: true })
 
 export const ClassFeedbackModel = mongoose.model<IClassFeedback>('ClassFeedback', ClassFeedbackSchema)
 
-/* ─────────────────────────────────────────────────────
-   SUPPORT TICKET — client ↔ admin help / complaints
-   A ticket belongs to one user (client) and holds a thread
-   of messages exchanged with the support/admin team.
-───────────────────────────────────────────────────── */
+/* ─── Support Tickets ──────────────────────────────────────────────────── */
+
 export type SupportTicketStatus = 'open' | 'pending' | 'resolved' | 'closed'
-export type SupportCategory = 'technical' | 'billing' | 'course' | 'account' | 'other'
+export type SupportCategory     = 'technical' | 'billing' | 'course' | 'account' | 'other'
 
 export interface ISupportMessage {
   senderId:   Types.ObjectId
-  senderRole: 'student' | 'instructor' | 'admin'
+  senderRole: 'student' | 'admin'
   body:       string
   createdAt:  Date
 }
 
 export interface ISupportTicket extends Document {
-  id:            string
-  userId:        Types.ObjectId          // the client who opened the ticket
-  subject:       string
-  category:      SupportCategory
-  program?:      '4x-trading' | 'digital-marketing' | 'ai'  // inherited from student's category
-  status:        SupportTicketStatus
-  messages:      ISupportMessage[]
-  lastMessageAt: Date
-  lastSenderRole:'student' | 'instructor' | 'admin'
-  userUnread:    boolean                 // client has an unread admin reply
-  adminUnread:   boolean                 // admin has an unread client message
-  createdAt:     Date
-  updatedAt:     Date
+  id:             string
+  userId:         Types.ObjectId
+  subject:        string
+  category:       SupportCategory
+  program?:       string
+  status:         SupportTicketStatus
+  messages:       ISupportMessage[]
+  lastMessageAt:  Date
+  lastSenderRole: 'student' | 'admin'
+  userUnread:     boolean
+  adminUnread:    boolean
+  createdAt:      Date
+  updatedAt:      Date
 }
 
 const SupportMessageSchema = new Schema<ISupportMessage>(
   {
     senderId:   { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    senderRole: { type: String, enum: ['student', 'instructor', 'admin'], required: true },
-    body:       { type: String, required: true, trim: true, maxlength: 5000 },
-    createdAt:  { type: Date, default: Date.now },
+    senderRole: { type: String, enum: ['student', 'admin'], required: true },
+    body:       { type: String, required: true, maxlength: 5000 },
+    createdAt:  { type: Date, default: () => new Date() },
   },
   { _id: true },
 )
 
 const SupportTicketSchema = new Schema<ISupportTicket>(
   {
-    userId:         { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    userId:         { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     subject:        { type: String, required: true, trim: true, maxlength: 200 },
     category:       { type: String, enum: ['technical', 'billing', 'course', 'account', 'other'], default: 'other' },
-    program:        { type: String, enum: ['4x-trading', 'digital-marketing', 'ai'], required: false },
-    status:         { type: String, enum: ['open', 'pending', 'resolved', 'closed'], default: 'open' },
-    messages:       { type: [SupportMessageSchema], default: [] },
-    lastMessageAt:  { type: Date, default: Date.now },
-    lastSenderRole: { type: String, enum: ['student', 'instructor', 'admin'], default: 'student' },
+    program:        { type: String },
+    status:         { type: String, enum: ['open', 'pending', 'resolved', 'closed'], default: 'open', index: true },
+    messages:       [SupportMessageSchema],
+    lastMessageAt:  { type: Date, default: () => new Date(), index: true },
+    lastSenderRole: { type: String, enum: ['student', 'admin'], default: 'student' },
     userUnread:     { type: Boolean, default: false },
     adminUnread:    { type: Boolean, default: true },
   },
   baseSchemaOptions,
 )
-SupportTicketSchema.index({ userId: 1, lastMessageAt: -1 })
-SupportTicketSchema.index({ status: 1, lastMessageAt: -1 })
 
 export const SupportTicketModel = mongoose.model<ISupportTicket>('SupportTicket', SupportTicketSchema)

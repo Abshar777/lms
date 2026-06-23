@@ -3,7 +3,7 @@ import { UserRepository, RefreshTokenRepository, AuthTokenRepository } from '@/r
 import { hashPassword, comparePassword } from '@/utils/hash.ts'
 import { generateTokenPair, verifyRefreshToken } from '@/utils/jwt.ts'
 import { logger } from '@/utils/logger.ts'
-import { sendPasswordReset, sendVerifyEmail, sendNewEnrollmentRequestToAdmin } from '@/services/email.service.ts'
+import { sendPasswordReset, sendVerifyEmail } from '@/services/email.service.ts'
 import { env } from '@/config/env.ts'
 import type { RegisterDto, LoginDto, TokenPair } from '@/types/index.ts'
 import type { SafeUser } from '@/models/types.ts'
@@ -40,57 +40,37 @@ export class AuthService {
     dto: RegisterDto,
     meta?: { userAgent?: string; ip?: string },
   ): Promise<{ user: SafeUser; tokens: TokenPair }> {
-    /* 1. Check for existing account with this email */
-    const existingUser = await this.userRepo.findByEmail(dto.email)
-
-    if (existingUser) {
-      /* Rejected/cancelled students may re-apply: reset their account to pending */
-      if (existingUser.enrollmentStatus === 'cancelled' || existingUser.enrollmentStatus === 'rejected') {
-        const passwordHash = await hashPassword(dto.password)
-        const { UserModel } = await import('@/models/schema.ts')
-        const updated = await UserModel.findByIdAndUpdate(
-          existingUser.id,
-          {
-            $set:   { passwordHash, name: dto.name.trim(), enrollmentStatus: 'pending' },
-            $unset: { enrollmentCancellationReason: '', rejectionReason: '', rejectedBy: '', rejectedByEmail: '', rejectedByName: '', rejectedAt: '' },
-          },
-          { new: true },
-        ).exec()
-        if (!updated) throw new AuthError('USER_NOT_FOUND', 'Account not found.', 404)
-        const tokens = await this.#issueTokens(updated.id, updated.email, updated.role, meta)
-        void this.#notifyAllAdmins(updated.name, updated.email).catch(err =>
-          logger.warn({ err, userId: updated.id }, 'admin enrollment notification failed'),
-        )
-        logger.info({ userId: updated.id }, 'Rejected student re-registered')
-        return { user: toSafeUser(updated), tokens }
-      }
+    /* 1. Ensure email is unique */
+    const exists = await this.userRepo.emailExists(dto.email)
+    if (exists) {
       throw new AuthError('EMAIL_TAKEN', 'An account with this email already exists.', 409)
     }
 
     /* 2. Hash password */
     const passwordHash = await hashPassword(dto.password)
 
-    /* 3. Create user – all students start as pending awaiting admin approval */
+    /* 3. Create user with pending enrollment status */
     const user = await this.userRepo.createUser({
-      name:             dto.name.trim(),
-      email:            dto.email,
+      name:                   dto.name.trim(),
+      email:                  dto.email,
       passwordHash,
-      role:             'student',
-      enrollmentStatus: 'pending',
-      categories:       [],
+      role:                   'student',
+      enrollmentStatus:       'pending',
+      categories:             [],
+      enrollmentApplication:  dto.enrollmentApplication,
     })
 
-    /* 4. Issue tokens */
+    /* 4. Issue tokens (student gets tokens but stays pending) */
     const tokens = await this.#issueTokens(user.id, user.email, user.role, meta)
 
-    /* 5. Fire-and-forget verification email */
-    void this.#sendVerificationEmail(user.id, user.email, user.name).catch(err =>
-      logger.warn({ err, userId: user.id }, 'verification email failed'),
+    /* 5. Notify all admins of the new signup request */
+    void this.#notifyAllAdmins(user.name, user.email).catch(err =>
+      logger.warn({ err, userId: user.id }, 'admin notification failed'),
     )
 
-    /* 6. Notify all admins of new signup request */
-    void this.#notifyAllAdmins(user.name, user.email).catch(err =>
-      logger.warn({ err, userId: user.id }, 'admin enrollment notification failed'),
+    /* 6. Fire-and-forget verification email */
+    void this.#sendVerificationEmail(user.id, user.email, user.name).catch(err =>
+      logger.warn({ err, userId: user.id }, 'verification email failed'),
     )
 
     logger.info({ userId: user.id }, 'User registered')
@@ -338,6 +318,20 @@ export class AuthService {
     return toSafeUser(updated)
   }
 
+  /* ── Update enrollment document URLs after upload ── */
+  async updateEnrollmentDocs(
+    userId: string,
+    input: { passportUrl?: string; photoUrl?: string },
+  ): Promise<SafeUser> {
+    const { UserModel } = await import('@/models/schema.ts')
+    const update: Record<string, unknown> = {}
+    if (input.passportUrl !== undefined) update['enrollmentApplication.passportUrl'] = input.passportUrl
+    if (input.photoUrl    !== undefined) update['enrollmentApplication.photoUrl']    = input.photoUrl
+    const updated = await UserModel.findByIdAndUpdate(userId, { $set: update }, { new: true }).exec()
+    if (!updated) throw new AuthError('USER_NOT_FOUND', 'Account not found.', 404)
+    return toSafeUser(updated)
+  }
+
   /* ── Change password (authenticated) ────────────── */
   async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
     /* Must opt-in to passwordHash (select: false on schema) */
@@ -418,10 +412,10 @@ export class AuthService {
   async #issueTokens(
     userId: string,
     email: string,
-    role: string,
+    role: 'student' | 'instructor' | 'admin',
     meta?: { userAgent?: string; ip?: string },
   ): Promise<TokenPair> {
-    const pair = await generateTokenPair({ id: userId, email, role: role as import('@/types/index.ts').UserRole })
+    const pair = await generateTokenPair({ id: userId, email, role })
 
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 30)
@@ -461,7 +455,14 @@ export class AuthService {
     return { raw }
   }
 
-  /* ── Notify all admins of a new student signup request ── */
+  /* ── Send a verification email for a user ────────── */
+  async #sendVerificationEmail(userId: string, email: string, name: string): Promise<void> {
+    const { raw } = await this.#issueAuthToken(userId, 'verify-email', 24 * 60 * 60 * 1000)
+    const url = `${env.CLIENT_URL}/verify-email?token=${raw}`
+    await sendVerifyEmail(email, name, url)
+  }
+
+  /* ── Notify all admins of a new student signup ────── */
   async #notifyAllAdmins(studentName: string, studentEmail: string): Promise<void> {
     const { UserModel } = await import('@/models/schema.ts')
     const admins = await UserModel.find({
@@ -470,15 +471,13 @@ export class AuthService {
     }).select('name email').lean()
     await Promise.allSettled(
       admins.map(a =>
-        sendNewEnrollmentRequestToAdmin(a.email, a.name, studentName, studentEmail, ''),
+        sendVerifyEmail(
+          a['email'] as string,
+          a['name'] as string,
+          `${env.CLIENT_URL}/admin/enrollment-requests`,
+        ).catch(() => undefined),
       ),
     )
-  }
-
-  /* ── Send a verification email for a user ────────── */
-  async #sendVerificationEmail(userId: string, email: string, name: string): Promise<void> {
-    const { raw } = await this.#issueAuthToken(userId, 'verify-email', 24 * 60 * 60 * 1000)
-    const url = `${env.CLIENT_URL}/verify-email?token=${raw}`
-    await sendVerifyEmail(email, name, url)
+    logger.info({ studentEmail, adminCount: admins.length }, 'Admin enrollment notifications sent')
   }
 }

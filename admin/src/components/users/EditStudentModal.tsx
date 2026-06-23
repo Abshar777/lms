@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, Loader2, AlertCircle, User, Mail,
   Lock, Unlock, BookOpen, Plus, Trash2,
-  ChevronDown, ChevronUp, Check,
+  ChevronDown, ChevronUp, FileText, ExternalLink,
+  Phone, MapPin, CreditCard, ClipboardList,
 } from 'lucide-react'
 import {
   useUpdateUser, useStudentEnrollments, useUpdateEnrollmentAccess,
@@ -15,6 +15,73 @@ import {
 import { useCourseOutline } from '@/lib/api/outline'
 import { useCourses } from '@/lib/api/courses'
 import { useToast } from '@/store/ui.store'
+import { Button, MotionButton } from '@/components/ui/button'
+
+/* ── Custom dark course picker (avoids native white dropdown) ── */
+function CourseSelect({
+  value, onChange, courses, placeholder = 'Select a course to enroll…',
+}: {
+  value: string
+  onChange: (v: string) => void
+  courses: { id: string; title: string }[]
+  placeholder?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const selected = courses.find(c => c.id === value)
+
+  return (
+    <div ref={ref} className="relative flex-1">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs outline-none"
+        style={{
+          background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(255,255,255,0.09)',
+          color: value ? 'white' : 'rgba(255,255,255,0.35)',
+        }}
+      >
+        <span className="truncate">{selected?.title ?? placeholder}</span>
+        <ChevronDown size={12} className="ml-2 flex-shrink-0 opacity-50" />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.12 }}
+            className="absolute left-0 right-0 top-full z-50 mt-1 max-h-52 overflow-y-auto rounded-xl py-1"
+            style={{ background: '#1a1d2e', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 16px 40px rgba(0,0,0,0.6)' }}
+          >
+            {courses.map(c => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => { onChange(c.id); setOpen(false) }}
+                className="w-full px-3 py-2 text-left text-xs transition-colors hover:bg-white/08"
+                style={{ color: c.id === value ? '#FF6B1A' : 'rgba(255,255,255,0.8)' }}
+              >
+                {c.title}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 /* ── Module-access panel — section-level toggle ── */
 function ModuleAccessPanel({
@@ -57,27 +124,28 @@ function ModuleAccessPanel({
           Modules
         </span>
         <div className="flex items-center gap-1.5">
-          <button type="button" onClick={onAllowAll} disabled={noneBlocked}
-            className="rounded-md px-2 py-0.5 text-[10px] font-semibold transition-all disabled:opacity-30 hover:brightness-110"
+          <Button type="button" variant="ghost" size="sm" onClick={onAllowAll} disabled={noneBlocked}
+            className="rounded-md px-2 py-0.5 text-[10px] font-semibold transition-all disabled:opacity-30 hover:brightness-110 h-auto"
             style={{ background: 'rgba(16,185,129,0.12)', color: '#10B981', border: '1px solid rgba(16,185,129,0.25)' }}>
             Allow all
-          </button>
-          <button type="button" onClick={() => onBlockAll(sections.map(s => s.id))} disabled={allBlocked}
-            className="rounded-md px-2 py-0.5 text-[10px] font-semibold transition-all disabled:opacity-30 hover:brightness-110"
+          </Button>
+          <Button type="button" variant="ghost" size="sm" onClick={() => onBlockAll(sections.map(s => s.id))} disabled={allBlocked}
+            className="rounded-md px-2 py-0.5 text-[10px] font-semibold transition-all disabled:opacity-30 hover:brightness-110 h-auto"
             style={{ background: 'rgba(239,68,68,0.10)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.22)' }}>
             Block all
-          </button>
+          </Button>
         </div>
       </div>
 
       {sections.map(section => {
         const isBlocked = blockedSections.has(section.id)
         return (
-          <button
+          <Button
             key={section.id}
             type="button"
+            variant="ghost"
             onClick={() => onToggle(section.id)}
-            className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs transition-all hover:brightness-110"
+            className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs transition-all hover:brightness-110 h-auto justify-start"
             style={{
               background: isBlocked ? 'rgba(239,68,68,0.07)' : 'rgba(16,185,129,0.05)',
               border:     isBlocked ? '1px solid rgba(239,68,68,0.20)' : '1px solid rgba(16,185,129,0.15)',
@@ -106,68 +174,12 @@ function ModuleAccessPanel({
               }}>
               {isBlocked ? 'Blocked' : 'Allowed'}
             </span>
-          </button>
+          </Button>
         )
       })}
     </div>
   )
 }
-
-/* ── Dark custom dropdown (native <select> shows white on dark bg on Windows) ── */
-function DarkSelect({ value, onChange, options, placeholder }: {
-  value: string; onChange: (v: string) => void
-  options: { value: string; label: string }[]; placeholder?: string
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    function onOut(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
-    document.addEventListener('mousedown', onOut)
-    return () => document.removeEventListener('mousedown', onOut)
-  }, [])
-  const selected = options.find(o => o.value === value)
-  const label = selected?.label ?? placeholder ?? 'Select…'
-  return (
-    <div ref={ref} className="relative">
-      <button type="button" onClick={() => setOpen(v => !v)}
-        className="w-full rounded-xl py-2.5 pl-9 pr-9 text-sm outline-none transition-all flex items-center"
-        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', color: value ? '#fff' : 'rgba(255,255,255,0.3)' }}>
-        <span className="truncate">{label}</span>
-        <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
-          style={{ color: 'rgba(255,255,255,0.3)', transform: open ? 'translateY(-50%) rotate(180deg)' : 'translateY(-50%)', transition: 'transform 0.15s' }} />
-      </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={{ duration: 0.12 }}
-            className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl py-1"
-            style={{ background: '#0F1020', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 16px 40px rgba(0,0,0,0.6)' }}>
-            {placeholder && (
-              <button type="button" onClick={() => { onChange(''); setOpen(false) }}
-                className="w-full px-3 py-2 text-left text-sm transition-colors hover:bg-white/05"
-                style={{ color: 'rgba(255,255,255,0.3)' }}>{placeholder}</button>
-            )}
-            {options.map(o => (
-              <button key={o.value} type="button" onClick={() => { onChange(o.value); setOpen(false) }}
-                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors hover:bg-white/05"
-                style={{ color: o.value === value ? '#FF6B1A' : 'rgba(255,255,255,0.8)' }}>
-                {o.label}
-                {o.value === value && <Check size={12} style={{ color: '#FF6B1A' }} />}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
-
-const CATEGORY_OPTIONS = [
-  { value: '',                   label: 'No category' },
-  { value: '4x-trading',        label: 'FOREX Trading' },
-  { value: 'digital-marketing', label: 'Digital Marketing' },
-  { value: 'ai',                label: 'AI' },
-]
 
 /* ── Props ──────────────────────────────────────────── */
 interface Props {
@@ -184,13 +196,9 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
   const toast          = useToast()
 
   /* Profile fields */
-  const [name,     setName]     = useState(user.name)
-  const [email,    setEmail]    = useState(user.email)
-  const [category, setCategory] = useState<'4x-trading' | 'digital-marketing' | 'ai' | ''>(user.category ?? '')
-  const [error,    setError]    = useState<string | null>(null)
-
-  /* Keep category in sync if user prop changes (e.g. after refetch) */
-  useEffect(() => { setCategory(user.category ?? '') }, [user.category])
+  const [name,  setName]  = useState(user.name)
+  const [email, setEmail] = useState(user.email)
+  const [error, setError] = useState<string | null>(null)
 
   /* Course access — localBlocked stores SECTION IDs (not lesson IDs) */
   const { data: enrollments, isLoading: enrollmentsLoading } = useStudentEnrollments(user.id)
@@ -218,6 +226,8 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
   /* Courses the student is NOT yet enrolled in */
   const enrolledCourseIds = new Set((enrollments ?? []).map(e => e.courseId?.id))
   const unenrolledCourses = allCourses.filter(c => !enrolledCourseIds.has(c.id))
+
+  const [appOpen, setAppOpen] = useState(false)
 
   /* Toggle expand/collapse for an enrollment card */
   const toggleExpand = useCallback((eid: string) => {
@@ -278,10 +288,9 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
 
     const promises: Promise<unknown>[] = []
 
-    const dto: { name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | 'ai' | null } = {}
-    if (name.trim()  !== user.name)              dto.name     = name.trim()
-    if (email.trim() !== user.email)             dto.email    = email.trim().toLowerCase()
-    if (category     !== (user.category ?? '')) dto.category = category === '' ? null : category
+    const dto: { name?: string; email?: string } = {}
+    if (name.trim()  !== user.name)  dto.name  = name.trim()
+    if (email.trim() !== user.email) dto.email = email.trim().toLowerCase()
     if (Object.keys(dto).length > 0) promises.push(update.mutateAsync({ id: user.id, ...dto }))
 
     enrollments?.forEach(e => {
@@ -318,10 +327,7 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
     e.currentTarget.style.boxShadow = 'none'
   }
 
-  // Render through a portal to <body> so the fixed overlay isn't an (invalid)
-  // DOM child of the <tbody>/<tr> that mounts this modal.
-  if (typeof document === 'undefined') return null
-  return createPortal(
+  return (
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -346,11 +352,15 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
               </h2>
               <p className="mt-0.5 truncate text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{user.email}</p>
             </div>
-            <button onClick={onClose}
-              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl transition-colors hover:bg-white/10"
-              style={{ color: 'rgba(255,255,255,0.4)' }}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="flex-shrink-0"
+            >
               <X size={15} />
-            </button>
+            </Button>
           </div>
 
           {/* Scrollable body */}
@@ -381,19 +391,159 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
                     className={base} style={iStyle} onFocus={iFocus} onBlur={iBlur} />
                 </div>
               </div>
-
-              {/* Category */}
-              <div>
-                <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
-                  style={{ color: 'rgba(255,255,255,0.35)' }}>Program Category</label>
-                <DarkSelect
-                  value={category}
-                  onChange={v => setCategory(v as '4x-trading' | 'digital-marketing' | 'ai' | '')}
-                  options={CATEGORY_OPTIONS}
-                  placeholder="Select category…"
-                />
-              </div>
             </div>
+
+            {/* Enrollment Application section */}
+            {user.enrollmentApplication && (
+              <div className="px-6 pb-2">
+                <button
+                  type="button"
+                  onClick={() => setAppOpen(v => !v)}
+                  className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 transition-colors hover:bg-white/04"
+                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
+                >
+                  <div className="flex items-center gap-2">
+                    <ClipboardList size={13} style={{ color: '#FF6B1A' }} />
+                    <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                      Enrollment Application
+                    </span>
+                  </div>
+                  {appOpen ? <ChevronUp size={13} style={{ color: 'rgba(255,255,255,0.35)' }} /> : <ChevronDown size={13} style={{ color: 'rgba(255,255,255,0.35)' }} />}
+                </button>
+
+                <AnimatePresence>
+                  {appOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.18 }}
+                      className="overflow-hidden"
+                    >
+                      {(() => {
+                        const app = user.enrollmentApplication!
+                        function Row({ label, value }: { label: string; value?: string | null }) {
+                          if (!value) return null
+                          return (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.25)' }}>{label}</span>
+                              <span className="text-xs" style={{ color: 'rgba(255,255,255,0.75)' }}>{value}</span>
+                            </div>
+                          )
+                        }
+                        return (
+                          <div className="mt-2 space-y-3 rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            {/* Personal */}
+                            <div>
+                              <div className="mb-1.5 flex items-center gap-1.5">
+                                <User size={10} style={{ color: 'rgba(255,255,255,0.3)' }} />
+                                <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>Personal</span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <Row label="Phone" value={app.phone} />
+                                <Row label="Emergency Contact" value={app.emergencyContact} />
+                                <Row label="Gender" value={app.gender} />
+                                <Row label="Date of Birth" value={app.dateOfBirth} />
+                                <Row label="Nationality" value={app.nationality} />
+                                <Row label="Home Country" value={app.homeCountry} />
+                                <Row label="Occupation" value={app.occupation} />
+                                <Row label="Emirates ID" value={app.emiratesId} />
+                              </div>
+                            </div>
+                            {/* Address */}
+                            <div>
+                              <div className="mb-1.5 flex items-center gap-1.5">
+                                <MapPin size={10} style={{ color: 'rgba(255,255,255,0.3)' }} />
+                                <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>Address</span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <Row label="Country of Attendance" value={app.countryAttendance} />
+                                <Row label="Villa / Apartment" value={app.villa} />
+                                <Row label="City" value={app.city} />
+                                <Row label="Country" value={app.addressCountry} />
+                              </div>
+                            </div>
+                            {/* Program */}
+                            <div>
+                              <div className="mb-1.5 flex items-center gap-1.5">
+                                <BookOpen size={10} style={{ color: 'rgba(255,255,255,0.3)' }} />
+                                <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>Program</span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <Row label="Experience Level" value={app.experienceLevel} />
+                                <Row label="Start Date" value={app.preferredStartDate} />
+                                <Row label="How Heard" value={app.hearAboutUs} />
+                                {app.referralName && <Row label="Referral" value={app.referralName} />}
+                                {app.programs && app.programs.length > 0 && (
+                                  <div className="col-span-2 flex flex-col gap-0.5">
+                                    <span className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.25)' }}>Programs</span>
+                                    <div className="flex flex-wrap gap-1 mt-0.5">
+                                      {app.programs.map(p => (
+                                        <span key={p} className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+                                          style={{ background: 'rgba(255,107,26,0.12)', color: '#FF6B1A' }}>
+                                          {p}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            {/* Payment */}
+                            {app.paymentMethod && (
+                              <div>
+                                <div className="mb-1.5 flex items-center gap-1.5">
+                                  <CreditCard size={10} style={{ color: 'rgba(255,255,255,0.3)' }} />
+                                  <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>Payment</span>
+                                </div>
+                                <Row label="Payment Method" value={app.paymentMethod} />
+                              </div>
+                            )}
+                            {/* Documents */}
+                            {(app.passportUrl || app.photoUrl) && (
+                              <div>
+                                <div className="mb-1.5 flex items-center gap-1.5">
+                                  <FileText size={10} style={{ color: 'rgba(255,255,255,0.3)' }} />
+                                  <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>Documents</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {app.passportUrl && (
+                                    <div>
+                                      <span className="text-[9px] font-semibold uppercase tracking-wide block mb-1" style={{ color: 'rgba(255,255,255,0.25)' }}>Passport</span>
+                                      {app.passportUrl.match(/\.(jpg|jpeg|png|webp)$/i) ? (
+                                        <a href={app.passportUrl} target="_blank" rel="noopener noreferrer">
+                                          <img src={app.passportUrl} alt="Passport" className="h-20 w-full rounded-lg object-cover hover:opacity-80 transition-opacity"
+                                            style={{ border: '1px solid rgba(255,255,255,0.08)' }} />
+                                        </a>
+                                      ) : (
+                                        <a href={app.passportUrl} target="_blank" rel="noopener noreferrer"
+                                          className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] transition-colors hover:bg-white/05"
+                                          style={{ border: '1px solid rgba(255,255,255,0.08)', color: '#60A5FA' }}>
+                                          <FileText size={11} />PDF <ExternalLink size={9} />
+                                        </a>
+                                      )}
+                                    </div>
+                                  )}
+                                  {app.photoUrl && (
+                                    <div>
+                                      <span className="text-[9px] font-semibold uppercase tracking-wide block mb-1" style={{ color: 'rgba(255,255,255,0.25)' }}>Photo</span>
+                                      <a href={app.photoUrl} target="_blank" rel="noopener noreferrer">
+                                        <img src={app.photoUrl} alt="Photo" className="h-20 w-full rounded-lg object-cover hover:opacity-80 transition-opacity"
+                                          style={{ border: '1px solid rgba(255,255,255,0.08)' }} />
+                                      </a>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
 
             {/* Course access section */}
             <div className="px-6 pb-4">
@@ -407,30 +557,24 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
               {/* Add-course row */}
               {unenrolledCourses.length > 0 && (
                 <div className="mb-3 flex items-center gap-2">
-                  <select
+                  <CourseSelect
                     value={addCourseId}
-                    onChange={e => setAddCourseId(e.target.value)}
-                    className="flex-1 rounded-xl px-3 py-2 text-xs text-white outline-none"
-                    /* Solid dark bg so the browser-native dropdown popup renders dark (not white) */
-                    style={{ background: '#1e2035', border: '1px solid rgba(255,255,255,0.09)', color: addCourseId ? 'white' : 'rgba(255,255,255,0.3)' }}
-                  >
-                    <option value="" style={{ background: '#1e2035', color: 'rgba(255,255,255,0.5)' }}>Select a course to enroll…</option>
-                    {unenrolledCourses.map(c => (
-                      <option key={c.id} value={c.id} style={{ background: '#1e2035', color: 'white' }}>{c.title}</option>
-                    ))}
-                  </select>
-                  <button
+                    onChange={setAddCourseId}
+                    courses={unenrolledCourses}
+                  />
+                  <Button
                     type="button"
+                    variant="default"
                     onClick={handleEnroll}
                     disabled={!addCourseId || enrollStudent.isPending}
-                    className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-bold text-white disabled:opacity-40 transition-all hover:brightness-110"
-                    style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)', whiteSpace: 'nowrap' }}
+                    className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-bold text-white disabled:opacity-40 transition-all hover:brightness-110 h-auto"
+                    style={{ whiteSpace: 'nowrap' }}
                   >
                     {enrollStudent.isPending
                       ? <Loader2 size={11} className="animate-spin" />
                       : <Plus size={11} />}
                     Enroll
-                  </button>
+                  </Button>
                 </div>
               )}
 
@@ -484,19 +628,23 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
                           </div>
 
                           {/* Expand toggle */}
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="icon-sm"
                             onClick={() => toggleExpand(eid)}
                             className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-white/10"
                             style={{ color: 'rgba(255,255,255,0.4)' }}
                             title="Toggle module access"
                           >
                             {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                          </button>
+                          </Button>
 
                           {/* Remove enrollment */}
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="icon-sm"
                             onClick={() => handleRemove(eid)}
                             disabled={removeEnroll.isPending}
                             className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-red-500/15 disabled:opacity-40"
@@ -506,7 +654,7 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
                             {removeEnroll.isPending
                               ? <Loader2 size={11} className="animate-spin" />
                               : <Trash2 size={11} />}
-                          </button>
+                          </Button>
                         </div>
 
                         {/* Module access panel — collapsible */}
@@ -545,24 +693,25 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
                 </p>
               )}
               <div className="flex items-center justify-end gap-2">
-                <button type="button" onClick={onClose}
-                  className="rounded-xl px-4 py-2 text-sm font-medium transition-colors hover:bg-white/10"
-                  style={{ color: 'rgba(255,255,255,0.5)' }}>
+                <Button type="button" variant="outline" onClick={onClose}>
                   Cancel
-                </button>
-                <button type="submit" disabled={isPending}
-                  className="flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold text-white disabled:opacity-60 transition-all hover:brightness-110"
-                  style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+                </Button>
+                <MotionButton
+                  type="submit"
+                  variant="default"
+                  disabled={isPending}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
                   {isPending
                     ? <><Loader2 size={14} className="animate-spin" />Saving…</>
                     : 'Save changes'}
-                </button>
+                </MotionButton>
               </div>
             </div>
           </form>
         </motion.div>
       </motion.div>
-    </AnimatePresence>,
-    document.body,
+    </AnimatePresence>
   )
 }

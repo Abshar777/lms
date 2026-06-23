@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { useCourse } from '@/lib/api/courses'
 import { useCourseProgress, useEnroll } from '@/lib/api/enrollments'
-import { useCheckout, useRazorpayCheckout, useValidateCoupon } from '@/lib/api/checkout'
+import { useCheckout, useValidateCoupon } from '@/lib/api/checkout'
 import { formatPrice } from '@/lib/formatPrice'
 import { CertificateButton } from '@/components/learn/CertificateButton'
 import { CourseReviews } from '@/components/courses/CourseReviews'
@@ -20,7 +20,6 @@ import { AINotesPanel } from '@/components/courses/AINotesPanel'
 import { LiveClassesPanel } from '@/components/courses/LiveClassesPanel'
 import { FavoriteButton } from '@/components/courses/FavoriteButton'
 import { CourseRecommendations } from '@/components/courses/CourseRecommendations'
-import { Button, MotionButton } from '@/components/ui/button'
 
 function fmt(mins: number) {
   const h = Math.floor(mins / 60)
@@ -51,12 +50,8 @@ function CourseDetailInner({ slug }: { slug: string }) {
 
   const { data, isLoading, isError } = useCourse(slug)
   const { data: progress } = useCourseProgress(slug)
-  const enroll      = useEnroll()
-  const checkout    = useCheckout()
-  const rzpCheckout = useRazorpayCheckout({
-    onSuccess: () => { setEnrollError(null); router.refresh() },
-    onError:   (msg) => setEnrollError(msg),
-  })
+  const enroll   = useEnroll()
+  const checkout = useCheckout()
 
   const [enrollError,   setEnrollError]   = useState<string | null>(null)
   const [couponOpen,    setCouponOpen]     = useState(false)
@@ -81,7 +76,7 @@ function CourseDetailInner({ slug }: { slug: string }) {
   if (isLoading) {
     return (
       <div className="flex h-[70vh] flex-col items-center justify-center gap-3">
-        <Loader2 size={30} className="animate-spin" style={{ color: '#FF6B1A' }} />
+        <Loader2 size={30} className="animate-spin" style={{ color: '#0057b8' }} />
         <p className="text-sm" style={{ color: '#9CA3AF' }}>Loading course…</p>
       </div>
     )
@@ -95,7 +90,7 @@ function CourseDetailInner({ slug }: { slug: string }) {
           <AlertCircle size={24} style={{ color: '#EF4444' }} />
         </div>
         <p className="text-base font-semibold" style={{ color: '#0D0F1A' }}>Course not found</p>
-        <Link href="/courses" className="text-sm font-semibold" style={{ color: '#FF6B1A' }}>
+        <Link href="/courses" className="text-sm font-semibold" style={{ color: '#0057b8' }}>
           ← Back to courses
         </Link>
       </div>
@@ -107,16 +102,13 @@ function CourseDetailInner({ slug }: { slug: string }) {
   const totalLessons = lessons.length
   const isEnrolled   = progress?.isEnrolled ?? false
   const isPaid       = !course.isFree && course.price > 0
-  const useRazorpay  = !!(course as any).priceINR && (course as any).priceINR > 0
-  const displayPrice = useRazorpay ? (course as any).priceINR : course.price
-  const displayCurrency = useRazorpay ? 'INR' : 'USD'
 
   const discountedPrice = (() => {
-    if (!couponInfo || !isPaid) return displayPrice
+    if (!couponInfo || !isPaid) return course.price
     if (couponInfo.discountType === 'percent') {
-      return Math.max(0, displayPrice * (1 - couponInfo.discountValue / 100))
+      return Math.max(0, course.price * (1 - couponInfo.discountValue / 100))
     }
-    return Math.max(0, displayPrice - couponInfo.discountValue)
+    return Math.max(0, course.price - couponInfo.discountValue)
   })()
 
   const onEnroll = async () => {
@@ -134,18 +126,13 @@ function CourseDetailInner({ slug }: { slug: string }) {
   const onCheckout = async () => {
     setEnrollError(null)
     try {
-      if (useRazorpay) {
-        await rzpCheckout.mutateAsync({ courseId: course.id, couponCode: couponCode || undefined })
-      } else {
-        await checkout.mutateAsync({ courseId: course.id, couponCode: couponCode || undefined })
-      }
+      await checkout.mutateAsync({ courseId: course.id, couponCode: couponCode || undefined })
+      /* onSuccess in useCheckout redirects to Stripe — no further action here */
     } catch (err: any) {
       const msg = err?.response?.data?.error?.message
-      if (msg) setEnrollError(msg)
+      setEnrollError(msg ?? 'Unable to start checkout. Please try again.')
     }
   }
-
-  const isCheckoutPending = useRazorpay ? rzpCheckout.isPending : checkout.isPending
 
   const continueLessonId = progress?.lastLessonId ?? lessons[0]?.id
 
@@ -168,7 +155,7 @@ function CourseDetailInner({ slug }: { slug: string }) {
             transition={{ type: 'spring', stiffness: 260, damping: 26 }}>
             <div className="mb-3 flex items-center gap-2">
               {course.category && (
-                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#FF6B1A' }}>
+                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#0057b8' }}>
                   {course.category.name}
                 </span>
               )}
@@ -217,11 +204,11 @@ function CourseDetailInner({ slug }: { slug: string }) {
             {course.instructor && (
               <div className="mt-4 flex items-center gap-2.5">
                 <div className="h-8 w-8 overflow-hidden rounded-full"
-                  style={{ background: 'rgba(255,107,26,0.15)' }}>
+                  style={{ background: 'rgba(0,87,184,0.15)' }}>
                   {course.instructor.avatarUrl
                     ? <img src={course.instructor.avatarUrl} alt="" className="h-full w-full object-cover" />
                     : <div className="flex h-full w-full items-center justify-center text-xs font-bold"
-                        style={{ color: '#FF6B1A' }}>
+                        style={{ color: '#0057b8' }}>
                         {course.instructor.name[0]}
                       </div>}
                 </div>
@@ -255,7 +242,7 @@ function CourseDetailInner({ slug }: { slug: string }) {
           {/* What you'll learn */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.14 }} className="mt-8 rounded-2xl p-5"
-            style={{ background: '#FFFBF7', border: '1px solid rgba(255,107,26,0.14)' }}>
+            style={{ background: '#FFFBF7', border: '1px solid rgba(0,87,184,0.14)' }}>
             <h2 className="mb-4 text-base font-bold" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
               What you&apos;ll learn
             </h2>
@@ -294,7 +281,7 @@ function CourseDetailInner({ slug }: { slug: string }) {
                       style={{ background: '#FAFAFA', borderBottom: s.lessons.length > 0 ? '1px solid #F0F1F5' : 'none' }}>
                       <div className="flex items-center gap-3">
                         <div className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold"
-                          style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A' }}>{i + 1}</div>
+                          style={{ background: 'rgba(0,87,184,0.10)', color: '#0057b8' }}>{i + 1}</div>
                         <span className="text-sm font-semibold" style={{ color: '#0D0F1A' }}>{s.section}</span>
                       </div>
                       <div className="flex items-center gap-3 text-xs" style={{ color: '#9CA3AF' }}>
@@ -314,9 +301,9 @@ function CourseDetailInner({ slug }: { slug: string }) {
                           style={{ borderColor: '#F0F1F5' }}>
                           {/* Icon */}
                           <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md"
-                            style={{ background: canAccess ? 'rgba(255,107,26,0.08)' : 'rgba(156,163,175,0.10)' }}>
+                            style={{ background: canAccess ? 'rgba(0,87,184,0.08)' : 'rgba(156,163,175,0.10)' }}>
                             {canAccess
-                              ? <TypeIcon size={11} style={{ color: '#FF6B1A' }} />
+                              ? <TypeIcon size={11} style={{ color: '#0057b8' }} />
                               : <Lock size={10} style={{ color: '#9CA3AF' }} />}
                           </div>
                           {/* Title */}
@@ -351,7 +338,7 @@ function CourseDetailInner({ slug }: { slug: string }) {
               <Tag size={13} style={{ color: '#9CA3AF' }} />
               {course.tags.map(t => (
                 <span key={t} className="rounded-lg px-2.5 py-1 text-xs font-medium"
-                  style={{ background: 'rgba(255,107,26,0.08)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.16)' }}>
+                  style={{ background: 'rgba(0,87,184,0.08)', color: '#0057b8', border: '1px solid rgba(0,87,184,0.16)' }}>
                   {t}
                 </span>
               ))}
@@ -393,7 +380,7 @@ function CourseDetailInner({ slug }: { slug: string }) {
                 <img src={course.thumbnailUrl} alt={course.title} className="h-full w-full object-cover" />
                 <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 40%, rgba(13,15,26,0.6))' }} />
                 <motion.div whileHover={{ scale: 1.1 }} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex h-14 w-14 cursor-pointer items-center justify-center rounded-full"
-                  style={{ background: 'rgba(255,107,26,0.92)', backdropFilter: 'blur(8px)', boxShadow: '0 8px 24px rgba(255,107,26,0.45)' }}>
+                  style={{ background: 'rgba(0,87,184,0.92)', backdropFilter: 'blur(8px)', boxShadow: '0 8px 24px rgba(0,87,184,0.45)' }}>
                   <Play size={18} fill="white" color="white" />
                 </motion.div>
               </div>
@@ -423,15 +410,15 @@ function CourseDetailInner({ slug }: { slug: string }) {
                   {isPaid && couponInfo ? (
                     <div className="flex items-baseline gap-2">
                       <p className="text-3xl font-bold" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-                        {formatPrice(discountedPrice, displayCurrency)}
+                        {formatPrice(discountedPrice)}
                       </p>
                       <p className="text-sm line-through" style={{ color: '#9CA3AF' }}>
-                        {formatPrice(displayPrice, displayCurrency)}
+                        {formatPrice(course.price)}
                       </p>
                     </div>
                   ) : (
                     <p className="text-3xl font-bold" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-                      {course.isFree ? 'Free' : formatPrice(displayPrice, displayCurrency)}
+                      {course.isFree ? 'Free' : formatPrice(course.price)}
                     </p>
                   )}
                 </div>
@@ -446,43 +433,39 @@ function CourseDetailInner({ slug }: { slug: string }) {
               {/* CTA */}
               {isEnrolled && continueLessonId ? (
                 <Link href={`/learn/${course.slug}/${continueLessonId}`}>
-                  <MotionButton
-                    variant="default"
-                    size="lg"
-                    whileHover={{ y: -2, boxShadow: '0 12px 32px rgba(255,107,26,0.40)' }}
+                  <motion.button
+                    whileHover={{ y: -2, boxShadow: '0 12px 32px rgba(0,87,184,0.40)' }}
                     whileTap={{ scale: 0.97 }}
-                    className="w-full rounded-2xl gap-2 font-bold transition-all">
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all"
+                    style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)', boxShadow: '0 6px 24px rgba(0,87,184,0.30)' }}>
                     <Play size={15} fill="white" />
                     Continue learning
-                  </MotionButton>
+                  </motion.button>
                 </Link>
               ) : isPaid ? (
                 <>
-                  <MotionButton
-                    variant="default"
-                    size="lg"
+                  <motion.button
                     onClick={onCheckout}
-                    disabled={isCheckoutPending}
-                    whileHover={{ y: -2, boxShadow: '0 12px 32px rgba(255,107,26,0.40)' }}
+                    disabled={checkout.isPending}
+                    whileHover={{ y: -2, boxShadow: '0 12px 32px rgba(0,87,184,0.40)' }}
                     whileTap={{ scale: 0.97 }}
-                    className="w-full rounded-2xl gap-2 font-bold transition-all">
-                    {isCheckoutPending
-                      ? <><Loader2 size={15} className="animate-spin" />{useRazorpay ? 'Opening payment…' : 'Redirecting…'}</>
-                      : <><ShoppingCart size={15} />Buy for {formatPrice(discountedPrice, displayCurrency)}</>}
-                  </MotionButton>
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all disabled:opacity-70"
+                    style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)', boxShadow: '0 6px 24px rgba(0,87,184,0.30)' }}>
+                    {checkout.isPending
+                      ? <><Loader2 size={15} className="animate-spin" />Redirecting…</>
+                      : <><ShoppingCart size={15} />Buy for {formatPrice(discountedPrice)}</>}
+                  </motion.button>
 
                   {/* Coupon code accordion */}
                   <div className="mt-3">
-                    <Button
-                      variant="ghost"
-                      onClick={() => setCouponOpen(o => !o)}
-                      className="flex w-full items-center justify-between text-xs font-semibold transition-opacity hover:opacity-70 h-auto py-0 px-0"
+                    <button onClick={() => setCouponOpen(o => !o)}
+                      className="flex w-full items-center justify-between text-xs font-semibold transition-opacity hover:opacity-70"
                       style={{ color: '#9CA3AF' }}>
                       <span className="flex items-center gap-1">
                         <TagIcon size={11} />Have a promo code?
                       </span>
                       <ChevronDown size={12} className={`transition-transform ${couponOpen ? 'rotate-180' : ''}`} />
-                    </Button>
+                    </button>
                     <AnimatePresence>
                       {couponOpen && (
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
@@ -496,14 +479,11 @@ function CourseDetailInner({ slug }: { slug: string }) {
                               style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', color: '#111827' }}
                             />
                             {couponCode && (
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                onClick={() => setCouponCode('')}
-                                className="h-9 w-9 rounded-xl"
+                              <button onClick={() => setCouponCode('')}
+                                className="flex h-9 w-9 items-center justify-center rounded-xl"
                                 style={{ background: '#F3F4F6' }}>
                                 <X size={12} style={{ color: '#9CA3AF' }} />
-                              </Button>
+                              </button>
                             )}
                           </div>
                           <div className="mt-1 min-h-[16px]">
@@ -527,18 +507,17 @@ function CourseDetailInner({ slug }: { slug: string }) {
                   </div>
                 </>
               ) : (
-                <MotionButton
-                  variant="default"
-                  size="lg"
+                <motion.button
                   onClick={onEnroll}
                   disabled={enroll.isPending}
-                  whileHover={{ y: -2, boxShadow: '0 12px 32px rgba(255,107,26,0.40)' }}
+                  whileHover={{ y: -2, boxShadow: '0 12px 32px rgba(0,87,184,0.40)' }}
                   whileTap={{ scale: 0.97 }}
-                  className="w-full rounded-2xl gap-2 font-bold transition-all">
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all disabled:opacity-70"
+                  style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)', boxShadow: '0 6px 24px rgba(0,87,184,0.30)' }}>
                   {enroll.isPending
                     ? <><Loader2 size={15} className="animate-spin" />Enrolling…</>
                     : <><Zap size={15} fill="white" />Enroll for free</>}
-                </MotionButton>
+                </motion.button>
               )}
 
               {enrollError && (
@@ -600,7 +579,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
   return (
     <Suspense fallback={
       <div className="flex h-[70vh] flex-col items-center justify-center gap-3">
-        <Loader2 size={30} className="animate-spin" style={{ color: '#FF6B1A' }} />
+        <Loader2 size={30} className="animate-spin" style={{ color: '#0057b8' }} />
         <p className="text-sm" style={{ color: '#9CA3AF' }}>Loading course…</p>
       </div>
     }>

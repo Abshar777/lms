@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Clock, CheckCircle2, XCircle, Loader2, AlertCircle, Search,
   TrendingUp, Megaphone, Cpu, LayoutGrid, ChevronDown, Check,
   ShieldCheck, Mail, X, Plus, Eye, RotateCcw, ShieldOff,
+  FileText, User, Phone, MapPin, BookOpen, CreditCard, ExternalLink,
+  ImageIcon, ZoomIn, AlertTriangle, Upload,
 } from 'lucide-react'
 import {
   useEnrollmentRequests, useApproveEnrollment, useRejectEnrollment, useRemoveEnrollmentCategory,
@@ -14,6 +16,8 @@ import {
 } from '@/lib/api/enrollmentRequests'
 import { useCurrentUser } from '@/lib/api/user'
 import { useToast } from '@/store/ui.store'
+import { api } from '@/lib/axios'
+import { useQueryClient } from '@tanstack/react-query'
 
 /* ── Constants ─────────────────────────────────────── */
 const CATEGORY_META: Record<ProgramCategory, { label: string; color: string; bg: string; Icon: React.ComponentType<{ size?: number }> }> = {
@@ -307,8 +311,8 @@ function RejectDialog({ user, isRevoke, onClose, onConfirm, loading }: {
             <AlertCircle size={14} style={{ color: '#EF4444', flexShrink: 0 }} />
             <p className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>
               {isRevoke
-                ? 'This will remove all program access for this student. They will be notified by email.'
-                : 'The student will be notified by email. They can re-apply later.'}
+                ? 'This will remove all program assignments and unenroll this student from every course. They will become a viewer with no access. This cannot be undone without re-approving.'
+                : 'The student will be notified by email. They can be re-approved later.'}
             </p>
           </div>
           <label className="mb-1.5 block text-xs font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>
@@ -343,6 +347,379 @@ function RejectDialog({ user, isRevoke, onClose, onConfirm, loading }: {
   )
 }
 
+/* ── Document viewer with lightbox + admin upload ────── */
+function DocumentsSection({ passportUrl, photoUrl, userId }: {
+  passportUrl?: string
+  photoUrl?:    string
+  userId:       string
+}) {
+  const [lightbox,    setLightbox]    = useState<string | null>(null)
+  const [pdfView,     setPdfView]     = useState<'passport' | 'photo' | null>(null)
+  const [uploading,   setUploading]   = useState<'passport' | 'photo' | null>(null)
+  const passportRef = useRef<HTMLInputElement>(null)
+  const photoRef    = useRef<HTMLInputElement>(null)
+  const toast       = useToast()
+  const qc          = useQueryClient()
+
+  const isImage = (url: string) => /\.(jpg|jpeg|png|webp)$/i.test(url)
+
+  async function handleUpload(file: File, field: 'passport' | 'photo') {
+    setUploading(field)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const uploadRes = await api.post<{ success: true; data: { url: string } }>('/uploads/document', fd, {
+        headers: { 'Content-Type': undefined },
+      })
+      const url = uploadRes.data.data.url
+
+      const body = field === 'passport' ? { passportUrl: url } : { photoUrl: url }
+      await api.patch(`/admin/enrollment-requests/${userId}/docs`, body)
+
+      toast.success(`${field === 'passport' ? 'Passport' : 'Photo'} uploaded`)
+      qc.invalidateQueries({ queryKey: ['admin', 'enrollment-requests'] })
+    } catch {
+      toast.error('Upload failed. Please try again.')
+    } finally {
+      setUploading(null)
+    }
+  }
+
+  function DocCard({ label, url, field }: { label: string; url?: string; field: 'passport' | 'photo' }) {
+    const inputRef = field === 'passport' ? passportRef : photoRef
+    const isLoading = uploading === field
+
+    if (!url) {
+      return (
+        <div className="flex flex-col gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>{label}</p>
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={isLoading}
+            className="flex h-36 flex-col items-center justify-center gap-2 rounded-xl transition-all hover:brightness-110 disabled:opacity-50"
+            style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.15)', cursor: 'pointer' }}>
+            {isLoading ? (
+              <Loader2 size={18} className="animate-spin" style={{ color: 'rgba(255,255,255,0.4)' }} />
+            ) : (
+              <Upload size={18} style={{ color: 'rgba(255,255,255,0.3)' }} />
+            )}
+            <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
+              {isLoading ? 'Uploading…' : 'Not submitted — click to upload'}
+            </span>
+          </button>
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png,.webp"
+            className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f, field); e.target.value = '' }}
+          />
+        </div>
+      )
+    }
+
+    if (isImage(url)) {
+      return (
+        <div className="flex flex-col gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>{label}</p>
+          <div className="group relative h-36 cursor-zoom-in overflow-hidden rounded-xl"
+            style={{ border: '1px solid rgba(255,255,255,0.1)' }}
+            onClick={() => setLightbox(url)}>
+            <img src={url} alt={label} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100"
+              style={{ background: 'rgba(0,0,0,0.5)' }}>
+              <ZoomIn size={22} className="text-white" />
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <a href={url} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-[11px] transition-colors hover:opacity-80"
+              style={{ color: '#60A5FA' }}>
+              <ExternalLink size={10} />Open full size
+            </a>
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              disabled={isLoading}
+              className="flex items-center gap-1 text-[11px] transition-colors hover:opacity-80 disabled:opacity-40"
+              style={{ color: 'rgba(255,255,255,0.35)' }}>
+              {isLoading ? <Loader2 size={9} className="animate-spin" /> : <Upload size={9} />}
+              Replace
+            </button>
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
+              className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f, field); e.target.value = '' }}
+            />
+          </div>
+        </div>
+      )
+    }
+
+    /* PDF */
+    const pdfKey = field
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>{label}</p>
+        {pdfView === pdfKey ? (
+          <div className="flex flex-col gap-1">
+            <iframe src={url} className="h-48 w-full rounded-xl" style={{ border: '1px solid rgba(255,255,255,0.1)', background: '#fff' }} />
+            <button onClick={() => setPdfView(null)} className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>Close preview</button>
+          </div>
+        ) : (
+          <div className="flex h-36 flex-col items-center justify-center gap-3 rounded-xl"
+            style={{ background: 'rgba(96,165,250,0.06)', border: '1px solid rgba(96,165,250,0.2)' }}>
+            <FileText size={24} style={{ color: '#60A5FA' }} />
+            <div className="flex flex-col items-center gap-1.5">
+              <button onClick={() => setPdfView(pdfKey as 'passport' | 'photo')}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-80"
+                style={{ background: 'rgba(96,165,250,0.15)', color: '#60A5FA', border: '1px solid rgba(96,165,250,0.3)' }}>
+                Preview PDF
+              </button>
+              <a href={url} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1 text-[11px] transition-colors hover:opacity-80"
+                style={{ color: 'rgba(255,255,255,0.35)' }}>
+                <ExternalLink size={9} />Open in new tab
+              </a>
+            </div>
+          </div>
+        )}
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={isLoading}
+            className="flex items-center gap-1 text-[11px] transition-colors hover:opacity-80 disabled:opacity-40"
+            style={{ color: 'rgba(255,255,255,0.35)' }}>
+            {isLoading ? <Loader2 size={9} className="animate-spin" /> : <Upload size={9} />}
+            Replace
+          </button>
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png,.webp"
+            className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f, field); e.target.value = '' }}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <div className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <div className="mb-3 flex items-center gap-2">
+          <ImageIcon size={13} style={{ color: 'rgba(255,255,255,0.4)' }} />
+          <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.4)' }}>Submitted Documents</span>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <DocCard label="Passport Copy" url={passportUrl} field="passport" />
+          <DocCard label="Profile Photo" url={photoUrl}    field="photo"    />
+        </div>
+      </div>
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          onClick={() => setLightbox(null)}>
+          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.92)' }} />
+          <div className="relative z-10 max-h-[90vh] max-w-4xl" onClick={e => e.stopPropagation()}>
+            <img src={lightbox} alt="Document" className="max-h-[85vh] max-w-full rounded-xl object-contain"
+              style={{ boxShadow: '0 40px 80px rgba(0,0,0,0.8)' }} />
+            <button onClick={() => setLightbox(null)}
+              className="absolute -right-3 -top-3 flex h-8 w-8 items-center justify-center rounded-full text-white transition-colors hover:bg-white/20"
+              style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)' }}>
+              <X size={14} />
+            </button>
+            <a href={lightbox} target="_blank" rel="noopener noreferrer"
+              className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-xs"
+              style={{ color: 'rgba(255,255,255,0.5)' }}>
+              <ExternalLink size={11} />Open original
+            </a>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+/* ── Application detail modal ───────────────────────── */
+function ApplicationDetailModal({ user, scopeCategory, onClose, onApprove, onReject, approveLoading, rejectLoading }: {
+  user:           EnrollmentRequest
+  scopeCategory:  ProgramCategory | null
+  onClose:        () => void
+  onApprove:      () => void
+  onReject:       () => void
+  approveLoading: boolean
+  rejectLoading:  boolean
+}) {
+  const app = user.enrollmentApplication
+  const isPending  = user.enrollmentStatus === 'pending'
+  const isApproved = user.enrollmentStatus === 'approved'
+  const isRejected = user.enrollmentStatus === 'rejected' || user.enrollmentStatus === 'cancelled'
+
+  function Row({ label, value }: { label: string; value?: string | null }) {
+    if (!value) return null
+    return (
+      <div className="flex flex-col gap-0.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>{label}</span>
+        <span className="text-sm" style={{ color: 'rgba(255,255,255,0.85)' }}>{value}</span>
+      </div>
+    )
+  }
+
+  function Section({ icon: Icon, title, children }: { icon: React.ComponentType<{ size?: number; style?: React.CSSProperties; className?: string }>; title: string; children: React.ReactNode }) {
+    return (
+      <div className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <div className="mb-3 flex items-center gap-2">
+          <Icon size={13} style={{ color: 'rgba(255,255,255,0.4)' }} />
+          <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.4)' }}>{title}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-3">{children}</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="absolute inset-0"
+        style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }}
+        onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 12 }}
+        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+        className="relative flex w-full max-w-2xl flex-col rounded-2xl overflow-hidden"
+        style={{ background: 'linear-gradient(145deg,#0e1022,#0a0c18)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 40px 80px rgba(0,0,0,0.85)', zIndex: 1, maxHeight: '90vh' }}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between px-6 py-4 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
+              style={{ background: 'rgba(255,107,26,0.15)', border: '1px solid rgba(255,107,26,0.3)' }}>
+              <span className="text-sm font-bold" style={{ color: '#FF6B1A' }}>{user.name[0]?.toUpperCase() ?? '?'}</span>
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white">{user.name}</h2>
+              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{user.email}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-1.5 transition-colors hover:bg-white/08" style={{ color: 'rgba(255,255,255,0.5)' }}>
+            <X size={15} />
+          </button>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+          {!app ? (
+            <div className="flex flex-col items-center gap-2 py-8 text-center" style={{ color: 'rgba(255,255,255,0.3)' }}>
+              <FileText size={28} className="opacity-40" />
+              <p className="text-sm">No enrollment form data submitted</p>
+              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>This account was created before the enrollment form was introduced.</p>
+            </div>
+          ) : (
+            <>
+              <Section icon={User} title="Personal Information">
+                <Row label="Phone / WhatsApp" value={app.phone} />
+                <Row label="Emergency Contact" value={app.emergencyContact} />
+                <Row label="Gender" value={app.gender} />
+                <Row label="Date of Birth" value={app.dateOfBirth} />
+                <Row label="Nationality" value={app.nationality} />
+                <Row label="Home Country" value={app.homeCountry} />
+                <Row label="Occupation" value={app.occupation} />
+                <Row label="Emirates ID" value={app.emiratesId} />
+              </Section>
+
+              <Section icon={MapPin} title="Address">
+                <Row label="Country of Attendance" value={app.countryAttendance} />
+                <Row label="Villa / Apartment" value={app.villa} />
+                <Row label="City" value={app.city} />
+                <Row label="Country" value={app.addressCountry} />
+              </Section>
+
+              <Section icon={BookOpen} title="Program Preferences">
+                <Row label="Experience Level" value={app.experienceLevel} />
+                <Row label="Preferred Start Date" value={app.preferredStartDate} />
+                <Row label="How Did You Hear" value={app.hearAboutUs} />
+                {app.referralName && <Row label="Referral Name" value={app.referralName} />}
+                {app.programs && app.programs.length > 0 && (
+                  <div className="col-span-2 flex flex-col gap-0.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>Selected Programs</span>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {app.programs.map(p => (
+                        <span key={p} className="rounded-lg px-2.5 py-1 text-xs font-medium"
+                          style={{ background: 'rgba(255,107,26,0.12)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.25)' }}>
+                          {p}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </Section>
+
+              <Section icon={CreditCard} title="Payment">
+                <Row label="Payment Method" value={app.paymentMethod} />
+              </Section>
+
+              {/* Documents — always shown */}
+              <DocumentsSection passportUrl={app.passportUrl} photoUrl={app.photoUrl} userId={user.id} />
+            </>
+          )}
+        </div>
+
+        {/* Footer actions */}
+        {(isPending || isRejected) && (
+          <div className="flex items-center justify-end gap-2 px-6 py-4 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+            {isPending && (
+              <>
+                <button onClick={onReject} disabled={rejectLoading}
+                  className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40"
+                  style={{ background: 'rgba(239,68,68,0.85)' }}>
+                  {rejectLoading && <Loader2 size={13} className="animate-spin" />}
+                  <XCircle size={13} />Reject
+                </button>
+                <button onClick={onApprove} disabled={approveLoading}
+                  className="flex items-center gap-1.5 rounded-xl px-5 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40"
+                  style={{ background: 'linear-gradient(135deg,#4ADE80,#22c55e)', boxShadow: '0 4px 14px rgba(74,222,128,0.3)' }}>
+                  {approveLoading && <Loader2 size={13} className="animate-spin" />}
+                  <CheckCircle2 size={13} />Approve
+                </button>
+              </>
+            )}
+            {isRejected && (
+              <button onClick={onApprove} disabled={approveLoading}
+                className="flex items-center gap-1.5 rounded-xl px-5 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40"
+                style={{ background: 'linear-gradient(135deg,#4ADE80,#22c55e)', boxShadow: '0 4px 14px rgba(74,222,128,0.3)' }}>
+                {approveLoading && <Loader2 size={13} className="animate-spin" />}
+                <CheckCircle2 size={13} />Re-approve
+              </button>
+            )}
+          </div>
+        )}
+        {isApproved && (
+          <div className="flex items-center justify-between px-6 py-3 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+            <span className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: '#4ADE80' }}>
+              <CheckCircle2 size={13} />Student is approved
+            </span>
+            <button onClick={onReject} disabled={rejectLoading}
+              className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40"
+              style={{ background: 'rgba(239,68,68,0.85)' }}>
+              {rejectLoading && <Loader2 size={12} className="animate-spin" />}
+              <XCircle size={11} />Reject Student
+            </button>
+          </div>
+        )}
+      </motion.div>
+    </div>
+  )
+}
+
 /* ── Main page ─────────────────────────────────────── */
 export default function EnrollmentRequestsPage() {
   const { data: me } = useCurrentUser()
@@ -353,6 +730,7 @@ export default function EnrollmentRequestsPage() {
   const [approveTarget,  setApproveTarget]  = useState<EnrollmentRequest | null>(null)
   const [rejectTarget,   setRejectTarget]   = useState<EnrollmentRequest | null>(null)
   const [removingCat,    setRemovingCat]    = useState<{ userId: string; cat: ProgramCategory } | null>(null)
+  const [detailTarget,   setDetailTarget]   = useState<EnrollmentRequest | null>(null)
 
   const approve         = useApproveEnrollment()
   const reject          = useRejectEnrollment()
@@ -395,7 +773,12 @@ export default function EnrollmentRequestsPage() {
     if (!rejectTarget) return
     try {
       await reject.mutateAsync({ userId: rejectTarget.id, reason })
-      toast.success(rejectTarget.enrollmentStatus === 'approved' ? 'Access revoked' : 'Request rejected', `${rejectTarget.name} has been notified.`)
+      toast.success(
+        rejectTarget.enrollmentStatus === 'approved' ? 'Student rejected' : 'Request rejected',
+        rejectTarget.enrollmentStatus === 'approved'
+          ? `${rejectTarget.name} removed from all programs and courses.`
+          : `${rejectTarget.name} has been notified.`,
+      )
       setRejectTarget(null)
     } catch (err: any) {
       toast.error('Action failed', err?.response?.data?.error?.message)
@@ -573,8 +956,9 @@ export default function EnrollmentRequestsPage() {
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.03 }}
-                    style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                    style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }}
                     className="group transition-colors hover:bg-white/[0.02]"
+                    onClick={() => setDetailTarget(r)}
                   >
                     {/* Student */}
                     <td className="px-4 py-3.5">
@@ -692,7 +1076,7 @@ export default function EnrollmentRequestsPage() {
                     </td>
 
                     {/* Actions */}
-                    <td className="px-4 py-3.5">
+                    <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
                       {isPending && (
                         <div className="flex items-center justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                           <button
@@ -758,6 +1142,13 @@ export default function EnrollmentRequestsPage() {
                               Revoke to Viewer
                             </button>
                           )}
+                          {/* Reject approved student — removes all programs and course enrollments */}
+                          <button
+                            onClick={() => setRejectTarget(r)}
+                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
+                            style={{ background: 'rgba(239,68,68,0.85)' }}>
+                            <XCircle size={11} />Reject
+                          </button>
                           <button
                             onClick={() => handleToggleBlock(r)}
                             disabled={toggleBlock.isPending}
@@ -812,6 +1203,27 @@ export default function EnrollmentRequestsPage() {
             onClose={() => setRejectTarget(null)}
             onConfirm={handleReject}
             loading={reject.isPending}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Application detail modal */}
+      <AnimatePresence>
+        {detailTarget && (
+          <ApplicationDetailModal
+            user={detailTarget}
+            scopeCategory={scopeCategory}
+            onClose={() => setDetailTarget(null)}
+            onApprove={() => {
+              setApproveTarget(detailTarget)
+              setDetailTarget(null)
+            }}
+            onReject={() => {
+              setRejectTarget(detailTarget)
+              setDetailTarget(null)
+            }}
+            approveLoading={approve.isPending}
+            rejectLoading={reject.isPending || revokeToViewer.isPending}
           />
         )}
       </AnimatePresence>

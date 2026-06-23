@@ -7,7 +7,6 @@ import { z } from 'zod'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader2, AlertCircle } from 'lucide-react'
 import { api } from '@/lib/axios'
-import { Button, MotionButton } from '@/components/ui/button'
 
 /* ─── Validation schema ─────────────────────────── */
 const loginSchema = z.object({
@@ -87,12 +86,12 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
         transition={{ delay: 0.05 }}
         className="mb-8"
       >
-        <p className="mb-1 text-sm font-medium" style={{ color: '#FF6B1A' }}>
+        <p className="mb-1 text-sm font-medium" style={{ color: '#0057b8' }}>
           Welcome back 👋
         </p>
         <h2
           className="text-[28px] font-bold leading-tight tracking-tight"
-          style={{ fontFamily: 'Bricolage Grotesque, sans-serif', color: '#0D0F1A' }}
+          style={{ fontFamily: 'var(--font-display), sans-serif', color: '#0D0F1A' }}
         >
           Sign in to your account
         </h2>
@@ -131,7 +130,7 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
                 e.currentTarget.style.background = '#FFFFFF'
                 e.currentTarget.style.boxShadow = errors.email
                   ? '0 0 0 3px rgba(239,68,68,0.12)'
-                  : '0 0 0 3px rgba(47,107,255,0.12)'
+                  : '0 0 0 3px rgba(0,87,184,0.12)'
               }}
               onBlur={e => {
                 e.currentTarget.style.border = `1.5px solid ${errors.email ? '#FCA5A5' : 'transparent'}`
@@ -165,7 +164,7 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
             <a
               href="/forgot-password"
               className="text-xs font-medium transition-colors hover:opacity-70"
-              style={{ color: '#2F6BFF' }}
+              style={{ color: '#0057b8' }}
             >
               Forgot password?
             </a>
@@ -193,7 +192,7 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
                 e.currentTarget.style.background = '#FFFFFF'
                 e.currentTarget.style.boxShadow = errors.password
                   ? '0 0 0 3px rgba(239,68,68,0.12)'
-                  : '0 0 0 3px rgba(47,107,255,0.12)'
+                  : '0 0 0 3px rgba(0,87,184,0.12)'
               }}
               onBlur={e => {
                 e.currentTarget.style.border = `1.5px solid ${errors.password ? '#FCA5A5' : 'transparent'}`
@@ -201,15 +200,14 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
                 e.currentTarget.style.boxShadow = 'none'
               }}
             />
-            <Button
+            <button
               type="button"
-              variant="ghost"
-              size="icon-sm"
               onClick={() => setShowPassword(v => !v)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#9CA3AF] transition-opacity hover:opacity-70"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
+              style={{ color: '#9CA3AF' }}
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </Button>
+            </button>
           </div>
           <AnimatePresence>
             {errors.password && (
@@ -240,7 +238,7 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
             type="checkbox"
             id="remember"
             className="h-4 w-4 cursor-pointer rounded"
-            style={{ accentColor: '#2F6BFF' }}
+            style={{ accentColor: '#0057b8' }}
           />
           <label htmlFor="remember" className="cursor-pointer text-sm" style={{ color: '#6B7280' }}>
             Remember me for 30 days
@@ -265,14 +263,16 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
 
         {/* Submit */}
         <motion.div custom={5} variants={fieldVariant} initial="hidden" animate="visible">
-          <MotionButton
+          <motion.button
             type="submit"
-            variant="default"
-            size="lg"
             disabled={isSubmitting}
-            whileHover={{ y: -2, boxShadow: '0 8px 28px rgba(255,107,26,0.38)' }}
+            whileHover={{ y: -2, boxShadow: '0 8px 28px rgba(0,87,184,0.35)' }}
             whileTap={{ scale: 0.98 }}
-            className="w-full gap-2 rounded-xl py-3.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold text-white transition-all disabled:cursor-not-allowed disabled:opacity-60"
+            style={{
+              background: 'linear-gradient(135deg, #0057b8 0%, #1a73e8 100%)',
+              boxShadow: '0 4px 20px rgba(0,87,184,0.30)',
+            }}
           >
             {isSubmitting ? (
               <>
@@ -285,7 +285,7 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
                 <ArrowRight size={16} />
               </>
             )}
-          </MotionButton>
+          </motion.button>
         </motion.div>
       </form>
 
@@ -299,15 +299,16 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
         style={{ color: '#6B7280' }}
       >
         Don&apos;t have an account?{' '}
-        <Button
+        <button
           type="button"
-          variant="link"
           onClick={onSwitch}
-          className="p-0 font-semibold text-[#FF6B1A] transition-opacity hover:opacity-70"
+          className="font-semibold transition-opacity hover:opacity-70"
+          style={{ color: '#0057b8' }}
         >
           Create one free →
-        </Button>
+        </button>
       </motion.p>
     </motion.div>
   )
 }
+

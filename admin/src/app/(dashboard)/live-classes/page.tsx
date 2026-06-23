@@ -414,28 +414,28 @@ function CalendarView({ items, onSlotClick }: { items: LiveClass[]; onSlotClick:
       {/* Month navigation */}
       <div className="mb-5 flex items-center gap-3">
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon-sm"
           onClick={prevMonth}
           className="h-8 w-8 rounded-xl"
-          style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.10)' }}>
+          style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.10)', background: 'transparent' }}>
           <ChevronLeft size={14} />
         </Button>
         <span className="min-w-[150px] text-center text-base font-bold text-white">{monthLabel}</span>
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon-sm"
           onClick={nextMonth}
           className="h-8 w-8 rounded-xl"
-          style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.10)' }}>
+          style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.10)', background: 'transparent' }}>
           <ChevronRight size={14} />
         </Button>
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
           onClick={goToday}
           className="rounded-xl px-4 py-1.5 text-xs font-semibold"
-          style={{ color: 'rgba(255,255,255,0.50)', border: '1px solid rgba(255,255,255,0.10)' }}>
+          style={{ color: 'rgba(255,255,255,0.50)', border: '1px solid rgba(255,255,255,0.10)', background: 'transparent' }}>
           Today
         </Button>
       </div>

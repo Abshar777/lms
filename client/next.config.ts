@@ -30,6 +30,8 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: 'plus.unsplash.com' },
+      // Local disk fallback (dev only — when R2 is not configured)
+      { protocol: 'http', hostname: 'localhost', port: '8000' },
       ...r2Patterns,
     ],
   },
@@ -42,6 +44,10 @@ const nextConfig: NextConfig = {
       {
         source: '/api/v1/:path*',
         destination: `${API_BASE}/api/v1/:path*`,
+      },
+      {
+        source: '/uploads/:path*',
+        destination: `${API_BASE}/uploads/:path*`,
       },
     ]
   },

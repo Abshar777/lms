@@ -7,10 +7,8 @@ import {
   BookOpen, Play, Search, Loader2, CheckCircle2,
 } from 'lucide-react'
 import { useMyEnrollments, type MyEnrollment } from '@/lib/api/enrollments'
-import { useCurrentUser } from '@/lib/api/user'
 import type { Course } from '@/types/index'
 import { StreakWidget } from '@/components/ui/StreakWidget'
-import { MotionButton } from '@/components/ui/button'
 
 const STATUS_TABS = ['All Status', 'Not Started', 'In Progress', 'Completed'] as const
 type StatusTab = typeof STATUS_TABS[number]
@@ -33,24 +31,15 @@ export default function MyLearningPage() {
   const [activeTab, setActiveTab] = useState<StatusTab>('All Status')
   const [search, setSearch] = useState('')
 
-  const { data: currentUser } = useCurrentUser()
   const { data: enrollments, isLoading } = useMyEnrollments()
 
-  const scopedEnrollments = useMemo(() => {
-    if (!currentUser?.category) return enrollments ?? []
-    return (enrollments ?? []).filter(e => {
-      const course = asCourse(e)
-      return course?.program === currentUser.category
-    })
-  }, [enrollments, currentUser?.category])
-
   const continuing = useMemo(
-    () => scopedEnrollments.filter(e => bucketOf(e) === 'in_progress').slice(0, 4),
-    [scopedEnrollments],
+    () => (enrollments ?? []).filter(e => bucketOf(e) === 'in_progress').slice(0, 4),
+    [enrollments],
   )
 
   const filtered = useMemo(() => {
-    return scopedEnrollments.filter(e => {
+    return (enrollments ?? []).filter(e => {
       const course = asCourse(e)
       if (!course) return false
       const bucket = bucketOf(e)
@@ -61,12 +50,12 @@ export default function MyLearningPage() {
       const matchSearch = course.title.toLowerCase().includes(search.toLowerCase())
       return matchTab && matchSearch
     })
-  }, [scopedEnrollments, activeTab, search])
+  }, [enrollments, activeTab, search])
 
   if (isLoading) {
     return (
       <div className="flex h-[60vh] items-center justify-center gap-3">
-        <Loader2 size={20} className="animate-spin" style={{ color: '#FF6B1A' }} />
+        <Loader2 size={20} className="animate-spin" style={{ color: '#0057b8' }} />
         <p className="text-sm" style={{ color: '#9CA3AF' }}>Loading your library…</p>
       </div>
     )
@@ -98,7 +87,7 @@ export default function MyLearningPage() {
             All Materials
             <span className="ml-2 inline-flex items-center justify-center rounded-lg px-2 py-0.5 text-sm font-bold"
               style={{ background: '#F3F4F6', color: '#374151' }}>
-              {scopedEnrollments.length}
+              {enrollments?.length ?? 0}
             </span>
           </h2>
 
@@ -115,7 +104,7 @@ export default function MyLearningPage() {
 
         <div className="mb-5 flex items-center gap-1 rounded-2xl p-1 overflow-x-auto scrollbar-none" style={{ background: '#F3F4F6' }}>
           {STATUS_TABS.map(tab => (
-            <MotionButton key={tab} variant="ghost" onClick={() => setActiveTab(tab)}
+            <motion.button key={tab} onClick={() => setActiveTab(tab)}
               className="relative rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
               style={{ color: activeTab === tab ? '#111827' : '#9CA3AF' }}>
               {activeTab === tab && (
@@ -125,7 +114,7 @@ export default function MyLearningPage() {
                   transition={{ type: 'spring', stiffness: 500, damping: 35 }} />
               )}
               <span className="relative z-10">{tab}</span>
-            </MotionButton>
+            </motion.button>
           ))}
         </div>
 
@@ -138,16 +127,16 @@ export default function MyLearningPage() {
                 <BookOpen size={22} style={{ color: '#D1D5DB' }} />
               </div>
               <p className="text-base font-bold" style={{ color: '#111827' }}>
-                {scopedEnrollments.length === 0 ? "You haven't enrolled yet" : 'No materials match'}
+                {(enrollments?.length ?? 0) === 0 ? "You haven't enrolled yet" : 'No materials match'}
               </p>
               <p className="text-sm" style={{ color: '#9CA3AF' }}>
-                {scopedEnrollments.length === 0
+                {(enrollments?.length ?? 0) === 0
                   ? 'Browse the catalogue and pick something that sparks your interest.'
                   : 'Try a different filter or search term.'}
               </p>
-              {scopedEnrollments.length === 0 && (
+              {(enrollments?.length ?? 0) === 0 && (
                 <Link href="/courses" className="mt-1 rounded-xl px-5 py-2 text-sm font-semibold transition-colors hover:opacity-90"
-                  style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A' }}>
+                  style={{ background: 'rgba(0,87,184,0.10)', color: '#0057b8' }}>
                   Browse courses
                 </Link>
               )}
@@ -188,7 +177,7 @@ function ContinueCard({ enrollment }: { enrollment: MyEnrollment }) {
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
             style={{ background: 'rgba(17,24,39,0.4)' }}>
             <div className="flex h-10 w-10 items-center justify-center rounded-full"
-              style={{ background: 'rgba(255,107,26,0.92)', boxShadow: '0 6px 16px rgba(255,107,26,0.4)' }}>
+              style={{ background: 'rgba(0,87,184,0.92)', boxShadow: '0 6px 16px rgba(0,87,184,0.4)' }}>
               <Play size={14} fill="white" color="white" />
             </div>
           </div>
@@ -212,12 +201,11 @@ function ContinueCard({ enrollment }: { enrollment: MyEnrollment }) {
             </div>
           </div>
           <Link href={href}>
-            <MotionButton whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-              variant="ghost"
-              size="sm"
-              className="mt-3 rounded-xl px-4 py-1.5 text-xs font-bold !bg-[#111827] !text-white">
+            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+              className="mt-3 rounded-xl px-4 py-1.5 text-xs font-bold text-white"
+              style={{ background: '#111827' }}>
               Continue
-            </MotionButton>
+            </motion.button>
           </Link>
         </div>
       </div>
@@ -251,7 +239,7 @@ function EnrollmentCard({ enrollment }: { enrollment: MyEnrollment }) {
           <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
             style={{ background: 'rgba(17,24,39,0.35)' }}>
             <div className="flex h-11 w-11 items-center justify-center rounded-full"
-              style={{ background: 'rgba(255,107,26,0.92)', boxShadow: '0 6px 16px rgba(255,107,26,0.4)' }}>
+              style={{ background: 'rgba(0,87,184,0.92)', boxShadow: '0 6px 16px rgba(0,87,184,0.4)' }}>
               <Play size={14} fill="white" color="white" />
             </div>
           </div>

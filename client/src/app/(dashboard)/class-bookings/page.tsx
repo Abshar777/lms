@@ -129,7 +129,7 @@ function getSlotStatus(lc: LiveClass, booking: MyBooking|undefined, hasOther: bo
 const SC: Record<SlotStatus,{color:string;bg:string;border:string;label:string}> = {
   live:      {color:'#EF4444',bg:'rgba(239,68,68,0.08)',  border:'rgba(239,68,68,0.22)',  label:'Live Now'},
   booked:    {color:'#059669',bg:'rgba(5,150,105,0.08)',  border:'rgba(5,150,105,0.22)',  label:'Reserved'},
-  bookable:  {color:'#FF6B1A',bg:'rgba(255,107,26,0.08)', border:'rgba(255,107,26,0.22)', label:'Open'},
+  bookable:  {color:'#0057b8',bg:'rgba(0,87,184,0.08)', border:'rgba(0,87,184,0.22)', label:'Open'},
   full:      {color:'#6B7280',bg:'rgba(107,114,128,0.07)',border:'rgba(107,114,128,0.18)',label:'Full'},
   locked:    {color:'#6B7280',bg:'rgba(107,114,128,0.07)',border:'rgba(107,114,128,0.15)',label:'Locked'},
   attended:  {color:'#2563EB',bg:'rgba(37,99,235,0.08)',  border:'rgba(37,99,235,0.20)',  label:'Attended'},
@@ -164,8 +164,8 @@ function PanelChip({ active, onClick, count, children }: {
     <button type="button" onClick={onClick}
       className="dm inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-medium transition-all duration-150 select-none"
       style={active ? {
-        background:'rgba(255,107,26,0.10)', color:'#EA6010',
-        border:'1.5px solid rgba(255,107,26,0.32)',
+        background:'rgba(0,87,184,0.10)', color:'#EA6010',
+        border:'1.5px solid rgba(0,87,184,0.32)',
         fontWeight:600,
       } : {
         background:'#F8FAFC', color:'#475569', border:'1px solid #E2EAF4',
@@ -174,7 +174,7 @@ function PanelChip({ active, onClick, count, children }: {
       {count !== undefined && (
         <span className="rounded-full px-1.5 min-w-[18px] text-center text-[10px] font-semibold"
           style={{
-            background:active?'rgba(255,107,26,0.15)':'#EEF2F7',
+            background:active?'rgba(0,87,184,0.15)':'#EEF2F7',
             color:active?'#EA6010':'#94A3B8',
           }}>
           {count}
@@ -263,8 +263,8 @@ function MiniCalendar({rangeStart,rangeEnd,onRangeChange,onClose}: {
             <button key={day.toISOString()} onClick={()=>handleDay(day)}
               onMouseEnter={()=>anchor&&setHover(day)} onMouseLeave={()=>anchor&&setHover(null)}
               className="flex h-7 w-full items-center justify-center rounded-lg text-[11px] transition-all"
-              style={{background:ep?'#FF6B1A':rng?'rgba(255,107,26,0.10)':'transparent',
-                color:ep?'white':tod?'#FF6B1A':'#374151',fontWeight:tod&&!ep?700:400}}>
+              style={{background:ep?'#0057b8':rng?'rgba(0,87,184,0.10)':'transparent',
+                color:ep?'white':tod?'#0057b8':'#374151',fontWeight:tod&&!ep?700:400}}>
               {day.getDate()}
             </button>
           )
@@ -277,7 +277,7 @@ function MiniCalendar({rangeStart,rangeEnd,onRangeChange,onClose}: {
         {presets.map(p=>(
           <button key={p.l} onClick={p.f}
             className="rounded-full px-2.5 py-1 text-[10px] font-semibold"
-            style={{background:'rgba(255,107,26,0.07)',color:'#FF6B1A',border:'1px solid rgba(255,107,26,0.16)'}}>
+            style={{background:'rgba(0,87,184,0.07)',color:'#0057b8',border:'1px solid rgba(0,87,184,0.16)'}}>
             {p.l}
           </button>
         ))}
@@ -341,7 +341,7 @@ function ClassCard({group,bookingMap,onClick}: {
 
   type S='live'|'booked'|'ended'|'open'
   const state: S = hasLive?'live':bookedSlot?'booked':allEnded?'ended':'open'
-  const accentMap: Record<S,string> = { live:'#EF4444', booked:'#059669', ended:'#CBD5E1', open:'#FF6B1A' }
+  const accentMap: Record<S,string> = { live:'#EF4444', booked:'#059669', ended:'#CBD5E1', open:'#0057b8' }
   const accent = accentMap[state]
 
   return(
@@ -374,7 +374,7 @@ function ClassCard({group,bookingMap,onClick}: {
             </div>
           )}
           {!hasLive&&!bookedSlot&&bookable>0&&(
-            <span className="text-[9px] font-bold uppercase tracking-wider" style={{color:'#FF6B1A'}}>{bookable} open</span>
+            <span className="text-[9px] font-bold uppercase tracking-wider" style={{color:'#0057b8'}}>{bookable} open</span>
           )}
           {allEnded&&<span className="text-[9px] font-bold uppercase tracking-wider" style={{color:'#94A3B8'}}>Ended</span>}
         </div>
@@ -425,8 +425,8 @@ function ClassCard({group,bookingMap,onClick}: {
         )}
         {moduleTitle&&(
           <div className="flex items-center gap-1.5">
-            <span className="h-1 w-1 rounded-full flex-shrink-0" style={{background:'#FF6B1A'}}/>
-            <span className="truncate text-[10px] font-medium" style={{color:'#FF6B1A'}}>{moduleTitle}</span>
+            <span className="h-1 w-1 rounded-full flex-shrink-0" style={{background:'#0057b8'}}/>
+            <span className="truncate text-[10px] font-medium" style={{color:'#0057b8'}}>{moduleTitle}</span>
           </div>
         )}
       </div>
@@ -503,8 +503,8 @@ function SlotModal({group,bookingMap,onBook,onCancel,bookPending,cancelPending,o
                 </p>
               )}
               {moduleTitle&&(
-                <p className="mt-0.5 flex items-center gap-1 text-[11px] font-medium" style={{color:'#FF6B1A'}}>
-                  <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{background:'#FF6B1A'}}/>
+                <p className="mt-0.5 flex items-center gap-1 text-[11px] font-medium" style={{color:'#0057b8'}}>
+                  <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{background:'#0057b8'}}/>
                   {moduleTitle}
                 </p>
               )}
@@ -584,11 +584,11 @@ function SlotModal({group,bookingMap,onBook,onCancel,bookPending,cancelPending,o
                 {selSt==='bookable'&&(
                   isEnr?(
                     <motion.button type="button"
-                      whileHover={{scale:1.01,boxShadow:'0 8px 28px rgba(255,107,26,0.32)'}}
+                      whileHover={{scale:1.01,boxShadow:'0 8px 28px rgba(0,87,184,0.32)'}}
                       whileTap={{scale:0.98}}
                       onClick={()=>onBook(sel.id)} disabled={bookPending.has(sel.id)}
                       className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white disabled:opacity-60"
-                      style={{background:'linear-gradient(135deg,#FF6B1A 0%,#FF9044 100%)'}}>
+                      style={{background:'linear-gradient(135deg,#0057b8 0%,#FF9044 100%)'}}>
                       {bookPending.has(sel.id)
                         ?<><Loader2 size={14} className="animate-spin"/>Booking…</>
                         :<><BookOpen size={14}/>Reserve Seat · {fmtShortSlot(sel.scheduledStart)}</>}
@@ -701,16 +701,16 @@ function FilterSelect({ placeholder, value, onChange, options }: {
         onChange={e => onChange(e.target.value)}
         className="dm appearance-none rounded-2xl py-2 pl-3.5 pr-7 text-[12px] font-semibold outline-none cursor-pointer transition-all"
         style={{
-          background: active ? 'rgba(255,107,26,0.08)' : 'white',
+          background: active ? 'rgba(0,87,184,0.08)' : 'white',
           color:      active ? '#EA6010'                : '#475569',
-          border:     active ? '1.5px solid rgba(255,107,26,0.30)' : '1px solid #E2EAF4',
-          boxShadow:  active ? '0 0 0 3px rgba(255,107,26,0.07)' : '0 1px 4px rgba(15,23,42,0.04)',
+          border:     active ? '1.5px solid rgba(0,87,184,0.30)' : '1px solid #E2EAF4',
+          boxShadow:  active ? '0 0 0 3px rgba(0,87,184,0.07)' : '0 1px 4px rgba(15,23,42,0.04)',
         }}>
         <option value="all">{placeholder}</option>
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
       <ChevronDown size={11} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2"
-        style={{ color: active ? '#FF6B1A' : '#94A3B8' }} />
+        style={{ color: active ? '#0057b8' : '#94A3B8' }} />
     </div>
   )
 }
@@ -725,8 +725,8 @@ function ContactAdminModal({onClose}:{onClose:()=>void}) {
         className="dm relative w-full max-w-sm rounded-3xl bg-white p-6 text-center"
         style={{boxShadow:'0 24px 64px rgba(15,23,42,0.18)'}}>
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl"
-          style={{background:'rgba(255,107,26,0.08)',border:'1px solid rgba(255,107,26,0.20)'}}>
-          <AlertCircle size={22} style={{color:'#FF6B1A'}}/>
+          style={{background:'rgba(0,87,184,0.08)',border:'1px solid rgba(0,87,184,0.20)'}}>
+          <AlertCircle size={22} style={{color:'#0057b8'}}/>
         </div>
         <h3 className="syne mb-2 text-base font-700" style={{color:'#0F172A'}}>Attendance Limit Reached</h3>
         <p className="mb-5 text-sm leading-relaxed" style={{color:'#64748B'}}>
@@ -734,7 +734,7 @@ function ContactAdminModal({onClose}:{onClose:()=>void}) {
         </p>
         <button type="button" onClick={onClose}
           className="w-full rounded-2xl py-3 text-sm font-bold text-white"
-          style={{background:'linear-gradient(135deg,#FF6B1A,#FF9044)'}}>Got it</button>
+          style={{background:'linear-gradient(135deg,#0057b8,#FF9044)'}}>Got it</button>
       </motion.div>
     </div>
   )
@@ -1046,7 +1046,7 @@ export default function ClassBookingsPage() {
 
   const STATUS_TABS = [
     {key:'live'     as StatusFilter, label:liveTabLabel, icon:liveTabIcon, color:'#EF4444', activeStyle:{background:'rgba(239,68,68,0.10)',color:'#EF4444',border:'1.5px solid rgba(239,68,68,0.28)'}},
-    {key:'upcoming' as StatusFilter, label:'Upcoming',   icon:<CalendarDays size={11} className="mr-1 flex-shrink-0"/>, color:'#FF6B1A', activeStyle:{background:'rgba(255,107,26,0.10)',color:'#EA6010',border:'1.5px solid rgba(255,107,26,0.28)'}},
+    {key:'upcoming' as StatusFilter, label:'Upcoming',   icon:<CalendarDays size={11} className="mr-1 flex-shrink-0"/>, color:'#0057b8', activeStyle:{background:'rgba(0,87,184,0.10)',color:'#EA6010',border:'1.5px solid rgba(0,87,184,0.28)'}},
     {key:'ended'    as StatusFilter, label:'Completed',  icon:<CheckCircle2 size={11} className="mr-1 flex-shrink-0" strokeWidth={3}/>, color:'#6366F1', activeStyle:{background:'rgba(99,102,241,0.10)',color:'#6366F1',border:'1.5px solid rgba(99,102,241,0.28)'}},
   ]
 
@@ -1062,10 +1062,10 @@ export default function ClassBookingsPage() {
             <div>
               <div className="mb-1 flex items-center gap-2">
                 <div className="flex h-6 w-6 items-center justify-center rounded-lg"
-                  style={{background:'linear-gradient(135deg,#FF6B1A,#FF9044)',boxShadow:'0 3px 10px rgba(255,107,26,0.30)'}}>
+                  style={{background:'linear-gradient(135deg,#0057b8,#FF9044)',boxShadow:'0 3px 10px rgba(0,87,184,0.30)'}}>
                   <CalendarDays size={12} color="white"/>
                 </div>
-                <span className="dm text-[10px] font-bold uppercase tracking-widest" style={{color:'#FF6B1A'}}>Class Schedule</span>
+                <span className="dm text-[10px] font-bold uppercase tracking-widest" style={{color:'#0057b8'}}>Class Schedule</span>
               </div>
               <h1 className="syne text-[26px] font-800 leading-none tracking-tight" style={{color:'#0F172A'}}>
                 {filterStatus==='all'?fmtDateRange(rangeStart,rangeEnd):filterStatus==='live'?(isOfflineMode?"Today's Classes":'Live Now'):filterStatus==='upcoming'?'Upcoming Sessions':'Completed Sessions'}
@@ -1079,7 +1079,7 @@ export default function ClassBookingsPage() {
                   <button type="button"
                     onClick={()=>{const m=getMondayOfWeek(new Date());setRangeStart(m);setRangeEnd(addDays(m,6))}}
                     className="rounded-full px-3 py-1.5 text-[11px] font-semibold"
-                    style={{background:'rgba(255,107,26,0.10)',color:'#FF6B1A',border:'1px solid rgba(255,107,26,0.22)'}}>
+                    style={{background:'rgba(0,87,184,0.10)',color:'#0057b8',border:'1px solid rgba(0,87,184,0.22)'}}>
                     ← Today
                   </button>
                 )}
@@ -1091,7 +1091,7 @@ export default function ClassBookingsPage() {
                   </button>
                   <button type="button" onClick={()=>setShowCal(v=>!v)}
                     className="flex items-center gap-1.5 rounded-xl px-2 py-1 hover:bg-slate-50">
-                    <Calendar size={11} style={{color:showCal?'#FF6B1A':'#94A3B8'}}/>
+                    <Calendar size={11} style={{color:showCal?'#0057b8':'#94A3B8'}}/>
                     <span className="dm whitespace-nowrap text-[11px] font-semibold" style={{color:'#334155'}}>
                       {rangeStart.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – {rangeEnd.toLocaleDateString('en-US',{month:'short',day:'numeric'})}
                     </span>
@@ -1117,7 +1117,7 @@ export default function ClassBookingsPage() {
               {icon:<CalendarDays size={13}/>,label:'Total Classes',   value:stats.total,    color:'#334155',accent:'#64748B',bg:'white',                         border:'#E2EAF4'},
               {icon:<Flame size={13}/>,       label:'Live Now',        value:stats.liveNow,  color:'#EF4444',accent:'#EF4444',bg:'rgba(239,68,68,0.04)',           border:'rgba(239,68,68,0.15)'},
               {icon:<CheckCircle2 size={13} strokeWidth={3}/>,label:'My Reservations',value:stats.myBooked,color:'#059669',accent:'#059669',bg:'rgba(5,150,105,0.04)',border:'rgba(5,150,105,0.15)'},
-              {icon:<TrendingUp size={13}/>,  label:'Open Slots',      value:stats.open,     color:'#FF6B1A',accent:'#FF6B1A',bg:'rgba(255,107,26,0.04)',          border:'rgba(255,107,26,0.15)'},
+              {icon:<TrendingUp size={13}/>,  label:'Open Slots',      value:stats.open,     color:'#0057b8',accent:'#0057b8',bg:'rgba(0,87,184,0.04)',          border:'rgba(0,87,184,0.15)'},
             ].map((p,i)=>(
               <motion.div key={p.label} initial={{opacity:0,y:8}} animate={{opacity:1,y:0}}
                 transition={{delay:i*0.05}}
@@ -1145,7 +1145,7 @@ export default function ClassBookingsPage() {
                 {icon:<CalendarDays size={13}/>,label:'Total Sessions',    value:offlineStats.total,          color:'#334155',accent:'#64748B',bg:'white',                         border:'#E2EAF4'},
                 {icon:<Flame size={13}/>,       label:"Today's Classes",   value:offlineStats.today,          color:'#EF4444',accent:'#EF4444',bg:'rgba(239,68,68,0.04)',           border:'rgba(239,68,68,0.15)'},
                 {icon:<CheckCircle2 size={13} strokeWidth={3}/>,label:'My Reservations',value:offlineStats.myReservations,color:'#059669',accent:'#059669',bg:'rgba(5,150,105,0.04)',border:'rgba(5,150,105,0.15)'},
-                {icon:<TrendingUp size={13}/>,  label:'Available Seats',   value:offlineStats.availableSeats, color:'#FF6B1A',accent:'#FF6B1A',bg:'rgba(255,107,26,0.04)',          border:'rgba(255,107,26,0.15)'},
+                {icon:<TrendingUp size={13}/>,  label:'Available Seats',   value:offlineStats.availableSeats, color:'#0057b8',accent:'#0057b8',bg:'rgba(0,87,184,0.04)',          border:'rgba(0,87,184,0.15)'},
               ].map((p,i)=>(
                 <motion.div key={p.label} initial={{opacity:0,y:8}} animate={{opacity:1,y:0}}
                   transition={{delay:i*0.05}}
@@ -1225,12 +1225,12 @@ export default function ClassBookingsPage() {
             {/* Search */}
             <div className="relative flex-1 min-w-0">
               <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                style={{color:search?'#FF6B1A':'#CBD5E1'}}/>
+                style={{color:search?'#0057b8':'#CBD5E1'}}/>
               <input type="text" value={search} onChange={e=>setSearch(e.target.value)}
                 placeholder="Search classes, instructors…"
                 className="dm w-full rounded-xl py-1.5 pl-8 pr-7 text-[12px] outline-none"
-                style={{background:search?'rgba(255,107,26,0.04)':'#F8FAFC',color:'#334155',
-                  border:`1px solid ${search?'rgba(255,107,26,0.25)':'#E2EAF4'}`}}/>
+                style={{background:search?'rgba(0,87,184,0.04)':'#F8FAFC',color:'#334155',
+                  border:`1px solid ${search?'rgba(0,87,184,0.25)':'#E2EAF4'}`}}/>
               {search&&(
                 <button type="button" onClick={()=>setSearch('')}
                   className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -1243,13 +1243,13 @@ export default function ClassBookingsPage() {
             <button type="button" onClick={()=>setShowPanel(v=>!v)}
               className="dm flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold flex-shrink-0 transition-all"
               style={showPanel||panelFilterCount>0
-                ?{background:'rgba(255,107,26,0.10)',color:'#EA6010',border:'1.5px solid rgba(255,107,26,0.30)',fontWeight:600}
+                ?{background:'rgba(0,87,184,0.10)',color:'#EA6010',border:'1.5px solid rgba(0,87,184,0.30)',fontWeight:600}
                 :{background:'#F8FAFC',color:'#64748B',border:'1px solid #E2EAF4'}}>
               <SlidersHorizontal size={12}/>
               Filters
               {panelFilterCount>0&&(
                 <span className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white flex-shrink-0"
-                  style={{background:'#FF6B1A'}}>
+                  style={{background:'#0057b8'}}>
                   {panelFilterCount}
                 </span>
               )}
@@ -1324,7 +1324,7 @@ export default function ClassBookingsPage() {
               <div className="flex items-center gap-2 flex-wrap pt-0.5">
                 {/* Program label pill */}
                 <span className="dm flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold"
-                  style={{background:'rgba(255,107,26,0.08)',color:'#EA6010',border:'1px solid rgba(255,107,26,0.20)'}}>
+                  style={{background:'rgba(0,87,184,0.08)',color:'#EA6010',border:'1px solid rgba(0,87,184,0.20)'}}>
                   <GraduationCap size={11}/>{PROGRAM_LABELS[filterProgram]}
                 </span>
                 <ChevronRight size={12} style={{color:'#CBD5E1'}}/>
@@ -1363,7 +1363,7 @@ export default function ClassBookingsPage() {
         {/* ─── CONTENT ──────────────────────────────────────────── */}
         {isLoading&&(
           <div className="flex flex-col items-center justify-center gap-3 py-24">
-            <motion.div className="h-6 w-6 rounded-full border-2 border-transparent border-t-orange-500"
+            <motion.div className="h-6 w-6 rounded-full border-2 border-transparent border-t-blue-500"
               animate={{rotate:360}} transition={{duration:1,repeat:Infinity,ease:'linear'}}/>
             <p className="dm text-sm" style={{color:'#94A3B8'}}>Loading schedule…</p>
           </div>
@@ -1380,8 +1380,8 @@ export default function ClassBookingsPage() {
                   className="flex flex-col items-center gap-4 rounded-3xl bg-white py-20 text-center"
                   style={{border:'1px solid #E2EAF4'}}>
                   <div className="flex h-16 w-16 items-center justify-center rounded-3xl"
-                    style={{background:'rgba(255,107,26,0.07)',border:'1px solid rgba(255,107,26,0.14)'}}>
-                    <Calendar size={26} style={{color:'#FF6B1A'}}/>
+                    style={{background:'rgba(0,87,184,0.07)',border:'1px solid rgba(0,87,184,0.14)'}}>
+                    <Calendar size={26} style={{color:'#0057b8'}}/>
                   </div>
                   {allClasses.length===0?(
                     <>
@@ -1399,7 +1399,7 @@ export default function ClassBookingsPage() {
                       <p className="dm text-sm" style={{color:'#94A3B8'}}>Try adjusting your filters{filterStatus==='all'?' or date range':''}.</p>
                       <button type="button" onClick={clearAll}
                         className="rounded-full px-4 py-2 text-sm font-semibold"
-                        style={{background:'rgba(255,107,26,0.10)',color:'#FF6B1A',border:'1px solid rgba(255,107,26,0.20)'}}>
+                        style={{background:'rgba(0,87,184,0.10)',color:'#0057b8',border:'1px solid rgba(0,87,184,0.20)'}}>
                         Clear all filters
                       </button>
                     </>
@@ -1408,7 +1408,7 @@ export default function ClassBookingsPage() {
                       <p className="syne font-700 text-lg" style={{color:'#0F172A'}}>No classes this period</p>
                       <button type="button" onClick={()=>shiftRange(1)}
                         className="flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold"
-                        style={{background:'rgba(255,107,26,0.10)',color:'#FF6B1A',border:'1px solid rgba(255,107,26,0.20)'}}>
+                        style={{background:'rgba(0,87,184,0.10)',color:'#0057b8',border:'1px solid rgba(0,87,184,0.20)'}}>
                         <ChevronRight size={14}/>Next period
                       </button>
                     </>
@@ -1422,20 +1422,20 @@ export default function ClassBookingsPage() {
                       <div className="mb-4 flex items-center gap-3">
                         <div className="flex items-center gap-2 rounded-2xl px-3.5 py-2"
                           style={{
-                            background:sec.isToday?'linear-gradient(135deg,rgba(255,107,26,0.10),rgba(255,140,66,0.06))':'white',
-                            border:`1px solid ${sec.isToday?'rgba(255,107,26,0.22)':'#E2EAF4'}`,
-                            boxShadow:sec.isToday?'0 3px 10px rgba(255,107,26,0.10)':'0 1px 3px rgba(15,23,42,0.04)',
+                            background:sec.isToday?'linear-gradient(135deg,rgba(0,87,184,0.10),rgba(255,140,66,0.06))':'white',
+                            border:`1px solid ${sec.isToday?'rgba(0,87,184,0.22)':'#E2EAF4'}`,
+                            boxShadow:sec.isToday?'0 3px 10px rgba(0,87,184,0.10)':'0 1px 3px rgba(15,23,42,0.04)',
                           }}>
                           {sec.isToday&&(
                             <motion.span animate={{opacity:[1,0.4,1]}} transition={{duration:2,repeat:Infinity}}
-                              className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{background:'#FF6B1A'}}/>
+                              className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{background:'#0057b8'}}/>
                           )}
-                          <span className="syne text-[12px] font-700" style={{color:sec.isToday?'#FF6B1A':'#475569'}}>
+                          <span className="syne text-[12px] font-700" style={{color:sec.isToday?'#0057b8':'#475569'}}>
                             {sec.dateLabel}
                           </span>
                           {sec.isToday&&(
                             <span className="dm rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-                              style={{background:'rgba(255,107,26,0.14)',color:'#FF6B1A'}}>Today</span>
+                              style={{background:'rgba(0,87,184,0.14)',color:'#0057b8'}}>Today</span>
                           )}
                         </div>
                         <div className="h-px flex-1" style={{background:'linear-gradient(to right,#E2EAF4,transparent)'}}/>

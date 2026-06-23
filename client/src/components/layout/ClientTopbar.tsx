@@ -7,7 +7,7 @@ import Link from 'next/link'
 import {
   Search, Bell, X, MessageSquare, BookOpen,
   GraduationCap, Heart, Sparkles, Trophy,
-  Settings, Clock, Star, Users, Video, Flame, Menu, ShoppingCart, Map, CalendarDays, LifeBuoy,
+  Settings, Clock, Star, Users, Video, Flame, Menu, ShoppingCart, Map, CalendarDays,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
@@ -21,7 +21,6 @@ import {
 } from '@/lib/api/notifications'
 import { AIChatPanel } from '@/components/layout/AIChatPanel'
 import { useIsMobile } from '@/hooks/useIsMobile'
-import { Button, MotionButton } from '@/components/ui/button'
 
 /* Nav tabs shown when sidebar layout is active (minimal — sidebar handles main nav) */
 const SIDEBAR_TABS = [
@@ -41,7 +40,6 @@ const TOPBAR_TABS = [
   { label: 'Achievements',   href: '/achievements',    icon: Trophy },
   { label: 'Streaks',        href: '/streaks',         icon: Flame },
   { label: 'Favorites',      href: '/favorites',       icon: Heart, badge: 1 },
-  { label: 'Help & Support', href: '/support',         icon: LifeBuoy },
   { label: 'Settings',       href: '/settings',        icon: Settings },
 ]
 
@@ -177,25 +175,23 @@ export function ClientTopbar() {
         <div className="flex h-[60px] items-center gap-3 px-4 sm:px-6" style={{ borderBottom: '1px solid #F3F4F6' }}>
 
           {/* Hamburger — always shown on mobile for the mobile drawer */}
-          <Button
-            variant="ghost"
-            size="icon-sm"
+          <button
             onClick={() => setMobileNav(true)}
-            className="flex-shrink-0 hover:bg-orange-50 lg:hidden"
-            style={{ color: '#FF6B1A' }}
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-blue-50 lg:hidden"
+            style={{ color: '#0057b8' }}
             aria-label="Open menu">
             <Menu size={18} />
-          </Button>
+          </button>
 
           {/* Logo — always visible (no desktop sidebar) */}
           <div className="flex items-center gap-2 mr-4 flex-shrink-0">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl"
-              style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+              style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>
               <Flame size={14} color="white" strokeWidth={2.2} />
             </div>
             <span className="hidden sm:block font-bold text-[15px]"
               style={{ color: '#111827', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-              LearnOS
+              Delta
             </span>
           </div>
 
@@ -209,7 +205,7 @@ export function ClientTopbar() {
                 router.push(q ? `/search?q=${encodeURIComponent(q)}` : '/search')
               }}>
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10"
-                style={{ color: '#FF6B1A', opacity: focused ? 1 : 0.55 }} />
+                style={{ color: '#0057b8', opacity: focused ? 1 : 0.55 }} />
               <input
                 ref={inputRef}
                 value={query}
@@ -227,33 +223,29 @@ export function ClientTopbar() {
                 className="w-full rounded-xl py-2 pl-9 pr-10 text-sm outline-none transition-all"
                 style={{
                   background: focused ? '#FFF7ED' : '#F3F4F6',
-                  border: focused ? '1.5px solid #FF6B1A' : '1.5px solid transparent',
-                  boxShadow: focused ? '0 0 0 3px rgba(255,107,26,0.10)' : 'none',
+                  border: focused ? '1.5px solid #0057b8' : '1.5px solid transparent',
+                  boxShadow: focused ? '0 0 0 3px rgba(0,87,184,0.10)' : 'none',
                   color: '#111827',
                 }} />
               {query && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
+                <button type="button"
                   onClick={() => {
                     setQuery(''); setDebouncedQ('')
                     if (isSearchPage) router.replace('/search')
                     inputRef.current?.focus()
                   }}
-                  className="absolute right-9 top-1/2 -translate-y-1/2 h-5 w-5 hover:bg-gray-200"
+                  className="absolute right-9 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-md hover:bg-gray-200 transition-colors"
                   style={{ color: '#9CA3AF' }}>
                   <X size={11} />
-                </Button>
+                </button>
               )}
-              {/* <MotionButton
+              {/* <motion.button
               type="submit"
-              variant="default"
-              size="icon-sm"
               whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 w-7">
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-lg text-white"
+              style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)', boxShadow: '0 2px 8px rgba(0,87,184,0.30)' }}>
               <Search size={12} />
-            </MotionButton> */}
+            </motion.button> */}
             </form>
 
             {/* ── Typeahead dropdown (only on non-search pages) ── */}
@@ -284,7 +276,7 @@ export function ClientTopbar() {
                           key={course.id}
                           href={`/courses/${course.slug}`}
                           onClick={() => { setFocused(false); setQuery(course.title) }}>
-                          <div className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-orange-50 cursor-pointer"
+                          <div className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-blue-50 cursor-pointer"
                             style={{ borderBottom: '1px solid #F9FAFB' }}>
                             {/* Thumbnail */}
                             <div className="h-10 w-14 flex-shrink-0 overflow-hidden rounded-lg"
@@ -323,8 +315,8 @@ export function ClientTopbar() {
                       <Link
                         href={`/search?q=${encodeURIComponent(debouncedQ)}`}
                         onClick={() => setFocused(false)}
-                        className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-semibold transition-colors hover:bg-orange-50"
-                        style={{ color: '#FF6B1A', borderTop: '1px solid #F3F4F6' }}>
+                        className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-semibold transition-colors hover:bg-blue-50"
+                        style={{ color: '#0057b8', borderTop: '1px solid #F3F4F6' }}>
                         <Search size={11} />
                         View all results for &ldquo;{debouncedQ}&rdquo;
                       </Link>
@@ -337,29 +329,26 @@ export function ClientTopbar() {
 
           <div className="ml-auto flex items-center gap-1.5">
             {/* Ask AI — orange primary */}
-            <MotionButton
-              variant="default"
+            <motion.button
               onClick={() => setAiChatOpen(v => !v)}
-              whileHover={{ scale: 1.02, boxShadow: '0 6px 20px rgba(255,107,26,0.35)' }} whileTap={{ scale: 0.97 }}
-              className="hidden sm:flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold">
+              whileHover={{ scale: 1.02, boxShadow: '0 6px 20px rgba(0,87,184,0.35)' }} whileTap={{ scale: 0.97 }}
+              className="hidden sm:flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold text-white"
+              style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)', boxShadow: '0 3px 12px rgba(0,87,184,0.28)' }}>
               <Sparkles size={12} />Ask AI
-            </MotionButton>
+            </motion.button>
 
             {/* Messages */}
-            <MotionButton
-              variant="ghost"
-              size="icon"
-              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              className="hover:bg-orange-50"
-              style={{ color: '#FF6B1A' }}>
+            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              className="flex h-9 w-9 items-center justify-center rounded-xl transition-colors hover:bg-blue-50"
+              style={{ color: '#0057b8' }}>
               <MessageSquare size={16} />
-            </MotionButton>
+            </motion.button>
 
             {/* Cart */}
             <Link href="/cart">
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                className="relative flex h-9 w-9 items-center justify-center rounded-xl transition-colors hover:bg-orange-50"
-                style={{ color: '#FF6B1A' }}>
+                className="relative flex h-9 w-9 items-center justify-center rounded-xl transition-colors hover:bg-blue-50"
+                style={{ color: '#0057b8' }}>
                 <ShoppingCart size={16} />
                 <AnimatePresence>
                   {cartCount > 0 && (
@@ -368,7 +357,7 @@ export function ClientTopbar() {
                       initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
                       transition={{ type: 'spring', stiffness: 400 }}
                       className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
-                      style={{ background: '#FF6B1A' }}>
+                      style={{ background: '#0057b8' }}>
                       {cartCount}
                     </motion.span>
                   )}
@@ -378,13 +367,10 @@ export function ClientTopbar() {
 
             {/* Notifications */}
             <div className="relative">
-              <MotionButton
-                variant="ghost"
-                size="icon"
-                onClick={() => setNotifOpen(v => !v)}
+              <motion.button onClick={() => setNotifOpen(v => !v)}
                 whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                className="relative hover:bg-orange-50"
-                style={{ color: '#FF6B1A' }}>
+                className="relative flex h-9 w-9 items-center justify-center rounded-xl transition-colors hover:bg-blue-50"
+                style={{ color: '#0057b8' }}>
                 <Bell size={16} />
                 {unread > 0 && (
                   <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }}
@@ -394,7 +380,7 @@ export function ClientTopbar() {
                     {unread}
                   </motion.span>
                 )}
-              </MotionButton>
+              </motion.button>
 
               <AnimatePresence>
                 {notifOpen && (
@@ -409,14 +395,13 @@ export function ClientTopbar() {
                       <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #F3F4F6' }}>
                         <span className="text-sm font-semibold" style={{ color: '#111827' }}>Notifications</span>
                         {unread > 0 && (
-                          <Button
-                            variant="link"
+                          <button
                             onClick={() => markAllRead.mutate()}
                             disabled={markAllRead.isPending}
-                            className="text-[11px] font-semibold p-0 h-auto"
-                            style={{ color: '#FF6B1A' }}>
+                            className="text-[11px] font-semibold transition-opacity hover:opacity-70 disabled:opacity-50"
+                            style={{ color: '#0057b8' }}>
                             Mark all read
-                          </Button>
+                          </button>
                         )}
                       </div>
                       {notifications.length === 0 && (
@@ -427,10 +412,10 @@ export function ClientTopbar() {
                       {notifications.map((n, i) => {
                         const isUnread = !n.readAt
                         const inner = (
-                          <div className="flex gap-3 px-4 py-3 transition-colors hover:bg-orange-50 cursor-pointer"
+                          <div className="flex gap-3 px-4 py-3 transition-colors hover:bg-blue-50 cursor-pointer"
                             style={{ borderBottom: i < notifications.length - 1 ? '1px solid #F3F4F6' : 'none' }}>
                             <div className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full"
-                              style={{ background: isUnread ? '#FF6B1A' : '#E5E7EB' }} />
+                              style={{ background: isUnread ? '#0057b8' : '#E5E7EB' }} />
                             <div className="min-w-0 flex-1">
                               <p className="text-xs leading-relaxed font-semibold" style={{ color: isUnread ? '#111827' : '#6B7280' }}>{n.title}</p>
                               {n.body && (
@@ -465,9 +450,9 @@ export function ClientTopbar() {
 
             {/* Profile */}
             <Link href="/settings">
-              <div className="flex cursor-pointer items-center gap-2.5 rounded-xl px-2 py-1 transition-colors hover:bg-orange-50">
-                <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full text-xs font-bold text-white ring-2 ring-orange-100"
-                  style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+              <div className="flex cursor-pointer items-center gap-2.5 rounded-xl px-2 py-1 transition-colors hover:bg-blue-50">
+                <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full text-xs font-bold text-white ring-2 ring-blue-100"
+                  style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>
                   {hasAvatarImage
                     ? <img src={user!.avatarUrl} alt="" className="h-full w-full object-cover" />
                     : avatarInitial}
@@ -504,14 +489,14 @@ export function ClientTopbar() {
                   {tab.badge && (
                     <span aria-label={`${tab.badge} items`}
                       className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white"
-                      style={{ background: '#FF6B1A' }}>
+                      style={{ background: '#0057b8' }}>
                       <span aria-hidden="true">{tab.badge}</span>
                     </span>
                   )}
                   {active && (
                     <motion.div layoutId="tab-underline"
                       className="absolute bottom-0 left-0 right-0 h-[2.5px] rounded-full"
-                      style={{ background: '#FF6B1A' }}
+                      style={{ background: '#0057b8' }}
                       transition={{ type: 'spring', stiffness: 500, damping: 35 }} />
                   )}
                 </motion.div>

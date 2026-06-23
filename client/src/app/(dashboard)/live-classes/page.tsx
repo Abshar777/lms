@@ -12,7 +12,6 @@ import {
   useUpcomingLiveClasses, isLive, isUpcoming, isEnded, hasRecording,
   fmtCountdown, type LiveClass,
 } from '@/lib/api/liveClasses'
-import { Button, MotionButton } from '@/components/ui/button'
 
 /* ── Helpers ─────────────────────────────────────────── */
 function fmtTime(iso: string) {
@@ -40,7 +39,7 @@ function firstDayOfMonth(y: number, m: number) {
 
 /* Gradient fallbacks by index */
 const GRADIENTS = [
-  'linear-gradient(135deg,#FF6B1A,#FF3D77)',
+  'linear-gradient(135deg,#0057b8,#FF3D77)',
   'linear-gradient(135deg,#6366F1,#818CF8)',
   'linear-gradient(135deg,#0EA5E9,#6366F1)',
   'linear-gradient(135deg,#22C55E,#0EA5E9)',
@@ -96,27 +95,23 @@ function MiniCalendar({
       style={{ background: '#fff', border: '1px solid #E4E7ED' }}>
       {/* Month nav */}
       <div className="mb-3 flex items-center justify-between">
-        <Button
-          variant="ghost"
-          size="icon"
+        <button
           onClick={() => {
             if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1) }
             else setViewMonth(m => m - 1)
           }}
-          className="h-7 w-7 rounded-lg">
+          className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-gray-100">
           <ChevronRight size={13} className="rotate-180" style={{ color: '#6B7280' }} />
-        </Button>
+        </button>
         <p className="text-sm font-bold" style={{ color: '#0D0F1A' }}>{monthLabel}</p>
-        <Button
-          variant="ghost"
-          size="icon"
+        <button
           onClick={() => {
             if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1) }
             else setViewMonth(m => m + 1)
           }}
-          className="h-7 w-7 rounded-lg">
+          className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-gray-100">
           <ChevronRight size={13} style={{ color: '#6B7280' }} />
-        </Button>
+        </button>
       </div>
 
       {/* Weekday headers */}
@@ -137,36 +132,33 @@ function MiniCalendar({
           const isSel    = selectedDate === dateStr
 
           return (
-            <Button
+            <button
               key={day}
-              variant="ghost"
               onClick={() => handleDay(day)}
-              className="relative flex h-7 w-full flex-col items-center justify-center rounded-lg p-0 text-xs font-semibold transition-all"
+              className="relative flex h-7 w-full flex-col items-center justify-center rounded-lg text-xs font-semibold transition-all"
               style={{
-                background: isSel ? '#FF6B1A' : isToday ? 'rgba(255,107,26,0.10)' : 'transparent',
-                color:      isSel ? '#fff'    : isToday ? '#FF6B1A' : '#374151',
+                background: isSel ? '#0057b8' : isToday ? 'rgba(0,87,184,0.10)' : 'transparent',
+                color:      isSel ? '#fff'    : isToday ? '#0057b8' : '#374151',
               }}>
               {day}
               {hasEvent && (
                 <span
                   className="absolute bottom-0.5 h-1 w-1 rounded-full"
-                  style={{ background: isSel ? 'rgba(255,255,255,0.7)' : '#FF6B1A' }}
+                  style={{ background: isSel ? 'rgba(255,255,255,0.7)' : '#0057b8' }}
                 />
               )}
-            </Button>
+            </button>
           )
         })}
       </div>
 
       {selectedDate && (
-        <Button
-          variant="outline"
-          size="sm"
+        <button
           onClick={() => onSelect(null)}
-          className="mt-3 w-full rounded-xl text-xs font-semibold"
-          style={{ color: '#6B7280' }}>
+          className="mt-3 w-full rounded-xl py-1.5 text-xs font-semibold transition-colors hover:bg-gray-100"
+          style={{ color: '#6B7280', border: '1px solid #E4E7ED' }}>
           Clear filter
-        </Button>
+        </button>
       )}
     </div>
   )
@@ -229,14 +221,8 @@ function LiveHeroCard({ live, index }: { live: LiveClass; index: number }) {
         </h2>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <p className="flex items-center gap-1.5 text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            <Clock size={11} />{fmtTime(live.scheduledStart)} – {fmtTime(new Date(new Date(live.scheduledStart).getTime() + live.durationMins * 60_000).toISOString())}
+            <Clock size={11} />{fmtTime(live.scheduledStart)} · {fmtDuration(live.durationMins)}
           </p>
-          {live.language && (
-            <span className="rounded-lg px-2 py-0.5 text-[10px] font-bold"
-              style={{ background: 'rgba(16,185,129,0.20)', color: '#6EE7B7' }}>
-              {live.language}
-            </span>
-          )}
           {live.instructor?.name && (
             <div className="flex items-center gap-1.5">
               {live.instructor.avatarUrl ? (
@@ -244,17 +230,26 @@ function LiveHeroCard({ live, index }: { live: LiveClass; index: number }) {
                   className="h-5 w-5 rounded-full object-cover" />
               ) : (
                 <div className="flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold text-white"
-                  style={{ background: 'rgba(255,107,26,0.7)' }}>
+                  style={{ background: 'rgba(0,87,184,0.7)' }}>
                   {live.instructor.name[0]}
                 </div>
               )}
               <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>{live.instructor.name}</p>
             </div>
           )}
-          <span className="ml-auto flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[10px] font-bold"
-            style={{ background: 'rgba(239,68,68,0.15)', color: '#EF4444' }}>
-            🔗 Link sent by email
-          </span>
+          {isInt ? (
+            <Link href={`/live-classes/${live.id}/watch`}
+              className="ml-auto flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white transition-all hover:brightness-110"
+              style={{ background: 'linear-gradient(135deg,#EF4444,#DC2626)', boxShadow: '0 4px 14px rgba(239,68,68,0.4)' }}>
+              <Radio size={12} />Watch now
+            </Link>
+          ) : live.meetingUrl ? (
+            <a href={live.meetingUrl} target="_blank" rel="noreferrer"
+              className="ml-auto flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white transition-all hover:brightness-110"
+              style={{ background: 'linear-gradient(135deg,#EF4444,#DC2626)', boxShadow: '0 4px 14px rgba(239,68,68,0.4)' }}>
+              <ExternalLink size={12} />Join now
+            </a>
+          ) : null}
         </div>
       </div>
     </motion.div>
@@ -271,17 +266,14 @@ function ContactAdminModal({ onClose }: { onClose: () => void }) {
         exit={{ opacity: 0, scale: 0.92 }}
         className="relative max-w-sm w-full rounded-3xl bg-white p-6 text-center"
         style={{ boxShadow: '0 24px 60px rgba(0,0,0,0.15)' }}>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          className="absolute right-4 top-4 h-7 w-7 rounded-full"
+        <button onClick={onClose}
+          className="absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-gray-100"
           style={{ color: '#9CA3AF' }}>
           <XIcon size={14} />
-        </Button>
+        </button>
         <div className="flex h-16 w-16 mx-auto mb-4 items-center justify-center rounded-3xl"
-          style={{ background: 'rgba(255,107,26,0.08)', border: '1px solid rgba(255,107,26,0.20)' }}>
-          <Phone size={26} style={{ color: '#FF6B1A' }} />
+          style={{ background: 'rgba(0,87,184,0.08)', border: '1px solid rgba(0,87,184,0.20)' }}>
+          <Phone size={26} style={{ color: '#0057b8' }} />
         </div>
         <h3 className="text-lg font-bold mb-2" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
           Maximum Sessions Reached
@@ -289,13 +281,11 @@ function ContactAdminModal({ onClose }: { onClose: () => void }) {
         <p className="text-sm mb-5" style={{ color: '#6B7280' }}>
           You've attended this class twice. To attend additional sessions, please contact the admin team.
         </p>
-        <Button
-          variant="default"
-          size="lg"
-          onClick={onClose}
-          className="w-full rounded-2xl">
+        <button onClick={onClose}
+          className="w-full rounded-2xl px-4 py-2.5 text-sm font-semibold text-white"
+          style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>
           Got it
-        </Button>
+        </button>
       </motion.div>
     </div>
   )
@@ -367,21 +357,13 @@ function SessionCard({ live, index, now }: { live: LiveClass; now: number; index
       {/* Body */}
       <div className="p-3.5">
         <div className="mb-1.5 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
-            <span className="rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-              style={{
-                background: isInt ? 'rgba(255,107,26,0.09)' : 'rgba(99,102,241,0.09)',
-                color:      isInt ? '#FF6B1A' : '#6366F1',
-              }}>
-              {isInt ? 'In-App' : 'External'}
-            </span>
-            {live.language && (
-              <span className="rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-                style={{ background: 'rgba(16,185,129,0.10)', color: '#10B981' }}>
-                {live.language}
-              </span>
-            )}
-          </div>
+          <span className="rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+            style={{
+              background: isInt ? 'rgba(0,87,184,0.09)' : 'rgba(99,102,241,0.09)',
+              color:      isInt ? '#0057b8' : '#6366F1',
+            }}>
+            {isInt ? 'In-App' : 'External'}
+          </span>
           {liveNow && live.viewerCount > 0 && (
             <span className="flex items-center gap-1 text-[10px] font-bold" style={{ color: '#EF4444' }}>
               <Users size={9} />{live.viewerCount.toLocaleString()}
@@ -401,9 +383,9 @@ function SessionCard({ live, index, now }: { live: LiveClass; now: number; index
 
         <div className="mt-2 flex items-center justify-between gap-2">
           <p className="flex items-center gap-1 text-[11px]" style={{ color: '#9CA3AF' }}>
-            <Clock size={9} />{fmtTime(live.scheduledStart)} – {fmtTime(new Date(new Date(live.scheduledStart).getTime() + live.durationMins * 60_000).toISOString())}
+            <Clock size={9} />{fmtTime(live.scheduledStart)}
             {upcoming && (
-              <span className="ml-1 font-semibold" style={{ color: '#FF6B1A' }}>
+              <span className="ml-1 font-semibold" style={{ color: '#0057b8' }}>
                 {fmtCountdown(live.scheduledStart, now)}
               </span>
             )}
@@ -414,70 +396,51 @@ function SessionCard({ live, index, now }: { live: LiveClass; now: number; index
             /* Not purchased — show lock + link to course */
             live.course?.slug ? (
               <Link href={`/courses/${live.course.slug}`}>
-                <MotionButton
-                  variant="ghost"
-                  size="sm"
-                  whileHover={{ scale: 1.04 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold h-auto"
+                <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                  className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold"
                   style={{ background: 'rgba(99,102,241,0.09)', color: '#6366F1', border: '1px solid rgba(99,102,241,0.20)' }}>
                   <XIcon size={9} />Enroll
-                </MotionButton>
+                </motion.button>
               </Link>
             ) : null
           ) : (
             <>
-              {/* Internal — recording only (live-now is view-only, no watch button) */}
+              {/* Internal — watch / recording */}
               {isInt && liveNow && (
-                <span className="flex items-center gap-1 rounded-xl px-2 py-1 text-[9px] font-bold"
-                  style={{ background: 'rgba(239,68,68,0.10)', color: '#EF4444' }}>
-                  🔗 Link by email
-                </span>
+                <Link href={`/live-classes/${live.id}/watch`}>
+                  <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                    className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold text-white"
+                    style={{ background: 'linear-gradient(135deg,#EF4444,#DC2626)' }}>
+                    <Radio size={9} />Watch
+                  </motion.button>
+                </Link>
               )}
               {isInt && upcoming && (
                 <Link href={`/live-classes/${live.id}/watch`}>
-                  <MotionButton
-                    variant="ghost"
-                    size="sm"
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.97 }}
-                    className="rounded-xl px-3 py-1.5 text-[10px] font-bold h-auto"
-                    style={{ background: 'rgba(255,107,26,0.09)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.20)' }}>
+                  <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                    className="rounded-xl px-3 py-1.5 text-[10px] font-bold"
+                    style={{ background: 'rgba(0,87,184,0.09)', color: '#0057b8', border: '1px solid rgba(0,87,184,0.20)' }}>
                     Details
-                  </MotionButton>
+                  </motion.button>
                 </Link>
               )}
               {isInt && rec && (
                 <Link href={`/live-classes/${live.id}/watch`}>
-                  <MotionButton
-                    variant="ghost"
-                    size="sm"
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.97 }}
-                    className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold h-auto"
+                  <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                    className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold"
                     style={{ background: 'rgba(34,197,94,0.10)', color: '#16A34A', border: '1px solid rgba(34,197,94,0.22)' }}>
                     <BookOpen size={9} />Watch
-                  </MotionButton>
+                  </motion.button>
                 </Link>
               )}
-              {/* External — live-now is view-only; upcoming shows details link */}
-              {!isInt && liveNow && (
-                <span className="flex items-center gap-1 rounded-xl px-2 py-1 text-[9px] font-bold"
-                  style={{ background: 'rgba(239,68,68,0.10)', color: '#EF4444' }}>
-                  🔗 Link by email
-                </span>
-              )}
-              {!isInt && upcoming && (
+              {/* External — gate through watch page so meetingUrl stays protected */}
+              {!isInt && (liveNow || upcoming) && (
                 <Link href={`/live-classes/${live.id}/watch`}>
-                  <MotionButton
-                    variant="ghost"
-                    size="sm"
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.97 }}
-                    className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold text-white h-auto"
-                    style={{ background: 'linear-gradient(135deg,#6366F1,#818CF8)' }}>
-                    <ExternalLink size={9} />Open
-                  </MotionButton>
+                  <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                    className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold text-white"
+                    style={{ background: liveNow ? 'linear-gradient(135deg,#EF4444,#DC2626)' : 'linear-gradient(135deg,#6366F1,#818CF8)' }}>
+                    <ExternalLink size={9} />{liveNow ? 'Join' : 'Open'}
+                  </motion.button>
                 </Link>
               )}
             </>
@@ -603,14 +566,10 @@ export default function LiveClassesPage() {
               {/* Filter tabs */}
               <div className="mb-3 flex flex-wrap gap-1.5">
                 {FILTERS.map(f => (
-                  <Button
-                    key={f.key}
-                    variant={filter === f.key ? 'ghost' : 'outline'}
-                    size="sm"
-                    onClick={() => setFilter(f.key)}
-                    className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold h-auto"
+                  <button key={f.key} onClick={() => setFilter(f.key)}
+                    className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
                     style={filter === f.key
-                      ? { background: '#0D0F1A', color: '#fff', border: 'none' }
+                      ? { background: '#0D0F1A', color: '#fff' }
                       : { background: '#fff', color: '#6B7280', border: '1px solid #E4E7ED' }}>
                     {f.label}
                     {filterCounts[f.key] > 0 && (
@@ -621,7 +580,7 @@ export default function LiveClassesPage() {
                         {filterCounts[f.key]}
                       </span>
                     )}
-                  </Button>
+                  </button>
                 ))}
               </div>
 
@@ -636,34 +595,27 @@ export default function LiveClassesPage() {
                     placeholder="Search sessions…"
                     className="w-full rounded-xl py-2 pl-9 pr-8 text-sm outline-none transition-all"
                     style={{ background: '#fff', border: '1px solid #E4E7ED', color: '#0D0F1A' }}
-                    onFocus={e => { e.currentTarget.style.border = '1px solid #FF6B1A'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.10)' }}
+                    onFocus={e => { e.currentTarget.style.border = '1px solid #0057b8'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,87,184,0.10)' }}
                     onBlur={e => { e.currentTarget.style.border = '1px solid #E4E7ED'; e.currentTarget.style.boxShadow = 'none' }}
                   />
                   {search && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setSearch('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 h-5 w-5 transition-opacity hover:opacity-70"
+                    <button onClick={() => setSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
                       style={{ color: '#9CA3AF' }}>
                       <XIcon size={12} />
-                    </Button>
+                    </button>
                   )}
                 </div>
                 {/* Type toggle */}
                 <div className="flex gap-1">
                   {([['all', 'All Types'], ['internal', 'In-App'], ['external', 'External']] as const).map(([val, label]) => (
-                    <Button
-                      key={val}
-                      variant={typeFilter === val ? 'ghost' : 'outline'}
-                      size="sm"
-                      onClick={() => setTypeFilter(val)}
-                      className="rounded-xl px-3 py-2 text-xs font-semibold h-auto"
+                    <button key={val} onClick={() => setTypeFilter(val)}
+                      className="rounded-xl px-3 py-2 text-xs font-semibold transition-all"
                       style={typeFilter === val
-                        ? { background: '#0D0F1A', color: '#fff', border: 'none' }
+                        ? { background: '#0D0F1A', color: '#fff' }
                         : { background: '#fff', color: '#6B7280', border: '1px solid #E4E7ED' }}>
                       {label}
-                    </Button>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -733,7 +685,7 @@ export default function LiveClassesPage() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-xs font-semibold" style={{ color: '#0D0F1A' }}>{l.title}</p>
-                          <p className="text-[10px]" style={{ color: '#FF6B1A' }}>
+                          <p className="text-[10px]" style={{ color: '#0057b8' }}>
                             {fmtDate(l.scheduledStart)} · {fmtTime(l.scheduledStart)}
                           </p>
                         </div>

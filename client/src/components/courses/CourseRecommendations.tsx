@@ -36,7 +36,7 @@ function RecommendationCard({ course, i }: { course: Course; i: number }) {
                   className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
               : <div className="h-full w-full flex items-center justify-center"
                   style={{ background: 'linear-gradient(135deg,#FFF7ED,#FFEDD5)' }}>
-                  <Sparkles size={24} style={{ color: '#FF6B1A', opacity: 0.4 }} />
+                  <Sparkles size={24} style={{ color: '#0057b8', opacity: 0.4 }} />
                 </div>
             }
             {/* Free badge */}
@@ -118,7 +118,7 @@ export function CourseRecommendations({ slug }: { slug: string }) {
       transition={{ delay: 0.4 }}
       className="mt-12">
       <div className="mb-4 flex items-center gap-2">
-        <Sparkles size={16} style={{ color: '#FF6B1A' }} />
+        <Sparkles size={16} style={{ color: '#0057b8' }} />
         <h2 className="text-base font-bold" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
           You might also like
         </h2>

@@ -30,17 +30,17 @@ export function AINotesPanel({ slug }: { slug: string }) {
       transition={{ delay: 0.22, type: 'spring', stiffness: 260, damping: 26 }}
       className="mt-8 overflow-hidden rounded-2xl"
       style={{
-        background: 'linear-gradient(135deg, rgba(255,107,26,0.04) 0%, rgba(99,102,241,0.04) 100%)',
-        border: '1px solid rgba(255,107,26,0.15)',
+        background: 'linear-gradient(135deg, rgba(0,87,184,0.04) 0%, rgba(99,102,241,0.04) 100%)',
+        border: '1px solid rgba(0,87,184,0.15)',
       }}>
 
       {/* ── Header ───────────────────────────────────── */}
       <div className="flex items-center justify-between gap-3 px-5 py-4"
-        style={{ borderBottom: '1px solid rgba(255,107,26,0.10)' }}>
+        style={{ borderBottom: '1px solid rgba(0,87,184,0.10)' }}>
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-2xl"
-            style={{ background: 'rgba(255,107,26,0.12)', border: '1px solid rgba(255,107,26,0.25)' }}>
-            <Sparkles size={16} style={{ color: '#FF6B1A' }} />
+            style={{ background: 'rgba(0,87,184,0.12)', border: '1px solid rgba(0,87,184,0.25)' }}>
+            <Sparkles size={16} style={{ color: '#0057b8' }} />
           </div>
           <div>
             <h2 className="text-base font-bold" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
@@ -67,7 +67,7 @@ export function AINotesPanel({ slug }: { slug: string }) {
       <div className="p-5">
         {isLoading && (
           <div className="flex items-center gap-2 text-sm" style={{ color: '#9CA3AF' }}>
-            <Loader2 size={14} className="animate-spin" style={{ color: '#FF6B1A' }} />
+            <Loader2 size={14} className="animate-spin" style={{ color: '#0057b8' }} />
             Crafting your study notes…
           </div>
         )}
@@ -90,7 +90,7 @@ export function AINotesPanel({ slug }: { slug: string }) {
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2 rounded-xl px-3 py-1.5"
                 style={{ background: '#FFF', border: '1px solid #E4E7ED' }}>
-                <Clock size={13} style={{ color: '#FF6B1A' }} />
+                <Clock size={13} style={{ color: '#0057b8' }} />
                 <span className="text-xs" style={{ color: '#6B7280' }}>
                   <span className="font-semibold" style={{ color: '#0D0F1A' }}>{notes.estimatedStudyTime}</span> recommended
                 </span>
@@ -108,7 +108,7 @@ export function AINotesPanel({ slug }: { slug: string }) {
             {notes.keyTopics.length > 0 && (
               <div>
                 <div className="mb-2 flex items-center gap-1.5">
-                  <Target size={13} style={{ color: '#FF6B1A' }} />
+                  <Target size={13} style={{ color: '#0057b8' }} />
                   <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>
                     Key topics
                   </span>
@@ -116,7 +116,7 @@ export function AINotesPanel({ slug }: { slug: string }) {
                 <div className="flex flex-wrap gap-1.5">
                   {notes.keyTopics.map(t => (
                     <span key={t} className="rounded-lg px-2.5 py-1 text-xs font-medium"
-                      style={{ background: 'rgba(255,107,26,0.08)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.16)' }}>
+                      style={{ background: 'rgba(0,87,184,0.08)', color: '#0057b8', border: '1px solid rgba(0,87,184,0.16)' }}>
                       {t}
                     </span>
                   ))}
@@ -128,7 +128,7 @@ export function AINotesPanel({ slug }: { slug: string }) {
             {notes.studyOrder.length > 0 && (
               <div>
                 <div className="mb-3 flex items-center gap-1.5">
-                  <ListChecks size={13} style={{ color: '#FF6B1A' }} />
+                  <ListChecks size={13} style={{ color: '#0057b8' }} />
                   <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>
                     Suggested study order
                   </span>
@@ -141,7 +141,7 @@ export function AINotesPanel({ slug }: { slug: string }) {
                       className="flex gap-3 rounded-xl bg-white p-3"
                       style={{ border: '1px solid #E4E7ED' }}>
                       <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-xs font-bold"
-                        style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A' }}>{i + 1}</div>
+                        style={{ background: 'rgba(0,87,184,0.10)', color: '#0057b8' }}>{i + 1}</div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline justify-between gap-2">
                           <p className="text-sm font-semibold" style={{ color: '#0D0F1A' }}>{s.title}</p>
@@ -161,7 +161,7 @@ export function AINotesPanel({ slug }: { slug: string }) {
             {notes.keyTakeaways.length > 0 && (
               <div>
                 <div className="mb-3 flex items-center gap-1.5">
-                  <Lightbulb size={13} style={{ color: '#FF6B1A' }} />
+                  <Lightbulb size={13} style={{ color: '#0057b8' }} />
                   <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>
                     What you&apos;ll walk away with
                   </span>
@@ -173,7 +173,7 @@ export function AINotesPanel({ slug }: { slug: string }) {
                       transition={{ delay: 0.3 + i * 0.04 }}
                       className="flex items-start gap-2 text-sm leading-relaxed"
                       style={{ color: '#374151' }}>
-                      <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: '#FF6B1A' }} />
+                      <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: '#0057b8' }} />
                       {t}
                     </motion.li>
                   ))}
@@ -183,7 +183,7 @@ export function AINotesPanel({ slug }: { slug: string }) {
 
             {/* Footer */}
             <div className="flex flex-wrap items-center justify-between gap-2 pt-3 text-[11px]"
-              style={{ borderTop: '1px solid rgba(255,107,26,0.10)', color: '#9CA3AF' }}>
+              style={{ borderTop: '1px solid rgba(0,87,184,0.10)', color: '#9CA3AF' }}>
               <span>Generated {new Date(notes.generatedAt).toLocaleString()}</span>
               <span className="font-mono">{notes.generator}</span>
             </div>

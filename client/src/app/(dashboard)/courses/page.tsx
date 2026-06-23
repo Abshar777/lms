@@ -72,10 +72,10 @@ const PROGRAM_FILTERS = [
   },
   {
     id: 'digital-marketing', label: 'Digital Marketing', icon: Megaphone,
-    color: '#FF6B1A',
-    activeGrad: 'linear-gradient(135deg,#FF6B1A,#FF8C42)',
-    shadow: 'rgba(255,107,26,0.35)',
-    ring: 'rgba(255,107,26,0.15)',
+    color: '#0057b8',
+    activeGrad: 'linear-gradient(135deg,#0057b8,#1a73e8)',
+    shadow: 'rgba(0,87,184,0.35)',
+    ring: 'rgba(0,87,184,0.15)',
   },
   {
     id: 'ai', label: 'AI', icon: Cpu,
@@ -165,8 +165,8 @@ export default function CoursesPage() {
       <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 280, damping: 26 }} className="mb-5">
         <div className="flex items-center gap-2 mb-1">
-          <Sparkles size={13} style={{ color: '#FF6B1A' }} />
-          <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#FF6B1A' }}>Catalogue</span>
+          <Sparkles size={13} style={{ color: '#0057b8' }} />
+          <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#0057b8' }}>Catalogue</span>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <h1 className="text-2xl font-bold" style={{ color: '#111827', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
@@ -258,12 +258,12 @@ export default function CoursesPage() {
               variant="outline"
               size="sm"
               className="relative flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold h-auto"
-              style={{ borderColor: showFilters ? '#FF6B1A' : '#E5E7EB', color: showFilters ? '#FF6B1A' : '#374151' }}>
+              style={{ borderColor: showFilters ? '#0057b8' : '#E5E7EB', color: showFilters ? '#0057b8' : '#374151' }}>
               <SlidersHorizontal size={13} />
               <span className="hidden sm:inline">Filters</span>
               {activeFilterCount > 0 && (
                 <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold"
-                  style={{ background: '#FF6B1A', color: 'white' }}>
+                  style={{ background: '#0057b8', color: 'white' }}>
                   {activeFilterCount}
                 </span>
               )}
@@ -292,9 +292,9 @@ export default function CoursesPage() {
                           variant="ghost"
                           size="sm"
                           className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm h-auto"
-                          style={{ color: sort === s.value ? '#FF6B1A' : '#374151', fontWeight: sort === s.value ? 600 : 400 }}>
+                          style={{ color: sort === s.value ? '#0057b8' : '#374151', fontWeight: sort === s.value ? 600 : 400 }}>
                           {s.label}
-                          {sort === s.value && <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#FF6B1A' }} />}
+                          {sort === s.value && <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#0057b8' }} />}
                         </Button>
                       ))}
                     </motion.div>
@@ -338,7 +338,7 @@ export default function CoursesPage() {
                         size="sm"
                         className="rounded-xl px-3 py-1.5 text-xs font-semibold capitalize h-auto transition-all"
                         style={level === l
-                          ? { background: 'rgba(255,107,26,0.10)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.28)' }
+                          ? { background: 'rgba(0,87,184,0.10)', color: '#0057b8', border: '1px solid rgba(0,87,184,0.28)' }
                           : { background: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}>
                         {l === 'all' ? 'All levels' : l}
                       </Button>
@@ -460,7 +460,7 @@ export default function CoursesPage() {
               variant="ghost"
               size="sm"
               className="mt-1 rounded-xl px-5 py-2 text-sm font-semibold h-auto transition-colors hover:opacity-90"
-              style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A' }}>
+              style={{ background: 'rgba(0,87,184,0.10)', color: '#0057b8' }}>
               Clear filters
             </Button>
           </motion.div>
@@ -582,7 +582,7 @@ function MaterialCard({ course }: { course: Course }) {
             style={{ background: 'rgba(13,15,26,0.30)' }}>
             <motion.div whileHover={{ scale: 1.1 }}
               className="flex h-10 w-10 items-center justify-center rounded-full"
-              style={{ background: 'rgba(255,107,26,0.90)', boxShadow: '0 6px 18px rgba(255,107,26,0.40)' }}>
+              style={{ background: 'rgba(0,87,184,0.90)', boxShadow: '0 6px 18px rgba(0,87,184,0.40)' }}>
               <Play size={13} fill="white" color="white" />
             </motion.div>
           </div>
@@ -681,7 +681,7 @@ function MaterialCard({ course }: { course: Course }) {
                 ? { background: '#F0FDF4', color: '#16A34A', border: '1px solid rgba(34,197,94,0.28)' }
                 : isFree
                   ? { background: 'linear-gradient(135deg, #22C55E, #16A34A)', color: 'white', boxShadow: '0 2px 8px rgba(34,197,94,0.25)' }
-                  : { background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)', color: 'white', boxShadow: '0 2px 8px rgba(255,107,26,0.25)' }
+                  : { background: 'linear-gradient(135deg, #0057b8, #1a73e8)', color: 'white', boxShadow: '0 2px 8px rgba(0,87,184,0.25)' }
               }>
               {isEnrolled
                 ? <><Check size={10} />Enrolled</>

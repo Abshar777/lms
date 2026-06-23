@@ -147,6 +147,16 @@ export class AuthController {
     }
   }
 
+  /* ── PATCH /auth/me/enrollment-docs ────────────── */
+  updateEnrollmentDocs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const user = await this.service.updateEnrollmentDocs(req.user!.id, req.body)
+      sendSuccess(res, { user }, 'Documents updated')
+    } catch (err) {
+      next(err)
+    }
+  }
+
   /* ── PATCH /auth/me/password ────────────────────── */
   changePassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

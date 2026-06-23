@@ -21,8 +21,8 @@ export function StreakWidget() {
   return (
     <div className="rounded-2xl bg-white p-4" style={{ border: '1px solid #E4E7ED' }}>
       <div className="mb-3 flex items-center gap-1.5">
-        <Flame size={13} style={{ color: '#FF6B1A' }} />
-        <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#FF6B1A' }}>
+        <Flame size={13} style={{ color: '#0057b8' }} />
+        <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#0057b8' }}>
           Your streak
         </span>
       </div>
@@ -30,7 +30,7 @@ export function StreakWidget() {
       <div className="flex items-center gap-4 mb-3">
         {/* Current streak */}
         <div className="flex items-center gap-1.5">
-          <span className="text-3xl font-bold tabular-nums" style={{ color: current > 0 ? '#FF6B1A' : '#D1D5DB', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+          <span className="text-3xl font-bold tabular-nums" style={{ color: current > 0 ? '#0057b8' : '#D1D5DB', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
             {current}
           </span>
           <div>
@@ -82,7 +82,7 @@ export function StreakWidget() {
             initial={{ width: 0 }}
             animate={{ width: `${pct}%` }}
             transition={{ duration: 0.6, ease: 'easeOut' }}
-            style={{ background: pct >= 100 ? '#22C55E' : 'linear-gradient(90deg, #FF6B1A, #F59E0B)' }}
+            style={{ background: pct >= 100 ? '#22C55E' : 'linear-gradient(90deg, #0057b8, #F59E0B)' }}
           />
         </div>
       </div>

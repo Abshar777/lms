@@ -8,7 +8,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Mail, ArrowLeft, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import { forgotPassword } from '@/lib/api/user'
-import { MotionButton } from '@/components/ui/button'
 
 const schema = z.object({
   email: z.string().min(1, 'Email is required').email('Enter a valid email'),
@@ -107,19 +106,14 @@ export default function ForgotPasswordPage() {
                 </div>
               )}
 
-              <MotionButton
-                type="submit"
-                disabled={isSubmitting}
-                variant="default"
-                size="lg"
-                whileHover={{ y: -1 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full gap-2"
-              >
+              <motion.button type="submit" disabled={isSubmitting}
+                whileHover={{ y: -1 }} whileTap={{ scale: 0.98 }}
+                className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white transition-all disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)', boxShadow: '0 4px 18px rgba(0,87,184,0.30)' }}>
                 {isSubmitting
                   ? <><Loader2 size={14} className="animate-spin" />Sending…</>
                   : 'Send reset link'}
-              </MotionButton>
+              </motion.button>
             </motion.form>
           )}
         </AnimatePresence>

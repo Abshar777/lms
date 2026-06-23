@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { FileText, Save, Trash2, Loader2 } from 'lucide-react'
 import { useMyNote, useUpsertNote, useDeleteNote } from '@/lib/api/notes'
-import { Button } from '@/components/ui/button'
 
 export function NotesPanel({ lessonId }: { lessonId: string }) {
   const { data: note, isLoading } = useMyNote(lessonId)
@@ -58,27 +57,20 @@ export function NotesPanel({ lessonId }: { lessonId: string }) {
         </p>
         <div className="flex items-center gap-1">
           {note && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={clear}
-              className="rounded-lg p-1.5 hover:bg-red-50"
-            >
+            <button onClick={clear} className="rounded-lg p-1.5 transition-colors hover:bg-red-50">
               <Trash2 size={12} style={{ color: '#EF4444' }} />
-            </Button>
+            </button>
           )}
-          <Button
-            variant="default"
-            size="sm"
+          <button
             onClick={save}
             disabled={!body.trim() || !dirty || upsert.isPending}
-            className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-white transition-opacity disabled:opacity-40${saved ? ' !bg-[#22C55E]' : ''}`}
-          >
+            className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-white transition-opacity disabled:opacity-40"
+            style={{ background: saved ? '#22C55E' : '#0057b8' }}>
             {upsert.isPending
               ? <Loader2 size={11} className="animate-spin" />
               : <Save size={11} />}
             {saved ? 'Saved' : 'Save'}
-          </Button>
+          </button>
         </div>
       </div>
 
@@ -89,7 +81,7 @@ export function NotesPanel({ lessonId }: { lessonId: string }) {
         className="h-64 w-full resize-none rounded-xl px-3 py-2.5 text-xs leading-relaxed outline-none"
         style={{
           background: '#FAFAFA',
-          border:     `1px solid ${dirty ? '#FF6B1A' : '#E5E7EB'}`,
+          border:     `1px solid ${dirty ? '#0057b8' : '#E5E7EB'}`,
           color:      '#0D0F1A',
         }}
       />

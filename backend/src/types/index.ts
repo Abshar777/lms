@@ -15,22 +15,18 @@ export interface AuthUser {
   id: string
   email: string
   role: UserRole
-  categoryScope?: '4x-trading' | 'digital-marketing' | 'ai'
 }
 
 /* ─────────────────────────────────────────────────────
    Domain enums
 ───────────────────────────────────────────────────── */
-export type UserRole =
-  | 'student'
-  | 'instructor'
-  | 'admin'
-  | '4x_admin'
-  | 'digital_marketing_admin'
-  | 'ai_admin'
-  | 'super_admin'
+export type UserRole = 'student' | 'instructor' | 'admin' | 'super_admin' | '4x_admin' | 'digital_marketing_admin' | 'ai_admin'
 
 export type EnrollmentStatus = 'active' | 'completed' | 'dropped'
+
+export type StudentEnrollmentStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
+
+export type ProgramCategory = '4x-trading' | 'digital-marketing' | 'ai'
 
 export type CourseStatus = 'draft' | 'published' | 'archived'
 
@@ -106,9 +102,31 @@ export interface RefreshTokenPayload {
    Auth DTOs
 ───────────────────────────────────────────────────── */
 export interface RegisterDto {
-  name: string
-  email: string
+  name:     string
+  email:    string
   password: string
+  enrollmentApplication?: {
+    phone?:              string
+    emergencyContact?:   string
+    gender?:             string
+    dateOfBirth?:        string
+    nationality?:        string
+    homeCountry?:        string
+    occupation?:         string
+    emiratesId?:         string
+    countryAttendance?:  string
+    villa?:              string
+    city?:               string
+    addressCountry?:     string
+    passportUrl?:        string
+    photoUrl?:           string
+    experienceLevel?:    string
+    preferredStartDate?: string
+    hearAboutUs?:        string
+    referralName?:       string
+    programs?:           string[]
+    paymentMethod?:      string
+  }
 }
 
 export interface LoginDto {

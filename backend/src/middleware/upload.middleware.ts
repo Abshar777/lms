@@ -9,6 +9,18 @@ import type { Request } from 'express'
 /* ── Image upload ───────────────────────────────────────────── */
 const ALLOWED_IMAGE = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 
+/* ── Document upload (enrollment forms — images + PDF) ───────── */
+const ALLOWED_DOCUMENT = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+
+export const documentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits:  { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  fileFilter: (_req: Request, file, cb: FileFilterCallback) => {
+    if (ALLOWED_DOCUMENT.has(file.mimetype)) cb(null, true)
+    else cb(new Error('Only JPEG, PNG, WebP images or PDF documents are allowed'))
+  },
+})
+
 export const imageUpload = multer({
   storage: multer.memoryStorage(),
   limits:  { fileSize: 5 * 1024 * 1024 }, // 5 MB

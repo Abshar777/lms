@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Star, CheckCircle, Loader2, MessageSquare } from 'lucide-react'
 import { useSessionFeedback, useSubmitFeedback } from '@/lib/api/feedback'
-import { Button } from '@/components/ui/button'
 
 interface Props {
   sessionId:   string
@@ -45,18 +44,16 @@ export function SessionFeedback({ sessionId, sessionTitle }: Props) {
   return (
     <div className="rounded-2xl p-4" style={{ border: '1px solid #E4E7ED', background: '#fff' }}>
       <div className="flex items-center gap-2 mb-3">
-        <MessageSquare size={14} style={{ color: '#FF6B1A' }} />
+        <MessageSquare size={14} style={{ color: '#0057b8' }} />
         <p className="text-sm font-bold" style={{ color: '#0D0F1A' }}>Rate this session</p>
       </div>
 
       {/* Stars */}
       <div className="flex items-center gap-1 mb-3">
         {[1, 2, 3, 4, 5].map(star => (
-          <Button
+          <button
             key={star}
             type="button"
-            variant="ghost"
-            size="icon-sm"
             onMouseEnter={() => setHovered(star)}
             onMouseLeave={() => setHovered(0)}
             onClick={() => setSelected(star)}
@@ -67,7 +64,7 @@ export function SessionFeedback({ sessionId, sessionTitle }: Props) {
               fill={star <= active ? '#F59E0B' : 'none'}
               style={{ color: star <= active ? '#F59E0B' : '#D1D5DB' }}
             />
-          </Button>
+          </button>
         ))}
         {selected > 0 && (
           <span className="ml-2 text-xs font-semibold" style={{ color: '#F59E0B' }}>
@@ -84,27 +81,26 @@ export function SessionFeedback({ sessionId, sessionTitle }: Props) {
             exit={{ opacity: 0, height: 0 }}
           >
             <textarea
-              className="w-full rounded-xl border border-[#E4E7ED] px-3 py-2 text-sm outline-none focus:border-[#FF6B1A] mb-3 resize-none"
+              className="w-full rounded-xl border border-[#E4E7ED] px-3 py-2 text-sm outline-none focus:border-[#0057b8] mb-3 resize-none"
               rows={2}
               placeholder="Share your thoughts (optional)"
               style={{ color: '#374151' }}
               value={comment}
               onChange={e => setComment(e.target.value)}
             />
-            <Button
-              variant="default"
-              size="default"
+            <button
               onClick={async () => {
                 await mutation.mutateAsync({ rating: selected, comment: comment || undefined })
                 setDone(true)
               }}
               disabled={mutation.isPending}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }}
             >
               {mutation.isPending
                 ? <><Loader2 size={12} className="animate-spin" /><span>Submitting…</span></>
                 : <><CheckCircle size={12} /><span>Submit feedback</span></>}
-            </Button>
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

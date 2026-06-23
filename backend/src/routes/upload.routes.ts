@@ -1,20 +1,22 @@
 import { Router, type Request, type Response, type NextFunction } from 'express'
 import { z } from 'zod'
-import { authenticate }    from '@/middleware/auth.middleware.ts'
-import { imageUpload, ALLOWED_VIDEO } from '@/middleware/upload.middleware.ts'
+import { authenticate, authenticateAny } from '@/middleware/auth.middleware.ts'
+import { imageUpload, documentUpload, ALLOWED_VIDEO } from '@/middleware/upload.middleware.ts'
 import { sendSuccess }     from '@/utils/response.ts'
 import {
+  uploadFile,
   uploadToR2,
   generatePresignedPutUrl,
   deleteFromR2,
   makeKey,
+  isR2Configured,
 } from '@/services/r2.service.ts'
 import { transcodeToHLS }  from '@/services/hls.service.ts'
 
 const router = Router()
 
-/* ── All upload routes require a valid session ── */
-router.use(authenticate)
+/* ── All upload routes require a valid session (student or admin) ── */
+router.use(authenticateAny)
 
 /* ── POST /uploads/image ─────────────────────────────────────
    Accepts: multipart/form-data with field "file"
@@ -47,12 +49,51 @@ router.post(
 
     try {
       const key = makeKey(req.file.originalname, 'images')
-      const url = await uploadToR2(req.file.buffer, key, req.file.mimetype)
+      const url = await uploadFile(req.file.buffer, key, req.file.mimetype)
       sendSuccess(res, { url, key, size: req.file.size }, undefined, 201)
     } catch (err) {
       res.status(500).json({
         success: false,
-        error: { code: 'R2_ERROR', message: (err as Error).message },
+        error: { code: 'UPLOAD_ERROR', message: (err as Error).message },
+      })
+    }
+  },
+)
+
+/* ── POST /uploads/document ──────────────────────────────────
+   Enrollment form documents — accepts JPEG, PNG, WebP, PDF (10 MB).
+   Returns: { url, key, size }
+────────────────────────────────────────────────────────────── */
+router.post(
+  '/document',
+  (req: Request, res: Response, next: NextFunction) => {
+    documentUpload.single('file')(req, res, (err) => {
+      if (err) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'UPLOAD_ERROR', message: (err as Error).message },
+        })
+        return
+      }
+      next()
+    })
+  },
+  async (req: Request, res: Response) => {
+    if (!req.file) {
+      res.status(400).json({
+        success: false,
+        error: { code: 'NO_FILE', message: 'No file provided. Use the "file" field.' },
+      })
+      return
+    }
+    try {
+      const key = makeKey(req.file.originalname, 'documents')
+      const url = await uploadFile(req.file.buffer, key, req.file.mimetype)
+      sendSuccess(res, { url, key, size: req.file.size }, undefined, 201)
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        error: { code: 'UPLOAD_ERROR', message: (err as Error).message },
       })
     }
   },
@@ -71,6 +112,10 @@ const presignBody = z.object({
 })
 
 router.post('/presign', async (req: Request, res: Response) => {
+  if (!isR2Configured()) {
+    res.status(503).json({ success: false, error: { code: 'R2_NOT_CONFIGURED', message: 'Cloud storage is not configured. Use the direct upload endpoint instead.' } })
+    return
+  }
   const parsed = presignBody.safeParse(req.body)
   if (!parsed.success) {
     res.status(400).json({

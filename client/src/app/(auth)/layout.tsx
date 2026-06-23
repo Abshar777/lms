@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Sign In',   // root layout template appends "— LearnOS"
-  description: 'Sign in or create your LearnOS account',
+  title: 'Sign In',
+  description: 'Sign in or create your Delta Institutions account.',
 }
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {

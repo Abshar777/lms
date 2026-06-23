@@ -28,24 +28,24 @@ const monoFont = JetBrains_Mono({
 
 /* ─── Metadata ──────────────────────────────────── */
 export const metadata: Metadata = {
-  title: { template: '%s — LearnOS', default: 'LearnOS — Learn Without Limits' },
-  description: 'Expert-led courses, hands-on projects, and a community that grows with you.',
+  title: { template: '%s — Delta Institutions', default: 'Delta Institutions — Leading Trading Academy' },
+  description: 'UAE leading trading academy — begin your learning journey at Delta Institutions.',
   icons: {
     icon:     [{ url: '/icons/icon.svg', type: 'image/svg+xml' }],
     shortcut: '/icons/icon.svg',
     apple:    '/icons/icon.svg',
   },
   manifest:    '/manifest.webmanifest',
-  applicationName: 'LearnOS',
+  applicationName: 'Delta Institutions',
   appleWebApp: {
     capable:    true,
-    title:      'LearnOS',
+    title:      'Delta Institutions',
     statusBarStyle: 'default',
   },
 }
 
 export const viewport: Viewport = {
-  themeColor: '#FF6B1A',
+  themeColor: '#0057b8',
   width: 'device-width',
   initialScale: 1,
 }
