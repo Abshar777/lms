@@ -283,6 +283,7 @@ export interface ICourse extends Document {
   thumbnailUrl?:  string
   previewUrl?:    string
   price:          number
+  priceINR?:      number   // INR in rupees (Razorpay); absent = use Stripe USD price
   isFree:         boolean
   status:         CourseStatus
   level?:         string
@@ -309,6 +310,7 @@ const CourseSchema = new Schema<ICourse>(
     thumbnailUrl:  { type: String },
     previewUrl:    { type: String },
     price:         { type: Number, default: 0, min: 0 },
+    priceINR:      { type: Number, min: 0 },
     isFree:        { type: Boolean, default: false },
     status:        { type: String, enum: ['draft', 'published', 'archived'], default: 'draft' },
     level:         { type: String, enum: ['beginner', 'intermediate', 'advanced'] },
@@ -982,30 +984,42 @@ export const CouponModel = mongoose.model<ICoupon>('Coupon', CouponSchema)
    amount / discountAmount are stored in CENTS.
    status: pending → paid (webhook) → refunded (admin)
 ───────────────────────────────────────────────────── */
-export type OrderStatus = 'pending' | 'paid' | 'refunded'
+export type OrderStatus  = 'pending' | 'paid' | 'refunded'
+export type OrderGateway = 'razorpay' | 'stripe'
 
 export interface IOrder extends Document {
-  id:                      string
-  userId:                  Types.ObjectId
-  courseId:                Types.ObjectId
-  stripeCheckoutSessionId: string
-  stripePaymentIntentId?:  string
-  amount:                  number    // charged amount in cents
-  currency:                string
-  status:                  OrderStatus
-  couponId?:               Types.ObjectId
-  discountAmount:          number    // cents saved by coupon (0 if none)
-  stripeInvoiceUrl?:       string
-  refundedAt?:             Date
-  createdAt:               Date
-  updatedAt:               Date
+  id:                       string
+  userId:                   Types.ObjectId
+  courseId:                 Types.ObjectId
+  gateway:                  OrderGateway
+  /* Razorpay fields */
+  razorpayOrderId?:         string
+  razorpayPaymentId?:       string
+  razorpaySignature?:       string
+  /* Stripe fields */
+  stripeCheckoutSessionId?: string
+  stripePaymentIntentId?:   string
+  stripeInvoiceUrl?:        string
+  /* Common */
+  amount:                   number    // paise (INR) or cents (USD)
+  currency:                 string
+  status:                   OrderStatus
+  couponId?:                Types.ObjectId
+  discountAmount:           number
+  refundedAt?:              Date
+  createdAt:                Date
+  updatedAt:                Date
 }
 
 const OrderSchema = new Schema<IOrder>(
   {
     userId:                  { type: Schema.Types.ObjectId, ref: 'User',   required: true },
     courseId:                { type: Schema.Types.ObjectId, ref: 'Course', required: true },
-    stripeCheckoutSessionId: { type: String, required: true, unique: true },
+    gateway:                 { type: String, enum: ['razorpay', 'stripe'], default: 'stripe' },
+    razorpayOrderId:         { type: String },
+    razorpayPaymentId:       { type: String },
+    razorpaySignature:       { type: String },
+    stripeCheckoutSessionId: { type: String },
     stripePaymentIntentId:   { type: String },
     amount:                  { type: Number, required: true, min: 0 },
     currency:                { type: String, required: true, default: 'usd', maxlength: 3 },
@@ -1021,7 +1035,8 @@ const OrderSchema = new Schema<IOrder>(
 OrderSchema.index({ userId: 1, createdAt: -1 })
 OrderSchema.index({ courseId: 1 })
 OrderSchema.index({ status: 1 })
-OrderSchema.index({ stripeCheckoutSessionId: 1 })
+OrderSchema.index({ razorpayOrderId: 1 }, { sparse: true, unique: true })
+OrderSchema.index({ stripeCheckoutSessionId: 1 }, { sparse: true, unique: true })
 
 export const OrderModel = mongoose.model<IOrder>('Order', OrderSchema)
 
@@ -1260,6 +1275,7 @@ export type AuditAction =
   | 'course.create'   | 'course.update'   | 'course.delete'
   | 'course.publish'  | 'course.archive'
   | 'user.create'     | 'user.ban'        | 'user.unban'      | 'user.roleChange'
+  | 'user.delete'     | 'user.impersonate'
   | 'review.delete'
   | 'coupon.create'   | 'coupon.delete'
   | 'order.refund'

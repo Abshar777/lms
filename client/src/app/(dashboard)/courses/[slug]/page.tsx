@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { useCourse } from '@/lib/api/courses'
 import { useCourseProgress, useEnroll } from '@/lib/api/enrollments'
-import { useCheckout, useValidateCoupon } from '@/lib/api/checkout'
+import { useCheckout, useRazorpayCheckout, useValidateCoupon } from '@/lib/api/checkout'
 import { formatPrice } from '@/lib/formatPrice'
 import { CertificateButton } from '@/components/learn/CertificateButton'
 import { CourseReviews } from '@/components/courses/CourseReviews'
@@ -51,8 +51,12 @@ function CourseDetailInner({ slug }: { slug: string }) {
 
   const { data, isLoading, isError } = useCourse(slug)
   const { data: progress } = useCourseProgress(slug)
-  const enroll   = useEnroll()
-  const checkout = useCheckout()
+  const enroll      = useEnroll()
+  const checkout    = useCheckout()
+  const rzpCheckout = useRazorpayCheckout({
+    onSuccess: () => { setEnrollError(null); router.refresh() },
+    onError:   (msg) => setEnrollError(msg),
+  })
 
   const [enrollError,   setEnrollError]   = useState<string | null>(null)
   const [couponOpen,    setCouponOpen]     = useState(false)
@@ -103,13 +107,16 @@ function CourseDetailInner({ slug }: { slug: string }) {
   const totalLessons = lessons.length
   const isEnrolled   = progress?.isEnrolled ?? false
   const isPaid       = !course.isFree && course.price > 0
+  const useRazorpay  = !!(course as any).priceINR && (course as any).priceINR > 0
+  const displayPrice = useRazorpay ? (course as any).priceINR : course.price
+  const displayCurrency = useRazorpay ? 'INR' : 'USD'
 
   const discountedPrice = (() => {
-    if (!couponInfo || !isPaid) return course.price
+    if (!couponInfo || !isPaid) return displayPrice
     if (couponInfo.discountType === 'percent') {
-      return Math.max(0, course.price * (1 - couponInfo.discountValue / 100))
+      return Math.max(0, displayPrice * (1 - couponInfo.discountValue / 100))
     }
-    return Math.max(0, course.price - couponInfo.discountValue)
+    return Math.max(0, displayPrice - couponInfo.discountValue)
   })()
 
   const onEnroll = async () => {
@@ -127,13 +134,18 @@ function CourseDetailInner({ slug }: { slug: string }) {
   const onCheckout = async () => {
     setEnrollError(null)
     try {
-      await checkout.mutateAsync({ courseId: course.id, couponCode: couponCode || undefined })
-      /* onSuccess in useCheckout redirects to Stripe — no further action here */
+      if (useRazorpay) {
+        await rzpCheckout.mutateAsync({ courseId: course.id, couponCode: couponCode || undefined })
+      } else {
+        await checkout.mutateAsync({ courseId: course.id, couponCode: couponCode || undefined })
+      }
     } catch (err: any) {
       const msg = err?.response?.data?.error?.message
-      setEnrollError(msg ?? 'Unable to start checkout. Please try again.')
+      if (msg) setEnrollError(msg)
     }
   }
+
+  const isCheckoutPending = useRazorpay ? rzpCheckout.isPending : checkout.isPending
 
   const continueLessonId = progress?.lastLessonId ?? lessons[0]?.id
 
@@ -411,15 +423,15 @@ function CourseDetailInner({ slug }: { slug: string }) {
                   {isPaid && couponInfo ? (
                     <div className="flex items-baseline gap-2">
                       <p className="text-3xl font-bold" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-                        {formatPrice(discountedPrice)}
+                        {formatPrice(discountedPrice, displayCurrency)}
                       </p>
                       <p className="text-sm line-through" style={{ color: '#9CA3AF' }}>
-                        {formatPrice(course.price)}
+                        {formatPrice(displayPrice, displayCurrency)}
                       </p>
                     </div>
                   ) : (
                     <p className="text-3xl font-bold" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-                      {course.isFree ? 'Free' : formatPrice(course.price)}
+                      {course.isFree ? 'Free' : formatPrice(displayPrice, displayCurrency)}
                     </p>
                   )}
                 </div>
@@ -450,13 +462,13 @@ function CourseDetailInner({ slug }: { slug: string }) {
                     variant="default"
                     size="lg"
                     onClick={onCheckout}
-                    disabled={checkout.isPending}
+                    disabled={isCheckoutPending}
                     whileHover={{ y: -2, boxShadow: '0 12px 32px rgba(255,107,26,0.40)' }}
                     whileTap={{ scale: 0.97 }}
                     className="w-full rounded-2xl gap-2 font-bold transition-all">
-                    {checkout.isPending
-                      ? <><Loader2 size={15} className="animate-spin" />Redirecting…</>
-                      : <><ShoppingCart size={15} />Buy for {formatPrice(discountedPrice)}</>}
+                    {isCheckoutPending
+                      ? <><Loader2 size={15} className="animate-spin" />{useRazorpay ? 'Opening payment…' : 'Redirecting…'}</>
+                      : <><ShoppingCart size={15} />Buy for {formatPrice(discountedPrice, displayCurrency)}</>}
                   </MotionButton>
 
                   {/* Coupon code accordion */}

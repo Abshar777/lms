@@ -10,23 +10,56 @@ import type { Request, Response, NextFunction } from 'express'
 const router   = Router()
 const orderSvc = new OrderService()
 
+/* ── Stripe ────────────────────────────────────────────── */
 const checkoutSchema = z.object({
   courseId:   z.string().min(1),
   couponCode: z.string().trim().optional(),
 })
 
-/* POST /checkout — create a Stripe hosted checkout session
-   Returns { url } to redirect the browser to. */
 router.post('/', authenticate, requireEnrollmentApproval, validate(checkoutSchema), async (req: Request, res: Response, next: NextFunction) => {
-  /* Bail early with a friendly error when Stripe isn't configured */
   if (!env.STRIPE_SECRET_KEY) {
-    sendError(res, 'STRIPE_NOT_CONFIGURED', 'Payments are not configured on this server. Add STRIPE_SECRET_KEY to the backend .env file.', 503)
+    sendError(res, 'STRIPE_NOT_CONFIGURED', 'Payments are not configured on this server.', 503)
     return
   }
   try {
     const { courseId, couponCode } = req.body as { courseId: string; couponCode?: string }
     const result = await orderSvc.createCheckoutSession(req.user!.id, courseId, couponCode)
     sendSuccess(res, result, 'Checkout session created', 201)
+  } catch (err) { next(err) }
+})
+
+/* ── Razorpay — create order ────────────────────────────── */
+const razorpayCreateSchema = z.object({
+  courseId:   z.string().min(1),
+  couponCode: z.string().trim().optional(),
+})
+
+router.post('/razorpay/create-order', authenticate, requireEnrollmentApproval, validate(razorpayCreateSchema), async (req: Request, res: Response, next: NextFunction) => {
+  if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
+    sendError(res, 'RAZORPAY_NOT_CONFIGURED', 'Razorpay is not configured on this server.', 503)
+    return
+  }
+  try {
+    const { courseId, couponCode } = req.body as { courseId: string; couponCode?: string }
+    const result = await orderSvc.createRazorpayOrder(req.user!.id, courseId, couponCode)
+    sendSuccess(res, result, 'Razorpay order created', 201)
+  } catch (err) { next(err) }
+})
+
+/* ── Razorpay — verify signature + enroll ───────────────── */
+const razorpayVerifySchema = z.object({
+  razorpayOrderId:   z.string().min(1),
+  razorpayPaymentId: z.string().min(1),
+  razorpaySignature: z.string().min(1),
+})
+
+router.post('/razorpay/verify', authenticate, validate(razorpayVerifySchema), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body as {
+      razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string
+    }
+    const result = await orderSvc.verifyAndFulfillRazorpay(razorpayOrderId, razorpayPaymentId, razorpaySignature)
+    sendSuccess(res, result, 'Payment verified and enrollment created')
   } catch (err) { next(err) }
 })
 

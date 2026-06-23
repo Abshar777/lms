@@ -31,6 +31,7 @@ const schema = z.object({
   thumbnailUrl: z.string().url('Enter a valid URL').or(z.literal('')),
   previewUrl:   z.string().url('Enter a valid URL').or(z.literal('')),
   price:        z.coerce.number().min(0, 'Price must be ≥ 0'),
+  priceINR:     z.coerce.number().min(0).optional(),
   isFree:       z.boolean(),
   status:       z.enum(['draft', 'published', 'archived']),
   level:        z.enum(['beginner', 'intermediate', 'advanced', '']),
@@ -173,6 +174,7 @@ export function CourseForm({ course }: CourseFormProps) {
       thumbnailUrl: course?.thumbnailUrl ?? '',
       previewUrl:   course?.previewUrl   ?? '',
       price:        course?.price        ?? 0,
+      priceINR:     course?.priceINR     ?? undefined,
       isFree:       course?.isFree       ?? false,
       status:       course?.status       ?? 'draft',
       level:        course?.level        ?? '',
@@ -408,6 +410,27 @@ export function CourseForm({ course }: CourseFormProps) {
                           ${p}
                         </button>
                       ))}
+                    </div>
+
+                    {/* INR price for Razorpay */}
+                    <div className="mt-5">
+                      <Field label="Price (INR) — Razorpay" hint="Leave blank to disable Razorpay for this course" error={(errors as any).priceINR?.message}>
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.3)' }}>₹</span>
+                          <input {...register('priceINR')} type="number" step="1" min="0" placeholder="999"
+                            className={`${inputBase} pl-10`} style={inputStyle}
+                            onFocus={e => inputFocus(e.currentTarget)} onBlur={e => inputBlur(e.currentTarget)} />
+                        </div>
+                        <div className="mt-3 flex gap-2 flex-wrap">
+                          {[499, 999, 1499, 1999, 2999, 4999].map(p => (
+                            <button key={p} type="button" onClick={() => setValue('priceINR' as any, p)}
+                              className="rounded-lg px-3 py-1 text-xs font-semibold transition-colors hover:bg-white/10"
+                              style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                              ₹{p}
+                            </button>
+                          ))}
+                        </div>
+                      </Field>
                     </div>
                   </motion.div>
                 )}

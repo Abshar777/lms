@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { OrderService } from '@/services/order.service.ts'
 import { StripeService } from '@/services/stripe.service.ts'
+import { RazorpayService } from '@/services/razorpay.service.ts'
 import { env } from '@/config/env.ts'
 import { logger } from '@/utils/logger.ts'
 import type { Request, Response } from 'express'
@@ -16,9 +17,10 @@ import type { Request, Response } from 'express'
    fulfillment failures are logged for manual recovery.
 ───────────────────────────────────────────────────── */
 
-const router   = Router()
-const orderSvc = new OrderService()
-const stripeSvc = new StripeService()
+const router      = Router()
+const orderSvc    = new OrderService()
+const stripeSvc   = new StripeService()
+const razorpaySvc = new RazorpayService()
 
 router.post('/stripe', async (req: Request, res: Response) => {
   const sig = req.headers['stripe-signature']
@@ -82,6 +84,55 @@ router.post('/stripe', async (req: Request, res: Response) => {
   } catch (err) {
     /* Log but don't throw — Stripe should not retry on business-logic errors */
     logger.error({ err, eventType: event.type }, 'Webhook handler error')
+  }
+
+  res.status(200).json({ received: true })
+})
+
+/* ─────────────────────────────────────────────────────
+   Razorpay webhook
+   ─────────────────────────────────────────────────────
+   Backup fulfillment path — in case the user closes the
+   browser before /verify completes. Always returns 200.
+───────────────────────────────────────────────────── */
+router.post('/razorpay', async (req: Request, res: Response) => {
+  /* Verify X-Razorpay-Signature when webhook secret is configured */
+  if (env.RAZORPAY_WEBHOOK_SECRET) {
+    const sig     = req.headers['x-razorpay-signature'] as string | undefined
+    const rawBody = req.body as Buffer
+    if (!sig || !Buffer.isBuffer(rawBody)) {
+      logger.warn('Razorpay webhook: missing signature or body')
+      res.status(200).json({ received: true })
+      return
+    }
+    const valid = razorpaySvc.verifyWebhookSignature(rawBody.toString(), sig, env.RAZORPAY_WEBHOOK_SECRET)
+    if (!valid) {
+      logger.warn('Razorpay webhook: signature mismatch')
+      res.status(200).json({ received: true })
+      return
+    }
+  }
+
+  let payload: any
+  try {
+    payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
+  } catch {
+    res.status(200).json({ received: true })
+    return
+  }
+
+  try {
+    if (payload?.event === 'payment.captured') {
+      const payment       = payload.payload?.payment?.entity
+      const razorpayOrderId   = payment?.order_id
+      const razorpayPaymentId = payment?.id
+      if (razorpayOrderId && razorpayPaymentId) {
+        await orderSvc.fulfillFromWebhook(razorpayOrderId, razorpayPaymentId)
+        logger.info({ razorpayOrderId }, 'Razorpay order fulfilled via webhook')
+      }
+    }
+  } catch (err) {
+    logger.error({ err, event: payload?.event }, 'Razorpay webhook handler error')
   }
 
   res.status(200).json({ received: true })

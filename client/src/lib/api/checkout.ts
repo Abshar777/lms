@@ -1,8 +1,131 @@
 'use client'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiPost, apiGet } from '@/lib/axios'
 
-/* ─── Checkout session ──────────────────────────────── */
+/* ─── Razorpay types ────────────────────────────────── */
+
+declare global {
+  interface Window {
+    Razorpay: new (options: RazorpayOptions) => RazorpayInstance
+  }
+}
+
+interface RazorpayOptions {
+  key:          string
+  amount:       number
+  currency:     string
+  order_id:     string
+  name?:        string
+  description?: string
+  prefill?: { name?: string; email?: string }
+  theme?:  { color?: string }
+  handler: (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => void
+  modal?: { ondismiss?: () => void }
+}
+
+interface RazorpayInstance {
+  open:  () => void
+  close: () => void
+  on:    (event: string, handler: (response: any) => void) => void
+}
+
+function loadRazorpayScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (typeof window !== 'undefined' && window.Razorpay) { resolve(); return }
+    const s = document.createElement('script')
+    s.src     = 'https://checkout.razorpay.com/v1/checkout.js'
+    s.onload  = () => resolve()
+    s.onerror = () => reject(new Error('Failed to load Razorpay checkout script'))
+    document.head.appendChild(s)
+  })
+}
+
+interface RazorpayCreateOrderResult {
+  razorpayOrderId: string
+  amount:          number
+  currency:        string
+  key:             string
+  courseName:      string
+  userEmail:       string
+  userName:        string
+}
+
+interface UseRazorpayCheckoutOptions {
+  onSuccess?: () => void
+  onDismiss?: () => void
+  onError?:   (msg: string) => void
+}
+
+export function useRazorpayCheckout(opts: UseRazorpayCheckoutOptions = {}) {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ courseId, couponCode }: { courseId: string; couponCode?: string }) => {
+      /* 1. Create Razorpay order on backend */
+      const orderData = await apiPost<RazorpayCreateOrderResult>(
+        '/checkout/razorpay/create-order',
+        { courseId, couponCode },
+      )
+
+      /* 2. Load Razorpay JS if not already present */
+      await loadRazorpayScript()
+
+      /* 3. Open payment modal — resolve on success, reject on failure/dismiss */
+      await new Promise<void>((resolve, reject) => {
+        const rzp = new window.Razorpay({
+          key:         orderData.key,
+          amount:      orderData.amount,
+          currency:    orderData.currency,
+          order_id:    orderData.razorpayOrderId,
+          name:        'Delta LMS',
+          description: orderData.courseName,
+          prefill: {
+            name:  orderData.userName,
+            email: orderData.userEmail,
+          },
+          theme: { color: '#FF6B1A' },
+          handler: async (response) => {
+            try {
+              /* 4. Verify signature on backend */
+              await apiPost('/checkout/razorpay/verify', {
+                razorpayOrderId:   response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+              })
+              resolve()
+            } catch (err: any) {
+              reject(new Error(err?.response?.data?.error?.message ?? 'Payment verification failed'))
+            }
+          },
+          modal: {
+            ondismiss: () => {
+              opts.onDismiss?.()
+              reject(new Error('DISMISSED'))
+            },
+          },
+        })
+
+        rzp.on('payment.failed', (resp: any) => {
+          reject(new Error(resp?.error?.description ?? 'Payment failed'))
+        })
+
+        rzp.open()
+      })
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['enrollments'] })
+      qc.invalidateQueries({ queryKey: ['courseProgress'] })
+      opts.onSuccess?.()
+    },
+    onError: (err: Error) => {
+      if (err.message !== 'DISMISSED') {
+        opts.onError?.(err.message)
+      }
+    },
+  })
+}
+
+/* ─── Stripe checkout ───────────────────────────────── */
 export interface CheckoutSession {
   url: string
 }
@@ -12,7 +135,6 @@ export function useCheckout() {
     mutationFn: ({ courseId, couponCode }: { courseId: string; couponCode?: string }) =>
       apiPost<CheckoutSession>('/checkout', { courseId, couponCode }),
     onSuccess: ({ url }) => {
-      /* Redirect to Stripe hosted checkout */
       window.location.href = url
     },
   })
@@ -37,15 +159,17 @@ export function useValidateCoupon(code: string, courseId: string) {
 
 /* ─── Order history ─────────────────────────────────── */
 export interface MyOrder {
-  id:                      string
-  courseId:                string | { id: string; title: string; slug: string; thumbnailUrl?: string }
-  amount:                  number  // cents
-  currency:                string
-  status:                  'pending' | 'paid' | 'refunded'
-  discountAmount:          number  // cents
-  stripeInvoiceUrl?:       string
-  refundedAt?:             string
-  createdAt:               string
+  id:                  string
+  courseId:            string | { id: string; title: string; slug: string; thumbnailUrl?: string }
+  gateway:             'razorpay' | 'stripe'
+  amount:              number
+  currency:            string
+  status:              'pending' | 'paid' | 'refunded'
+  discountAmount:      number
+  razorpayPaymentId?:  string
+  stripeInvoiceUrl?:   string
+  refundedAt?:         string
+  createdAt:           string
 }
 
 export const orderKeys = {

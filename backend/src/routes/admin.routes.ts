@@ -49,6 +49,7 @@ const courseCreateSchema = z.object({
   thumbnailUrl: z.string().url().or(z.literal('')).optional(),
   previewUrl:   z.string().url().or(z.literal('')).optional(),
   price:        z.coerce.number().min(0),
+  priceINR:     z.coerce.number().min(0).optional(),
   isFree:       z.boolean(),
   status:       z.enum(['draft', 'published', 'archived']),
   level:        z.enum(['beginner', 'intermediate', 'advanced']).optional(),

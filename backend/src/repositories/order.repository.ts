@@ -1,15 +1,17 @@
-import { OrderModel, type IOrder } from '@/models/schema.ts'
+import { OrderModel, type IOrder, type OrderGateway } from '@/models/schema.ts'
 
 export class OrderRepository {
 
   async create(data: {
-    userId:                  string
-    courseId:                string
-    stripeCheckoutSessionId: string
-    amount:                  number
-    currency:                string
-    couponId?:               string
-    discountAmount?:         number
+    userId:                   string
+    courseId:                 string
+    gateway:                  OrderGateway
+    amount:                   number
+    currency:                 string
+    couponId?:                string
+    discountAmount?:          number
+    razorpayOrderId?:         string
+    stripeCheckoutSessionId?: string
   }): Promise<IOrder> {
     return OrderModel.create({
       ...data,
@@ -18,18 +20,32 @@ export class OrderRepository {
     })
   }
 
-  async findBySessionId(sessionId: string): Promise<IOrder | null> {
-    return OrderModel.findOne({ stripeCheckoutSessionId: sessionId }).exec()
-  }
-
   async findById(id: string): Promise<IOrder | null> {
     return OrderModel.findById(id).exec()
   }
 
+  async findBySessionId(sessionId: string): Promise<IOrder | null> {
+    return OrderModel.findOne({ stripeCheckoutSessionId: sessionId }).exec()
+  }
+
+  async findByRazorpayOrderId(razorpayOrderId: string): Promise<IOrder | null> {
+    return OrderModel.findOne({ razorpayOrderId }).exec()
+  }
+
+  /* Stripe fulfillment */
   async fulfill(id: string, paymentIntentId: string, invoiceUrl?: string): Promise<IOrder | null> {
     return OrderModel.findByIdAndUpdate(
       id,
       { $set: { status: 'paid', stripePaymentIntentId: paymentIntentId, ...(invoiceUrl && { stripeInvoiceUrl: invoiceUrl }) } },
+      { new: true },
+    ).exec()
+  }
+
+  /* Razorpay fulfillment */
+  async fulfillRazorpay(id: string, paymentId: string, signature: string): Promise<IOrder | null> {
+    return OrderModel.findByIdAndUpdate(
+      id,
+      { $set: { status: 'paid', razorpayPaymentId: paymentId, razorpaySignature: signature } },
       { new: true },
     ).exec()
   }
@@ -50,7 +66,6 @@ export class OrderRepository {
       .exec()
   }
 
-  /* Admin: paginated, all statuses */
   async listAll(page = 1, perPage = 20, status?: string): Promise<{ docs: IOrder[]; totalCount: number }> {
     const filter = status && status !== 'all' ? { status } : {}
     const [docs, totalCount] = await Promise.all([
@@ -67,7 +82,6 @@ export class OrderRepository {
     return { docs, totalCount }
   }
 
-  /* Revenue time-series — paid orders only */
   async revenueTimeseries(days: number): Promise<{ date: string; amount: number }[]> {
     const since = new Date()
     since.setDate(since.getDate() - days)
@@ -83,7 +97,6 @@ export class OrderRepository {
       { $sort: { _id: 1 } },
     ])
 
-    /* Fill in zero-days so the chart always has `days` points */
     const byDate = new Map<string, number>(rows.map((r: any) => [r._id, r.amount]))
     const out: { date: string; amount: number }[] = []
     for (let i = days - 1; i >= 0; i--) {
@@ -95,7 +108,6 @@ export class OrderRepository {
     return out
   }
 
-  /* Total revenue (cents) from paid orders */
   async totalRevenue(): Promise<number> {
     const result = await OrderModel.aggregate([
       { $match: { status: 'paid' } },

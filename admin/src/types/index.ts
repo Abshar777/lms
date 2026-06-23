@@ -9,6 +9,7 @@ export interface Course {
   thumbnailUrl?: string
   previewUrl?:   string
   price:         number
+  priceINR?:     number
   isFree:        boolean
   status:        CourseStatus
   level?:        CourseLevel
@@ -36,6 +37,7 @@ export interface CourseFormValues {
   thumbnailUrl: string
   previewUrl:   string
   price:        number
+  priceINR?:    number
   isFree:       boolean
   status:       CourseStatus
   level:        CourseLevel | ''

@@ -7,7 +7,7 @@ export interface CurrentUser {
   name:        string
   email:       string
   avatarUrl?:  string
-  role:        'student' | 'instructor' | 'admin'
+  role:        'student' | 'instructor' | 'admin' | 'viewer'
   headline?:   string
   bio?:        string
   websiteUrl?: string

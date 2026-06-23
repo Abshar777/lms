@@ -31,6 +31,12 @@ const envSchema = z.object({
   STRIPE_WEBHOOK_SECRET: opt(z.string().min(1)),
   STRIPE_CURRENCY:       z.string().length(3).default('usd'),
 
+  /* Razorpay — all optional; blank lines treated as unset */
+  RAZORPAY_KEY_ID:        opt(z.string().min(1)),
+  RAZORPAY_KEY_SECRET:    opt(z.string().min(1)),
+  RAZORPAY_WEBHOOK_SECRET: opt(z.string().min(1)),
+  RAZORPAY_CURRENCY:      z.string().length(3).default('INR'),
+
   /* Public URL — used to build absolute file URLs for uploaded media */
   BACKEND_PUBLIC_URL: z.string().url().default('http://localhost:4000'),
 
