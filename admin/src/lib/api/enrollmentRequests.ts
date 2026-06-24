@@ -47,6 +47,8 @@ export interface EnrollmentRequest {
   approvedAt?:       string
   /* Rejection metadata */
   rejectedByEmail?:  string
+  rejectedByName?:   string
+  rejectedByRole?:   string
   rejectedAt?:       string
   isActive:               boolean
   createdAt:              string

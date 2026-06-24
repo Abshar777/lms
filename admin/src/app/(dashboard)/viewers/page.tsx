@@ -3,30 +3,15 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Eye, Search, Loader2, Mail, Calendar, CheckCircle2,
-  XCircle, ShieldOff, ShieldCheck, ChevronLeft, ChevronRight,
+  Eye, Search, Loader2, Mail, Calendar,
+  ShieldOff, ShieldCheck, ChevronLeft, ChevronRight,
   Clock, Phone, MapPin, BookOpen, CreditCard, User, FileText,
-  ImageIcon, Trash2, AlertTriangle, ExternalLink, X,
+  ImageIcon, Trash2, ExternalLink, X, XCircle,
 } from 'lucide-react'
 import { useUsers, useDeleteUser, type AdminUser } from '@/lib/api/users'
-import { useApproveEnrollment, useRejectEnrollment, useToggleBlock } from '@/lib/api/enrollmentRequests'
+import { useToggleBlock } from '@/lib/api/enrollmentRequests'
 import { useCurrentUser } from '@/lib/api/user'
 import { useToast } from '@/store/ui.store'
-import { ApproveViewerDialog } from '@/components/viewers/ApproveViewerDialog'
-
-type ProgramCategory = '4x-trading' | 'digital-marketing' | 'ai'
-
-const CATEGORY_META: Record<ProgramCategory, { label: string; color: string; bg: string }> = {
-  '4x-trading':        { label: 'FOREX Trading',     color: '#10B981', bg: 'rgba(16,185,129,0.14)'  },
-  'digital-marketing': { label: 'Digital Marketing', color: '#FF6B1A', bg: 'rgba(255,107,26,0.14)' },
-  'ai':                { label: 'AI',                 color: '#8B5CF6', bg: 'rgba(139,92,246,0.14)'  },
-}
-
-const CATEGORY_SCOPE: Record<string, ProgramCategory> = {
-  '4x_admin':               '4x-trading',
-  digital_marketing_admin:  'digital-marketing',
-  ai_admin:                 'ai',
-}
 
 function fmtDate(d?: string) {
   if (!d) return '—'
@@ -82,9 +67,10 @@ function DocCard({ label, url }: { label: string; url?: string }) {
   )
 }
 
-/* ── Detail modal ──────────────────────────────────── */
+/* ── Detail modal (read-only) ──────────────────────── */
 function ViewerDetailModal({ user, onClose }: { user: AdminUser; onClose: () => void }) {
   const app = user.enrollmentApplication
+  const isRejected = user.enrollmentStatus === 'rejected' || user.enrollmentStatus === 'cancelled'
 
   function Row({ label, value }: { label: string; value?: string | null }) {
     if (!value) return null
@@ -146,10 +132,17 @@ function ViewerDetailModal({ user, onClose }: { user: AdminUser; onClose: () => 
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
-              style={{ background: 'rgba(251,191,36,0.12)', color: '#FBBF24' }}>
-              <Clock size={9} />Pending approval
-            </span>
+            {isRejected ? (
+              <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                style={{ background: 'rgba(248,113,113,0.12)', color: '#F87171' }}>
+                <XCircle size={9} />Rejected
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                style={{ background: 'rgba(251,191,36,0.12)', color: '#FBBF24' }}>
+                <Clock size={9} />Pending approval
+              </span>
+            )}
             <button onClick={onClose}
               className="rounded-lg p-1.5 transition-colors hover:bg-white/[0.08]"
               style={{ color: 'rgba(255,255,255,0.5)' }}>
@@ -157,6 +150,23 @@ function ViewerDetailModal({ user, onClose }: { user: AdminUser; onClose: () => 
             </button>
           </div>
         </div>
+
+        {/* Rejection info banner */}
+        {isRejected && (user.rejectionReason || user.rejectedByEmail) && (
+          <div className="mx-6 mt-4 rounded-xl px-4 py-3 flex-shrink-0"
+            style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)' }}>
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: '#F87171' }}>Rejection Details</p>
+            {user.rejectionReason && (
+              <p className="text-sm" style={{ color: 'rgba(255,255,255,0.75)' }}>{user.rejectionReason}</p>
+            )}
+            {user.rejectedByEmail && (
+              <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                Rejected by {user.rejectedByName ?? user.rejectedByEmail}
+                {user.rejectedAt && ` · ${fmtDate(user.rejectedAt)}`}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
@@ -223,8 +233,8 @@ function ViewerDetailModal({ user, onClose }: { user: AdminUser; onClose: () => 
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <DocCard label="Passport Copy"  url={app.passportUrl} />
-                  <DocCard label="Profile Photo"  url={app.photoUrl} />
+                  <DocCard label="Passport Copy" url={app.passportUrl} />
+                  <DocCard label="Profile Photo" url={app.photoUrl} />
                 </div>
               </div>
             </>
@@ -261,56 +271,38 @@ function DeleteConfirm({ onConfirm, onCancel, loading }: {
   )
 }
 
+type ViewerTab = 'pending' | 'rejected'
+
+const TABS: { value: ViewerTab; label: string; color: string }[] = [
+  { value: 'pending',  label: 'Pending',  color: '#FBBF24' },
+  { value: 'rejected', label: 'Rejected', color: '#F87171' },
+]
+
 /* ── Main page ─────────────────────────────────────── */
 export default function ViewersPage() {
   const { data: me } = useCurrentUser()
   const toast        = useToast()
 
-  const [search,        setSearch]        = useState('')
-  const [page,          setPage]          = useState(1)
-  const [approveTarget, setApproveTarget] = useState<AdminUser | null>(null)
-  const [detailTarget,  setDetailTarget]  = useState<AdminUser | null>(null)
-  const [deleteTarget,  setDeleteTarget]  = useState<string | null>(null)
+  const [tab,          setTab]          = useState<ViewerTab>('pending')
+  const [search,       setSearch]       = useState('')
+  const [page,         setPage]         = useState(1)
+  const [detailTarget, setDetailTarget] = useState<AdminUser | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
-  const scopeCategory: ProgramCategory | null = me?.role ? (CATEGORY_SCOPE[me.role] ?? null) : null
   const isFullAdmin = me?.role === 'super_admin' || me?.role === 'admin'
 
   const { data, isLoading, refetch } = useUsers('student', {
     search,
     page,
     per_page: 20,
-    enrollmentStatus: 'pending',
+    enrollmentStatus: tab,
   })
 
-  const viewers      = data?.docs ?? []
-  const meta         = data?.meta
+  const viewers     = data?.docs ?? []
+  const meta        = data?.meta
 
-  const approve      = useApproveEnrollment()
-  const reject       = useRejectEnrollment()
-  const toggleBlock  = useToggleBlock()
-  const deleteUser   = useDeleteUser()
-
-  const handleApprove = async (cats: ProgramCategory[]) => {
-    if (!approveTarget) return
-    try {
-      await approve.mutateAsync({ userId: approveTarget.id, categories: cats })
-      toast.success(`${approveTarget.name} approved`, `Now a student with access to: ${cats.map(c => CATEGORY_META[c].label).join(', ')}`)
-      setApproveTarget(null)
-      refetch()
-    } catch (err: any) {
-      toast.error('Approval failed', err?.response?.data?.error?.message)
-    }
-  }
-
-  const handleReject = async (user: AdminUser, reason: string) => {
-    try {
-      await reject.mutateAsync({ userId: user.id, reason })
-      toast.success(`${user.name} rejected`, 'User has been notified.')
-      refetch()
-    } catch (err: any) {
-      toast.error('Reject failed', err?.response?.data?.error?.message)
-    }
-  }
+  const toggleBlock = useToggleBlock()
+  const deleteUser  = useDeleteUser()
 
   const handleToggleBlock = async (user: AdminUser) => {
     try {
@@ -336,6 +328,12 @@ export default function ViewersPage() {
     }
   }
 
+  const handleTabChange = (t: ViewerTab) => {
+    setTab(t)
+    setPage(1)
+    setSearch('')
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -349,7 +347,7 @@ export default function ViewersPage() {
             Viewers
           </h1>
           <p className="mt-1 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
-            Users who signed up but are awaiting approval. Approve to grant student access.
+            Users who signed up but have not yet been approved as students.
           </p>
         </div>
         {meta && (
@@ -357,7 +355,7 @@ export default function ViewersPage() {
             style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.18)' }}>
             <Eye size={13} style={{ color: '#818CF8' }} />
             <span className="text-sm font-bold" style={{ color: '#818CF8' }}>{meta.total_count}</span>
-            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>pending</span>
+            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{tab}</span>
           </div>
         )}
       </div>
@@ -368,31 +366,53 @@ export default function ViewersPage() {
         <Eye size={14} className="mt-0.5 flex-shrink-0" style={{ color: '#818CF8' }} />
         <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.5)' }}>
           Viewers can browse the platform but cannot access course content or book live classes.
-          Click a row to view their full application and submitted documents.
+          To approve or reject requests, use the <strong style={{ color: 'rgba(255,255,255,0.7)' }}>Enrollment Requests</strong> section.
+          Click any row to view their submitted application and documents.
         </p>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'rgba(255,255,255,0.3)' }} />
-        <input
-          value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1) }}
-          placeholder="Search by name or email…"
-          className="w-full rounded-xl py-2 pl-9 pr-4 text-sm text-white outline-none transition-all placeholder:text-white/25"
-          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
-          onFocus={e => { e.currentTarget.style.border = '1px solid rgba(99,102,241,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.10)' }}
-          onBlur={e => { e.currentTarget.style.border = '1px solid rgba(255,255,255,0.08)'; e.currentTarget.style.boxShadow = 'none' }}
-        />
+      {/* Tabs + Search */}
+      <div className="flex flex-wrap items-center gap-3">
+        {/* Sub-tabs */}
+        <div className="flex overflow-hidden rounded-xl" style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
+          {TABS.map(t => (
+            <button
+              key={t.value}
+              onClick={() => handleTabChange(t.value)}
+              className="px-4 py-2 text-sm font-medium transition-all"
+              style={{
+                color:      tab === t.value ? t.color : 'rgba(255,255,255,0.45)',
+                background: tab === t.value ? `${t.color}18` : 'transparent',
+                borderRight: '1px solid rgba(255,255,255,0.06)',
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div className="relative flex-1" style={{ minWidth: 180, maxWidth: 320 }}>
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'rgba(255,255,255,0.3)' }} />
+          <input
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1) }}
+            placeholder="Search by name or email…"
+            className="w-full rounded-xl py-2 pl-9 pr-4 text-sm text-white outline-none transition-all placeholder:text-white/25"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+            onFocus={e => { e.currentTarget.style.border = '1px solid rgba(99,102,241,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.10)' }}
+            onBlur={e => { e.currentTarget.style.border = '1px solid rgba(255,255,255,0.08)'; e.currentTarget.style.boxShadow = 'none' }}
+          />
+        </div>
       </div>
 
       {/* Table */}
       <div className="overflow-hidden rounded-2xl" style={{ border: '1px solid rgba(255,255,255,0.07)' }}>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[700px] border-collapse">
+          <table className="w-full min-w-[640px] border-collapse">
             <thead>
               <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                {['Viewer', 'Email', 'Status', 'Signed up', 'Actions'].map(h => (
+                {['Viewer', 'Email', tab === 'rejected' ? 'Rejected by' : 'Status', 'Signed up', 'Actions'].map(h => (
                   <th key={h} className="px-4 py-3 text-left"
                     style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                     {h}
@@ -404,7 +424,7 @@ export default function ViewersPage() {
               {isLoading && (
                 <tr><td colSpan={5} className="px-4 py-16 text-center">
                   <div className="inline-flex items-center gap-2 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                    <Loader2 size={14} className="animate-spin" />Loading viewers…
+                    <Loader2 size={14} className="animate-spin" />Loading…
                   </div>
                 </td></tr>
               )}
@@ -412,8 +432,12 @@ export default function ViewersPage() {
                 <tr><td colSpan={5} className="px-4 py-20 text-center">
                   <div style={{ color: 'rgba(255,255,255,0.3)' }}>
                     <Eye size={32} className="mx-auto mb-3 opacity-30" />
-                    <p className="text-sm font-medium">No pending viewers</p>
-                    <p className="mt-1 text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>New signups will appear here</p>
+                    <p className="text-sm font-medium">
+                      {tab === 'pending' ? 'No pending viewers' : 'No rejected viewers'}
+                    </p>
+                    <p className="mt-1 text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>
+                      {tab === 'pending' ? 'New signups will appear here' : 'Rejected users will appear here'}
+                    </p>
                   </div>
                 </td></tr>
               )}
@@ -431,8 +455,11 @@ export default function ViewersPage() {
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
                       <div className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full"
-                        style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.25)' }}>
-                        <span className="text-xs font-bold" style={{ color: '#818CF8' }}>
+                        style={{
+                          background: tab === 'rejected' ? 'rgba(248,113,113,0.12)' : 'rgba(99,102,241,0.15)',
+                          border: `1px solid ${tab === 'rejected' ? 'rgba(248,113,113,0.25)' : 'rgba(99,102,241,0.25)'}`,
+                        }}>
+                        <span className="text-xs font-bold" style={{ color: tab === 'rejected' ? '#F87171' : '#818CF8' }}>
                           {user.name[0]?.toUpperCase() ?? '?'}
                         </span>
                         {!user.isActive && (
@@ -459,18 +486,45 @@ export default function ViewersPage() {
                     </div>
                   </td>
 
-                  {/* Status */}
+                  {/* Status / Rejected by */}
                   <td className="px-4 py-3.5">
-                    <div className="flex flex-col gap-1">
-                      <span className="inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
-                        style={{ background: 'rgba(99,102,241,0.12)', color: '#818CF8' }}>
-                        <Eye size={10} />Viewer
-                      </span>
-                      <span className="inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium"
-                        style={{ background: 'rgba(251,191,36,0.10)', color: '#FBBF24' }}>
-                        <Clock size={9} />Pending approval
-                      </span>
-                    </div>
+                    {tab === 'rejected' ? (
+                      <div className="flex flex-col gap-0.5">
+                        {user.rejectedByEmail && (
+                          <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.65)' }}>
+                            {user.rejectedByName ?? user.rejectedByEmail}
+                          </p>
+                        )}
+                        {user.rejectionReason && (
+                          <p className="text-[11px] truncate max-w-[200px]" title={user.rejectionReason}
+                            style={{ color: 'rgba(255,255,255,0.3)' }}>
+                            {user.rejectionReason}
+                          </p>
+                        )}
+                        {user.rejectedAt && (
+                          <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                            {fmtDate(user.rejectedAt)}
+                          </p>
+                        )}
+                        {!user.rejectedByEmail && !user.rejectionReason && (
+                          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                            style={{ background: 'rgba(248,113,113,0.12)', color: '#F87171' }}>
+                            <XCircle size={10} />Rejected
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-1">
+                        <span className="inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                          style={{ background: 'rgba(99,102,241,0.12)', color: '#818CF8' }}>
+                          <Eye size={10} />Viewer
+                        </span>
+                        <span className="inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium"
+                          style={{ background: 'rgba(251,191,36,0.10)', color: '#FBBF24' }}>
+                          <Clock size={9} />Pending approval
+                        </span>
+                      </div>
+                    )}
                   </td>
 
                   {/* Joined */}
@@ -492,12 +546,6 @@ export default function ViewersPage() {
                       ) : (
                         <>
                           <button
-                            onClick={() => setApproveTarget(user)}
-                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
-                            style={{ background: 'rgba(74,222,128,0.85)', boxShadow: '0 2px 8px rgba(74,222,128,0.25)' }}>
-                            <CheckCircle2 size={11} />Approve
-                          </button>
-                          <button
                             onClick={() => handleToggleBlock(user)}
                             disabled={toggleBlock.isPending}
                             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-40"
@@ -508,15 +556,6 @@ export default function ViewersPage() {
                               ? <Loader2 size={10} className="animate-spin" />
                               : user.isActive ? <ShieldOff size={10} /> : <ShieldCheck size={10} />}
                             {user.isActive ? 'Block' : 'Unblock'}
-                          </button>
-                          <button
-                            onClick={() => {
-                              const reason = prompt(`Reject ${user.name}? Enter reason:`)
-                              if (reason && reason.length >= 5) handleReject(user, reason)
-                            }}
-                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all"
-                            style={{ color: 'rgba(248,113,113,0.7)', border: '1px solid rgba(248,113,113,0.2)' }}>
-                            <XCircle size={10} />Reject
                           </button>
                           {isFullAdmin && (
                             <button
@@ -545,12 +584,12 @@ export default function ViewersPage() {
             </span>
             <div className="flex gap-1">
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!meta.has_prev}
-                className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/05 disabled:opacity-30"
+                className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors disabled:opacity-30"
                 style={{ color: 'rgba(255,255,255,0.5)' }}>
                 <ChevronLeft size={13} />
               </button>
               <button onClick={() => setPage(p => p + 1)} disabled={!meta.has_next}
-                className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/05 disabled:opacity-30"
+                className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors disabled:opacity-30"
                 style={{ color: 'rgba(255,255,255,0.5)' }}>
                 <ChevronRight size={13} />
               </button>
@@ -559,17 +598,8 @@ export default function ViewersPage() {
         )}
       </div>
 
-      {/* Approve dialog */}
+      {/* Detail modal */}
       <AnimatePresence>
-        {approveTarget && (
-          <ApproveViewerDialog
-            user={approveTarget}
-            scopeCategory={scopeCategory}
-            loading={approve.isPending}
-            onClose={() => setApproveTarget(null)}
-            onConfirm={handleApprove}
-          />
-        )}
         {detailTarget && (
           <ViewerDetailModal
             user={detailTarget}

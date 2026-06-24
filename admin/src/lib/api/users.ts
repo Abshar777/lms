@@ -2,6 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import type { PaginationMeta } from '@/types/index'
+import type { EnrollmentApplication } from './enrollmentRequests'
 
 /* ── Enrollment (student course access) ─────────────── */
 export interface StudentEnrollment {
@@ -26,29 +27,6 @@ export type AdminUserRole =
   | 'ai_admin'
   | 'super_admin'
 
-export interface AdminUserEnrollmentApplication {
-  phone?:              string
-  emergencyContact?:   string
-  gender?:             string
-  dateOfBirth?:        string
-  nationality?:        string
-  homeCountry?:        string
-  occupation?:         string
-  emiratesId?:         string
-  countryAttendance?:  string
-  villa?:              string
-  city?:               string
-  addressCountry?:     string
-  passportUrl?:        string
-  photoUrl?:           string
-  experienceLevel?:    string
-  preferredStartDate?: string
-  hearAboutUs?:        string
-  referralName?:       string
-  programs?:           string[]
-  paymentMethod?:      string
-}
-
 export interface AdminUser {
   id:               string
   name:             string
@@ -62,11 +40,15 @@ export interface AdminUser {
   category?:        '4x-trading' | 'digital-marketing' | 'ai'
   categories?:      ('4x-trading' | 'digital-marketing' | 'ai')[]
   enrollmentStatus?: 'pending' | 'approved' | 'rejected' | 'cancelled'
+  rejectionReason?:        string
+  rejectedByEmail?:        string
+  rejectedByName?:         string
+  rejectedAt?:             string
+  enrollmentApplication?:  EnrollmentApplication
   lastLoginAt?:     string
   createdAt:        string
   updatedAt:        string
   customRoleId?:    string | { id: string; name: string }
-  enrollmentApplication?: AdminUserEnrollmentApplication
 }
 
 export const userKeys = {

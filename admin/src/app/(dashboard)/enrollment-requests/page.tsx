@@ -1057,13 +1057,14 @@ export default function EnrollmentRequestsPage() {
                           {r.rejectionReason && (
                             <p className="max-w-[200px] truncate text-[10px]"
                               title={r.rejectionReason}
-                              style={{ color: 'rgba(255,255,255,0.3)' }}>
+                              style={{ color: 'rgba(255,255,255,0.35)' }}>
                               {r.rejectionReason}
                             </p>
                           )}
-                          {r.rejectedByEmail && (
+                          {(r.rejectedByName || r.rejectedByEmail) && (
                             <div className="text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                              by {r.rejectedByEmail}
+                              by {r.rejectedByName ?? r.rejectedByEmail}
+                              {r.rejectedAt && ` · ${new Date(r.rejectedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
                             </div>
                           )}
                         </div>
@@ -1084,16 +1085,6 @@ export default function EnrollmentRequestsPage() {
                             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
                             style={{ background: 'rgba(74,222,128,0.85)' }}>
                             <CheckCircle2 size={11} />Approve
-                          </button>
-                          <button
-                            onClick={() => handleToggleBlock(r)}
-                            disabled={toggleBlock.isPending}
-                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-40"
-                            style={r.isActive
-                              ? { color: '#F87171', border: '1px solid rgba(248,113,113,0.3)' }
-                              : { color: '#4ADE80', border: '1px solid rgba(74,222,128,0.3)' }}>
-                            {toggleBlock.isPending ? <Loader2 size={10} className="animate-spin" /> : r.isActive ? <ShieldOff size={10} /> : <ShieldCheck size={10} />}
-                            {r.isActive ? 'Block' : 'Unblock'}
                           </button>
                           <button
                             onClick={() => setRejectTarget(r)}
@@ -1148,16 +1139,6 @@ export default function EnrollmentRequestsPage() {
                             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
                             style={{ background: 'rgba(239,68,68,0.85)' }}>
                             <XCircle size={11} />Reject
-                          </button>
-                          <button
-                            onClick={() => handleToggleBlock(r)}
-                            disabled={toggleBlock.isPending}
-                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-40"
-                            style={r.isActive
-                              ? { color: '#F87171', border: '1px solid rgba(248,113,113,0.3)' }
-                              : { color: '#4ADE80', border: '1px solid rgba(74,222,128,0.3)' }}>
-                            {toggleBlock.isPending ? <Loader2 size={10} className="animate-spin" /> : r.isActive ? <ShieldOff size={10} /> : <ShieldCheck size={10} />}
-                            {r.isActive ? 'Block' : 'Unblock'}
                           </button>
                         </div>
                       )}
