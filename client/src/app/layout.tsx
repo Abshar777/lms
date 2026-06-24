@@ -31,9 +31,9 @@ export const metadata: Metadata = {
   title: { template: '%s — Delta Institutions', default: 'Delta Institutions — Leading Trading Academy' },
   description: 'UAE leading trading academy — begin your learning journey at Delta Institutions.',
   icons: {
-    icon:     [{ url: '/icons/icon.svg', type: 'image/svg+xml' }],
-    shortcut: '/icons/icon.svg',
-    apple:    '/icons/icon.svg',
+    icon:     [{ url: '/icons/icone.png', type: 'image/png' }],
+    shortcut: '/icons/icone.png',
+    apple:    '/icons/icone.png',
   },
   manifest:    '/manifest.webmanifest',
   applicationName: 'Delta Institutions',

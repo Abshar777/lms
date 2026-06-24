@@ -184,15 +184,12 @@ export function ClientTopbar() {
           </button>
 
           {/* Logo — always visible (no desktop sidebar) */}
-          <div className="flex items-center gap-2 mr-4 flex-shrink-0">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl"
-              style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>
-              <Flame size={14} color="white" strokeWidth={2.2} />
-            </div>
-            <span className="hidden sm:block font-bold text-[15px]"
-              style={{ color: '#111827', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-              Delta
-            </span>
+          <div className="flex items-center mr-4 flex-shrink-0">
+            <img
+              src="/logo-dark.png"
+              alt="Delta International"
+              className="h-8 w-auto object-contain"
+            />
           </div>
 
           {/* Search — live typeahead, syncs with /search page */}

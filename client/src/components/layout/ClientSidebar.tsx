@@ -38,14 +38,11 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
       {/* ── Logo ─────────────────────────────── */}
       <div className="flex h-[60px] flex-shrink-0 items-center gap-3 px-4"
         style={{ borderBottom: '1px solid #E4E7ED' }}>
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl"
-          style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>
-          <Flame size={15} color="#fff" strokeWidth={2.2} />
-        </div>
-        <span className="whitespace-nowrap font-bold"
-          style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 16, color: '#0D0F1A' }}>
-          Delta
-        </span>
+        <img
+          src="/logo-dark.png"
+          alt="Delta International"
+          className="h-8 w-auto object-contain"
+        />
         <button onClick={onClose}
           className="ml-auto flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-blue-50"
           style={{ color: '#0057b8' }}>

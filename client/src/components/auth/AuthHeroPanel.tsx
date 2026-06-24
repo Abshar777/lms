@@ -75,7 +75,7 @@ export function AuthHeroPanel() {
         {/* Delta logo floating */}
         <div className="delta-logo-float mb-8">
           <img
-            src="/logo.webp"
+            src="/logo.png"
             alt="Delta Institutions"
             style={{
               height: 80, width: 'auto', objectFit: 'contain',
@@ -150,7 +150,7 @@ export function AuthHeroPanel() {
             marginBottom: 40,
           }}
         >
-          UAE's leading trading academy — complete the form to begin your journey.
+          UAE&apos;s leading trading academy — complete the form to begin your journey.
         </motion.p>
 
         {/* Stats row */}
