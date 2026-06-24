@@ -112,6 +112,7 @@ async function run() {
 
   await mongoose.connect(DATABASE_URL, {
     serverSelectionTimeoutMS: 10_000,
+    authSource:"admin"
   })
 
   console.log(`  ✅  Connected to "${dbName}"\n`)
