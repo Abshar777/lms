@@ -3,6 +3,7 @@ import { LiveClassService } from '@/services/liveClass.service.ts'
 import { verifyWebhookSignature } from '@/services/mux.service.ts'
 import { createGoogleMeetLink } from '@/services/googleMeet.service.ts'
 import { sendSuccess } from '@/utils/response.ts'
+import { sendInstructorClassScheduled } from '@/services/email.service.ts'
 
 function isPopulated(v: unknown): v is Record<string, unknown> & { id: string } {
   return !!v && typeof v === 'object' && typeof (v as { id?: unknown }).id === 'string'
@@ -208,25 +209,32 @@ export class LiveClassController {
         }
       }
 
-      const sessionType = dto.type ?? 'external'
-      const isOnline    = dto.isOnline ?? true
+      const sessionType  = dto.type ?? 'external'
+      const isOnline     = dto.isOnline ?? true
+      const instructorId = dto.instructorId ?? req.user!.id
 
       /* Auto-generate a Google Meet link for online external sessions */
       let meetingUrl: string | undefined
       let googleMeetCode: string | undefined
       if (sessionType === 'external' && isOnline) {
+        /* Look up instructor email so workspace users become the Meet host */
+        const { UserModel } = await import('@/models/schema.ts')
+        const instructor = await UserModel.findById(instructorId).select('email').lean()
+        const instructorEmail = (instructor as any)?.email as string | undefined
+
         const meet = await createGoogleMeetLink({
-          title:        dto.title,
-          startISO:     String(dto.scheduledStart),
-          durationMins: dto.durationMins,
+          title:            dto.title,
+          startISO:         String(dto.scheduledStart),
+          durationMins:     dto.durationMins,
+          instructorEmail,
         })
-        meetingUrl    = meet.meetingUrl
+        meetingUrl     = meet.meetingUrl
         googleMeetCode = meet.meetingCode || undefined
       }
 
       const live = await this.service.create({
         courseId:        dto.courseId,
-        instructorId:    dto.instructorId ?? req.user!.id,
+        instructorId:    instructorId,
         title:           dto.title,
         description:     dto.description,
         scheduledStart:  new Date(dto.scheduledStart),
@@ -242,6 +250,32 @@ export class LiveClassController {
         room:            dto.room,
       })
       sendSuccess(res, toDTO(live), 'Live class scheduled', 201)
+
+      /* Notify assigned instructor — fire-and-forget, only for Google Meet sessions */
+      if (meetingUrl && live.instructorId) {
+        void (async () => {
+          try {
+            const { UserModel, CourseModel } = await import('@/models/schema.ts')
+            const [instructor, course] = await Promise.all([
+              UserModel.findById(live.instructorId).select('name email').lean(),
+              CourseModel.findById(live.courseId).select('title').lean(),
+            ])
+            if (instructor && (instructor as any).email) {
+              await sendInstructorClassScheduled(
+                (instructor as any).email,
+                (instructor as any).name ?? 'Instructor',
+                (course as any)?.title ?? '',
+                live.title,
+                live.scheduledStart,
+                meetingUrl,
+              )
+            }
+          } catch (err) {
+            const { logger } = await import('@/utils/logger.ts')
+            logger.error({ err }, '[LiveClass] Failed to send instructor scheduled email')
+          }
+        })()
+      }
     } catch (err) { next(err) }
   }
 

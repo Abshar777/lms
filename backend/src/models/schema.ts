@@ -681,6 +681,9 @@ export interface ILiveClass extends Document {
   /* Reschedule tracking */
   rescheduledReason?: string          // admin-provided reason when class is rescheduled
 
+  /* Instructor reminder tracking */
+  reminderInstructor15MinSent: boolean
+
   createdAt:      Date
   updatedAt:      Date
 }
@@ -716,7 +719,8 @@ const LiveClassSchema = new Schema<ILiveClass>(
     isOnline:          { type: Boolean, default: true },
     location:          { type: String, maxlength: 500 },
     room:              { type: String, maxlength: 100 },
-    rescheduledReason: { type: String, maxlength: 2000 },
+    rescheduledReason:           { type: String, maxlength: 2000 },
+    reminderInstructor15MinSent: { type: Boolean, default: false },
   },
   baseSchemaOptions,
 )

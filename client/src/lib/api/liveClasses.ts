@@ -79,7 +79,7 @@ export function isEnded(l: LiveClass): boolean {
 }
 
 export function hasRecording(l: LiveClass): boolean {
-  return l.type === 'internal' && l.status === 'ended' && !!l.recordingUrl
+  return l.status === 'ended' && !!l.recordingUrl
 }
 
 export function fmtCountdown(startIso: string, now: number): string {

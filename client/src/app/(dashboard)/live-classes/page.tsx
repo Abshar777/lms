@@ -443,6 +443,16 @@ function SessionCard({ live, index, now }: { live: LiveClass; now: number; index
                   </motion.button>
                 </Link>
               )}
+              {/* External ended — watch Google Drive recording in new tab */}
+              {!isInt && rec && (
+                <a href={live.recordingUrl!} target="_blank" rel="noopener noreferrer">
+                  <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                    className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold"
+                    style={{ background: 'rgba(34,197,94,0.10)', color: '#16A34A', border: '1px solid rgba(34,197,94,0.22)' }}>
+                    <BookOpen size={9} />Watch
+                  </motion.button>
+                </a>
+              )}
             </>
           )}
         </div>

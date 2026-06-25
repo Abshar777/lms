@@ -1,4 +1,6 @@
 import { google } from 'googleapis'
+import * as fs from 'fs'
+import * as path from 'path'
 
 function makeOAuth2Client() {
   const clientId     = process.env.GOOGLE_CLIENT_ID
@@ -20,25 +22,69 @@ function makeOAuth2Client() {
   return client
 }
 
+// Uses Domain-Wide Delegation to impersonate a Workspace user when creating Calendar events.
+// The service account JSON key must be at backend/google-service-account.json.
+function makeServiceAccountAuth(impersonateEmail: string) {
+  const keyPath = path.join(process.cwd(), 'google-service-account.json')
+
+  let key: { client_email: string; private_key: string }
+  try {
+    const raw = fs.readFileSync(keyPath, 'utf-8')
+    key = JSON.parse(raw)
+  } catch {
+    throw Object.assign(
+      new Error(
+        'google-service-account.json not found in backend/ — ' +
+        'download the service account JSON key from Google Cloud and place it there.',
+      ),
+      { status: 503 },
+    )
+  }
+
+  return new google.auth.JWT({
+    email:   key.client_email,
+    key:     key.private_key,
+    scopes:  [
+      'https://www.googleapis.com/auth/calendar',
+      'https://www.googleapis.com/auth/calendar.events',
+    ],
+    subject: impersonateEmail,
+  })
+}
+
 /**
  * Creates a Google Calendar event and returns the attached Google Meet link + meeting code.
  *
  * Required env vars:
- *   GOOGLE_CLIENT_ID       — OAuth2 Client ID from Google Cloud Console
- *   GOOGLE_CLIENT_SECRET   — OAuth2 Client Secret
- *   GOOGLE_REFRESH_TOKEN   — long-lived refresh token (must be for a Google Workspace account
- *                            to support recording; personal Gmail cannot record)
- *   GOOGLE_CALENDAR_ID     — calendar to create events on (default: "primary")
+ *   GOOGLE_CLIENT_ID        — OAuth2 Client ID from Google Cloud Console
+ *   GOOGLE_CLIENT_SECRET    — OAuth2 Client Secret
+ *   GOOGLE_REFRESH_TOKEN    — long-lived refresh token for support@deltagroups.ae (fallback)
+ *   GOOGLE_CALENDAR_ID      — fallback calendar (default: "primary")
+ *   GOOGLE_WORKSPACE_DOMAIN — domain for internal instructor check (default: "deltagroups.ae")
+ *
+ * When instructorEmail is a @deltagroups.ae address, the event is created on the instructor's
+ * own calendar via DWD (service account impersonation), making them the automatic Meet host.
+ * External instructors fall back to the support@ calendar as the host.
  */
 export async function createGoogleMeetLink(opts: {
-  title:        string
-  startISO:     string
-  durationMins: number
+  title:            string
+  startISO:         string
+  durationMins:     number
+  instructorEmail?: string
 }): Promise<{ meetingUrl: string; meetingCode: string }> {
-  const oauth2Client = makeOAuth2Client()
-  const calendarId   = process.env.GOOGLE_CALENDAR_ID ?? 'primary'
+  const WORKSPACE_DOMAIN     = process.env.GOOGLE_WORKSPACE_DOMAIN ?? 'deltagroups.ae'
+  const instructorIsInternal = opts.instructorEmail?.endsWith(`@${WORKSPACE_DOMAIN}`) ?? false
 
-  const calendar = google.calendar({ version: 'v3', auth: oauth2Client })
+  const auth       = instructorIsInternal ? makeServiceAccountAuth(opts.instructorEmail!) : makeOAuth2Client()
+  const calendarId = instructorIsInternal
+    ? opts.instructorEmail!
+    : (process.env.GOOGLE_CALENDAR_ID ?? 'primary')
+
+  if (instructorIsInternal) {
+    console.info(`[googleMeet] Creating event on instructor calendar via DWD: ${opts.instructorEmail}`)
+  }
+
+  const calendar = google.calendar({ version: 'v3', auth })
   const start    = new Date(opts.startISO)
   const end      = new Date(start.getTime() + opts.durationMins * 60_000)
 
@@ -88,7 +134,6 @@ export async function createGoogleMeetLink(opts: {
     )
   }
 
-  // Extract the meeting code from the URL: meet.google.com/abc-def-ghij → "abc-def-ghij"
   const meetingCode = meetLink.split('/').pop() ?? ''
 
   return { meetingUrl: meetLink, meetingCode }

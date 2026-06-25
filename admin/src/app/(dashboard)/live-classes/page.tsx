@@ -143,6 +143,16 @@ function TableRow({ live, index, showInstructor }: { live: LiveClass; index: num
   const isInternal   = live.type === 'internal'
   const isOffline    = (live as any).isOnline === false
   const canAdminBook = isOffline && live.status === 'scheduled' && new Date(live.scheduledStart) > new Date()
+
+  /* Join button: external online class, 15 min before start → end */
+  const now = Date.now()
+  const startMs = new Date(live.scheduledStart).getTime()
+  const endMs   = startMs + live.durationMins * 60 * 1000
+  const meetUrl = (live as any).meetingUrl as string | undefined
+  const canJoin = !isInternal && !isOffline && !!meetUrl &&
+    (isLiveNow || isScheduled) &&
+    (startMs - now) <= 15 * 60 * 1000 &&   // within 15 min window or already started
+    now < endMs                              // not past end time
   const [editOpen, setEditOpen] = useState(false)
   const [bookOpen, setBookOpen] = useState(false)
 
@@ -280,6 +290,20 @@ function TableRow({ live, index, showInstructor }: { live: LiveClass; index: num
               title="Attendance">
               <UserCheck size={13} />
             </Link>
+
+            {/* Join Google Meet — external online, 15 min before → end */}
+            {canJoin && (
+              <a
+                href={meetUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold transition-all hover:opacity-90"
+                style={{ background: 'linear-gradient(135deg,#22C55E,#16A34A)', color: '#fff', textDecoration: 'none' }}
+                title="Join Google Meet">
+                <ExternalLink size={10} />
+                Join
+              </a>
+            )}
 
             {/* Monitor / Go Live — internal + live or scheduled only */}
             {isInternal && (isLiveNow || isScheduled) && (

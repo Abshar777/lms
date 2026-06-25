@@ -25,6 +25,7 @@ import {
   sendPreSessionReminder,
   sendFiveMinReminder,
   sendClassStartingReminder,
+  sendInstructor15MinReminder,
 } from '@/services/email.service.ts'
 
 const notifSvc = new NotificationService()
@@ -309,6 +310,90 @@ async function runAtTimeReminders(): Promise<void> {
   }
 }
 
+/* ── Instructor 15-min job ───────────────────────────── */
+async function runInstructor15MinReminders(): Promise<void> {
+  try {
+    const { LiveClassModel } = await import('@/models/schema.ts')
+    const now  = new Date()
+    const from = new Date(now.getTime() + 13 * 60 * 1000)   // 13 min from now
+    const to   = new Date(now.getTime() + 17 * 60 * 1000)   // 17 min from now
+
+    const classes = await LiveClassModel.find({
+      status:  'scheduled',
+      type:    'external',
+      isOnline: { $ne: false },
+      reminderInstructor15MinSent: false,
+      scheduledStart: { $gte: from, $lte: to },
+    })
+      .populate<{ instructorId: { id: string; name: string; email: string } }>('instructorId', 'name email')
+      .lean({ virtuals: true })
+
+    for (const cls of classes) {
+      const instructor = cls.instructorId as any
+      if (!instructor?.email || !cls.meetingUrl) continue
+
+      try {
+        await sendInstructor15MinReminder(
+          instructor.email,
+          instructor.name ?? 'Instructor',
+          cls.title,
+          new Date(cls.scheduledStart),
+          cls.meetingUrl,
+        )
+        await LiveClassModel.findByIdAndUpdate(cls._id, { reminderInstructor15MinSent: true })
+        logger.info({ classId: cls._id, instructor: instructor.email }, '[Reminders] Instructor 15-min reminder sent')
+      } catch (err) {
+        logger.error({ err, classId: cls._id }, '[Reminders] Instructor 15-min email failed')
+      }
+    }
+
+    if (classes.length) logger.info(`[Reminders] Instructor 15-min: processed ${classes.length} classes`)
+  } catch (err) {
+    logger.error({ err }, '[Reminders] instructor-15min job error')
+  }
+}
+
+/* ── Recording poller ────────────────────────────────── */
+async function runRecordingPoller(): Promise<void> {
+  try {
+    const { LiveClassModel } = await import('@/models/schema.ts')
+    const { fetchMeetRecordingUrl } = await import('@/services/googleMeet.service.ts')
+
+    const now      = new Date()
+    const earliest = new Date(now.getTime() - 48 * 60 * 60 * 1000)  // don't poll classes older than 48 h
+
+    // Classes that have ended, have a Meet code, but no recording URL yet
+    const candidates = await LiveClassModel.find({
+      type:          'external',
+      googleMeetCode: { $exists: true, $ne: '' },
+      recordingUrl:  { $exists: false },
+      scheduledStart: { $gte: earliest, $lt: new Date(now.getTime() - 10 * 60 * 1000) },
+    }).lean()
+
+    // Filter to those whose scheduled end time has passed
+    const ended = candidates.filter(c => {
+      const endMs = new Date(c.scheduledStart).getTime() + c.durationMins * 60_000
+      return endMs < now.getTime()
+    })
+
+    let found = 0
+    for (const cls of ended) {
+      const url = await fetchMeetRecordingUrl(cls.googleMeetCode!)
+      if (url) {
+        found++
+        await LiveClassModel.findByIdAndUpdate(cls._id, { recordingUrl: url })
+        logger.info({ classId: cls._id, url }, '[Recording] Recording URL saved')
+      }
+    }
+
+    if (ended.length) {
+      logger.info(`[Recording] Polled ${ended.length} classes, found ${found} recordings`)
+    }
+  } catch (err) {
+    logger.error({ err }, '[Recording] Poller job error')
+  }
+}
+
 /* ── Entry point ─────────────────────────────────────── */
 export function startReminderJobs(): void {
   // Every hour at :00 — day-before reminders (23–25 h window)
@@ -327,6 +412,12 @@ export function startReminderJobs(): void {
 
   // Every 5 min — at-time reminder WITH link (0–5 min after start)
   cron.schedule('*/5 * * * *', runAtTimeReminders)
+
+  // Every 5 min — instructor 15-min reminder with Google Meet link (13–17 min window)
+  cron.schedule('*/5 * * * *', runInstructor15MinReminders)
+
+  // Every 15 min — poll Google Meet API for completed recordings (classes ended in last 48 h)
+  cron.schedule('*/15 * * * *', runRecordingPoller)
 
   logger.info('[Reminders] Cron jobs scheduled')
 }

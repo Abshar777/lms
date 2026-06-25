@@ -232,6 +232,68 @@ export async function sendLiveClassScheduled(
   })
 }
 
+export async function sendInstructorClassScheduled(
+  to: string,
+  name: string,
+  courseTitle: string,
+  liveTitle: string,
+  startsAt: Date,
+  meetLink: string,
+): Promise<void> {
+  const subject = `You've been scheduled: ${liveTitle}`
+  const when = startsAt.toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short', timeZone: 'Asia/Dubai' })
+  const html = wrap(subject, `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">You've been assigned a live class</h2>
+    <p>Hi ${escapeHtml(name)},</p>
+    <p>A new live session has been scheduled for you in <strong>${escapeHtml(courseTitle)}</strong>.</p>
+    <table cellpadding="0" cellspacing="0" style="margin:18px 0;background:#F4F5F8;border-radius:12px;padding:16px;width:100%">
+      <tr><td style="padding:6px 0"><strong>Session:</strong> ${escapeHtml(liveTitle)}</td></tr>
+      <tr><td style="padding:6px 0"><strong>When:</strong> ${escapeHtml(when)}</td></tr>
+      <tr><td style="padding:6px 0"><strong>Meet link:</strong> <a href="${meetLink}" style="color:#FF6B1A">${escapeHtml(meetLink)}</a></td></tr>
+    </table>
+    <p style="margin:24px 0">
+      <a href="${meetLink}" style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
+        Open Google Meet
+      </a>
+    </p>
+    <p style="font-size:12px;color:#9CA3AF">You will receive another reminder 15 minutes before the class starts.</p>
+  `)
+  await sender.send({
+    to,
+    subject,
+    html,
+    text: `You've been scheduled to teach "${liveTitle}" (${courseTitle}) on ${when}.\nGoogle Meet: ${meetLink}`,
+  })
+}
+
+export async function sendInstructor15MinReminder(
+  to: string,
+  name: string,
+  liveTitle: string,
+  startsAt: Date,
+  meetLink: string,
+): Promise<void> {
+  const subject = `⏰ Starting in 15 min: ${liveTitle}`
+  const when = startsAt.toLocaleString('en-US', { timeStyle: 'short', timeZone: 'Asia/Dubai' })
+  const html = wrap(subject, `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">Your class starts in 15 minutes</h2>
+    <p>Hi ${escapeHtml(name)},</p>
+    <p><strong>${escapeHtml(liveTitle)}</strong> starts at <strong>${escapeHtml(when)}</strong>. Open your Google Meet link now so you're ready when students join.</p>
+    <p style="margin:24px 0">
+      <a href="${meetLink}" style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:15px">
+        Join Google Meet now →
+      </a>
+    </p>
+    <p style="font-size:12px;color:#6B7280">Link: <a href="${meetLink}" style="color:#FF6B1A">${escapeHtml(meetLink)}</a></p>
+  `)
+  await sender.send({
+    to,
+    subject,
+    html,
+    text: `Your class "${liveTitle}" starts at ${when} — join now: ${meetLink}`,
+  })
+}
+
 export async function sendEnrollmentConfirmation(
   to: string,
   name: string,
