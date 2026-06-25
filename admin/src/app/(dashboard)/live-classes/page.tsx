@@ -972,7 +972,9 @@ export default function LiveClassesPage() {
   const [activeFilter,   setActiveFilter]   = useState<FilterKey>('all')
   const [typeFilter,     setTypeFilter]     = useState<'all' | 'internal' | 'external'>('all')
   const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'online' | 'offline'>('all')
-  const [courseFilter,   setCourseFilter]   = useState('')
+  const [courseFilter,      setCourseFilter]      = useState('')
+  const [languageFilter,    setLanguageFilter]    = useState('')
+  const [instructorFilter,  setInstructorFilter]  = useState('')
   const [search,         setSearch]         = useState('')
   const [createOpen,         setCreateOpen]         = useState(false)
   const [offlineCreateOpen,  setOfflineCreateOpen]  = useState(false)
@@ -985,7 +987,8 @@ export default function LiveClassesPage() {
   const { data: coursesData } = useCourses({ per_page: 200 })
   const courses = coursesData?.docs ?? []
   /* Pre-fetch instructors so they're in TanStack cache before the modal mounts */
-  useUsers('instructor', { per_page: 200 })
+  const { data: instructorsData } = useUsers('instructor', { per_page: 200 })
+  const instructors = instructorsData?.docs ?? []
 
   /* For stats bar, always use the full unfiltered list */
   const { data: allItems = [] } = useAllLiveClasses('all')
@@ -1002,6 +1005,13 @@ export default function LiveClassesPage() {
         return cId === courseFilter
       })
     }
+    if (languageFilter) list = list.filter(l => (l as any).language === languageFilter)
+    if (instructorFilter) {
+      list = list.filter(l => {
+        const instrId = typeof l.instructor === 'object' ? (l.instructor as any)?.id : l.instructorId
+        return instrId === instructorFilter
+      })
+    }
     if (search.trim()) {
       const q = search.trim().toLowerCase()
       list = list.filter(l =>
@@ -1016,7 +1026,7 @@ export default function LiveClassesPage() {
       })
     }
     return list
-  }, [rawItems, typeFilter, deliveryFilter, courseFilter, search, isInstructor, me?.id])
+  }, [rawItems, typeFilter, deliveryFilter, courseFilter, languageFilter, instructorFilter, search, isInstructor, me?.id])
 
   /* Offline stats for the dashboard panel */
   const offlineStats = useMemo(() => {
@@ -1240,6 +1250,24 @@ export default function LiveClassesPage() {
           </select>
         )}
 
+        {/* Instructor filter */}
+        {instructors.length > 0 && !isInstructor && (
+          <select
+            value={instructorFilter}
+            onChange={e => setInstructorFilter(e.target.value)}
+            className="rounded-xl px-3 py-1.5 text-xs font-semibold outline-none transition-all"
+            style={{
+              background: instructorFilter ? '#2a1a0a' : '#1e2035',
+              border: instructorFilter ? '1px solid rgba(255,107,26,0.35)' : '1px solid rgba(255,255,255,0.10)',
+              color: instructorFilter ? '#FF6B1A' : 'rgba(255,255,255,0.65)',
+            }}>
+            <option value="">All Instructors</option>
+            {instructors.map(i => (
+              <option key={i.id} value={i.id}>{i.name}</option>
+            ))}
+          </select>
+        )}
+
         {/* Type filter */}
         <div className="flex gap-1">
           {([['all','All'],['internal','In-App'],['external','External']] as const).map(([k, label]) => (
@@ -1258,6 +1286,22 @@ export default function LiveClassesPage() {
             </Button>
           ))}
         </div>
+
+        {/* Language filter */}
+        <select
+          value={languageFilter}
+          onChange={e => setLanguageFilter(e.target.value)}
+          className="rounded-xl px-3 py-1.5 text-xs font-semibold outline-none transition-all"
+          style={{
+            background: languageFilter ? '#0e1f3a' : '#1e2035',
+            border: languageFilter ? '1px solid rgba(255,107,26,0.35)' : '1px solid rgba(255,255,255,0.10)',
+            color: languageFilter ? '#FF6B1A' : 'rgba(255,255,255,0.65)',
+          }}>
+          <option value="">All Languages</option>
+          {['English','Malayalam','Hindi','Tamil'].map(lang => (
+            <option key={lang} value={lang}>{lang}</option>
+          ))}
+        </select>
       </div>
 
       {/* Search bar */}

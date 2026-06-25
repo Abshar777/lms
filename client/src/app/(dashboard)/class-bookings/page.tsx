@@ -756,6 +756,7 @@ export default function ClassBookingsPage() {
   const [filterProgram,    setFilterProgram]    = useState<ProgramFilter>('all')
   const [filterCourse,     setFilterCourse]     = useState('all')
   const [filterInstructor, setFilterInstructor] = useState('all')
+  const [filterLanguage,   setFilterLanguage]   = useState('all')
 
   const [openKey,    setOpenKey]    = useState<GroupKey|null>(null)
   const [showAdmin,  setShowAdmin]  = useState(false)
@@ -843,8 +844,9 @@ export default function ClassBookingsPage() {
       if(filterDelivery==='offline' && !isOffline) return
       // Apply content filters so tab counts match what renders
       if(filterProgram!=='all'    && lc.course?.program!==filterProgram)   return
-      if(filterCourse!=='all'     && lc.course?.id!==filterCourse)         return
-      if(filterInstructor!=='all' && lc.instructor?.id!==filterInstructor) return
+      if(filterCourse!=='all'     && lc.course?.id!==filterCourse)                return
+      if(filterInstructor!=='all' && lc.instructor?.id!==filterInstructor)        return
+      if(filterLanguage!=='all'   && (lc as any).language!==filterLanguage)       return
 
       if(isOffline) {
         if(lc.status==='cancelled') { ended++; return }
@@ -861,7 +863,7 @@ export default function ClassBookingsPage() {
       upcoming++
     })
     return {live,upcoming,ended,today}
-  },[allClasses,filterDelivery,filterProgram,filterCourse,filterInstructor])
+  },[allClasses,filterDelivery,filterProgram,filterCourse,filterInstructor,filterLanguage])
 
   /* ── Offline dashboard stats ── */
   const offlineStats = useMemo(()=>{
@@ -918,8 +920,9 @@ export default function ClassBookingsPage() {
       // Other filters
       if(filterAccess==='mine'       && !a.isEnrolled)                      return false
       if(filterProgram!=='all'       && lc.course?.program!==filterProgram) return false
-      if(filterCourse!=='all'        && lc.course?.id!==filterCourse)       return false
-      if(filterInstructor!=='all'    && lc.instructor?.id!==filterInstructor)return false
+      if(filterCourse!=='all'        && lc.course?.id!==filterCourse)                return false
+      if(filterInstructor!=='all'    && lc.instructor?.id!==filterInstructor)        return false
+      if(filterLanguage!=='all'      && (lc as any).language!==filterLanguage)       return false
       // Search
       if(q){
         const sec = lc.sectionId
@@ -928,12 +931,12 @@ export default function ClassBookingsPage() {
       }
       return true
     })
-  },[allClasses,search,filterStatus,filterAccess,filterDelivery,filterProgram,filterCourse,filterInstructor])
+  },[allClasses,search,filterStatus,filterAccess,filterDelivery,filterProgram,filterCourse,filterInstructor,filterLanguage])
 
   const rangeEndIncl = useMemo(()=>{const d=new Date(rangeEnd);d.setHours(23,59,59,999);return d},[rangeEnd])
 
   /* ── When status is live/upcoming/ended OR in-person mode OR any content filter active, bypass date range ── */
-  const useWindowRange = filterStatus==='all' && filterDelivery!=='offline' && filterProgram==='all' && filterCourse==='all' && filterInstructor==='all'
+  const useWindowRange = filterStatus==='all' && filterDelivery!=='offline' && filterProgram==='all' && filterCourse==='all' && filterInstructor==='all' && filterLanguage==='all'
   const windowClasses = useMemo(()=>{
     if(!useWindowRange) return filteredClasses
     return filteredClasses.filter(lc=>{const d=new Date(lc.scheduledStart);return d>=rangeStart&&d<=rangeEndIncl})
@@ -1030,9 +1033,9 @@ export default function ClassBookingsPage() {
     filterAccess!=='all', filterProgram!=='all', filterCourse!=='all', filterInstructor!=='all',
   ].filter(Boolean).length
 
-  const hasAnyFilter = !!(search||filterAccess!=='all'||filterDelivery!=='all'||filterProgram!=='all'||filterCourse!=='all'||filterInstructor!=='all'||filterStatus!=='all')
-  const clearAll = ()=>{setSearch('');setFilterStatus('all');setFilterAccess('all');setFilterDelivery('all');setFilterProgram('all');setFilterCourse('all');setFilterInstructor('all')}
-  const clearPanel = ()=>{setFilterAccess('all');setFilterProgram('all');setFilterCourse('all');setFilterInstructor('all')}
+  const hasAnyFilter = !!(search||filterAccess!=='all'||filterDelivery!=='all'||filterProgram!=='all'||filterCourse!=='all'||filterInstructor!=='all'||filterLanguage!=='all'||filterStatus!=='all')
+  const clearAll = ()=>{setSearch('');setFilterStatus('all');setFilterAccess('all');setFilterDelivery('all');setFilterProgram('all');setFilterCourse('all');setFilterInstructor('all');setFilterLanguage('all')}
+  const clearPanel = ()=>{setFilterAccess('all');setFilterProgram('all');setFilterCourse('all');setFilterInstructor('all');setFilterLanguage('all')}
   const isLoading = loadCls||loadBk
 
   /* ── Status tab config ── */
@@ -1346,10 +1349,22 @@ export default function ClassBookingsPage() {
                     options={programInstructors.map(i=>({value:i.id,label:i.name}))}
                   />
                 )}
+                {/* Language dropdown */}
+                <FilterSelect
+                  placeholder="All Languages"
+                  value={filterLanguage}
+                  onChange={v=>{setFilterLanguage(v)}}
+                  options={[
+                    {value:'English',   label:'English'},
+                    {value:'Malayalam', label:'Malayalam'},
+                    {value:'Hindi',     label:'Hindi'},
+                    {value:'Tamil',     label:'Tamil'},
+                  ]}
+                />
                 {/* Reset scoped filters */}
-                {(filterCourse!=='all'||filterInstructor!=='all')&&(
+                {(filterCourse!=='all'||filterInstructor!=='all'||filterLanguage!=='all')&&(
                   <button type="button"
-                    onClick={()=>{setFilterCourse('all');setFilterInstructor('all')}}
+                    onClick={()=>{setFilterCourse('all');setFilterInstructor('all');setFilterLanguage('all')}}
                     className="dm flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[11px] font-semibold"
                     style={{color:'#EF4444',border:'1px solid rgba(239,68,68,0.18)'}}>
                     <X size={10}/>Reset
@@ -1372,7 +1387,7 @@ export default function ClassBookingsPage() {
         {!isLoading&&(
           <AnimatePresence mode="wait">
             <motion.div
-              key={`${rangeStart.toISOString()}-${search}-${filterStatus}-${filterAccess}-${filterDelivery}-${filterProgram}-${filterCourse}-${filterInstructor}`}
+              key={`${rangeStart.toISOString()}-${search}-${filterStatus}-${filterAccess}-${filterDelivery}-${filterProgram}-${filterCourse}-${filterInstructor}-${filterLanguage}`}
               initial={{opacity:0,x:8}} animate={{opacity:1,x:0}} exit={{opacity:0,x:-8}} transition={{duration:0.13}}>
 
               {dateSections.length===0?(

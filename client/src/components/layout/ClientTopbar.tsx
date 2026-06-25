@@ -188,7 +188,7 @@ export function ClientTopbar() {
             <img
               src="/logo-dark.png"
               alt="Delta International"
-              className="h-8 w-auto object-contain"
+              className="h-11 w-auto object-contain"
             />
           </div>
 

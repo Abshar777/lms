@@ -457,6 +457,7 @@ export default function LiveClassesPage() {
   const [now,             setNow]          = useState(() => Date.now())
   const [filter,          setFilter]       = useState<FilterKey>('all')
   const [typeFilter,      setTypeFilter]   = useState<'all' | 'internal' | 'external'>('all')
+  const [languageFilter,  setLanguageFilter] = useState('')
   const [search,          setSearch]       = useState('')
   const [selectedDate,    setSelectedDate] = useState<string | null>(null)
   const [showContactAdmin, setShowContactAdmin] = useState(false)
@@ -487,6 +488,7 @@ export default function LiveClassesPage() {
     if (typeFilter !== 'all') {
       list = list.filter(l => l.type === typeFilter)
     }
+    if (languageFilter) list = list.filter(l => (l as any).language === languageFilter)
     if (search.trim()) {
       const q = search.trim().toLowerCase()
       list = list.filter(l =>
@@ -495,7 +497,7 @@ export default function LiveClassesPage() {
       )
     }
     return list.sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime())
-  }, [filter, liveNow, upcoming, recordings, selectedDate, typeFilter, search])
+  }, [filter, liveNow, upcoming, recordings, selectedDate, typeFilter, languageFilter, search])
 
   const filterCounts: Record<FilterKey, number> = {
     all:        liveNow.length + upcoming.length + recordings.length,
@@ -618,6 +620,22 @@ export default function LiveClassesPage() {
                     </button>
                   ))}
                 </div>
+
+                {/* Language filter */}
+                <select
+                  value={languageFilter}
+                  onChange={e => setLanguageFilter(e.target.value)}
+                  className="rounded-xl px-3 py-2 text-xs font-semibold outline-none transition-all"
+                  style={{
+                    background: languageFilter ? '#0D0F1A' : '#fff',
+                    color: languageFilter ? '#fff' : '#6B7280',
+                    border: languageFilter ? '1px solid #0D0F1A' : '1px solid #E4E7ED',
+                  }}>
+                  <option value="">All Languages</option>
+                  {['English','Malayalam','Hindi','Tamil'].map(lang => (
+                    <option key={lang} value={lang}>{lang}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Cards grid */}
