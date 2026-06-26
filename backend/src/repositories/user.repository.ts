@@ -37,6 +37,7 @@ export class UserRepository extends BaseRepository<IUser> {
     avatarUrl?:             string
     enrollmentStatus?:      IUser['enrollmentStatus']
     categories?:            IUser['categories']
+    category?:              IUser['category']
     enrollmentApplication?: IUser['enrollmentApplication']
   }): Promise<IUser> {
     return this.create({
@@ -96,7 +97,7 @@ export class UserRepository extends BaseRepository<IUser> {
 
   /* ── Paginated list by role (admin / instructors / students) */
   async listByRole(
-    role: IUser['role'],
+    role: IUser['role'] | undefined,
     params: {
       page:              number
       perPage:           number

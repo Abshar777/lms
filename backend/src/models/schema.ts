@@ -166,7 +166,7 @@ export const UserModel = mongoose.model<IUser>('User', UserSchema)
 ───────────────────────────────────────────────────── */
 export const PERMISSION_RESOURCES = [
   'users', 'courses', 'live-classes', 'bookings',
-  'orders', 'categories', 'coupons', 'reviews', 'reports', 'roles',
+  'orders', 'categories', 'coupons', 'reviews', 'reports', 'roles', 'support',
 ] as const
 export type PermissionResource = typeof PERMISSION_RESOURCES[number]
 
@@ -334,6 +334,7 @@ export interface ICourse extends Document {
   durationMins:   number
   language:       string
   tags?:          string[]
+  program?:       string
   instructorId:   Types.ObjectId
   categoryId?:    Types.ObjectId
   /* Denormalized stats */
@@ -358,6 +359,7 @@ const CourseSchema = new Schema<ICourse>(
     durationMins:  { type: Number, default: 0 },
     language:      { type: String, default: 'English' },
     tags:          [{ type: String }],
+    program:       { type: String },
     instructorId:  { type: Schema.Types.ObjectId, ref: 'User', required: true },
     categoryId:    { type: Schema.Types.ObjectId, ref: 'Category' },
     enrolledCount: { type: Number, default: 0 },
@@ -1030,29 +1032,37 @@ export const CouponModel = mongoose.model<ICoupon>('Coupon', CouponSchema)
 ───────────────────────────────────────────────────── */
 export type OrderStatus = 'pending' | 'paid' | 'refunded'
 
+export type OrderGateway = 'stripe' | 'razorpay'
+
 export interface IOrder extends Document {
-  id:                      string
-  userId:                  Types.ObjectId
-  courseId:                Types.ObjectId
-  stripeCheckoutSessionId: string
-  stripePaymentIntentId?:  string
-  amount:                  number    // charged amount in cents
-  currency:                string
-  status:                  OrderStatus
-  couponId?:               Types.ObjectId
-  discountAmount:          number    // cents saved by coupon (0 if none)
-  stripeInvoiceUrl?:       string
-  refundedAt?:             Date
-  createdAt:               Date
-  updatedAt:               Date
+  id:                       string
+  userId:                   Types.ObjectId
+  courseId:                 Types.ObjectId
+  gateway:                  OrderGateway
+  stripeCheckoutSessionId?: string
+  stripePaymentIntentId?:   string
+  razorpayOrderId?:         string
+  razorpayPaymentId?:       string
+  amount:                   number    // charged amount in cents
+  currency:                 string
+  status:                   OrderStatus
+  couponId?:                Types.ObjectId
+  discountAmount:           number    // cents saved by coupon (0 if none)
+  stripeInvoiceUrl?:        string
+  refundedAt?:              Date
+  createdAt:                Date
+  updatedAt:                Date
 }
 
 const OrderSchema = new Schema<IOrder>(
   {
     userId:                  { type: Schema.Types.ObjectId, ref: 'User',   required: true },
     courseId:                { type: Schema.Types.ObjectId, ref: 'Course', required: true },
-    stripeCheckoutSessionId: { type: String, required: true, unique: true },
+    gateway:                 { type: String, enum: ['stripe', 'razorpay'], required: true, default: 'stripe' },
+    stripeCheckoutSessionId: { type: String },
     stripePaymentIntentId:   { type: String },
+    razorpayOrderId:         { type: String },
+    razorpayPaymentId:       { type: String },
     amount:                  { type: Number, required: true, min: 0 },
     currency:                { type: String, required: true, default: 'usd', maxlength: 3 },
     status:                  { type: String, enum: ['pending', 'paid', 'refunded'], default: 'pending' },
@@ -1067,7 +1077,7 @@ const OrderSchema = new Schema<IOrder>(
 OrderSchema.index({ userId: 1, createdAt: -1 })
 OrderSchema.index({ courseId: 1 })
 OrderSchema.index({ status: 1 })
-OrderSchema.index({ stripeCheckoutSessionId: 1 })
+OrderSchema.index({ stripeCheckoutSessionId: 1 }, { sparse: true, unique: true })
 
 export const OrderModel = mongoose.model<IOrder>('Order', OrderSchema)
 
@@ -1306,6 +1316,7 @@ export type AuditAction =
   | 'course.create'   | 'course.update'   | 'course.delete'
   | 'course.publish'  | 'course.archive'
   | 'user.create'     | 'user.ban'        | 'user.unban'      | 'user.roleChange'
+  | 'user.delete'     | 'user.impersonate'
   | 'review.delete'
   | 'coupon.create'   | 'coupon.delete'
   | 'order.refund'

@@ -1,4 +1,4 @@
-import { google } from 'googleapis'
+import { google, type calendar_v3 } from 'googleapis'
 import * as fs from 'fs'
 import * as path from 'path'
 
@@ -88,7 +88,7 @@ export async function createGoogleMeetLink(opts: {
   const start    = new Date(opts.startISO)
   const end      = new Date(start.getTime() + opts.durationMins * 60_000)
 
-  let event: Awaited<ReturnType<typeof calendar.events.insert>>['data']
+  let event: calendar_v3.Schema$Event
   try {
     const res = await calendar.events.insert({
       calendarId,
@@ -169,11 +169,13 @@ export async function fetchMeetRecordingUrl(meetingCode: string): Promise<string
 
     // Use the most recent conference record
     const record = records[0]
-    if (!record.name) return null
+    if (!record) return null
+    const recordName = record.name
+    if (!recordName) return null
 
     // Get recordings for this conference
     const recordingsRes = await meet.conferenceRecords.recordings.list({
-      parent: record.name,
+      parent: recordName,
     })
 
     const recordings = recordingsRes.data.recordings

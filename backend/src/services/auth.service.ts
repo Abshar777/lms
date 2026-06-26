@@ -5,7 +5,7 @@ import { generateTokenPair, verifyRefreshToken } from '@/utils/jwt.ts'
 import { logger } from '@/utils/logger.ts'
 import { sendPasswordReset, sendVerifyEmail } from '@/services/email.service.ts'
 import { env } from '@/config/env.ts'
-import type { RegisterDto, LoginDto, TokenPair } from '@/types/index.ts'
+import type { RegisterDto, LoginDto, TokenPair, UserRole } from '@/types/index.ts'
 import type { SafeUser } from '@/models/types.ts'
 import { toSafeUser } from '@/models/types.ts'
 
@@ -412,7 +412,7 @@ export class AuthService {
   async #issueTokens(
     userId: string,
     email: string,
-    role: 'student' | 'instructor' | 'admin',
+    role: UserRole,
     meta?: { userAgent?: string; ip?: string },
   ): Promise<TokenPair> {
     const pair = await generateTokenPair({ id: userId, email, role })
