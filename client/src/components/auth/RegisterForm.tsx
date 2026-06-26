@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   User, Mail, Lock, Phone, AlertCircle, Eye, EyeOff,
   Upload, ChevronRight, ChevronLeft, Loader2, Check, FileText, X,
-  ChevronDown, Search, MapPin, Calendar, Globe, Briefcase, CreditCard,
+  ChevronDown, Search, MapPin, Calendar, Globe, Briefcase, CreditCard, Camera,
 } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { cn } from '@/lib/utils'
@@ -585,24 +585,31 @@ function FileDropzone({ label, accept, file, onFile, onClear, hint }: {
 
 /* ── Main component ─────────────────────────────────── */
 export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
-  const [step,    setStep]    = useState(0)
-  const [data,    setData]    = useState<FormData>(INITIAL)
-  const [errors,  setErrors]  = useState<Partial<Record<keyof FormData, string>>>({})
-  const [loading, setLoading] = useState(false)
-  const [apiErr,  setApiErr]  = useState<string | null>(null)
-  const [showPw,  setShowPw]  = useState(false)
-  const [showCpw, setShowCpw] = useState(false)
+  const [step,          setStep]          = useState(0)
+  const [data,          setData]          = useState<FormData>(INITIAL)
+  const [errors,        setErrors]        = useState<Partial<Record<keyof FormData, string>>>({})
+  const [loading,       setLoading]       = useState(false)
+  const [apiErr,        setApiErr]        = useState<string | null>(null)
+  const [showPw,        setShowPw]        = useState(false)
+  const [showCpw,       setShowCpw]       = useState(false)
+  const [avatarFile,    setAvatarFile]    = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [avatarError,   setAvatarError]   = useState<string | null>(null)
 
   const set = (k: keyof FormData, v: unknown) => {
     setData(d => ({ ...d, [k]: v }))
     setErrors(e => ({ ...e, [k]: undefined }))
   }
 
-  /* ── Validation (unchanged) ─────────────────────────── */
+  /* ── Validation ────────────────────────────────────── */
   function validateStep(s: number): boolean {
     const errs: Partial<Record<keyof FormData, string>> = {}
+    let avatarErr = false
 
     if (s === 0) {
+      if (!avatarFile) { setAvatarError('Profile photo is required'); avatarErr = true }
+      else setAvatarError(null)
+
       const name = data.name.trim()
       if (!name) {
         errs.name = 'Full name is required'
@@ -701,7 +708,7 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
     }
 
     setErrors(errs)
-    return Object.keys(errs).length === 0
+    return Object.keys(errs).length === 0 && !avatarErr
   }
 
   function next() { if (validateStep(step)) setStep(s => s + 1) }
@@ -735,10 +742,11 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
         const r = await api.post<{ success: true; data: { url: string } }>('/uploads/document', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
         passportUrl = r.data.data.url
       }
-      if (data.photoFile) {
-        const fd = new FormData(); fd.append('file', data.photoFile)
+      if (avatarFile) {
+        const fd = new FormData(); fd.append('file', avatarFile)
         const r = await api.post<{ success: true; data: { url: string } }>('/uploads/document', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
         photoUrl = r.data.data.url
+        await api.patch('/auth/me', { avatarUrl: photoUrl })
       }
       if (passportUrl || photoUrl) {
         await api.patch('/auth/me/enrollment-docs', {
@@ -761,6 +769,39 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
   function renderStep() {
     if (step === 0) return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
+        {/* ── Profile photo ───────────────────────────── */}
+        <div className="sm:col-span-2 flex flex-col items-center gap-1.5 pb-2">
+          <label htmlFor="avatar-upload" className="group cursor-pointer">
+            <div className="relative h-20 w-20 overflow-hidden rounded-full border-2 border-dashed border-gray-300 bg-gray-50 transition-colors group-hover:border-blue-400">
+              {avatarPreview
+                ? <img src={avatarPreview} alt="Profile" className="h-full w-full object-cover" />
+                : <div className="flex h-full w-full items-center justify-center">
+                    <Camera size={22} className="text-gray-300 transition-colors group-hover:text-blue-400" />
+                  </div>
+              }
+              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/30 opacity-0 transition-opacity group-hover:opacity-100">
+                <Camera size={15} className="text-white" />
+              </div>
+            </div>
+          </label>
+          <input id="avatar-upload" type="file" accept="image/*" className="hidden"
+            onChange={e => {
+              const f = e.target.files?.[0]
+              if (!f) return
+              setAvatarFile(f)
+              setAvatarPreview(URL.createObjectURL(f))
+              setAvatarError(null)
+            }}
+          />
+          <p className="text-[11px] text-gray-400">Profile photo <span className="text-red-400">*</span></p>
+          {avatarError && (
+            <p className="flex items-center gap-1 text-[11px] font-medium text-red-500">
+              <AlertCircle size={10} strokeWidth={2.5} />{avatarError}
+            </p>
+          )}
+        </div>
+
         <Field label="Full Name *" error={errors.name}>
           <div className="relative">
             <User size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -876,9 +917,6 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
           </p>
         )}
 
-        <FileDropzone label="Professional Photo (JPG, PNG — optional)" accept=".jpg,.jpeg,.png,.webp"
-          file={data.photoFile} onFile={f => set('photoFile', f)} onClear={() => set('photoFile', null)}
-          hint="Passport-size photo on white background" />
       </div>
     )
 
