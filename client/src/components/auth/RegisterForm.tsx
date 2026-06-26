@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   User, Mail, Lock, Phone, AlertCircle, Eye, EyeOff,
   Upload, ChevronRight, ChevronLeft, Loader2, Check, FileText, X,
-  ChevronDown, Search,
+  ChevronDown, Search, MapPin, Calendar, Globe, Briefcase, CreditCard,
 } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { cn } from '@/lib/utils'
@@ -43,6 +43,7 @@ const PROGRAMS = [
 ]
 
 const STEP_LABELS = ['Personal', 'Address & Docs', 'Program', 'Account']
+const STEP_ICONS  = ['👤', '📄', '🎓', '🔐']
 
 /* ── Country data ───────────────────────────────────── */
 interface Country { name: string; dial: string; flag: string }
@@ -208,7 +209,7 @@ const COUNTRIES: Country[] = [
   { name: 'Zimbabwe',              dial: '+263',  flag: '🇿🇼' },
 ]
 
-/* ── Helpers ────────────────────────────────────────── */
+/* ── Helpers (unchanged) ────────────────────────────── */
 function getStrength(pw: string) {
   let s = 0
   if (pw.length >= 8)           s++
@@ -220,7 +221,7 @@ function getStrength(pw: string) {
     { label: 'Weak',   color: '#EF4444' },
     { label: 'Fair',   color: '#F59E0B' },
     { label: 'Good',   color: '#0057b8' },
-    { label: 'Strong', color: '#0ECC8E' },
+    { label: 'Strong', color: '#10B981' },
   ]
   return { score: s, ...map[s] }
 }
@@ -243,70 +244,65 @@ function extractLocalPhone(full: string): string {
   return full
 }
 
-/* ── Shared input styles ─────────────────────────────── */
-const inputBase = {
-  background: '#F4F5F8',
-  border: '1.5px solid transparent',
-  color: '#0D0F1A',
-} as const
-
-const inputError = {
-  background: '#FEF2F2',
-  border: '1.5px solid #FCA5A5',
-  color: '#0D0F1A',
-} as const
-
-function focusStyle(hasErr: boolean) {
-  return {
-    border: `1.5px solid ${hasErr ? '#EF4444' : '#0057b8'}`,
-    background: '#fff',
-    boxShadow: `0 0 0 3px rgba(${hasErr ? '239,68,68' : '0,87,184'},0.10)`,
-  }
-}
-function blurStyle(hasErr: boolean) {
-  return {
-    border: `1.5px solid ${hasErr ? '#FCA5A5' : 'transparent'}`,
-    background: hasErr ? '#FEF2F2' : '#F4F5F8',
-    boxShadow: 'none',
-  }
-}
+/* ── Design tokens ─────────────────────────────────── */
+const inputBase = cn(
+  'w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-900 outline-none transition-all',
+  'placeholder:text-gray-400',
+  'hover:border-gray-300',
+  'focus:border-blue-500 focus:ring-2 focus:ring-blue-100',
+)
+const inputErr = cn(
+  'w-full rounded-xl border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm text-gray-900 outline-none transition-all',
+  'placeholder:text-red-300',
+  'focus:border-red-400 focus:ring-2 focus:ring-red-100',
+)
 
 /* ── Sub-components ─────────────────────────────────── */
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-semibold" style={{ color: '#374151' }}>{label}</label>
+    <div className="flex flex-col gap-1.5">
+      <label className="text-[12.5px] font-semibold text-gray-600 tracking-wide">{label}</label>
       {children}
-      {error && <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>}
+      <AnimatePresence>
+        {error && (
+          <motion.p
+            initial={{ opacity: 0, y: -4, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: 'auto' }}
+            exit={{ opacity: 0, y: -4, height: 0 }}
+            transition={{ duration: 0.15 }}
+            className="flex items-center gap-1 text-[11px] font-medium text-red-500">
+            <AlertCircle size={10} strokeWidth={2.5} className="flex-shrink-0" />
+            {error}
+          </motion.p>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
 
 function Input({ error, className, ...props }: { error?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
-  const hasErr = !!error
   return (
     <input
       {...props}
-      className={cn('w-full rounded-xl px-3.5 py-2.5 text-sm outline-none transition-all', className)}
-      style={hasErr ? inputError : inputBase}
-      onFocus={e => { Object.assign(e.currentTarget.style, focusStyle(hasErr)) }}
-      onBlur={e => { Object.assign(e.currentTarget.style, blurStyle(hasErr)) }}
+      className={cn(error ? inputErr : inputBase, className)}
     />
   )
 }
 
 function Select({ error, children, ...props }: { error?: string } & React.SelectHTMLAttributes<HTMLSelectElement>) {
-  const hasErr = !!error
   return (
-    <select
-      {...props}
-      className="w-full rounded-xl px-3.5 py-2.5 text-sm outline-none transition-all appearance-none"
-      style={{ ...(hasErr ? inputError : inputBase), color: props.value ? '#0D0F1A' : '#9CA3AF' }}
-      onFocus={e => { Object.assign(e.currentTarget.style, focusStyle(hasErr)) }}
-      onBlur={e => { Object.assign(e.currentTarget.style, blurStyle(hasErr)) }}
-    >
-      {children}
-    </select>
+    <div className="relative">
+      <select
+        {...props}
+        className={cn(
+          error ? inputErr : inputBase,
+          'appearance-none cursor-pointer pr-9',
+          !props.value && 'text-gray-400',
+        )}>
+        {children}
+      </select>
+      <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+    </div>
   )
 }
 
@@ -315,13 +311,12 @@ function PhoneInput({ value, onChange, error, placeholder = '50 000 0000' }: {
   value: string; onChange: (v: string) => void; error?: string; placeholder?: string
 }) {
   const hasErr = !!error
-  const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState('')
+  const [open, setOpen]       = useState(false)
+  const [search, setSearch]   = useState('')
   const [focused, setFocused] = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
+  const wrapRef   = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
 
-  /* parse stored value into dial + local */
   const parsed = (() => {
     if (!value) return { dial: '+971', local: '' }
     const sorted = [...COUNTRIES].sort((a, b) => b.dial.length - a.dial.length)
@@ -332,7 +327,6 @@ function PhoneInput({ value, onChange, error, placeholder = '50 000 0000' }: {
   })()
 
   const selectedCountry = COUNTRIES.find(c => c.dial === parsed.dial) ?? COUNTRIES.find(c => c.name === 'United Arab Emirates')!
-
   const filtered = COUNTRIES.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) || c.dial.includes(search)
   )
@@ -361,22 +355,27 @@ function PhoneInput({ value, onChange, error, placeholder = '50 000 0000' }: {
     setOpen(false); setSearch('')
   }
 
-  const wrapStyle = {
-    border: `1.5px solid ${open || focused ? (hasErr ? '#EF4444' : '#0057b8') : (hasErr ? '#FCA5A5' : 'transparent')}`,
-    background: open || focused ? '#fff' : (hasErr ? '#FEF2F2' : '#F4F5F8'),
-    boxShadow: (open || focused) ? `0 0 0 3px rgba(${hasErr ? '239,68,68' : '0,87,184'},0.10)` : 'none',
-  }
+  const isActive = open || focused
+  const wrapCls = cn(
+    'flex rounded-xl border bg-white transition-all duration-150',
+    hasErr
+      ? isActive ? 'border-red-400 ring-2 ring-red-100' : 'border-red-300'
+      : isActive ? 'border-blue-500 ring-2 ring-blue-100' : 'border-gray-200 hover:border-gray-300'
+  )
 
   return (
     <div ref={wrapRef} className="relative">
-      <div className="flex rounded-xl overflow-hidden transition-all" style={wrapStyle}>
+      <div className={wrapCls}>
+        {/* Flag + dial code button */}
         <button type="button" onClick={() => setOpen(o => !o)}
-          className="flex items-center gap-1 flex-shrink-0 px-2.5 transition-colors hover:bg-black/[0.03]"
-          style={{ borderRight: `1px solid ${hasErr ? '#FCA5A5' : '#E5E7EB'}`, minWidth: 78 }}>
-          <span style={{ fontSize: 17, lineHeight: 1 }}>{selectedCountry.flag}</span>
-          <span className="text-xs font-semibold" style={{ color: '#374151' }}>{parsed.dial}</span>
-          <ChevronDown size={11} style={{ color: '#9CA3AF' }} />
+          className="flex flex-shrink-0 items-center gap-1.5 rounded-l-xl bg-gray-50 px-3 py-2.5 transition-colors hover:bg-gray-100"
+          style={{ borderRight: '1px solid #E5E7EB' }}>
+          <span style={{ fontSize: 16, lineHeight: 1 }}>{selectedCountry.flag}</span>
+          <span className="text-sm font-semibold text-gray-700 tabular-nums">{parsed.dial}</span>
+          <ChevronDown size={11} className={cn('text-gray-400 transition-transform duration-150', open && 'rotate-180')} />
         </button>
+
+        {/* Number input */}
         <input
           type="tel"
           value={parsed.local}
@@ -384,42 +383,47 @@ function PhoneInput({ value, onChange, error, placeholder = '50 000 0000' }: {
           onChange={e => handleLocal(e.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          className="flex-1 bg-transparent px-3 py-2.5 text-sm outline-none min-w-0"
-          style={{ color: '#0D0F1A' }}
+          className="min-w-0 flex-1 rounded-r-xl bg-white px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400"
         />
       </div>
 
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.12 }}
-            className="absolute left-0 top-full z-[999] mt-1 overflow-hidden rounded-xl shadow-xl"
-            style={{ width: 288, background: '#fff', border: '1.5px solid #E5E7EB' }}>
-            <div className="p-2 border-b border-gray-100">
-              <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5" style={{ background: '#F4F5F8' }}>
-                <Search size={13} style={{ color: '#9CA3AF' }} />
+            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.98 }}
+            transition={{ duration: 0.12 }}
+            className="absolute left-0 top-full z-[999] mt-1.5 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl"
+            style={{ width: 300 }}>
+            {/* Search */}
+            <div className="border-b border-gray-100 p-2.5">
+              <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5">
+                <Search size={12} className="text-gray-400 flex-shrink-0" />
                 <input ref={searchRef} value={search} onChange={e => setSearch(e.target.value)}
                   placeholder="Search country or code…"
-                  className="flex-1 bg-transparent text-xs outline-none" style={{ color: '#0D0F1A' }} />
+                  className="flex-1 bg-transparent text-xs text-gray-700 outline-none placeholder:text-gray-400" />
                 {search && (
-                  <button type="button" onClick={() => setSearch('')}>
-                    <X size={11} style={{ color: '#9CA3AF' }} />
+                  <button type="button" onClick={() => setSearch('')} className="text-gray-400 hover:text-gray-600">
+                    <X size={11} />
                   </button>
                 )}
               </div>
             </div>
-            <div style={{ maxHeight: 216, overflowY: 'auto' }}>
+            {/* List */}
+            <div className="overflow-y-auto" style={{ maxHeight: 220 }}>
               {filtered.length === 0
-                ? <p className="py-4 text-center text-xs" style={{ color: '#9CA3AF' }}>No results</p>
+                ? <p className="py-5 text-center text-xs text-gray-400">No results</p>
                 : filtered.map(c => (
                   <button key={c.name} type="button" onClick={() => handleDial(c.dial)}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors hover:bg-gray-50"
-                    style={{ color: c.dial === parsed.dial ? '#0057b8' : '#374151' }}>
-                    <span style={{ fontSize: 16, flexShrink: 0 }}>{c.flag}</span>
-                    <span className="flex-1 truncate">{c.name}</span>
-                    <span className="font-mono text-[10px]" style={{ color: '#9CA3AF' }}>{c.dial}</span>
-                    {c.dial === parsed.dial && <Check size={11} style={{ color: '#0057b8', flexShrink: 0 }} />}
+                    className={cn(
+                      'flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors',
+                      c.dial === parsed.dial ? 'bg-blue-50' : 'hover:bg-gray-50'
+                    )}>
+                    <span style={{ fontSize: 16, lineHeight: 1, flexShrink: 0 }}>{c.flag}</span>
+                    <span className="flex-1 truncate text-xs text-gray-700">{c.name}</span>
+                    <span className="font-mono text-[10px] text-gray-400">{c.dial}</span>
+                    {c.dial === parsed.dial && <Check size={11} className="flex-shrink-0 text-blue-600" />}
                   </button>
                 ))}
             </div>
@@ -435,9 +439,9 @@ function CountryPicker({ value, onChange, error, placeholder = 'Search and selec
   value: string; onChange: (v: string) => void; error?: string; placeholder?: string
 }) {
   const hasErr = !!error
-  const [open, setOpen] = useState(false)
+  const [open, setOpen]     = useState(false)
   const [search, setSearch] = useState('')
-  const wrapRef = useRef<HTMLDivElement>(null)
+  const wrapRef   = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
 
   const selected = COUNTRIES.find(c => c.name === value)
@@ -457,61 +461,63 @@ function CountryPicker({ value, onChange, error, placeholder = 'Search and selec
     if (open) setTimeout(() => searchRef.current?.focus(), 40)
   }, [open])
 
-  const triggerStyle = {
-    ...(hasErr ? inputError : inputBase),
-    ...(open ? focusStyle(hasErr) : {}),
-  }
+  const triggerCls = cn(
+    'flex w-full items-center gap-2 rounded-xl border bg-white px-3.5 py-2.5 text-left text-sm transition-all duration-150',
+    hasErr
+      ? open ? 'border-red-400 ring-2 ring-red-100' : 'border-red-300 bg-red-50'
+      : open ? 'border-blue-500 ring-2 ring-blue-100' : 'border-gray-200 hover:border-gray-300'
+  )
 
   return (
     <div ref={wrapRef} className="relative">
-      <button type="button" onClick={() => setOpen(o => !o)}
-        className="flex w-full items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-sm transition-all text-left"
-        style={triggerStyle}>
+      <button type="button" onClick={() => setOpen(o => !o)} className={triggerCls}>
         {selected ? (
           <>
             <span style={{ fontSize: 18, lineHeight: 1, flexShrink: 0 }}>{selected.flag}</span>
-            <span className="flex-1 truncate" style={{ color: '#0D0F1A' }}>{selected.name}</span>
+            <span className="flex-1 truncate text-gray-900 text-sm">{selected.name}</span>
           </>
         ) : (
-          <span className="flex-1" style={{ color: '#9CA3AF' }}>{placeholder}</span>
+          <span className="flex-1 truncate text-gray-400 text-sm">{placeholder}</span>
         )}
-        <ChevronDown size={14} style={{
-          color: '#9CA3AF', flexShrink: 0,
-          transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s',
-        }} />
+        <ChevronDown size={14} className={cn('flex-shrink-0 text-gray-400 transition-transform duration-150', open && 'rotate-180')} />
       </button>
 
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.12 }}
-            className="absolute left-0 right-0 top-full z-[999] mt-1 overflow-hidden rounded-xl shadow-xl"
-            style={{ background: '#fff', border: '1.5px solid #E5E7EB' }}>
-            <div className="p-2 border-b border-gray-100">
-              <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5" style={{ background: '#F4F5F8' }}>
-                <Search size={13} style={{ color: '#9CA3AF' }} />
+            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.98 }}
+            transition={{ duration: 0.12 }}
+            className="absolute left-0 right-0 top-full z-[999] mt-1.5 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+            {/* Search */}
+            <div className="border-b border-gray-100 p-2.5">
+              <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5">
+                <Search size={12} className="text-gray-400 flex-shrink-0" />
                 <input ref={searchRef} value={search} onChange={e => setSearch(e.target.value)}
                   placeholder="Search country…"
-                  className="flex-1 bg-transparent text-xs outline-none" style={{ color: '#0D0F1A' }} />
+                  className="flex-1 bg-transparent text-xs text-gray-700 outline-none placeholder:text-gray-400" />
                 {search && (
-                  <button type="button" onClick={() => setSearch('')}>
-                    <X size={11} style={{ color: '#9CA3AF' }} />
+                  <button type="button" onClick={() => setSearch('')} className="text-gray-400 hover:text-gray-600">
+                    <X size={11} />
                   </button>
                 )}
               </div>
             </div>
-            <div style={{ maxHeight: 216, overflowY: 'auto' }}>
+            {/* List */}
+            <div className="overflow-y-auto" style={{ maxHeight: 220 }}>
               {filtered.length === 0
-                ? <p className="py-4 text-center text-xs" style={{ color: '#9CA3AF' }}>No countries found</p>
+                ? <p className="py-5 text-center text-xs text-gray-400">No countries found</p>
                 : filtered.map(c => (
                   <button key={c.name} type="button"
                     onClick={() => { onChange(c.name); setOpen(false); setSearch('') }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-gray-50"
-                    style={{ color: c.name === value ? '#0057b8' : '#374151' }}>
-                    <span style={{ fontSize: 18, lineHeight: 1, flexShrink: 0 }}>{c.flag}</span>
-                    <span className="flex-1">{c.name}</span>
-                    {c.name === value && <Check size={13} style={{ color: '#0057b8', flexShrink: 0 }} />}
+                    className={cn(
+                      'flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors',
+                      c.name === value ? 'bg-blue-50' : 'hover:bg-gray-50'
+                    )}>
+                    <span style={{ fontSize: 17, lineHeight: 1, flexShrink: 0 }}>{c.flag}</span>
+                    <span className="flex-1 text-sm text-gray-700">{c.name}</span>
+                    {c.name === value && <Check size={13} className="flex-shrink-0 text-blue-600" />}
                   </button>
                 ))}
             </div>
@@ -522,6 +528,7 @@ function CountryPicker({ value, onChange, error, placeholder = 'Search and selec
   )
 }
 
+/* ── FileDropzone ───────────────────────────────────── */
 function FileDropzone({ label, accept, file, onFile, onClear, hint }: {
   label: string; accept: string; file: File | null
   onFile: (f: File) => void; onClear: () => void; hint?: string
@@ -529,17 +536,20 @@ function FileDropzone({ label, accept, file, onFile, onClear, hint }: {
   const ref = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-semibold" style={{ color: '#374151' }}>{label}</label>
+    <div className="flex flex-col gap-1.5">
+      <label className="text-[12.5px] font-semibold text-gray-600 tracking-wide">{label}</label>
       {file ? (
-        <div className="flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm"
-          style={{ background: 'rgba(0,87,184,0.06)', border: '1.5px solid rgba(0,87,184,0.25)' }}>
-          <FileText size={15} style={{ color: '#0057b8', flexShrink: 0 }} />
-          <span className="flex-1 min-w-0 truncate text-xs" style={{ color: '#0D0F1A' }}>{file.name}</span>
-          <span className="text-xs" style={{ color: '#9CA3AF' }}>{(file.size / 1024).toFixed(0)} KB</span>
+        <div className="flex items-center gap-2.5 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-2.5">
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100">
+            <FileText size={14} className="text-blue-600" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold text-gray-800">{file.name}</p>
+            <p className="text-[10px] text-gray-400">{(file.size / 1024).toFixed(0)} KB</p>
+          </div>
           <button type="button" onClick={onClear}
-            className="flex-shrink-0 rounded-full p-0.5 hover:bg-red-100 transition-colors">
-            <X size={12} style={{ color: '#EF4444' }} />
+            className="flex-shrink-0 rounded-full p-1 text-gray-400 transition-colors hover:bg-red-100 hover:text-red-500">
+            <X size={12} />
           </button>
         </div>
       ) : (
@@ -547,11 +557,24 @@ function FileDropzone({ label, accept, file, onFile, onClear, hint }: {
           onDragOver={e => { e.preventDefault(); setDragging(true) }}
           onDragLeave={() => setDragging(false)}
           onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) onFile(f) }}
-          className="flex flex-col items-center gap-1.5 rounded-xl px-4 py-4 transition-all text-center"
-          style={{ background: dragging ? 'rgba(0,87,184,0.06)' : '#F4F5F8', border: `1.5px dashed ${dragging ? '#0057b8' : '#D1D5DB'}` }}>
-          <Upload size={18} style={{ color: dragging ? '#0057b8' : '#9CA3AF' }} />
-          <span className="text-xs font-medium" style={{ color: dragging ? '#0057b8' : '#6B7280' }}>Click or drag to upload</span>
-          {hint && <span className="text-[10px]" style={{ color: '#9CA3AF' }}>{hint}</span>}
+          className={cn(
+            'flex flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-5 text-center transition-all',
+            dragging
+              ? 'border-blue-400 bg-blue-50'
+              : 'border-gray-200 bg-gray-50 hover:border-blue-300 hover:bg-blue-50/50'
+          )}>
+          <div className={cn(
+            'flex h-9 w-9 items-center justify-center rounded-full transition-colors',
+            dragging ? 'bg-blue-100' : 'bg-gray-100'
+          )}>
+            <Upload size={16} className={dragging ? 'text-blue-600' : 'text-gray-400'} />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-600">
+              {dragging ? 'Drop to upload' : 'Click to upload or drag & drop'}
+            </p>
+            {hint && <p className="mt-0.5 text-[10px] text-gray-400">{hint}</p>}
+          </div>
         </button>
       )}
       <input ref={ref} type="file" accept={accept} className="hidden"
@@ -575,12 +598,11 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
     setErrors(e => ({ ...e, [k]: undefined }))
   }
 
-  /* ── Validation ─────────────────────────────────────── */
+  /* ── Validation (unchanged) ─────────────────────────── */
   function validateStep(s: number): boolean {
     const errs: Partial<Record<keyof FormData, string>> = {}
 
     if (s === 0) {
-      /* Full name — at least 2 words, letters only */
       const name = data.name.trim()
       if (!name) {
         errs.name = 'Full name is required'
@@ -590,14 +612,12 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
         errs.name = 'Name must contain letters only'
       }
 
-      /* Email */
       if (!data.email.trim()) {
         errs.email = 'Email is required'
       } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
         errs.email = 'Enter a valid email address'
       }
 
-      /* Phone — must have country code + at least 5 digits */
       if (!data.phone) {
         errs.phone = 'Phone number is required'
       } else {
@@ -606,7 +626,6 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
         else if (local.length > 13) errs.phone = 'Phone number is too long'
       }
 
-      /* Emergency contact — same rule */
       if (!data.emergencyContact) {
         errs.emergencyContact = 'Emergency contact is required'
       } else {
@@ -614,10 +633,8 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
         if (local.length < 5) errs.emergencyContact = 'Enter a complete phone number'
       }
 
-      /* Gender */
       if (!data.gender) errs.gender = 'Please select gender'
 
-      /* Date of birth — must be 16+ */
       if (!data.dateOfBirth) {
         errs.dateOfBirth = 'Date of birth is required'
       } else {
@@ -630,7 +647,6 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
         else if (age > 100)       errs.dateOfBirth = 'Enter a valid date of birth'
       }
 
-      /* Nationality — letters only */
       const nat = data.nationality.trim()
       if (!nat) {
         errs.nationality = 'Nationality is required'
@@ -640,14 +656,11 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
         errs.nationality = 'Nationality should contain letters only'
       }
 
-      /* Home country — must be from picker */
       if (!data.homeCountry) errs.homeCountry = 'Please select your home country'
 
-      /* Occupation */
       if (!data.occupation.trim()) errs.occupation = 'Occupation is required'
       else if (data.occupation.trim().length < 2) errs.occupation = 'Enter a valid occupation'
 
-      /* Emirates ID — 15 digits in 784-XXXX-XXXXXXX-X format */
       const eid = data.emiratesId.replace(/\D/g, '')
       if (!data.emiratesId.trim()) {
         errs.emiratesId = 'Emirates ID is required'
@@ -694,7 +707,7 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
   function next() { if (validateStep(step)) setStep(s => s + 1) }
   function back() { setErrors({}); setStep(s => s - 1) }
 
-  /* ── Submit ─────────────────────────────────────────── */
+  /* ── Submit (unchanged) ─────────────────────────────── */
   async function submit() {
     if (!validateStep(3)) return
     setLoading(true); setApiErr(null)
@@ -747,39 +760,32 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
   /* ── Step content ───────────────────────────────────── */
   function renderStep() {
     if (step === 0) return (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {/* Full Name */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Full Name *" error={errors.name}>
           <div className="relative">
-            <User size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }} />
+            <User size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
             <Input error={errors.name} value={data.name} placeholder="e.g. Ahmed Al Mansouri"
-              className="pl-9"
-              onChange={e => set('name', e.target.value)} />
+              className="pl-9" onChange={e => set('name', e.target.value)} />
           </div>
         </Field>
 
-        {/* Email */}
         <Field label="Email Address *" error={errors.email}>
           <div className="relative">
-            <Mail size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }} />
+            <Mail size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
             <Input error={errors.email} value={data.email} type="email" placeholder="you@example.com"
-              className="pl-9"
-              onChange={e => set('email', e.target.value)} />
+              className="pl-9" onChange={e => set('email', e.target.value)} />
           </div>
         </Field>
 
-        {/* Phone */}
         <Field label="Phone / WhatsApp *" error={errors.phone}>
           <PhoneInput value={data.phone} onChange={v => set('phone', v)} error={errors.phone} />
         </Field>
 
-        {/* Emergency Contact */}
         <Field label="Emergency Contact *" error={errors.emergencyContact}>
           <PhoneInput value={data.emergencyContact} onChange={v => set('emergencyContact', v)}
             error={errors.emergencyContact} placeholder="Emergency number" />
         </Field>
 
-        {/* Gender */}
         <Field label="Gender *" error={errors.gender}>
           <Select error={errors.gender} value={data.gender} onChange={e => set('gender', e.target.value)}>
             <option value="">Select gender</option>
@@ -789,32 +795,38 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
           </Select>
         </Field>
 
-        {/* Date of Birth */}
         <Field label="Date of Birth *" error={errors.dateOfBirth}>
-          <Input error={errors.dateOfBirth} value={data.dateOfBirth} type="date"
-            max={new Date(new Date().setFullYear(new Date().getFullYear() - 10)).toISOString().split('T')[0]}
-            onChange={e => set('dateOfBirth', e.target.value)} />
+          <div className="relative">
+            <Calendar size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Input error={errors.dateOfBirth} value={data.dateOfBirth} type="date"
+              className="pl-9"
+              max={new Date(new Date().setFullYear(new Date().getFullYear() - 10)).toISOString().split('T')[0]}
+              onChange={e => set('dateOfBirth', e.target.value)} />
+          </div>
         </Field>
 
-        {/* Nationality */}
         <Field label="Nationality *" error={errors.nationality}>
-          <Input error={errors.nationality} value={data.nationality} placeholder="e.g. Emirati"
-            onChange={e => set('nationality', e.target.value.replace(/[^a-zA-Z\s\-]/g, ''))} />
+          <div className="relative">
+            <Globe size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Input error={errors.nationality} value={data.nationality} placeholder="e.g. Emirati"
+              className="pl-9"
+              onChange={e => set('nationality', e.target.value.replace(/[^a-zA-Z\s\-]/g, ''))} />
+          </div>
         </Field>
 
-        {/* Home Country */}
         <Field label="Home Country *" error={errors.homeCountry}>
           <CountryPicker value={data.homeCountry} onChange={v => set('homeCountry', v)}
-            error={errors.homeCountry} placeholder="Search and select country…" />
+            error={errors.homeCountry} placeholder="Select home country…" />
         </Field>
 
-        {/* Occupation */}
         <Field label="Occupation *" error={errors.occupation}>
-          <Input error={errors.occupation} value={data.occupation} placeholder="e.g. Business Owner"
-            onChange={e => set('occupation', e.target.value)} />
+          <div className="relative">
+            <Briefcase size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Input error={errors.occupation} value={data.occupation} placeholder="e.g. Business Owner"
+              className="pl-9" onChange={e => set('occupation', e.target.value)} />
+          </div>
         </Field>
 
-        {/* Emirates ID */}
         <Field label="Emirates ID Number *" error={errors.emiratesId}>
           <Input error={errors.emiratesId} value={data.emiratesId} placeholder="784-0000-0000000-0"
             maxLength={18}
@@ -824,7 +836,7 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
     )
 
     if (step === 1) return (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <Field label="Country of Attendance *" error={errors.countryAttendance}>
             <CountryPicker value={data.countryAttendance} onChange={v => set('countryAttendance', v)}
@@ -833,26 +845,36 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
         </div>
 
         <Field label="Villa / Apartment *" error={errors.villa}>
-          <Input error={errors.villa} value={data.villa} placeholder="Villa 12, Al Barsha"
-            onChange={e => set('villa', e.target.value)} />
+          <div className="relative">
+            <MapPin size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Input error={errors.villa} value={data.villa} placeholder="Villa 12, Al Barsha"
+              className="pl-9" onChange={e => set('villa', e.target.value)} />
+          </div>
         </Field>
 
         <Field label="City / Town *" error={errors.city}>
-          <Input error={errors.city} value={data.city} placeholder="Dubai"
-            onChange={e => set('city', e.target.value)} />
+          <div className="relative">
+            <MapPin size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Input error={errors.city} value={data.city} placeholder="Dubai"
+              className="pl-9" onChange={e => set('city', e.target.value)} />
+          </div>
         </Field>
 
         <div className="sm:col-span-2">
           <Field label="Country *" error={errors.addressCountry}>
             <CountryPicker value={data.addressCountry} onChange={v => set('addressCountry', v)}
-              error={errors.addressCountry} placeholder="Search and select country…" />
+              error={errors.addressCountry} placeholder="Select country…" />
           </Field>
         </div>
 
         <FileDropzone label="Passport Copy * (PDF, JPG, PNG — max 10 MB)" accept=".pdf,.jpg,.jpeg,.png,.webp"
           file={data.passportFile} onFile={f => set('passportFile', f)} onClear={() => set('passportFile', null)}
           hint="PDF or image of passport identity page" />
-        {errors.passportFile && <p className="text-xs" style={{ color: '#EF4444' }}>{errors.passportFile}</p>}
+        {errors.passportFile && (
+          <p className="flex items-center gap-1 text-[11px] font-medium text-red-500">
+            <AlertCircle size={10} strokeWidth={2.5} />{errors.passportFile}
+          </p>
+        )}
 
         <FileDropzone label="Professional Photo (JPG, PNG — optional)" accept=".jpg,.jpeg,.png,.webp"
           file={data.photoFile} onFile={f => set('photoFile', f)} onClear={() => set('photoFile', null)}
@@ -861,8 +883,8 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
     )
 
     if (step === 2) return (
-      <div className="flex flex-col gap-3">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Experience Level *" error={errors.experienceLevel}>
             <Select error={errors.experienceLevel} value={data.experienceLevel}
               onChange={e => set('experienceLevel', e.target.value)}>
@@ -874,9 +896,13 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
           </Field>
 
           <Field label="Preferred Start Date *" error={errors.preferredStartDate}>
-            <Input error={errors.preferredStartDate} value={data.preferredStartDate} type="date"
-              min={new Date().toISOString().split('T')[0]}
-              onChange={e => set('preferredStartDate', e.target.value)} />
+            <div className="relative">
+              <Calendar size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Input error={errors.preferredStartDate} value={data.preferredStartDate} type="date"
+                className="pl-9"
+                min={new Date().toISOString().split('T')[0]}
+                onChange={e => set('preferredStartDate', e.target.value)} />
+            </div>
           </Field>
 
           <Field label="How did you hear about us? *" error={errors.hearAboutUs}>
@@ -898,187 +924,218 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
         </div>
 
         <Field label="Select Programs & Courses *" error={errors.programs}>
-          <div className="flex flex-col gap-2 rounded-xl p-3" style={{ background: '#F4F5F8' }}>
-            {['Forex Academy','Digital Marketing','AI Academy'].map(group => (
-              <div key={group}>
-                <p className="mb-1 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#9CA3AF' }}>{group}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {PROGRAMS.filter(p => p.group === group).map(p => {
-                    const active = data.programs.includes(p.id)
-                    return (
-                      <button key={p.id} type="button"
-                        onClick={() => set('programs', active ? data.programs.filter(x => x !== p.id) : [...data.programs, p.id])}
-                        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-all"
-                        style={{
-                          background: active ? 'rgba(0,87,184,0.12)' : '#fff',
-                          border: `1.5px solid ${active ? '#0057b8' : '#E5E7EB'}`,
-                          color: active ? '#0057b8' : '#6B7280',
-                        }}>
-                        {active && <Check size={10} />}
-                        {p.label}
-                      </button>
-                    )
-                  })}
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <div className="flex flex-col gap-4">
+              {['Forex Academy','Digital Marketing','AI Academy'].map(group => (
+                <div key={group}>
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">{group}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {PROGRAMS.filter(p => p.group === group).map(p => {
+                      const active = data.programs.includes(p.id)
+                      return (
+                        <button key={p.id} type="button"
+                          onClick={() => set('programs', active ? data.programs.filter(x => x !== p.id) : [...data.programs, p.id])}
+                          className={cn(
+                            'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all',
+                            active
+                              ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
+                              : 'border border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:text-blue-600'
+                          )}>
+                          {active && <Check size={10} strokeWidth={3} />}
+                          {p.label}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </Field>
       </div>
     )
 
     return (
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-4">
         <Field label="Payment Method *" error={errors.paymentMethod}>
-          <Select error={errors.paymentMethod} value={data.paymentMethod}
-            onChange={e => set('paymentMethod', e.target.value)}>
-            <option value="">Select payment method</option>
-            {['Cash — Full','Card — Full','Card — Split','Card Debit','Card Credit','USDT','Tabby','Tamara'].map(m => (
-              <option key={m}>{m}</option>
-            ))}
-          </Select>
+          <div className="relative">
+            <CreditCard size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Select error={errors.paymentMethod} value={data.paymentMethod}
+              className="pl-9"
+              onChange={e => set('paymentMethod', e.target.value)}>
+              <option value="">Select payment method</option>
+              {['Cash — Full','Card — Full','Card — Split','Card Debit','Card Credit','USDT','Tabby','Tamara'].map(m => (
+                <option key={m}>{m}</option>
+              ))}
+            </Select>
+          </div>
         </Field>
 
         <Field label="Password *" error={errors.password}>
           <div className="relative">
-            <Lock size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }} />
-            <input type={showPw ? 'text' : 'password'} value={data.password}
-              placeholder="Min 8 chars, uppercase + number"
+            <Lock size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type={showPw ? 'text' : 'password'} value={data.password}
+              placeholder="Min. 8 chars, uppercase + number"
               onChange={e => set('password', e.target.value)}
-              className="w-full rounded-xl pl-9 pr-10 py-2.5 text-sm outline-none transition-all"
-              style={errors.password ? inputError : inputBase}
-              onFocus={e => { Object.assign(e.currentTarget.style, focusStyle(!!errors.password)) }}
-              onBlur={e => { Object.assign(e.currentTarget.style, blurStyle(!!errors.password)) }}
+              className={cn(errors.password ? inputErr : inputBase, 'pl-9 pr-10')}
             />
             <button type="button" onClick={() => setShowPw(x => !x)}
-              className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }}>
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
               {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
           </div>
           {data.password && (
-            <div className="mt-1 flex items-center gap-2">
-              <div className="flex gap-0.5 flex-1">
+            <div className="flex items-center gap-2 pt-0.5">
+              <div className="flex flex-1 gap-1">
                 {[1,2,3,4].map(i => (
-                  <div key={i} className="h-1 flex-1 rounded-full transition-all"
-                    style={{ background: i <= strength.score ? strength.color : '#E4E7ED' }} />
+                  <div key={i} className="h-1.5 flex-1 rounded-full transition-all duration-300"
+                    style={{ background: i <= strength.score ? strength.color : '#E5E7EB' }} />
                 ))}
               </div>
-              <span className="text-[10px] font-semibold" style={{ color: strength.color }}>{strength.label}</span>
+              <span className="text-[10px] font-bold" style={{ color: strength.color }}>{strength.label}</span>
             </div>
           )}
         </Field>
 
         <Field label="Confirm Password *" error={errors.confirmPassword}>
           <div className="relative">
-            <Lock size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }} />
-            <input type={showCpw ? 'text' : 'password'} value={data.confirmPassword}
+            <Lock size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type={showCpw ? 'text' : 'password'} value={data.confirmPassword}
               placeholder="Repeat your password"
               onChange={e => set('confirmPassword', e.target.value)}
-              className="w-full rounded-xl pl-9 pr-10 py-2.5 text-sm outline-none transition-all"
-              style={errors.confirmPassword ? inputError : inputBase}
-              onFocus={e => { Object.assign(e.currentTarget.style, focusStyle(!!errors.confirmPassword)) }}
-              onBlur={e => { Object.assign(e.currentTarget.style, blurStyle(!!errors.confirmPassword)) }}
+              className={cn(errors.confirmPassword ? inputErr : inputBase, 'pl-9 pr-10')}
             />
             <button type="button" onClick={() => setShowCpw(x => !x)}
-              className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }}>
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
               {showCpw ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
           </div>
         </Field>
 
-        <label className="flex items-start gap-2.5 cursor-pointer">
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3.5 hover:border-blue-200 hover:bg-blue-50/40 transition-all">
           <input type="checkbox" checked={data.termsAccepted}
             onChange={e => set('termsAccepted', e.target.checked)}
-            className="mt-0.5 h-4 w-4 flex-shrink-0 rounded accent-blue-600" />
-          <span className="text-xs leading-relaxed" style={{ color: '#6B7280' }}>
+            className="mt-0.5 h-4 w-4 flex-shrink-0 cursor-pointer rounded accent-blue-600" />
+          <span className="text-xs leading-relaxed text-gray-600">
             I agree to Delta Institutions&apos; Terms & Conditions, Privacy Policy, and KHDA training regulations.
             I confirm the information provided is accurate and complete.
           </span>
         </label>
-        {errors.termsAccepted && <p className="text-xs" style={{ color: '#EF4444' }}>{errors.termsAccepted}</p>}
+        {errors.termsAccepted && (
+          <p className="flex items-center gap-1 text-[11px] font-medium text-red-500">
+            <AlertCircle size={10} strokeWidth={2.5} />{errors.termsAccepted}
+          </p>
+        )}
       </div>
     )
   }
 
   /* ── Render ─────────────────────────────────────────── */
   return (
-    <div className="flex flex-col gap-4">
-      {/* Step indicator */}
-      <div className="flex items-center gap-0">
+    <div className="flex flex-col gap-5">
+
+      {/* ── Step indicator ──────────────────────────────── */}
+      <div className="flex items-start">
         {STEP_LABELS.map((label, i) => (
-          <div key={i} className="flex items-center" style={{ flex: i < STEP_LABELS.length - 1 ? '1 1 0' : undefined }}>
-            <div className="flex flex-col items-center gap-0.5">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all"
-                style={{ background: i <= step ? '#0057b8' : '#E4E7ED', color: i <= step ? '#fff' : '#9CA3AF' }}>
-                {i < step ? <Check size={13} /> : i + 1}
-              </div>
-              <span className="hidden text-[9px] font-semibold sm:block whitespace-nowrap"
-                style={{ color: i === step ? '#0057b8' : '#9CA3AF' }}>{label}</span>
+          <div key={i} className={cn('flex items-center', i < STEP_LABELS.length - 1 && 'flex-1')}>
+            <div className="flex flex-col items-center gap-1.5">
+              {/* Circle */}
+              <motion.div
+                animate={{
+                  background: i < step  ? '#0057b8' : i === step ? '#0057b8' : '#F1F3F8',
+                  boxShadow:  i === step ? '0 0 0 4px rgba(0,87,184,0.12)' : 'none',
+                }}
+                transition={{ duration: 0.2 }}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold"
+                style={{ color: i <= step ? '#fff' : '#9CA3AF' }}>
+                {i < step
+                  ? <Check size={14} strokeWidth={3} />
+                  : <span>{i + 1}</span>}
+              </motion.div>
+              {/* Label */}
+              <span className={cn(
+                'hidden text-[10px] font-semibold whitespace-nowrap sm:block transition-colors duration-200',
+                i === step ? 'text-blue-600' : i < step ? 'text-gray-500' : 'text-gray-300'
+              )}>{label}</span>
             </div>
+
+            {/* Connector line */}
             {i < STEP_LABELS.length - 1 && (
-              <div className="mx-1 flex-1 h-px transition-all"
-                style={{ background: i < step ? '#0057b8' : '#E4E7ED' }} />
+              <div className="mx-2 mb-5 flex-1">
+                <div className="h-[2px] w-full rounded-full overflow-hidden bg-gray-100">
+                  <motion.div
+                    animate={{ width: i < step ? '100%' : '0%' }}
+                    transition={{ duration: 0.3 }}
+                    className="h-full rounded-full bg-blue-600" />
+                </div>
+              </div>
             )}
           </div>
         ))}
       </div>
 
-      {/* Step heading */}
+      {/* ── Step header ─────────────────────────────────── */}
       <div>
-        <h3 className="text-sm font-bold" style={{ color: '#0D0F1A' }}>Step {step + 1}: {STEP_LABELS[step]}</h3>
-        <p className="text-xs" style={{ color: '#9CA3AF' }}>
+        <h2 className="text-base font-bold text-gray-900">Step {step + 1}: {STEP_LABELS[step]}</h2>
+        <p className="text-sm text-gray-400">
           {step === 0 && 'Tell us about yourself'}
-          {step === 1 && 'Your address and identification documents'}
-          {step === 2 && 'Choose your programs and preferred schedule'}
-          {step === 3 && 'Create your LMS account to get started'}
+          {step === 1 && 'Your address and documents'}
+          {step === 2 && 'Choose your programs'}
+          {step === 3 && 'Create your account'}
         </p>
       </div>
 
-      {/* Fields */}
+      {/* ── Fields ──────────────────────────────────────── */}
       <AnimatePresence mode="wait">
         <motion.div key={step}
-          initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }}
-          transition={{ duration: 0.18 }}>
+          initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}>
           {renderStep()}
         </motion.div>
       </AnimatePresence>
 
-      {/* API error */}
-      {apiErr && (
-        <div className="flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs"
-          style={{ background: '#FEE2E2', color: '#DC2626' }}>
-          <AlertCircle size={14} />{apiErr}
-        </div>
-      )}
+      {/* ── API error ───────────────────────────────────── */}
+      <AnimatePresence>
+        {apiErr && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+            className="flex items-center gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            <AlertCircle size={15} className="flex-shrink-0" />
+            {apiErr}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Nav buttons */}
-      <div className="flex gap-2">
+      {/* ── Navigation ──────────────────────────────────── */}
+      <div className="flex items-center gap-2 pt-1">
         {step > 0 && (
           <button type="button" onClick={back}
-            className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors"
-            style={{ background: '#F4F5F8', color: '#6B7280' }}>
+            className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50">
             <ChevronLeft size={15} /> Back
           </button>
         )}
+
         {step < 3 ? (
           <button type="button" onClick={next}
-            className="ml-auto flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-all"
-            style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)', boxShadow: '0 4px 14px rgba(0,87,184,0.25)' }}>
+            className="ml-auto flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]"
+            style={{ background: 'linear-gradient(135deg, #0057b8, #1565d8)', boxShadow: '0 4px 14px rgba(0,87,184,0.3)' }}>
             Continue <ChevronRight size={15} />
           </button>
         ) : (
           <button type="button" onClick={submit} disabled={loading}
-            className="ml-auto flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-all disabled:opacity-70"
-            style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)', boxShadow: '0 4px 14px rgba(0,87,184,0.25)' }}>
-            {loading ? <><Loader2 size={14} className="animate-spin" />Submitting…</> : 'Submit Application'}
+            className="ml-auto flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+            style={{ background: 'linear-gradient(135deg, #0057b8, #1565d8)', boxShadow: '0 4px 14px rgba(0,87,184,0.3)' }}>
+            {loading ? <><Loader2 size={14} className="animate-spin" /> Submitting…</> : 'Submit Application'}
           </button>
         )}
       </div>
 
-      {/* Switch to login */}
-      <p className="text-center text-xs" style={{ color: '#9CA3AF' }}>
+      {/* ── Sign in link ─────────────────────────────────── */}
+      <p className="text-center text-xs text-gray-400">
         Already have an account?{' '}
-        <button onClick={onSwitch} className="font-semibold" style={{ color: '#0057b8' }}>Sign in</button>
+        <button onClick={onSwitch} className="font-semibold text-blue-600 hover:underline">Sign in</button>
       </p>
     </div>
   )
