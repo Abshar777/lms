@@ -70,10 +70,10 @@ export default function ReviewsPage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full"
-                    style={{ background: 'rgba(255,107,26,0.15)', border: '1px solid rgba(255,107,26,0.25)' }}>
+                    style={{ background: 'rgba(0,87,184,0.15)', border: '1px solid rgba(0,87,184,0.25)' }}>
                     {u?.avatarUrl
                       ? <img src={u.avatarUrl} alt="" className="h-full w-full object-cover" />
-                      : <span className="text-xs font-bold" style={{ color: '#FF6B1A' }}>{u?.name?.[0] ?? '?'}</span>}
+                      : <span className="text-xs font-bold" style={{ color: '#0057b8' }}>{u?.name?.[0] ?? '?'}</span>}
                   </div>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-white">{u?.name ?? 'Student'}</p>
@@ -108,7 +108,7 @@ export default function ReviewsPage() {
                 </div>
                 {c && (
                   <Link href={`/courses/${c.id}/edit`} className="font-semibold transition-opacity hover:opacity-70"
-                    style={{ color: '#FF6B1A' }}>
+                    style={{ color: '#0057b8' }}>
                     {c.title} →
                   </Link>
                 )}

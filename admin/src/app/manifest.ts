@@ -2,9 +2,9 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name:             'LearnOS Admin',
-    short_name:       'LearnOS Admin',
-    description:      'Administration portal for the LearnOS learning platform.',
+    name:             'Delta Institutions Admin',
+    short_name:       'Delta Institutions Admin',
+    description:      'Administration portal for the Delta Institutions learning platform.',
     start_url:        '/',
     scope:            '/',
     display:          'standalone',

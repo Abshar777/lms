@@ -138,7 +138,7 @@ function CouponFormModal({
             style={{ color: 'rgba(255,255,255,0.5)' }}>Cancel</button>
           <button onClick={handleSave} disabled={saving}
             className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold text-white transition-all disabled:opacity-60"
-            style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+            style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}>
             {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
             {saving ? 'Saving…' : 'Save'}
           </button>
@@ -191,7 +191,7 @@ export default function AdminCouponsPage() {
         </div>
         <button onClick={() => setModal('create')}
           className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all hover:opacity-90"
-          style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+          style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}>
           <Plus size={14} />New coupon
         </button>
       </div>

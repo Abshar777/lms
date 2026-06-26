@@ -33,7 +33,7 @@ const BASE_INPUT =
   'w-full rounded-lg px-3 py-2 text-sm text-white outline-none transition-all placeholder:opacity-30'
 const DARK_BG   = 'rgba(0,0,0,0.28)'
 const BORDER    = '1px solid rgba(255,255,255,0.09)'
-const FOCUS_BORDER = '1px solid rgba(255,107,26,0.65)'
+const FOCUS_BORDER = '1px solid rgba(0,87,184,0.65)'
 
 function humanSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -206,7 +206,7 @@ export function MediaUploadField({
             disabled={disabled || isUploading}
             title={`Upload ${type === 'image' ? 'image' : 'video'}`}
             className="flex-shrink-0 flex h-[34px] w-[34px] items-center justify-center rounded-lg transition-all disabled:opacity-40 hover:opacity-80"
-            style={{ background: 'rgba(255,107,26,0.15)', border: '1px solid rgba(255,107,26,0.30)', color: '#FF6B1A' }}
+            style={{ background: 'rgba(0,87,184,0.15)', border: '1px solid rgba(0,87,184,0.30)', color: '#0057b8' }}
           >
             {isUploading
               ? <Loader2 size={13} className="animate-spin" />
@@ -216,8 +216,8 @@ export function MediaUploadField({
         {/* Compact upload/transcode progress */}
         {(uploading || transcoding) && (
           <div className="flex items-center gap-1.5 rounded-md px-2 py-1"
-            style={{ background: 'rgba(255,107,26,0.08)', border: '1px solid rgba(255,107,26,0.18)' }}>
-            <Loader2 size={10} className="animate-spin flex-shrink-0" style={{ color: '#FF6B1A' }} />
+            style={{ background: 'rgba(0,87,184,0.08)', border: '1px solid rgba(0,87,184,0.18)' }}>
+            <Loader2 size={10} className="animate-spin flex-shrink-0" style={{ color: '#0057b8' }} />
             <p className="text-[10px] font-medium" style={{ color: 'rgba(255,255,255,0.7)' }}>
               {transcoding ? 'Transcoding to HLS…' : `Uploading… ${vidProgress > 0 ? vidProgress + '%' : ''}`}
             </p>
@@ -269,9 +269,9 @@ export function MediaUploadField({
             disabled={disabled}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold transition-all"
             style={{
-              background: tab === t ? 'rgba(255,107,26,0.18)' : 'transparent',
-              color: tab === t ? '#FF6B1A' : 'rgba(255,255,255,0.45)',
-              border: tab === t ? '1px solid rgba(255,107,26,0.30)' : '1px solid transparent',
+              background: tab === t ? 'rgba(0,87,184,0.18)' : 'transparent',
+              color: tab === t ? '#0057b8' : 'rgba(255,255,255,0.45)',
+              border: tab === t ? '1px solid rgba(0,87,184,0.30)' : '1px solid transparent',
             }}>
             {t === 'url' ? <Link size={11} /> : <Upload size={11} />}
             {t === 'url' ? 'Paste URL' : 'Upload file'}
@@ -320,17 +320,17 @@ export function MediaUploadField({
                 onClick={disabled ? undefined : openPicker}
                 className="flex flex-col items-center gap-2 rounded-xl py-6 transition-all cursor-pointer"
                 style={{
-                  border: `1.5px dashed ${dragging ? '#FF6B1A' : 'rgba(255,255,255,0.12)'}`,
-                  background: dragging ? 'rgba(255,107,26,0.06)' : 'rgba(255,255,255,0.02)',
+                  border: `1.5px dashed ${dragging ? '#0057b8' : 'rgba(255,255,255,0.12)'}`,
+                  background: dragging ? 'rgba(0,87,184,0.06)' : 'rgba(255,255,255,0.02)',
                 }}>
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl"
-                  style={{ background: 'rgba(255,107,26,0.10)', border: '1px solid rgba(255,107,26,0.20)' }}>
-                  <TypeIcon size={20} style={{ color: '#FF6B1A' }} />
+                  style={{ background: 'rgba(0,87,184,0.10)', border: '1px solid rgba(0,87,184,0.20)' }}>
+                  <TypeIcon size={20} style={{ color: '#0057b8' }} />
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.8)' }}>
                     Drag & drop or{' '}
-                    <span style={{ color: '#FF6B1A' }}>browse</span>
+                    <span style={{ color: '#0057b8' }}>browse</span>
                   </p>
                   <p className="mt-0.5 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>{hints}</p>
                 </div>
@@ -340,9 +340,9 @@ export function MediaUploadField({
             {/* Uploading state */}
             {(uploading || transcoding) && (
               <div className="space-y-2 rounded-xl px-4 py-3"
-                style={{ background: 'rgba(255,107,26,0.07)', border: '1px solid rgba(255,107,26,0.18)' }}>
+                style={{ background: 'rgba(0,87,184,0.07)', border: '1px solid rgba(0,87,184,0.18)' }}>
                 <div className="flex items-center gap-3">
-                  <Loader2 size={16} className="animate-spin flex-shrink-0" style={{ color: '#FF6B1A' }} />
+                  <Loader2 size={16} className="animate-spin flex-shrink-0" style={{ color: '#0057b8' }} />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.85)' }}>
                       {transcoding
@@ -361,7 +361,7 @@ export function MediaUploadField({
                   <div className="h-1 overflow-hidden rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}>
                     <motion.div
                       className="h-full rounded-full"
-                      style={{ background: 'linear-gradient(90deg,#FF6B1A,#FF8C42)' }}
+                      style={{ background: 'linear-gradient(90deg,#0057b8,#003d80)' }}
                       animate={{ width: `${vidProgress}%` }}
                       transition={{ duration: 0.3 }}
                     />
@@ -372,7 +372,7 @@ export function MediaUploadField({
                   <div className="h-1 overflow-hidden rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}>
                     <motion.div
                       className="h-full rounded-full"
-                      style={{ background: 'linear-gradient(90deg,#FF6B1A,#FF8C42)', width: '40%' }}
+                      style={{ background: 'linear-gradient(90deg,#0057b8,#003d80)', width: '40%' }}
                       animate={{ x: ['0%', '150%', '0%'] }}
                       transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
                     />

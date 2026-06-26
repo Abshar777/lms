@@ -29,7 +29,7 @@ function DayRow({
   onAdd:    () => void
   onRemove: (idx: number) => void
 }) {
-  const inputBase = 'rounded-lg border bg-white px-2 py-1.5 text-sm outline-none focus:border-[#FF6B1A] focus:ring-2 focus:ring-orange-100 transition-all'
+  const inputBase = 'rounded-lg border bg-white px-2 py-1.5 text-sm outline-none focus:border-[#0057b8] focus:ring-2 focus:ring-blue-100 transition-all'
   const inputStyle = { borderColor: '#E4E7ED', color: '#0D0F1A' }
 
   return (
@@ -37,13 +37,13 @@ function DayRow({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold text-white"
-            style={{ background: slots.length > 0 ? 'linear-gradient(135deg,#FF6B1A,#FF8C42)' : '#D1D5DB' }}>
+            style={{ background: slots.length > 0 ? 'linear-gradient(135deg,#0057b8,#003d80)' : '#D1D5DB' }}>
             {SHORT_DAYS[day]}
           </div>
           <p className="text-sm font-semibold" style={{ color: '#0D0F1A' }}>{DAYS[day]}</p>
           {slots.length > 0 && (
             <span className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-              style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A' }}>
+              style={{ background: 'rgba(0,87,184,0.10)', color: '#0057b8' }}>
               {slots.length} slot{slots.length > 1 ? 's' : ''}
             </span>
           )}
@@ -51,7 +51,7 @@ function DayRow({
         {slots.length < 3 && (
           <button onClick={onAdd}
             className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-orange-50"
-            style={{ color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.25)' }}>
+            style={{ color: '#0057b8', border: '1px solid rgba(0,87,184,0.25)' }}>
             <Plus size={11} />Add slot
           </button>
         )}
@@ -163,15 +163,15 @@ export default function AvailabilityPage() {
         <PageHeader
           title="My Availability"
           subtitle="Set weekly time slots when you can mentor sessions"
-          badge={{ label: 'Schedule', color: '#FF6B1A' }}
+          badge={{ label: 'Schedule', color: '#0057b8' }}
         />
         <motion.button
           onClick={handleSave}
           disabled={updateMutation.isPending}
-          whileHover={{ y: -1, boxShadow: '0 6px 20px rgba(255,107,26,0.28)' }}
+          whileHover={{ y: -1, boxShadow: '0 6px 20px rgba(0,87,184,0.28)' }}
           whileTap={{ scale: 0.97 }}
           className="mt-1 flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white flex-shrink-0 disabled:opacity-60"
-          style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+          style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)' }}>
           {updateMutation.isPending
             ? <><Loader2 size={15} className="animate-spin" />Saving…</>
             : saved
@@ -182,8 +182,8 @@ export default function AvailabilityPage() {
 
       {/* Info banner */}
       <div className="mb-5 flex items-start gap-3 rounded-2xl px-4 py-3"
-        style={{ background: 'rgba(255,107,26,0.06)', border: '1px solid rgba(255,107,26,0.15)' }}>
-        <CalendarDays size={15} style={{ color: '#FF6B1A', marginTop: 1, flexShrink: 0 }} />
+        style={{ background: 'rgba(0,87,184,0.06)', border: '1px solid rgba(0,87,184,0.15)' }}>
+        <CalendarDays size={15} style={{ color: '#0057b8', marginTop: 1, flexShrink: 0 }} />
         <div>
           <p className="text-sm font-semibold" style={{ color: '#0D0F1A' }}>Weekly recurring schedule</p>
           <p className="text-xs mt-0.5" style={{ color: '#6B7280' }}>
@@ -193,7 +193,7 @@ export default function AvailabilityPage() {
         </div>
         {totalSlots > 0 && (
           <span className="ml-auto flex-shrink-0 rounded-xl px-2.5 py-1 text-xs font-bold"
-            style={{ background: 'rgba(255,107,26,0.12)', color: '#FF6B1A' }}>
+            style={{ background: 'rgba(0,87,184,0.12)', color: '#0057b8' }}>
             {totalSlots} slot{totalSlots !== 1 ? 's' : ''}
           </span>
         )}

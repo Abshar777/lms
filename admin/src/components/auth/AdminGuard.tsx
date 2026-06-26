@@ -33,7 +33,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center gap-3" style={{ background: '#080A12' }}>
-        <Loader2 size={20} className="animate-spin" style={{ color: '#FF6B1A' }} />
+        <Loader2 size={20} className="animate-spin" style={{ color: '#0057b8' }} />
         <p className="text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>Verifying access…</p>
       </div>
     )

@@ -9,7 +9,7 @@ export default function CoursesPage() {
       <PageHeader
         title="Courses"
         subtitle="Manage and publish your course catalogue"
-        badge={{ label: 'CRUD', color: '#FF6B1A' }}
+        badge={{ label: 'CRUD', color: '#0057b8' }}
       />
       <CourseTable />
     </div>

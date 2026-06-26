@@ -16,7 +16,7 @@ function Card({ title, icon: Icon, children }: { title: string; icon: React.Elem
       style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
       <div className="flex items-center gap-2.5 px-5 py-4"
         style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-        <Icon size={15} style={{ color: '#FF6B1A' }} />
+        <Icon size={15} style={{ color: '#0057b8' }} />
         <h2 className="text-sm font-bold text-white">{title}</h2>
       </div>
       <div className="px-5 py-4 space-y-4">{children}</div>
@@ -78,7 +78,7 @@ function EditableSetting({
         {!editing && (
           <button onClick={() => { setDraft(value); setEditing(true) }}
             className="text-[11px] font-semibold transition-opacity hover:opacity-70"
-            style={{ color: '#FF6B1A' }}>
+            style={{ color: '#0057b8' }}>
             Edit
           </button>
         )}
@@ -119,7 +119,7 @@ export default function AdminSettingsPage() {
 
   /* Platform settings — stored in localStorage for now (server-persisted settings require a DB settings model) */
   const [platformName, setPlatformName] = useState(
-    () => (typeof window !== 'undefined' ? localStorage.getItem('lms_platform_name') : null) ?? 'LearnOS',
+    () => (typeof window !== 'undefined' ? localStorage.getItem('lms_platform_name') : null) ?? 'Delta Institutions',
   )
   const [supportEmail, setSupportEmail] = useState(
     () => (typeof window !== 'undefined' ? localStorage.getItem('lms_support_email') : null) ?? '',
@@ -142,8 +142,8 @@ export default function AdminSettingsPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-2xl"
-          style={{ background: 'rgba(255,107,26,0.15)', border: '1px solid rgba(255,107,26,0.25)' }}>
-          <Settings size={18} style={{ color: '#FF6B1A' }} />
+          style={{ background: 'rgba(0,87,184,0.15)', border: '1px solid rgba(0,87,184,0.25)' }}>
+          <Settings size={18} style={{ color: '#0057b8' }} />
         </div>
         <div>
           <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
@@ -169,7 +169,7 @@ export default function AdminSettingsPage() {
         <EditableSetting
           label="Platform name"
           value={platformName}
-          placeholder="e.g. LearnOS"
+          placeholder="e.g. Delta Institutions"
           hint="Displayed in the navigation bar and emails."
           onSave={v => { setPlatformName(v); savePlatform('lms_platform_name', v) }}
         />
@@ -254,7 +254,7 @@ export default function AdminSettingsPage() {
         />
         <a href="https://dashboard.stripe.com/test/apikeys" target="_blank" rel="noreferrer noopener"
           className="inline-flex items-center gap-1.5 text-[11px] font-semibold transition-opacity hover:opacity-70"
-          style={{ color: '#FF6B1A' }}>
+          style={{ color: '#0057b8' }}>
           Open Stripe dashboard <ExternalLink size={10} />
         </a>
       </Card>

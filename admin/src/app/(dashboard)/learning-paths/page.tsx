@@ -115,7 +115,7 @@ function CoursePicker({
                     {c.isFree ? 'Free' : `$${c.price}`} · {c.level}
                   </p>
                 </div>
-                <Plus size={12} style={{ color: '#FF6B1A' }} />
+                <Plus size={12} style={{ color: '#0057b8' }} />
               </button>
             ))}
           </motion.div>
@@ -154,7 +154,7 @@ function CourseRow({
 
       {/* Step number */}
       <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-        style={{ background: 'rgba(255,107,26,0.35)' }}>
+        style={{ background: 'rgba(0,87,184,0.35)' }}>
         {index + 1}
       </span>
 
@@ -173,9 +173,9 @@ function CourseRow({
         title={item.isPrerequisite ? 'Mark as optional' : 'Mark as prerequisite'}
         className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold transition-colors"
         style={{
-          background: item.isPrerequisite ? 'rgba(255,107,26,0.2)' : 'rgba(255,255,255,0.06)',
-          color:      item.isPrerequisite ? '#FF6B1A' : 'rgba(255,255,255,0.3)',
-          border:     item.isPrerequisite ? '1px solid rgba(255,107,26,0.3)' : '1px solid transparent',
+          background: item.isPrerequisite ? 'rgba(0,87,184,0.2)' : 'rgba(255,255,255,0.06)',
+          color:      item.isPrerequisite ? '#0057b8' : 'rgba(255,255,255,0.3)',
+          border:     item.isPrerequisite ? '1px solid rgba(0,87,184,0.3)' : '1px solid transparent',
         }}>
         <Lock size={9} />Prereq
       </button>
@@ -419,7 +419,7 @@ function PathFormModal({ initial, onClose }: { initial?: AdminLearningPath; onCl
             </button>
             <button onClick={handleSave} disabled={saving}
               className="flex items-center gap-1.5 rounded-xl px-5 py-2 text-sm font-bold text-white disabled:opacity-60 transition-all"
-              style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+              style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}>
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
               {saving ? 'Saving…' : 'Save path'}
             </button>
@@ -465,7 +465,7 @@ export default function AdminLearningPathsPage() {
         </div>
         <button onClick={() => setModal('create')}
           className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all hover:opacity-90"
-          style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+          style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}>
           <Plus size={14} /> New path
         </button>
       </div>
@@ -505,8 +505,8 @@ export default function AdminLearningPathsPage() {
                         ? <img src={p.thumbnailUrl} alt="" className="h-8 w-12 flex-shrink-0 rounded-lg object-cover" />
                         : (
                           <div className="flex h-8 w-12 flex-shrink-0 items-center justify-center rounded-lg"
-                            style={{ background: 'rgba(255,107,26,0.12)' }}>
-                            <GraduationCap size={14} style={{ color: '#FF6B1A' }} />
+                            style={{ background: 'rgba(0,87,184,0.12)' }}>
+                            <GraduationCap size={14} style={{ color: '#0057b8' }} />
                           </div>
                         )}
                       <div>
@@ -529,7 +529,7 @@ export default function AdminLearningPathsPage() {
                       {p.courses.some(c => c.isPrerequisite) && (
                         <span title="Has prerequisites"
                           className="flex items-center rounded px-1 text-[9px] font-bold"
-                          style={{ background: 'rgba(255,107,26,0.15)', color: '#FF6B1A' }}>
+                          style={{ background: 'rgba(0,87,184,0.15)', color: '#0057b8' }}>
                           <Lock size={8} className="mr-0.5" />prereq
                         </span>
                       )}

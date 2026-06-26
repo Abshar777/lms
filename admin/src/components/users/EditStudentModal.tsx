@@ -71,7 +71,7 @@ function CourseSelect({
                 type="button"
                 onClick={() => { onChange(c.id); setOpen(false) }}
                 className="w-full px-3 py-2 text-left text-xs transition-colors hover:bg-white/08"
-                style={{ color: c.id === value ? '#FF6B1A' : 'rgba(255,255,255,0.8)' }}
+                style={{ color: c.id === value ? '#0057b8' : 'rgba(255,255,255,0.8)' }}
               >
                 {c.title}
               </button>
@@ -319,8 +319,8 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
   const base   = 'w-full rounded-xl py-2.5 pl-9 pr-4 text-sm text-white outline-none transition-all placeholder:text-white/30'
   const iStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' } as React.CSSProperties
   const iFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.currentTarget.style.border    = '1px solid rgba(255,107,26,0.5)'
-    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.10)'
+    e.currentTarget.style.border    = '1px solid rgba(0,87,184,0.5)'
+    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,87,184,0.10)'
   }
   const iBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     e.currentTarget.style.border    = '1px solid rgba(255,255,255,0.09)'
@@ -403,7 +403,7 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
                   style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
                 >
                   <div className="flex items-center gap-2">
-                    <ClipboardList size={13} style={{ color: '#FF6B1A' }} />
+                    <ClipboardList size={13} style={{ color: '#0057b8' }} />
                     <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.6)' }}>
                       Enrollment Application
                     </span>
@@ -480,7 +480,7 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
                                     <div className="flex flex-wrap gap-1 mt-0.5">
                                       {app.programs.map(p => (
                                         <span key={p} className="rounded px-1.5 py-0.5 text-[10px] font-medium"
-                                          style={{ background: 'rgba(255,107,26,0.12)', color: '#FF6B1A' }}>
+                                          style={{ background: 'rgba(0,87,184,0.12)', color: '#0057b8' }}>
                                           {p}
                                         </span>
                                       ))}

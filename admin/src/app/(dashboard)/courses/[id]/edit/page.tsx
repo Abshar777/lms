@@ -56,7 +56,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
     return (
       <div className="flex h-[60vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 size={28} className="animate-spin" style={{ color: '#FF6B1A' }} />
+          <Loader2 size={28} className="animate-spin" style={{ color: '#0057b8' }} />
           <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>Loading course…</p>
         </div>
       </div>
@@ -82,7 +82,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
               Admin login: admin@lms.local
             </p>
           )}
-          <Link href="/courses" className="text-sm font-semibold" style={{ color: '#FF6B1A' }}>
+          <Link href="/courses" className="text-sm font-semibold" style={{ color: '#0057b8' }}>
             Back to courses
           </Link>
         </div>
@@ -108,8 +108,8 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
 
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl"
-            style={{ background: 'rgba(255,107,26,0.15)', border: '1px solid rgba(255,107,26,0.25)' }}>
-            <Edit2 size={17} style={{ color: '#FF6B1A' }} />
+            style={{ background: 'rgba(0,87,184,0.15)', border: '1px solid rgba(0,87,184,0.25)' }}>
+            <Edit2 size={17} style={{ color: '#0057b8' }} />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>

@@ -94,7 +94,7 @@ export default function HomeworkPage() {
   const homeworkList    = Array.isArray(homework.data)    ? homework.data    : []
   const submissionList  = Array.isArray(submissions.data) ? submissions.data : []
 
-  const inputBase = 'w-full rounded-xl border border-[#E4E7ED] bg-white px-3 py-2 text-sm outline-none focus:border-[#FF6B1A] focus:ring-2 focus:ring-orange-100'
+  const inputBase = 'w-full rounded-xl border border-[#E4E7ED] bg-white px-3 py-2 text-sm outline-none focus:border-[#0057b8] focus:ring-2 focus:ring-blue-100'
 
   return (
     <div>
@@ -102,7 +102,7 @@ export default function HomeworkPage() {
         <PageHeader
           title="Session Homework"
           subtitle="Assign and grade homework for this live class"
-          badge={{ label: 'Homework', color: '#FF6B1A' }}
+          badge={{ label: 'Homework', color: '#0057b8' }}
         />
       </div>
 
@@ -112,7 +112,7 @@ export default function HomeworkPage() {
           <button
             onClick={() => setShowCreate(true)}
             className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+            style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)' }}>
             <Plus size={15} />New Homework
           </button>
         ) : (
@@ -132,7 +132,7 @@ export default function HomeworkPage() {
                   disabled={!title.trim() || createMutation.isPending}
                   onClick={() => createMutation.mutate({ title, description, dueDate: dueDate ? new Date(dueDate).toISOString() : undefined })}
                   className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                  style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+                  style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)' }}>
                   {createMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                   Create
                 </button>
@@ -149,12 +149,12 @@ export default function HomeworkPage() {
       {/* Homework list */}
       <section className="mb-8">
         <div className="flex items-center gap-2 mb-4">
-          <BookOpen size={16} style={{ color: '#FF6B1A' }} />
+          <BookOpen size={16} style={{ color: '#0057b8' }} />
           <h2 className="text-base font-bold" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
             Assignments
           </h2>
           <span className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-            style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A' }}>
+            style={{ background: 'rgba(0,87,184,0.10)', color: '#0057b8' }}>
             {homeworkList.length}
           </span>
         </div>
@@ -199,12 +199,12 @@ export default function HomeworkPage() {
       {/* Submissions */}
       <section>
         <div className="flex items-center gap-2 mb-4">
-          <Award size={16} style={{ color: '#FF6B1A' }} />
+          <Award size={16} style={{ color: '#0057b8' }} />
           <h2 className="text-base font-bold" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
             Submissions
           </h2>
           <span className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-            style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A' }}>
+            style={{ background: 'rgba(0,87,184,0.10)', color: '#0057b8' }}>
             {submissionList.length}
           </span>
         </div>
@@ -234,8 +234,8 @@ export default function HomeworkPage() {
                     <div className="flex items-center gap-2">
                       <span className="rounded-full px-2 py-0.5 text-[10px] font-bold"
                         style={{
-                          background: sub.status === 'graded' ? 'rgba(16,185,129,0.10)' : 'rgba(255,107,26,0.10)',
-                          color: sub.status === 'graded' ? '#10B981' : '#FF6B1A',
+                          background: sub.status === 'graded' ? 'rgba(16,185,129,0.10)' : 'rgba(0,87,184,0.10)',
+                          color: sub.status === 'graded' ? '#10B981' : '#0057b8',
                         }}>
                         {sub.grade !== undefined ? `${sub.status} · ${sub.grade}/100` : sub.status}
                       </span>
@@ -254,7 +254,7 @@ export default function HomeworkPage() {
                       {sub.submissionUrl && (
                         <div className="mt-2">
                           <a href={sub.submissionUrl} target="_blank" rel="noreferrer"
-                            className="text-xs font-semibold" style={{ color: '#FF6B1A' }}>
+                            className="text-xs font-semibold" style={{ color: '#0057b8' }}>
                             View submission &rarr;
                           </a>
                         </div>
@@ -263,13 +263,13 @@ export default function HomeworkPage() {
                         <p className="text-xs font-bold" style={{ color: '#0D0F1A' }}>Grade</p>
                         <input
                           type="number" min={0} max={100}
-                          className="w-24 rounded-xl border border-[#E4E7ED] px-3 py-1.5 text-sm outline-none focus:border-[#FF6B1A]"
+                          className="w-24 rounded-xl border border-[#E4E7ED] px-3 py-1.5 text-sm outline-none focus:border-[#0057b8]"
                           placeholder="0–100"
                           value={g.grade}
                           onChange={e => setGrades(prev => ({ ...prev, [sub.id]: { ...g, grade: e.target.value } }))}
                         />
                         <textarea
-                          className="w-full rounded-xl border border-[#E4E7ED] px-3 py-2 text-sm outline-none focus:border-[#FF6B1A]"
+                          className="w-full rounded-xl border border-[#E4E7ED] px-3 py-2 text-sm outline-none focus:border-[#0057b8]"
                           rows={2} placeholder="Feedback (optional)"
                           value={g.feedback}
                           onChange={e => setGrades(prev => ({ ...prev, [sub.id]: { ...g, feedback: e.target.value } }))}
@@ -278,7 +278,7 @@ export default function HomeworkPage() {
                           disabled={!g.grade || gradeMutation.isPending}
                           onClick={() => gradeMutation.mutate({ subId: sub.id, grade: Number(g.grade), feedback: g.feedback })}
                           className="flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
-                          style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+                          style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)' }}>
                           {gradeMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Award size={12} />}
                           <span>Save Grade</span>
                         </button>

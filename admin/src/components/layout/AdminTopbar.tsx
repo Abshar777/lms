@@ -68,8 +68,8 @@ export function AdminTopbar() {
             <motion.div key="open" initial={{ opacity: 0, scaleX: 0.9 }} animate={{ opacity: 1, scaleX: 1 }}
               exit={{ opacity: 0, scaleX: 0.9 }} transition={{ type: 'spring', stiffness: 400, damping: 28 }}
               className="flex items-center gap-2 rounded-xl px-3 py-1.5"
-              style={{ background: 'rgba(255,255,255,0.07)', border: '1.5px solid rgba(255,107,26,0.5)', boxShadow: '0 0 0 3px rgba(255,107,26,0.10)' }}>
-              <Search size={14} style={{ color: '#FF6B1A' }} />
+              style={{ background: 'rgba(255,255,255,0.07)', border: '1.5px solid rgba(0,87,184,0.5)', boxShadow: '0 0 0 3px rgba(0,87,184,0.10)' }}>
+              <Search size={14} style={{ color: '#0057b8' }} />
               <input autoFocus value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search courses, students, instructors…"
                 className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/30"
@@ -129,7 +129,7 @@ export function AdminTopbar() {
             onClick={() => { setQuickOpen(v => !v); setNotifOpen(false) }}
             whileHover={{ y: -1 }} whileTap={{ scale: 0.96 }}
             className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold text-white transition-all"
-            style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)', boxShadow: '0 4px 16px rgba(255,107,26,0.30)' }}>
+            style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)', boxShadow: '0 4px 16px rgba(0,87,184,0.30)' }}>
             <Plus size={14} />
             <span>Create</span>
             <ChevronDown size={12} style={{ transform: quickOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
@@ -147,7 +147,7 @@ export function AdminTopbar() {
                   return (
                     <Link key={a.href} href={a.href} onClick={() => setQuickOpen(false)}>
                       <div className="flex items-center gap-2.5 rounded-xl px-3 py-2 transition-colors hover:bg-white/05 cursor-pointer">
-                        <Icon size={14} style={{ color: '#FF6B1A' }} />
+                        <Icon size={14} style={{ color: '#0057b8' }} />
                         <span className="text-sm font-medium text-white">{a.label}</span>
                       </div>
                     </Link>
@@ -170,7 +170,7 @@ export function AdminTopbar() {
               <motion.span
                 initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 400 }}
                 className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white"
-                style={{ background: '#FF6B1A' }}>
+                style={{ background: '#0057b8' }}>
                 {unreadCount}
               </motion.span>
             )}
@@ -185,7 +185,7 @@ export function AdminTopbar() {
                 style={{ background: '#13162A', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
                 <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                   <span className="text-sm font-semibold text-white">Notifications</span>
-                  <button className="text-[11px] font-medium" style={{ color: '#FF6B1A' }}>Mark all read</button>
+                  <button className="text-[11px] font-medium" style={{ color: '#0057b8' }}>Mark all read</button>
                 </div>
                 {notifications.map((n, i) => (
                   <motion.div key={n.id}
@@ -194,14 +194,14 @@ export function AdminTopbar() {
                     className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-white/04 cursor-pointer"
                     style={{ borderBottom: i < notifications.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
                     <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg"
-                      style={{ background: n.unread ? 'rgba(255,107,26,0.15)' : 'rgba(255,255,255,0.05)' }}>
-                      <Bell size={12} style={{ color: n.unread ? '#FF6B1A' : 'rgba(255,255,255,0.3)' }} />
+                      style={{ background: n.unread ? 'rgba(0,87,184,0.15)' : 'rgba(255,255,255,0.05)' }}>
+                      <Bell size={12} style={{ color: n.unread ? '#0057b8' : 'rgba(255,255,255,0.3)' }} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs leading-relaxed" style={{ color: n.unread ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.45)' }}>{n.text}</p>
                       <p className="mt-0.5 text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>{n.time}</p>
                     </div>
-                    {n.unread && <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: '#FF6B1A' }} />}
+                    {n.unread && <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: '#0057b8' }} />}
                   </motion.div>
                 ))}
               </motion.div>
@@ -214,8 +214,8 @@ export function AdminTopbar() {
           <motion.button
             onClick={() => { setAvatarOpen(v => !v); setNotifOpen(false); setQuickOpen(false) }}
             whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-            className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full text-xs font-bold text-white ring-2 ring-transparent hover:ring-orange-500/40 transition-all"
-            style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}
+            className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full text-xs font-bold text-white ring-2 ring-transparent hover:ring-blue-600/40 transition-all"
+            style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}
             title={user?.email}>
             {user?.avatarUrl
               ? <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
@@ -234,7 +234,7 @@ export function AdminTopbar() {
                   <p className="mt-0.5 truncate text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>{user?.email ?? ''}</p>
                   {user?.role && (
                     <span className="mt-2 inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest"
-                      style={{ background: 'rgba(255,107,26,0.15)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.25)' }}>
+                      style={{ background: 'rgba(0,87,184,0.15)', color: '#0057b8', border: '1px solid rgba(0,87,184,0.25)' }}>
                       {user.role}
                     </span>
                   )}

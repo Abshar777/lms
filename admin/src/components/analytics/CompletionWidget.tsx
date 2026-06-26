@@ -48,7 +48,7 @@ export function CompletionWidget() {
           </div>
           <div className="min-w-0 flex-1 space-y-1.5">
             <Row label="Completed" value={data?.completed ?? 0} color="#4ADE80" Icon={CheckCircle2} />
-            <Row label="In progress" value={data?.active ?? 0} color="#FF6B1A" />
+            <Row label="In progress" value={data?.active ?? 0} color="#0057b8" />
             <Row label="Dropped" value={data?.dropped ?? 0} color="rgba(255,255,255,0.3)" />
           </div>
         </div>

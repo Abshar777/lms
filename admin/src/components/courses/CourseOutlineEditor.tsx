@@ -128,8 +128,8 @@ export function CourseOutlineEditor({ courseId }: { courseId: string }) {
         style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl"
-            style={{ background: 'rgba(255,107,26,0.15)', border: '1px solid rgba(255,107,26,0.2)' }}>
-            <BookOpen size={16} style={{ color: '#FF6B1A' }} />
+            style={{ background: 'rgba(0,87,184,0.15)', border: '1px solid rgba(0,87,184,0.2)' }}>
+            <BookOpen size={16} style={{ color: '#0057b8' }} />
           </div>
           <div>
             <h2 className="text-base font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
@@ -165,7 +165,7 @@ export function CourseOutlineEditor({ courseId }: { courseId: string }) {
             whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
             onClick={() => setAddingSection(true)}
             className="flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold text-white"
-            style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)', boxShadow: '0 4px 12px rgba(255,107,26,0.3)' }}>
+            style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)', boxShadow: '0 4px 12px rgba(0,87,184,0.3)' }}>
             <Plus size={13} />Add section
           </motion.button>
         </div>
@@ -179,8 +179,8 @@ export function CourseOutlineEditor({ courseId }: { courseId: string }) {
           /* Empty state */
           <div className="flex flex-col items-center justify-center py-14">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl"
-              style={{ background: 'rgba(255,107,26,0.1)', border: '1px solid rgba(255,107,26,0.15)' }}>
-              <BookOpen size={22} style={{ color: 'rgba(255,107,26,0.7)' }} />
+              style={{ background: 'rgba(0,87,184,0.1)', border: '1px solid rgba(0,87,184,0.15)' }}>
+              <BookOpen size={22} style={{ color: 'rgba(0,87,184,0.7)' }} />
             </div>
             <p className="mb-1 text-sm font-semibold text-white">No curriculum yet</p>
             <p className="mb-5 text-xs text-center" style={{ color: 'rgba(255,255,255,0.35)' }}>
@@ -190,7 +190,7 @@ export function CourseOutlineEditor({ courseId }: { courseId: string }) {
               whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
               onClick={() => setAddingSection(true)}
               className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white"
-              style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)', boxShadow: '0 4px 14px rgba(255,107,26,0.3)' }}>
+              style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)', boxShadow: '0 4px 14px rgba(0,87,184,0.3)' }}>
               <Plus size={14} />Add first section
             </motion.button>
           </div>
@@ -223,11 +223,11 @@ export function CourseOutlineEditor({ courseId }: { courseId: string }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               className="mt-3 overflow-hidden rounded-2xl"
-              style={{ background: 'rgba(255,107,26,0.06)', border: '1px dashed rgba(255,107,26,0.35)' }}>
+              style={{ background: 'rgba(0,87,184,0.06)', border: '1px dashed rgba(0,87,184,0.35)' }}>
               <div className="flex items-center gap-3 p-4">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl shrink-0"
-                  style={{ background: 'rgba(255,107,26,0.15)' }}>
-                  <BookOpen size={14} style={{ color: '#FF6B1A' }} />
+                  style={{ background: 'rgba(0,87,184,0.15)' }}>
+                  <BookOpen size={14} style={{ color: '#0057b8' }} />
                 </div>
                 <input
                   autoFocus
@@ -252,7 +252,7 @@ export function CourseOutlineEditor({ courseId }: { courseId: string }) {
                     onClick={onAddSection}
                     disabled={!newSection.trim() || createSection.isPending}
                     className="flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold text-white disabled:opacity-50"
-                    style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+                    style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}>
                     {createSection.isPending ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
                     Add
                   </button>
@@ -351,7 +351,7 @@ function SectionRow({
 
         {/* Number badge */}
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-xs font-bold"
-          style={{ background: 'rgba(255,107,26,0.15)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.2)' }}>
+          style={{ background: 'rgba(0,87,184,0.15)', color: '#0057b8', border: '1px solid rgba(0,87,184,0.2)' }}>
           {index + 1}
         </span>
 
@@ -366,7 +366,7 @@ function SectionRow({
               if (e.key === 'Escape') { setEditing(false); setTitle(section.title) }
             }}
             className="flex-1 rounded-xl px-3 py-1.5 text-sm font-semibold text-white outline-none"
-            style={{ background: 'rgba(255,107,26,0.08)', border: '1px solid rgba(255,107,26,0.45)' }}
+            style={{ background: 'rgba(0,87,184,0.08)', border: '1px solid rgba(0,87,184,0.45)' }}
           />
         ) : (
           <button
@@ -441,7 +441,7 @@ function SectionRow({
                   </p>
                   <button onClick={() => setAddingLesson(true)}
                     className="mt-2 flex items-center gap-1.5 text-xs font-semibold transition-opacity hover:opacity-70"
-                    style={{ color: '#FF6B1A' }}>
+                    style={{ color: '#0057b8' }}>
                     <Plus size={11} />Add first lesson
                   </button>
                 </div>
@@ -470,7 +470,7 @@ function SectionRow({
                   whileHover={{ x: 2 }}
                   onClick={() => setAddingLesson(true)}
                   className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold transition-colors w-full mt-1"
-                  style={{ color: '#FF6B1A', background: 'rgba(255,107,26,0.04)', border: '1px dashed rgba(255,107,26,0.2)' }}>
+                  style={{ color: '#0057b8', background: 'rgba(0,87,184,0.04)', border: '1px dashed rgba(0,87,184,0.2)' }}>
                   <Plus size={12} />Add lesson
                 </motion.button>
               )}
@@ -682,8 +682,8 @@ const fieldStyle = {
 const fieldClass = "w-full rounded-xl px-3 py-2 text-sm text-white outline-none transition-all placeholder:text-white/25"
 
 function onFocusField(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) {
-  e.currentTarget.style.border = '1px solid rgba(255,107,26,0.5)'
-  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.09)'
+  e.currentTarget.style.border = '1px solid rgba(0,87,184,0.5)'
+  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,87,184,0.09)'
 }
 function onBlurField(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) {
   e.currentTarget.style.border = '1px solid rgba(255,255,255,0.09)'
@@ -724,12 +724,12 @@ function AddLessonForm({ courseId, sectionId, onClose }: { courseId: string; sec
       exit={{ opacity: 0, y: -4 }}
       onSubmit={onSubmit}
       className="mt-1 overflow-hidden rounded-2xl"
-      style={{ background: 'rgba(255,107,26,0.04)', border: '1px solid rgba(255,107,26,0.2)' }}>
+      style={{ background: 'rgba(0,87,184,0.04)', border: '1px solid rgba(0,87,184,0.2)' }}>
 
       {/* Form header */}
       <div className="flex items-center justify-between px-4 py-3"
         style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-        <span className="text-xs font-bold" style={{ color: '#FF6B1A' }}>New lesson</span>
+        <span className="text-xs font-bold" style={{ color: '#0057b8' }}>New lesson</span>
         <button type="button" onClick={onClose}
           className="flex h-6 w-6 items-center justify-center rounded-lg transition-colors hover:bg-white/08"
           style={{ color: 'rgba(255,255,255,0.4)' }}>
@@ -795,7 +795,7 @@ function AddLessonForm({ courseId, sectionId, onClose }: { courseId: string; sec
             type="button"
             onClick={() => setIsFree(v => !v)}
             className="relative h-5 w-9 rounded-full transition-colors shrink-0"
-            style={{ background: isFree ? '#FF6B1A' : 'rgba(255,255,255,0.12)' }}>
+            style={{ background: isFree ? '#0057b8' : 'rgba(255,255,255,0.12)' }}>
             <span className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
               style={{ left: isFree ? '18px' : '2px' }} />
           </button>
@@ -812,7 +812,7 @@ function AddLessonForm({ courseId, sectionId, onClose }: { courseId: string; sec
             type="submit"
             disabled={!title.trim() || createLesson.isPending}
             className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
-            style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)', boxShadow: '0 4px 12px rgba(255,107,26,0.25)' }}>
+            style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)', boxShadow: '0 4px 12px rgba(0,87,184,0.25)' }}>
             {createLesson.isPending ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
             Add lesson
           </button>
@@ -919,7 +919,7 @@ function LessonEditForm({
             type="button"
             onClick={() => setIsFree(v => !v)}
             className="relative h-5 w-9 rounded-full transition-colors shrink-0"
-            style={{ background: isFree ? '#FF6B1A' : 'rgba(255,255,255,0.12)' }}>
+            style={{ background: isFree ? '#0057b8' : 'rgba(255,255,255,0.12)' }}>
             <span className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
               style={{ left: isFree ? '18px' : '2px' }} />
           </button>

@@ -21,8 +21,8 @@ export default function NewCoursePage() {
 
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl"
-            style={{ background: 'rgba(255,107,26,0.15)', border: '1px solid rgba(255,107,26,0.25)' }}>
-            <Sparkles size={18} style={{ color: '#FF6B1A' }} />
+            style={{ background: 'rgba(0,87,184,0.15)', border: '1px solid rgba(0,87,184,0.25)' }}>
+            <Sparkles size={18} style={{ color: '#0057b8' }} />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>

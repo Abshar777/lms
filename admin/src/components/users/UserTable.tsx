@@ -25,7 +25,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const CATEGORY_STYLE: Record<string, { bg: string; color: string }> = {
   '4x-trading':        { bg: 'rgba(16,185,129,0.12)',  color: '#10B981' },
-  'digital-marketing': { bg: 'rgba(255,107,26,0.12)',  color: '#FF6B1A' },
+  'digital-marketing': { bg: 'rgba(0,87,184,0.12)',  color: '#0057b8' },
   'ai':                { bg: 'rgba(139,92,246,0.12)',   color: '#8B5CF6' },
 }
 
@@ -64,7 +64,7 @@ export function UserTable({ role, label }: Props) {
             placeholder={`Search ${label.toLowerCase()}…`}
             className="w-full rounded-xl py-2 pl-9 pr-4 text-sm text-white outline-none transition-all placeholder:text-white/25"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
-            onFocus={e => { e.currentTarget.style.border = '1px solid rgba(255,107,26,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.10)' }}
+            onFocus={e => { e.currentTarget.style.border = '1px solid rgba(0,87,184,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,87,184,0.10)' }}
             onBlur={e => { e.currentTarget.style.border = '1px solid rgba(255,255,255,0.08)'; e.currentTarget.style.boxShadow = 'none' }} />
         </div>
 
@@ -78,7 +78,7 @@ export function UserTable({ role, label }: Props) {
                 onClick={() => handleCategoryFilter(cat)}
                 className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
                 style={category === cat
-                  ? { background: s ? `${s.bg}` : 'rgba(255,107,26,0.18)', color: s?.color ?? '#FF6B1A', border: `1px solid ${s?.color ?? '#FF6B1A'}50` }
+                  ? { background: s ? `${s.bg}` : 'rgba(0,87,184,0.18)', color: s?.color ?? '#0057b8', border: `1px solid ${s?.color ?? '#0057b8'}50` }
                   : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.07)' }}>
                 {cat === '' ? 'All' : CATEGORY_LABELS[cat]}
               </button>
@@ -198,10 +198,10 @@ function UserRow({ user, index, onEdit }: { user: AdminUser; index: number; onEd
       <td className="px-4 py-3.5">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full"
-            style={{ background: 'rgba(255,107,26,0.15)', border: '1px solid rgba(255,107,26,0.25)' }}>
+            style={{ background: 'rgba(0,87,184,0.15)', border: '1px solid rgba(0,87,184,0.25)' }}>
             {user.avatarUrl
               ? <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
-              : <span className="text-xs font-bold" style={{ color: '#FF6B1A' }}>{user.name[0]?.toUpperCase() ?? '?'}</span>}
+              : <span className="text-xs font-bold" style={{ color: '#0057b8' }}>{user.name[0]?.toUpperCase() ?? '?'}</span>}
           </div>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-white">{user.name}</p>

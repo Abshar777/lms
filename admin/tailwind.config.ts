@@ -17,16 +17,16 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        display: ['Bricolage Grotesque', 'sans-serif'],
-        body:    ['DM Sans', 'sans-serif'],
+        display: ['Plus Jakarta Sans', 'sans-serif'],
+        body:    ['Plus Jakarta Sans', 'sans-serif'],
         mono:    ['JetBrains Mono', 'monospace'],
-        sans:    ['DM Sans', 'sans-serif'],
+        sans:    ['Plus Jakarta Sans', 'sans-serif'],
       },
       colors: {
         sidebar: '#0D0F1A',
         'sidebar-hover': '#151826',
         'sidebar-active': '#1E2235',
-        primary:   { DEFAULT: '#FF6B1A', hover: '#E55A0E', light: '#FFF0E8', muted: 'rgba(255,107,26,0.12)' },
+        primary:   { DEFAULT: '#0057b8', hover: '#003d80', light: '#EEF5FF', muted: 'rgba(0,87,184,0.12)' },
         secondary: { DEFAULT: '#2F6BFF', hover: '#1A53E0', light: '#EEF3FF', muted: 'rgba(47,107,255,0.12)' },
         success:   { DEFAULT: '#0ECC8E', light: '#E6FAF4' },
         warning:   { DEFAULT: '#F59E0B', light: '#FEF3C7' },
@@ -48,7 +48,7 @@ const config: Config = {
       boxShadow: {
         card:      '0 2px 8px rgba(13,15,26,0.06)',
         'card-hover': '0 4px 20px rgba(13,15,26,0.10)',
-        primary:   '0 4px 20px rgba(255,107,26,0.30)',
+        primary:   '0 4px 20px rgba(0,87,184,0.30)',
         secondary: '0 4px 20px rgba(47,107,255,0.24)',
         modal:     '0 20px 60px rgba(13,15,26,0.18)',
       },

@@ -84,8 +84,8 @@ function Field({ label, error, children, hint }: { label: string; error?: string
 const inputBase = "w-full rounded-xl px-4 py-2.5 text-sm text-white outline-none transition-all placeholder:text-white/25"
 const inputStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }
 const inputFocus = (el: HTMLElement) => {
-  el.style.border = '1px solid rgba(255,107,26,0.55)'
-  el.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.10)'
+  el.style.border = '1px solid rgba(0,87,184,0.55)'
+  el.style.boxShadow = '0 0 0 3px rgba(0,87,184,0.10)'
 }
 const inputBlur = (el: HTMLElement) => {
   el.style.border = '1px solid rgba(255,255,255,0.09)'
@@ -138,9 +138,9 @@ function Select({ value, onChange, options, placeholder }: {
               <button key={o.value} type="button"
                 onClick={() => { onChange(o.value); setOpen(false) }}
                 className="flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors hover:bg-white/05"
-                style={{ color: o.value === value ? '#FF6B1A' : 'rgba(255,255,255,0.8)' }}>
+                style={{ color: o.value === value ? '#0057b8' : 'rgba(255,255,255,0.8)' }}>
                 {o.label}
-                {o.value === value && <Check size={12} style={{ color: '#FF6B1A' }} />}
+                {o.value === value && <Check size={12} style={{ color: '#0057b8' }} />}
               </button>
             ))}
           </motion.div>
@@ -239,7 +239,7 @@ export function CourseForm({ course }: CourseFormProps) {
           <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
             className="relative flex flex-shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all"
             style={active
-              ? { background: 'rgba(255,107,26,0.16)', color: '#FF6B1A' }
+              ? { background: 'rgba(0,87,184,0.16)', color: '#0057b8' }
               : { color: 'rgba(255,255,255,0.45)' }}>
             <Icon size={14} />
             {tab.label}
@@ -248,7 +248,7 @@ export function CourseForm({ course }: CourseFormProps) {
             )}
             {active && (
               <motion.div layoutId="tab-indicator" className="absolute inset-0 rounded-xl"
-                style={{ background: 'rgba(255,107,26,0.14)' }}
+                style={{ background: 'rgba(0,87,184,0.14)' }}
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }} />
             )}
           </button>
@@ -287,7 +287,7 @@ export function CourseForm({ course }: CourseFormProps) {
               <Field label="Slug *" error={errors.slug?.message} hint="Auto-generated from title. Only lowercase letters, numbers, hyphens.">
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-mono select-none"
-                    style={{ color: 'rgba(255,255,255,0.25)' }}>learnos.com/</span>
+                    style={{ color: 'rgba(255,255,255,0.25)' }}>deltagroups.ae/</span>
                   <input {...register('slug')} placeholder="course-slug"
                     className={`${inputBase} pl-24`} style={inputStyle}
                     onFocus={e => inputFocus(e.currentTarget)} onBlur={e => inputBlur(e.currentTarget)} />
@@ -454,7 +454,7 @@ export function CourseForm({ course }: CourseFormProps) {
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {watch('tags').split(',').map(t => t.trim()).filter(Boolean).map(t => (
                       <span key={t} className="rounded-lg px-2.5 py-1 text-[11px] font-medium"
-                        style={{ background: 'rgba(255,107,26,0.12)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.2)' }}>
+                        style={{ background: 'rgba(0,87,184,0.12)', color: '#0057b8', border: '1px solid rgba(0,87,184,0.2)' }}>
                         {t}
                       </span>
                     ))}
@@ -545,15 +545,15 @@ export function CourseForm({ course }: CourseFormProps) {
             {(isEditing ? TABS_EDIT : TABS_BASE).map((tab) => (
               <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
                 className="flex h-1.5 rounded-full transition-all"
-                style={{ width: activeTab === tab.id ? 16 : 6, background: activeTab === tab.id ? '#FF6B1A' : 'rgba(255,255,255,0.15)' }} />
+                style={{ width: activeTab === tab.id ? 16 : 6, background: activeTab === tab.id ? '#0057b8' : 'rgba(255,255,255,0.15)' }} />
             ))}
           </div>
 
           <motion.button type="submit" disabled={isSubmitting || savedSuccess}
-            whileHover={{ y: -1, boxShadow: '0 10px 28px rgba(255,107,26,0.4)' }}
+            whileHover={{ y: -1, boxShadow: '0 10px 28px rgba(0,87,184,0.4)' }}
             whileTap={{ scale: 0.97 }}
             className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-70"
-            style={{ background: savedSuccess ? 'linear-gradient(135deg, #22C55E, #16A34A)' : 'linear-gradient(135deg, #FF6B1A, #FF8C42)', boxShadow: '0 4px 20px rgba(255,107,26,0.28)' }}>
+            style={{ background: savedSuccess ? 'linear-gradient(135deg, #22C55E, #16A34A)' : 'linear-gradient(135deg, #0057b8, #003d80)', boxShadow: '0 4px 20px rgba(0,87,184,0.28)' }}>
             {isSubmitting
               ? <><Loader2 size={14} className="animate-spin" />{isEditing ? 'Saving…' : 'Creating…'}</>
               : savedSuccess

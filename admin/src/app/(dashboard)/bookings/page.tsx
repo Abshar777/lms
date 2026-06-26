@@ -50,7 +50,7 @@ function FilterSelect({
         className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-1.5 text-xs font-medium outline-none transition-colors"
         style={{
           background: open ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.05)',
-          border: `1px solid ${open ? 'rgba(255,107,26,0.40)' : 'rgba(255,255,255,0.09)'}`,
+          border: `1px solid ${open ? 'rgba(0,87,184,0.40)' : 'rgba(255,255,255,0.09)'}`,
           color: value ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.45)',
         }}
       >
@@ -76,13 +76,13 @@ function FilterSelect({
                 onClick={() => { onChange(opt.value); setOpen(false) }}
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors"
                 style={{
-                  background: opt.value === value ? 'rgba(255,107,26,0.12)' : 'transparent',
-                  color: opt.value === value ? '#FF6B1A' : 'rgba(255,255,255,0.75)',
+                  background: opt.value === value ? 'rgba(0,87,184,0.12)' : 'transparent',
+                  color: opt.value === value ? '#0057b8' : 'rgba(255,255,255,0.75)',
                 }}
                 onMouseEnter={e => { if (opt.value !== value) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)' }}
                 onMouseLeave={e => { if (opt.value !== value) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
               >
-                {opt.value === value && <Check size={10} className="flex-shrink-0" style={{ color: '#FF6B1A' }} />}
+                {opt.value === value && <Check size={10} className="flex-shrink-0" style={{ color: '#0057b8' }} />}
                 {opt.value !== value && <span className="w-[10px] flex-shrink-0" />}
                 <span className="truncate">{opt.label}</span>
               </button>
@@ -160,7 +160,7 @@ function Avatar({ name, url, size = 28 }: { name: string; url?: string; size?: n
   if (url) return <img src={url} alt={name} className="rounded-full object-cover flex-shrink-0" style={{ width: size, height: size }} />
   return (
     <div className="flex items-center justify-center rounded-full flex-shrink-0 font-bold text-white"
-      style={{ width: size, height: size, fontSize: size * 0.38, background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+      style={{ width: size, height: size, fontSize: size * 0.38, background: 'linear-gradient(135deg,#0057b8,#003d80)' }}>
       {initials}
     </div>
   )
@@ -241,8 +241,8 @@ function BookingRow({ booking, index }: { booking: ClassBooking; index: number }
   const course     = lc.courseId
   const lang       = lc.language
   const isOffline  = lc.isOnline === false
-  const accentColor = isOffline ? '#10B981' : '#FF6B1A'
-  const accentBg    = isOffline ? 'rgba(16,185,129,0.06)' : 'rgba(255,107,26,0.04)'
+  const accentColor = isOffline ? '#10B981' : '#0057b8'
+  const accentBg    = isOffline ? 'rgba(16,185,129,0.06)' : 'rgba(0,87,184,0.04)'
 
   return (
     <motion.tr
@@ -251,7 +251,7 @@ function BookingRow({ booking, index }: { booking: ClassBooking; index: number }
       transition={{ delay: index * 0.018, duration: 0.14 }}
       className="group border-b last:border-b-0 transition-colors"
       style={{ borderColor: 'rgba(255,255,255,0.05)' }}
-      onMouseEnter={e => (e.currentTarget.style.background = isOffline ? 'rgba(16,185,129,0.04)' : 'rgba(255,107,26,0.03)')}
+      onMouseEnter={e => (e.currentTarget.style.background = isOffline ? 'rgba(16,185,129,0.04)' : 'rgba(0,87,184,0.03)')}
       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
     >
       {/* Student */}
@@ -299,7 +299,7 @@ function BookingRow({ booking, index }: { booking: ClassBooking; index: number }
       <td className="py-3 px-3">
         {course ? (
           <div className="flex items-center gap-1.5 min-w-0">
-            <BookOpen size={11} className="flex-shrink-0" style={{ color: '#FF6B1A' }} />
+            <BookOpen size={11} className="flex-shrink-0" style={{ color: '#0057b8' }} />
             <span className="text-[12px] truncate" style={{ color: 'rgba(255,255,255,0.70)' }}>{course.title}</span>
           </div>
         ) : <span style={{ color: 'rgba(255,255,255,0.18)' }}>—</span>}
@@ -564,8 +564,8 @@ export default function BookingsPage() {
                 onClick={() => setDateRange(p.from, p.to)}
                 className="rounded-xl px-2.5 py-1 text-[11px] font-medium transition-colors"
                 style={{
-                  background: toYMD(dateFrom) === p.from && toYMD(dateTo) === p.to ? 'rgba(255,107,26,0.18)' : 'transparent',
-                  color:      toYMD(dateFrom) === p.from && toYMD(dateTo) === p.to ? '#FF6B1A' : 'rgba(255,255,255,0.45)',
+                  background: toYMD(dateFrom) === p.from && toYMD(dateTo) === p.to ? 'rgba(0,87,184,0.18)' : 'transparent',
+                  color:      toYMD(dateFrom) === p.from && toYMD(dateTo) === p.to ? '#0057b8' : 'rgba(255,255,255,0.45)',
                 }}>
                 {p.label}
               </button>
@@ -590,7 +590,7 @@ export default function BookingsPage() {
               </button>
               {!isToday && (
                 <button type="button" onClick={goToday}
-                  className="px-2 text-xs font-semibold" style={{ color: '#FF6B1A' }}>
+                  className="px-2 text-xs font-semibold" style={{ color: '#0057b8' }}>
                   Today
                 </button>
               )}
@@ -650,7 +650,7 @@ export default function BookingsPage() {
                   ? k === 'offline'
                     ? { background: 'rgba(16,185,129,0.18)', color: '#10B981' }
                     : k === 'online'
-                    ? { background: 'rgba(255,107,26,0.18)', color: '#FF6B1A' }
+                    ? { background: 'rgba(0,87,184,0.18)', color: '#0057b8' }
                     : { background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.85)' }
                   : { background: 'transparent', color: 'rgba(255,255,255,0.35)' }
                 }>
@@ -663,15 +663,15 @@ export default function BookingsPage() {
           <button type="button" onClick={() => setShowFilters(f => !f)}
             className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition-colors"
             style={{
-              background: showFilters ? 'rgba(255,107,26,0.12)' : 'rgba(255,255,255,0.05)',
-              border:     `1px solid ${showFilters ? 'rgba(255,107,26,0.30)' : 'rgba(255,255,255,0.09)'}`,
-              color:      showFilters ? '#FF6B1A' : 'rgba(255,255,255,0.55)',
+              background: showFilters ? 'rgba(0,87,184,0.12)' : 'rgba(255,255,255,0.05)',
+              border:     `1px solid ${showFilters ? 'rgba(0,87,184,0.30)' : 'rgba(255,255,255,0.09)'}`,
+              color:      showFilters ? '#0057b8' : 'rgba(255,255,255,0.55)',
             }}>
             <Filter size={12} />
             Filters
             {(courseFilter || instructorFilter || langFilter) && (
               <span className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold"
-                style={{ background: '#FF6B1A', color: 'white' }}>
+                style={{ background: '#0057b8', color: 'white' }}>
                 {[courseFilter, instructorFilter, langFilter].filter(Boolean).length}
               </span>
             )}
@@ -746,7 +746,7 @@ export default function BookingsPage() {
       {isLoading && (
         <div className="flex items-center justify-center gap-2 py-24 text-sm"
           style={{ color: 'rgba(255,255,255,0.35)' }}>
-          <Loader2 size={20} className="animate-spin" style={{ color: '#FF6B1A' }} />
+          <Loader2 size={20} className="animate-spin" style={{ color: '#0057b8' }} />
           Loading bookings…
         </div>
       )}
@@ -758,8 +758,8 @@ export default function BookingsPage() {
           className="flex flex-col items-center gap-3 rounded-3xl py-20 text-center"
           style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl"
-            style={{ background: 'rgba(255,107,26,0.10)', border: '1px solid rgba(255,107,26,0.20)' }}>
-            <Calendar size={24} style={{ color: '#FF6B1A' }} />
+            style={{ background: 'rgba(0,87,184,0.10)', border: '1px solid rgba(0,87,184,0.20)' }}>
+            <Calendar size={24} style={{ color: '#0057b8' }} />
           </div>
           <p className="font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
             No bookings found
@@ -772,7 +772,7 @@ export default function BookingsPage() {
           {hasFilters && (
             <button type="button" onClick={clearFilters}
               className="mt-1 rounded-xl px-4 py-2 text-xs font-semibold transition-colors hover:brightness-110"
-              style={{ background: 'rgba(255,107,26,0.12)', border: '1px solid rgba(255,107,26,0.25)', color: '#FF6B1A' }}>
+              style={{ background: 'rgba(0,87,184,0.12)', border: '1px solid rgba(0,87,184,0.25)', color: '#0057b8' }}>
               Clear filters
             </button>
           )}
@@ -793,8 +793,8 @@ export default function BookingsPage() {
                 <div className="mb-3 flex items-center gap-3">
                   <div className="flex items-center gap-2">
                     <div className="flex h-7 w-7 items-center justify-center rounded-xl"
-                      style={{ background: 'rgba(255,107,26,0.12)' }}>
-                      <Calendar size={13} style={{ color: '#FF6B1A' }} />
+                      style={{ background: 'rgba(0,87,184,0.12)' }}>
+                      <Calendar size={13} style={{ color: '#0057b8' }} />
                     </div>
                     <h2 className="text-sm font-bold text-white"
                       style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
@@ -802,7 +802,7 @@ export default function BookingsPage() {
                     </h2>
                   </div>
                   <span className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-                    style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A' }}>
+                    style={{ background: 'rgba(0,87,184,0.10)', color: '#0057b8' }}>
                     {group.rows.length} booking{group.rows.length !== 1 ? 's' : ''}
                   </span>
                   <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />

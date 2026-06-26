@@ -66,7 +66,7 @@ export function AssignmentEditor({ lessonId, onClose }: Props) {
           </button>
           <button onClick={handleSave} disabled={upsert.isPending}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60"
-            style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+            style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}>
             {upsert.isPending ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
             Save
           </button>

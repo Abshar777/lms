@@ -16,7 +16,7 @@ interface StatCardProps {
   suffix?:    string
 }
 
-export function StatCard({ label, value, change, changeLabel, icon: Icon, color = '#FF6B1A', delay = 0, prefix = '', suffix = '' }: StatCardProps) {
+export function StatCard({ label, value, change, changeLabel, icon: Icon, color = '#0057b8', delay = 0, prefix = '', suffix = '' }: StatCardProps) {
   const up      = change != null && change > 0
   const down    = change != null && change < 0
   const neutral = change == null || change === 0

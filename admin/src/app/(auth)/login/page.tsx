@@ -2,7 +2,6 @@
 
 import { Suspense } from 'react'
 import { motion } from 'framer-motion'
-import { GraduationCap } from 'lucide-react'
 import { AdminLoginForm } from '@/components/auth/AdminLoginForm'
 
 export default function AdminLoginPage() {
@@ -13,7 +12,7 @@ export default function AdminLoginPage() {
     >
       {/* ── Animated gradient orbs ─────────────────── */}
       <motion.div className="pointer-events-none absolute rounded-full"
-        style={{ width: 600, height: 600, top: '-20%', right: '-15%', background: 'radial-gradient(circle, rgba(255,107,26,0.18) 0%, transparent 70%)', filter: 'blur(60px)' }}
+        style={{ width: 600, height: 600, top: '-20%', right: '-15%', background: 'radial-gradient(circle, rgba(0,87,184,0.18) 0%, transparent 70%)', filter: 'blur(60px)' }}
         animate={{ scale: [1, 1.15, 1], x: [0, 24, 0], y: [0, -20, 0] }}
         transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }} />
       <motion.div className="pointer-events-none absolute rounded-full"
@@ -54,16 +53,9 @@ export default function AdminLoginPage() {
           transition={{ delay: 0.1 }}
           className="mb-8 flex items-center gap-2.5"
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl"
-            style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
-            <GraduationCap size={18} color="#fff" strokeWidth={2} />
-          </div>
-          <span className="text-white tracking-tight"
-            style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontWeight: 700, fontSize: 18 }}>
-            LearnOS
-          </span>
+          <img src="/logo.png" alt="Delta" style={{ height: 64, width: 'auto', objectFit: 'contain' }} />
           <span className="ml-auto rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest"
-            style={{ background: 'rgba(255,107,26,0.15)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.25)' }}>
+            style={{ background: 'rgba(0,87,184,0.15)', color: '#0057b8', border: '1px solid rgba(0,87,184,0.25)' }}>
             Admin
           </span>
         </motion.div>
@@ -75,7 +67,7 @@ export default function AdminLoginPage() {
 
       {/* ── Footer ─────────────────────────────────── */}
       <p className="absolute bottom-6 text-center text-xs" style={{ color: 'rgba(255,255,255,0.15)' }}>
-        © {new Date().getFullYear()} LearnOS · Admin Portal
+        © {new Date().getFullYear()} Delta Institutions · Admin Portal
       </p>
     </div>
   )

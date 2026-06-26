@@ -36,7 +36,7 @@ function statusColor(s: LiveClass['status']): { bg: string; border: string; text
     case 'live':      return { bg: 'rgba(239,68,68,0.13)',   border: 'rgba(239,68,68,0.40)',   text: '#EF4444',               dot: '#EF4444' }
     case 'ended':     return { bg: 'rgba(34,197,94,0.10)',   border: 'rgba(34,197,94,0.30)',   text: '#22C55E',               dot: '#22C55E' }
     case 'cancelled': return { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.10)', text: 'rgba(255,255,255,0.35)', dot: 'rgba(255,255,255,0.3)' }
-    default:          return { bg: 'rgba(255,107,26,0.12)',  border: 'rgba(255,107,26,0.35)',  text: '#FF6B1A',               dot: '#FF6B1A' }
+    default:          return { bg: 'rgba(0,87,184,0.12)',  border: 'rgba(0,87,184,0.35)',  text: '#0057b8',               dot: '#0057b8' }
   }
 }
 
@@ -89,7 +89,7 @@ function EventPopover({
               </span>
             ) : (
               <span className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
-                style={{ background: 'rgba(255,107,26,0.12)', color: '#FF6B1A' }}>
+                style={{ background: 'rgba(0,87,184,0.12)', color: '#0057b8' }}>
                 {live.type === 'internal' ? 'In-App' : 'External'}
               </span>
             )}
@@ -347,7 +347,7 @@ function QuickCreateModal({
               <button type="button" onClick={() => setType('internal')}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all"
                 style={type === 'internal'
-                  ? { background: 'rgba(255,107,26,0.20)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.35)' }
+                  ? { background: 'rgba(0,87,184,0.20)', color: '#0057b8', border: '1px solid rgba(0,87,184,0.35)' }
                   : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <Radio size={11} />In-App Stream
               </button>
@@ -393,7 +393,7 @@ function QuickCreateModal({
 
           <button type="submit" disabled={createMutation.isPending}
             className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-60 transition-all hover:brightness-110"
-            style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+            style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)' }}>
             {createMutation.isPending
               ? <><Loader2 size={14} className="animate-spin" />Scheduling…</>
               : <><Plus size={14} />Schedule Session</>}
@@ -486,8 +486,8 @@ export default function TimetablePage() {
       <div className="mb-4 flex flex-shrink-0 flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl"
-            style={{ background: 'rgba(255,107,26,0.15)', border: '1px solid rgba(255,107,26,0.25)' }}>
-            <CalendarDays size={16} style={{ color: '#FF6B1A' }} />
+            style={{ background: 'rgba(0,87,184,0.15)', border: '1px solid rgba(0,87,184,0.25)' }}>
+            <CalendarDays size={16} style={{ color: '#0057b8' }} />
           </div>
           <div>
             <h1 className="text-lg font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
@@ -523,7 +523,7 @@ export default function TimetablePage() {
               size="sm"
               onClick={goToToday}
               className="h-8 px-3 text-xs font-semibold hover:!bg-white/10 rounded-none"
-              style={{ color: isThisMonth ? '#FF6B1A' : 'rgba(255,255,255,0.6)' }}
+              style={{ color: isThisMonth ? '#0057b8' : 'rgba(255,255,255,0.6)' }}
             >
               Today
             </Button>
@@ -590,7 +590,7 @@ export default function TimetablePage() {
                   style={{
                     borderRight: di < 6 ? BORDER : 'none',
                     minHeight:   120,
-                    background:  isToday ? 'rgba(255,107,26,0.04)' : 'transparent',
+                    background:  isToday ? 'rgba(0,87,184,0.04)' : 'transparent',
                     opacity:     inMonth ? 1 : 0.30,
                   }}>
 
@@ -599,7 +599,7 @@ export default function TimetablePage() {
                     <span
                       className="inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold leading-none"
                       style={isToday
-                        ? { background: '#FF6B1A', color: '#fff' }
+                        ? { background: '#0057b8', color: '#fff' }
                         : { color: inMonth ? 'rgba(255,255,255,0.60)' : 'rgba(255,255,255,0.20)' }}>
                       {day.getDate()}
                     </span>

@@ -115,7 +115,7 @@ function FilterDropdown({ value, options, onChange }: {
               {options.map(o => (
                 <button key={o.value} onClick={() => { onChange(o.value); setOpen(false) }}
                   className="w-full px-3 py-2 text-left text-sm transition-colors hover:bg-white/05"
-                  style={{ color: o.value === value ? '#FF6B1A' : 'rgba(255,255,255,0.75)' }}>
+                  style={{ color: o.value === value ? '#0057b8' : 'rgba(255,255,255,0.75)' }}>
                   {o.label}
                 </button>
               ))}
@@ -183,7 +183,7 @@ export function AdminUsersPanel() {
             placeholder="Search users…"
             className="w-full rounded-xl py-2 pl-9 pr-4 text-sm text-white outline-none transition-all placeholder:text-white/25"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
-            onFocus={e => { e.currentTarget.style.border = '1px solid rgba(255,107,26,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.10)' }}
+            onFocus={e => { e.currentTarget.style.border = '1px solid rgba(0,87,184,0.5)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,87,184,0.10)' }}
             onBlur={e => { e.currentTarget.style.border = '1px solid rgba(255,255,255,0.08)'; e.currentTarget.style.boxShadow = 'none' }}
           />
         </div>
@@ -203,7 +203,7 @@ export function AdminUsersPanel() {
           onClick={() => setAddOpen(true)}
           whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
           className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white"
-          style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)', boxShadow: '0 4px 14px rgba(255,107,26,0.28)' }}>
+          style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)', boxShadow: '0 4px 14px rgba(0,87,184,0.28)' }}>
           <UserPlus size={14} />New User
         </motion.button>
       </div>
@@ -347,10 +347,10 @@ function UserRow({ user, index, canManage, isSuperAdmin, onView, onEdit }: {
       <td className="px-4 py-3.5">
         <div className="flex items-center gap-3">
           <div className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full"
-            style={{ background: 'rgba(255,107,26,0.15)', border: '1px solid rgba(255,107,26,0.25)' }}>
+            style={{ background: 'rgba(0,87,184,0.15)', border: '1px solid rgba(0,87,184,0.25)' }}>
             {user.avatarUrl
               ? <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
-              : <span className="text-xs font-bold" style={{ color: '#FF6B1A' }}>{user.name[0]?.toUpperCase() ?? '?'}</span>}
+              : <span className="text-xs font-bold" style={{ color: '#0057b8' }}>{user.name[0]?.toUpperCase() ?? '?'}</span>}
             {isImpersonating && (
               <div className="absolute inset-0 flex items-center justify-center rounded-full"
                 style={{ background: 'rgba(250,204,21,0.3)' }}>

@@ -48,8 +48,8 @@ export function EnrollmentsChart() {
       <div className="mb-3 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-1.5">
-            <TrendingUp size={13} style={{ color: '#FF6B1A' }} />
-            <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#FF6B1A' }}>
+            <TrendingUp size={13} style={{ color: '#0057b8' }} />
+            <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#0057b8' }}>
               Last 30 days
             </span>
           </div>
@@ -75,17 +75,17 @@ export function EnrollmentsChart() {
         <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} className="w-full h-auto" preserveAspectRatio="none">
           <defs>
             <linearGradient id="ec-grad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%"  stopColor="#FF6B1A" stopOpacity="0.5" />
-              <stop offset="100%" stopColor="#FF6B1A" stopOpacity="0" />
+              <stop offset="0%"  stopColor="#0057b8" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="#0057b8" stopOpacity="0" />
             </linearGradient>
           </defs>
           <path d={area} fill="url(#ec-grad)" />
-          <path d={path} fill="none" stroke="#FF6B1A" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+          <path d={path} fill="none" stroke="#0057b8" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
           {/* Dot for the most recent day */}
           {points.length > 0 && (() => {
             const p = points[points.length - 1]
             if (!p) return null
-            return <circle cx={p.x} cy={p.y} r={2.5} fill="#FF6B1A" />
+            return <circle cx={p.x} cy={p.y} r={2.5} fill="#0057b8" />
           })()}
         </svg>
       )}

@@ -61,9 +61,9 @@ function DarkSelect({ value, onChange, options, placeholder }: {
             {options.map(o => (
               <button key={o.value} type="button" onClick={() => { onChange(o.value); setOpen(false) }}
                 className="flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors hover:bg-white/05"
-                style={{ color: o.value === value ? '#FF6B1A' : 'rgba(255,255,255,0.8)' }}>
+                style={{ color: o.value === value ? '#0057b8' : 'rgba(255,255,255,0.8)' }}>
                 {o.label}
-                {o.value === value && <Check size={12} style={{ color: '#FF6B1A' }} />}
+                {o.value === value && <Check size={12} style={{ color: '#0057b8' }} />}
               </button>
             ))}
           </motion.div>

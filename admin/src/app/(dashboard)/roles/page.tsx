@@ -121,11 +121,11 @@ function PermissionMatrix({ permissions, onChange, readOnly }: MatrixProps) {
                     <button onClick={() => toggleCol(col.key, !colFull(col.key))}
                       className="flex h-5 w-5 items-center justify-center rounded transition-colors"
                       style={{
-                        background: colFull(col.key) ? 'rgba(255,107,26,0.2)' : 'rgba(255,255,255,0.06)',
-                        border: `1px solid ${colFull(col.key) ? 'rgba(255,107,26,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                        background: colFull(col.key) ? 'rgba(0,87,184,0.2)' : 'rgba(255,255,255,0.06)',
+                        border: `1px solid ${colFull(col.key) ? 'rgba(0,87,184,0.5)' : 'rgba(255,255,255,0.1)'}`,
                       }}
                       title={`Toggle all ${col.label}`}>
-                      <Check size={10} style={{ color: colFull(col.key) ? '#FF6B1A' : 'rgba(255,255,255,0.2)' }} />
+                      <Check size={10} style={{ color: colFull(col.key) ? '#0057b8' : 'rgba(255,255,255,0.2)' }} />
                     </button>
                   )}
                 </div>
@@ -147,11 +147,11 @@ function PermissionMatrix({ permissions, onChange, readOnly }: MatrixProps) {
                       <button onClick={() => toggleRow(resource, !rowFull(resource))}
                         className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded transition-colors"
                         style={{
-                          background: rowFull(resource) ? 'rgba(255,107,26,0.2)' : 'rgba(255,255,255,0.06)',
-                          border: `1px solid ${rowFull(resource) ? 'rgba(255,107,26,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                          background: rowFull(resource) ? 'rgba(0,87,184,0.2)' : 'rgba(255,255,255,0.06)',
+                          border: `1px solid ${rowFull(resource) ? 'rgba(0,87,184,0.5)' : 'rgba(255,255,255,0.1)'}`,
                         }}
                         title="Toggle all for this resource">
-                        <Check size={10} style={{ color: rowFull(resource) ? '#FF6B1A' : 'rgba(255,255,255,0.2)' }} />
+                        <Check size={10} style={{ color: rowFull(resource) ? '#0057b8' : 'rgba(255,255,255,0.2)' }} />
                       </button>
                     )}
                     <span className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.7)' }}>
@@ -173,12 +173,12 @@ function PermissionMatrix({ permissions, onChange, readOnly }: MatrixProps) {
                         <button onClick={() => toggle(resource, col.key)} disabled={readOnly}
                           className="inline-flex h-6 w-6 items-center justify-center rounded transition-all"
                           style={{
-                            background: checked ? 'rgba(255,107,26,0.18)' : 'rgba(255,255,255,0.04)',
-                            border: `1px solid ${checked ? 'rgba(255,107,26,0.45)' : 'rgba(255,255,255,0.1)'}`,
+                            background: checked ? 'rgba(0,87,184,0.18)' : 'rgba(255,255,255,0.04)',
+                            border: `1px solid ${checked ? 'rgba(0,87,184,0.45)' : 'rgba(255,255,255,0.1)'}`,
                             cursor: readOnly ? 'default' : 'pointer',
                           }}>
                           <Check size={11}
-                            style={{ color: checked ? '#FF6B1A' : 'rgba(255,255,255,0.15)', opacity: checked ? 1 : 0.4 }} />
+                            style={{ color: checked ? '#0057b8' : 'rgba(255,255,255,0.15)', opacity: checked ? 1 : 0.4 }} />
                         </button>
                       )}
                     </td>
@@ -208,14 +208,14 @@ function RoleItem({ role, selected, onSelect, onDelete, isDeleting }: RoleItemPr
     <div onClick={onSelect}
       className="group flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition-all"
       style={{
-        background: selected ? 'rgba(255,107,26,0.10)' : 'rgba(255,255,255,0.025)',
-        border: `1px solid ${selected ? 'rgba(255,107,26,0.30)' : 'rgba(255,255,255,0.07)'}`,
+        background: selected ? 'rgba(0,87,184,0.10)' : 'rgba(255,255,255,0.025)',
+        border: `1px solid ${selected ? 'rgba(0,87,184,0.30)' : 'rgba(255,255,255,0.07)'}`,
       }}>
       <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg"
-        style={{ background: selected ? 'rgba(255,107,26,0.18)' : 'rgba(255,255,255,0.05)' }}>
+        style={{ background: selected ? 'rgba(0,87,184,0.18)' : 'rgba(255,255,255,0.05)' }}>
         {role.isSystem
-          ? <Lock size={14} style={{ color: selected ? '#FF6B1A' : 'rgba(255,255,255,0.4)' }} />
-          : <ShieldCheck size={14} style={{ color: selected ? '#FF6B1A' : 'rgba(255,255,255,0.4)' }} />}
+          ? <Lock size={14} style={{ color: selected ? '#0057b8' : 'rgba(255,255,255,0.4)' }} />
+          : <ShieldCheck size={14} style={{ color: selected ? '#0057b8' : 'rgba(255,255,255,0.4)' }} />}
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium" style={{ color: selected ? '#fff' : 'rgba(255,255,255,0.75)' }}>
@@ -237,7 +237,7 @@ function RoleItem({ role, selected, onSelect, onDelete, isDeleting }: RoleItemPr
         </button>
       )}
       <ChevronRight size={13} className="flex-shrink-0 transition-transform group-hover:translate-x-0.5"
-        style={{ color: selected ? '#FF6B1A' : 'rgba(255,255,255,0.2)' }} />
+        style={{ color: selected ? '#0057b8' : 'rgba(255,255,255,0.2)' }} />
     </div>
   )
 }
@@ -276,7 +276,7 @@ function RoleSelect({ userId, currentId, roles, disabled }: RoleSelectProps) {
         }}>
         {assignMutation.isPending
           ? <Loader2 size={11} className="animate-spin" />
-          : <ShieldCheck size={11} style={{ color: currentRole ? '#FF6B1A' : 'rgba(255,255,255,0.2)' }} />}
+          : <ShieldCheck size={11} style={{ color: currentRole ? '#0057b8' : 'rgba(255,255,255,0.2)' }} />}
         <span className="flex-1 text-left truncate">
           {assignMutation.isPending ? 'Saving…' : (currentRole?.name ?? 'No custom role')}
         </span>
@@ -297,7 +297,7 @@ function RoleSelect({ userId, currentId, roles, disabled }: RoleSelectProps) {
               {/* No role option */}
               <button onClick={() => assign(null)}
                 className="flex w-full items-center gap-2 px-3 py-2 text-xs transition-colors hover:bg-white/5"
-                style={{ color: currentId == null ? '#FF6B1A' : 'rgba(255,255,255,0.5)' }}>
+                style={{ color: currentId == null ? '#0057b8' : 'rgba(255,255,255,0.5)' }}>
                 <X size={11} />
                 <span>No custom role</span>
                 {currentId == null && <Check size={11} className="ml-auto" />}
@@ -307,7 +307,7 @@ function RoleSelect({ userId, currentId, roles, disabled }: RoleSelectProps) {
               {roles.map(role => (
                 <button key={role.id} onClick={() => assign(role.id)}
                   className="flex w-full items-center gap-2 px-3 py-2 text-xs transition-colors hover:bg-white/5"
-                  style={{ color: currentId === role.id ? '#FF6B1A' : 'rgba(255,255,255,0.7)' }}>
+                  style={{ color: currentId === role.id ? '#0057b8' : 'rgba(255,255,255,0.7)' }}>
                   {role.isSystem
                     ? <Lock size={11} style={{ flexShrink: 0, color: 'rgba(255,255,255,0.3)' }} />
                     : <ShieldCheck size={11} style={{ flexShrink: 0, color: 'rgba(255,255,255,0.3)' }} />}
@@ -379,9 +379,9 @@ function UsersTab({ roles }: { roles: Role[] }) {
             <button key={v} onClick={() => setRoleFilter(v)}
               className="rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-colors"
               style={{
-                background: roleFilter === v ? 'rgba(255,107,26,0.15)' : 'rgba(255,255,255,0.05)',
-                border: `1px solid ${roleFilter === v ? 'rgba(255,107,26,0.35)' : 'rgba(255,255,255,0.08)'}`,
-                color: roleFilter === v ? '#FF6B1A' : 'rgba(255,255,255,0.5)',
+                background: roleFilter === v ? 'rgba(0,87,184,0.15)' : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${roleFilter === v ? 'rgba(0,87,184,0.35)' : 'rgba(255,255,255,0.08)'}`,
+                color: roleFilter === v ? '#0057b8' : 'rgba(255,255,255,0.5)',
               }}>
               {v === 'all' ? 'All' : v === 'instructor' ? 'Instructors' : 'Admins'}
             </button>
@@ -392,7 +392,7 @@ function UsersTab({ roles }: { roles: Role[] }) {
       {/* Table */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 size={22} className="animate-spin" style={{ color: '#FF6B1A' }} />
+          <Loader2 size={22} className="animate-spin" style={{ color: '#0057b8' }} />
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 gap-2">
@@ -426,7 +426,7 @@ function UsersTab({ roles }: { roles: Role[] }) {
                       className="h-8 w-8 flex-shrink-0 rounded-full object-cover" />
                   ) : (
                     <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                      style={{ background: 'linear-gradient(135deg, #FF6B1A40, #FF8C4240)', border: '1px solid rgba(255,107,26,0.3)' }}>
+                      style={{ background: 'linear-gradient(135deg, #0057b840, #003d8040)', border: '1px solid rgba(0,87,184,0.3)' }}>
                       {initial}
                     </div>
                   )}
@@ -565,7 +565,7 @@ export default function RolesPage() {
           tab === 'roles' && (
             <button onClick={() => setShowCreate(v => !v)}
               className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90"
-              style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)', boxShadow: '0 4px 16px rgba(255,107,26,0.28)' }}>
+              style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)', boxShadow: '0 4px 16px rgba(0,87,184,0.28)' }}>
               <Plus size={14} />{showCreate ? 'Cancel' : 'New role'}
             </button>
           )
@@ -584,13 +584,13 @@ export default function RolesPage() {
           return (
             <button key={t.key} onClick={() => setTab(t.key)}
               className="relative flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors"
-              style={{ color: active ? '#FF6B1A' : 'rgba(255,255,255,0.4)' }}>
+              style={{ color: active ? '#0057b8' : 'rgba(255,255,255,0.4)' }}>
               <Icon size={14} />
               {t.label}
               {active && (
                 <motion.span layoutId="tab-indicator"
                   className="absolute bottom-0 left-0 right-0 h-[2px] rounded-t-full"
-                  style={{ background: '#FF6B1A' }} />
+                  style={{ background: '#0057b8' }} />
               )}
             </button>
           )
@@ -623,7 +623,7 @@ export default function RolesPage() {
               )}
               <button type="submit" disabled={createMutation.isPending}
                 className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+                style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}>
                 {createMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
                 Create role
               </button>
@@ -637,7 +637,7 @@ export default function RolesPage() {
         <UsersTab roles={roles} />
       ) : isLoading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 size={24} className="animate-spin" style={{ color: '#FF6B1A' }} />
+          <Loader2 size={24} className="animate-spin" style={{ color: '#0057b8' }} />
         </div>
       ) : (
         <div className="flex gap-5 items-start">
@@ -672,10 +672,10 @@ export default function RolesPage() {
                 {/* Role header */}
                 <div className="mb-5 flex items-start gap-3">
                   <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
-                    style={{ background: 'rgba(255,107,26,0.12)', border: '1px solid rgba(255,107,26,0.2)' }}>
+                    style={{ background: 'rgba(0,87,184,0.12)', border: '1px solid rgba(0,87,184,0.2)' }}>
                     {selectedRole.isSystem
-                      ? <Lock size={16} style={{ color: '#FF6B1A' }} />
-                      : <ShieldCheck size={16} style={{ color: '#FF6B1A' }} />}
+                      ? <Lock size={16} style={{ color: '#0057b8' }} />
+                      : <ShieldCheck size={16} style={{ color: '#0057b8' }} />}
                   </div>
 
                   {editingRole ? (
@@ -753,8 +753,8 @@ export default function RolesPage() {
                       disabled={!draftDirty || permsMutation.isPending}
                       className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                       style={{
-                        background: draftDirty ? 'linear-gradient(135deg, #FF6B1A, #FF8C42)' : 'rgba(255,255,255,0.08)',
-                        boxShadow: draftDirty ? '0 4px 16px rgba(255,107,26,0.28)' : 'none',
+                        background: draftDirty ? 'linear-gradient(135deg, #0057b8, #003d80)' : 'rgba(255,255,255,0.08)',
+                        boxShadow: draftDirty ? '0 4px 16px rgba(0,87,184,0.28)' : 'none',
                       }}>
                       {permsMutation.isPending ? <Loader2 size={14} className="animate-spin" />
                         : saveOk ? <Check size={14} /> : <Save size={14} />}

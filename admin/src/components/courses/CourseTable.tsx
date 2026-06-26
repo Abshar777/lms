@@ -148,8 +148,8 @@ function CourseCard({ course, index, checked, onToggle, onDelete }: {
       className="group relative flex flex-col overflow-hidden rounded-2xl transition-all duration-300 hover:-translate-y-0.5"
       style={{
         background: '#13151F',
-        border: checked ? '1px solid rgba(255,107,26,0.5)' : '1px solid rgba(255,255,255,0.07)',
-        boxShadow: checked ? '0 0 0 3px rgba(255,107,26,0.12)' : 'none',
+        border: checked ? '1px solid rgba(0,87,184,0.5)' : '1px solid rgba(255,255,255,0.07)',
+        boxShadow: checked ? '0 0 0 3px rgba(0,87,184,0.12)' : 'none',
       }}>
 
       {/* Thumbnail */}
@@ -160,7 +160,7 @@ function CourseCard({ course, index, checked, onToggle, onDelete }: {
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(255,107,26,0.05), rgba(255,255,255,0.02))' }}>
+          <div className="flex h-full w-full items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(0,87,184,0.05), rgba(255,255,255,0.02))' }}>
             <BookOpen size={28} style={{ color: 'rgba(255,255,255,0.1)' }} />
           </div>
         )}
@@ -182,7 +182,7 @@ function CourseCard({ course, index, checked, onToggle, onDelete }: {
           onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
           onMouseLeave={e => { if (!checked) e.currentTarget.style.opacity = '0' }}>
           {checked
-            ? <CheckSquare size={17} style={{ color: '#FF6B1A', filter: 'drop-shadow(0 0 4px rgba(255,107,26,0.6))' }} />
+            ? <CheckSquare size={17} style={{ color: '#0057b8', filter: 'drop-shadow(0 0 4px rgba(0,87,184,0.6))' }} />
             : <Square size={17} className="text-white opacity-80" />}
         </button>
 
@@ -245,7 +245,7 @@ function CourseCard({ course, index, checked, onToggle, onDelete }: {
         {course.instructor && (
           <div className="flex items-center gap-2">
             <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
-              style={{ background: 'rgba(255,107,26,0.18)', color: '#FF6B1A' }}>
+              style={{ background: 'rgba(0,87,184,0.18)', color: '#0057b8' }}>
               {course.instructor.name.charAt(0).toUpperCase()}
             </div>
             <span className="truncate text-[11px]" style={{ color: 'rgba(255,255,255,0.38)' }}>{course.instructor.name}</span>
@@ -290,7 +290,7 @@ function CourseRow({ course, index, checked, onToggle, onDelete }: {
       className="group transition-colors duration-150"
       style={{
         borderBottom: '1px solid rgba(255,255,255,0.05)',
-        background: checked ? 'rgba(255,107,26,0.06)' : 'transparent',
+        background: checked ? 'rgba(0,87,184,0.06)' : 'transparent',
       }}
       onMouseEnter={e => { if (!checked) e.currentTarget.style.background = 'rgba(255,255,255,0.022)' }}
       onMouseLeave={e => { if (!checked) e.currentTarget.style.background = 'transparent' }}>
@@ -299,7 +299,7 @@ function CourseRow({ course, index, checked, onToggle, onDelete }: {
       <td className="px-3 py-3.5 w-10">
         <button onClick={onToggle} className="flex items-center justify-center">
           {checked
-            ? <CheckSquare size={15} style={{ color: '#FF6B1A' }} />
+            ? <CheckSquare size={15} style={{ color: '#0057b8' }} />
             : <Square size={15} style={{ color: 'rgba(255,255,255,0.2)' }}
                 className="opacity-0 group-hover:opacity-100 transition-opacity" />}
         </button>
@@ -328,7 +328,7 @@ function CourseRow({ course, index, checked, onToggle, onDelete }: {
               {course.instructor && (
                 <span className="flex items-center gap-1 text-[10px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
                   <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-bold"
-                    style={{ background: 'rgba(255,107,26,0.15)', color: '#FF6B1A' }}>
+                    style={{ background: 'rgba(0,87,184,0.15)', color: '#0057b8' }}>
                     {course.instructor.name.charAt(0)}
                   </span>
                   {course.instructor.name}
@@ -493,7 +493,7 @@ export function CourseTable() {
     <div>
       {/* ── Stats bar ─────────────────────────────────── */}
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard label="Total Courses"  value={stats?.totalCourses}     icon={BookOpen} color="#FF6B1A" bg="rgba(255,107,26,0.12)"  delay={0}    />
+        <StatCard label="Total Courses"  value={stats?.totalCourses}     icon={BookOpen} color="#0057b8" bg="rgba(0,87,184,0.12)"  delay={0}    />
         <StatCard label="Published"      value={stats?.publishedCourses} icon={Globe}    color="#4ADE80" bg="rgba(74,222,128,0.12)" delay={0.06} />
         <StatCard label="Draft"          value={stats?.draftCourses}     icon={FileEdit} color="#FACC15" bg="rgba(250,204,21,0.12)" delay={0.12} />
         <StatCard label="Total Students" value={stats?.totalStudents}    icon={Users}    color="#60A5FA" bg="rgba(96,165,250,0.12)" delay={0.18} />
@@ -510,7 +510,7 @@ export function CourseTable() {
             placeholder="Search courses…"
             className="w-full rounded-xl py-2 pl-9 pr-4 text-sm text-white outline-none transition-all placeholder:text-white/20"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
-            onFocus={e => { e.currentTarget.style.border = '1px solid rgba(255,107,26,0.45)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.09)' }}
+            onFocus={e => { e.currentTarget.style.border = '1px solid rgba(0,87,184,0.45)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,87,184,0.09)' }}
             onBlur={e => { e.currentTarget.style.border = '1px solid rgba(255,255,255,0.08)'; e.currentTarget.style.boxShadow = 'none' }}
           />
         </div>
@@ -522,7 +522,7 @@ export function CourseTable() {
               <button key={f.value} onClick={() => { setStatus(f.value); setPage(1) }}
                 className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all"
                 style={status === f.value
-                  ? { background: 'rgba(255,107,26,0.18)', color: '#FF6B1A' }
+                  ? { background: 'rgba(0,87,184,0.18)', color: '#0057b8' }
                   : { color: 'rgba(255,255,255,0.38)' }}>
                 {f.label}
               </button>
@@ -535,7 +535,7 @@ export function CourseTable() {
               <button key={p || 'all'} onClick={() => { setProgram(p); setPage(1) }}
                 className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
                 style={program === p
-                  ? { background: 'rgba(255,107,26,0.18)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.4)' }
+                  ? { background: 'rgba(0,87,184,0.18)', color: '#0057b8', border: '1px solid rgba(0,87,184,0.4)' }
                   : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.38)', border: '1px solid rgba(255,255,255,0.07)' }}>
                 {p === '' ? 'All' : PROGRAM_LABELS[p]}
               </button>
@@ -546,12 +546,12 @@ export function CourseTable() {
           <div className="flex rounded-xl p-0.5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
             <button onClick={() => setView('table')} title="Table view"
               className="flex h-7 w-7 items-center justify-center rounded-lg transition-all"
-              style={view === 'table' ? { background: 'rgba(255,107,26,0.18)', color: '#FF6B1A' } : { color: 'rgba(255,255,255,0.35)' }}>
+              style={view === 'table' ? { background: 'rgba(0,87,184,0.18)', color: '#0057b8' } : { color: 'rgba(255,255,255,0.35)' }}>
               <List size={13} />
             </button>
             <button onClick={() => setView('grid')} title="Grid view"
               className="flex h-7 w-7 items-center justify-center rounded-lg transition-all"
-              style={view === 'grid' ? { background: 'rgba(255,107,26,0.18)', color: '#FF6B1A' } : { color: 'rgba(255,255,255,0.35)' }}>
+              style={view === 'grid' ? { background: 'rgba(0,87,184,0.18)', color: '#0057b8' } : { color: 'rgba(255,255,255,0.35)' }}>
               <LayoutGrid size={13} />
             </button>
           </div>
@@ -560,7 +560,7 @@ export function CourseTable() {
           <Link href="/courses/new">
             <motion.button whileHover={{ y: -1, scale: 1.02 }} whileTap={{ scale: 0.97 }}
               className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-white"
-              style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)', boxShadow: '0 4px 14px rgba(255,107,26,0.3)' }}>
+              style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)', boxShadow: '0 4px 14px rgba(0,87,184,0.3)' }}>
               <Plus size={13} /> New Course
             </motion.button>
           </Link>
@@ -580,9 +580,9 @@ export function CourseTable() {
                       <th className="px-3 py-3 w-10">
                         <button onClick={toggleAll} className="flex items-center justify-center" title={allChecked ? 'Deselect all' : 'Select all'}>
                           {allChecked
-                            ? <CheckSquare size={15} style={{ color: '#FF6B1A' }} />
+                            ? <CheckSquare size={15} style={{ color: '#0057b8' }} />
                             : someChecked
-                              ? <CheckSquare size={15} style={{ color: 'rgba(255,107,26,0.4)' }} />
+                              ? <CheckSquare size={15} style={{ color: 'rgba(0,87,184,0.4)' }} />
                               : <Square size={15} style={{ color: 'rgba(255,255,255,0.18)' }} />}
                         </button>
                       </th>
@@ -724,7 +724,7 @@ function Pagination({ page, meta, perPage, onPrev, onNext, onPage }: {
             : <button key={p} onClick={() => onPage(p)}
                 className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-semibold transition-all"
                 style={p === page
-                  ? { background: 'rgba(255,107,26,0.2)', color: '#FF6B1A', boxShadow: '0 0 0 1px rgba(255,107,26,0.3)' }
+                  ? { background: 'rgba(0,87,184,0.2)', color: '#0057b8', boxShadow: '0 0 0 1px rgba(0,87,184,0.3)' }
                   : { color: 'rgba(255,255,255,0.38)' }}>
                 {p}
               </button>
@@ -757,8 +757,8 @@ function EmptyStateInline() {
         animate={{ scale: [1, 1.06, 1] }}
         transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
         className="flex h-14 w-14 items-center justify-center rounded-2xl"
-        style={{ background: 'rgba(255,107,26,0.08)', border: '1px solid rgba(255,107,26,0.15)' }}>
-        <BookOpen size={22} style={{ color: 'rgba(255,107,26,0.5)' }} />
+        style={{ background: 'rgba(0,87,184,0.08)', border: '1px solid rgba(0,87,184,0.15)' }}>
+        <BookOpen size={22} style={{ color: 'rgba(0,87,184,0.5)' }} />
       </motion.div>
       <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.28)' }}>No courses found</p>
       <p className="text-xs" style={{ color: 'rgba(255,255,255,0.15)' }}>Try adjusting your filters or create a new course</p>

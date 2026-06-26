@@ -337,9 +337,9 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
                     <button key={t} type="button" onClick={() => setType(t)}
                       className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all"
                       style={type === t
-                        ? { background: t === 'internal' ? 'rgba(255,107,26,0.20)' : 'rgba(99,102,241,0.20)',
-                            color:      t === 'internal' ? '#FF6B1A' : '#818CF8',
-                            border:     `1px solid ${t === 'internal' ? 'rgba(255,107,26,0.35)' : 'rgba(99,102,241,0.35)'}` }
+                        ? { background: t === 'internal' ? 'rgba(0,87,184,0.20)' : 'rgba(99,102,241,0.20)',
+                            color:      t === 'internal' ? '#0057b8' : '#818CF8',
+                            border:     `1px solid ${t === 'internal' ? 'rgba(0,87,184,0.35)' : 'rgba(99,102,241,0.35)'}` }
                         : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)',
                             border: '1px solid rgba(255,255,255,0.08)' }}>
                       {t === 'internal' ? <Tv2 size={11} /> : <ExternalLink size={11} />}
@@ -502,7 +502,7 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
             </button>
             <button type="submit" disabled={updateMutation.isPending}
               className="flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold text-white disabled:opacity-60 transition-all hover:brightness-110"
-              style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+              style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)' }}>
               {updateMutation.isPending
                 ? <><Loader2 size={14} className="animate-spin" />Saving…</>
                 : 'Save changes'}

@@ -25,7 +25,7 @@ export function PageHeader({ title, subtitle, actions, badge }: PageHeaderProps)
           </h1>
           {badge && (
             <span className="rounded-lg px-2 py-0.5 text-xs font-semibold"
-              style={{ background: `${badge.color ?? '#FF6B1A'}18`, color: badge.color ?? '#FF6B1A', border: `1px solid ${badge.color ?? '#FF6B1A'}28` }}>
+              style={{ background: `${badge.color ?? '#0057b8'}18`, color: badge.color ?? '#0057b8', border: `1px solid ${badge.color ?? '#0057b8'}28` }}>
               {badge.label}
             </span>
           )}

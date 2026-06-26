@@ -286,7 +286,7 @@ export default function StudioPage({ params }: { params: Promise<{ id: string }>
   if (liveLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 size={28} className="animate-spin" style={{ color: '#FF6B1A' }} />
+        <Loader2 size={28} className="animate-spin" style={{ color: '#0057b8' }} />
       </div>
     )
   }
@@ -296,7 +296,7 @@ export default function StudioPage({ params }: { params: Promise<{ id: string }>
       <div className="mx-auto max-w-md py-20 text-center">
         <AlertCircle size={32} className="mx-auto mb-4" style={{ color: '#EF4444' }} />
         <p className="font-bold text-white">Live class not found</p>
-        <Link href="/live-classes" className="mt-4 inline-block text-sm" style={{ color: '#FF6B1A' }}>
+        <Link href="/live-classes" className="mt-4 inline-block text-sm" style={{ color: '#0057b8' }}>
           ← Back to live classes
         </Link>
       </div>
@@ -326,7 +326,7 @@ export default function StudioPage({ params }: { params: Promise<{ id: string }>
             </Link>
             <Link href={live.course?.id ? `/courses/${live.course.id}/edit` : '/courses'}
               className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white"
-              style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+              style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}>
               ← Back to course
             </Link>
           </div>
@@ -410,7 +410,7 @@ export default function StudioPage({ params }: { params: Promise<{ id: string }>
             {isBusy && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3"
                 style={{ background: 'rgba(0,0,0,0.65)' }}>
-                <Loader2 size={28} className="animate-spin" style={{ color: '#FF6B1A' }} />
+                <Loader2 size={28} className="animate-spin" style={{ color: '#0057b8' }} />
                 <p className="text-sm font-semibold text-white">{busyLabel[state] ?? 'Please wait…'}</p>
               </div>
             )}
@@ -534,7 +534,7 @@ export default function StudioPage({ params }: { params: Promise<{ id: string }>
           <div className="rounded-xl px-3 py-2.5 text-[11px] space-y-1"
             style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)' }}>
             <p className="flex items-start gap-1.5">
-              <Activity size={10} className="mt-0.5 flex-shrink-0" style={{ color: '#FF6B1A' }} />
+              <Activity size={10} className="mt-0.5 flex-shrink-0" style={{ color: '#0057b8' }} />
               Streams directly from your browser using WebRTC (WHIP). No software needed.
             </p>
             <p className="flex items-start gap-1.5">

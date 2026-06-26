@@ -123,7 +123,7 @@ export default function ReportsPage() {
   const attendanceRows     = Array.isArray(attendance.data)     ? attendance.data     : []
   const mentorScheduleRows = Array.isArray(mentorSchedule.data) ? mentorSchedule.data : []
 
-  const inputBase  = 'rounded-xl border border-[#E4E7ED] bg-white px-3 py-2 text-sm outline-none focus:border-[#FF6B1A] focus:ring-2 focus:ring-orange-100'
+  const inputBase  = 'rounded-xl border border-[#E4E7ED] bg-white px-3 py-2 text-sm outline-none focus:border-[#0057b8] focus:ring-2 focus:ring-blue-100'
 
   return (
     <div>
@@ -132,7 +132,7 @@ export default function ReportsPage() {
         <PageHeader
           title="Reports"
           subtitle="Attendance and performance analytics"
-          badge={{ label: 'Analytics', color: '#FF6B1A' }}
+          badge={{ label: 'Analytics', color: '#0057b8' }}
         />
       </div>
 
@@ -154,13 +154,13 @@ export default function ReportsPage() {
       <section className="mb-8">
         <div className="flex items-center justify-between gap-4 mb-4">
           <div className="flex items-center gap-2">
-            <UserCheck size={16} style={{ color: '#FF6B1A' }} />
+            <UserCheck size={16} style={{ color: '#0057b8' }} />
             <h2 className="text-base font-bold" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
               Mentor Schedule
             </h2>
             {mentorScheduleRows.length > 0 && (
               <span className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-                style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A' }}>
+                style={{ background: 'rgba(0,87,184,0.10)', color: '#0057b8' }}>
                 {mentorScheduleRows.length} mentors
               </span>
             )}
@@ -238,13 +238,13 @@ export default function ReportsPage() {
       <section>
         <div className="flex items-center justify-between gap-4 mb-4">
           <div className="flex items-center gap-2">
-            <BarChart3 size={16} style={{ color: '#FF6B1A' }} />
+            <BarChart3 size={16} style={{ color: '#0057b8' }} />
             <h2 className="text-base font-bold" style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
               Attendance
             </h2>
             {attendanceRows.length > 0 && (
               <span className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-                style={{ background: 'rgba(255,107,26,0.10)', color: '#FF6B1A' }}>
+                style={{ background: 'rgba(0,87,184,0.10)', color: '#0057b8' }}>
                 {attendanceRows.length} students
               </span>
             )}

@@ -72,10 +72,10 @@ export function AdminLoginForm() {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ type: 'spring', stiffness: 300, damping: 22 }}
         className="mb-8 inline-flex items-center gap-2 rounded-full px-4 py-2"
-        style={{ background: 'rgba(255,107,26,0.12)', border: '1px solid rgba(255,107,26,0.24)' }}
+        style={{ background: 'rgba(0,87,184,0.12)', border: '1px solid rgba(0,87,184,0.24)' }}
       >
-        <Shield size={14} color="#FF6B1A" strokeWidth={2} />
-        <span className="text-xs font-semibold" style={{ color: '#FF6B1A' }}>Admin &amp; Instructor Portal</span>
+        <Shield size={14} color="#0057b8" strokeWidth={2} />
+        <span className="text-xs font-semibold" style={{ color: '#0057b8' }}>Admin &amp; Instructor Portal</span>
       </motion.div>
 
       {/* Heading */}
@@ -108,16 +108,16 @@ export function AdminLoginForm() {
             <input
               {...register('email')}
               type="email"
-              placeholder="you@learnos.com"
+              placeholder="you@deltagroups.ae"
               className="w-full rounded-xl py-3 pl-10 pr-4 text-sm text-white outline-none transition-all placeholder:text-white/25"
               style={{
                 background: errors.email ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.06)',
                 border: `1.5px solid ${errors.email ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.08)'}`,
               }}
               onFocus={e => {
-                e.currentTarget.style.border = '1.5px solid rgba(255,107,26,0.6)'
+                e.currentTarget.style.border = '1.5px solid rgba(0,87,184,0.6)'
                 e.currentTarget.style.background = 'rgba(255,255,255,0.09)'
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.12)'
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,87,184,0.12)'
               }}
               onBlur={e => {
                 e.currentTarget.style.border = `1.5px solid ${errors.email ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.08)'}`
@@ -154,9 +154,9 @@ export function AdminLoginForm() {
                 border: `1.5px solid ${errors.password ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.08)'}`,
               }}
               onFocus={e => {
-                e.currentTarget.style.border = '1.5px solid rgba(255,107,26,0.6)'
+                e.currentTarget.style.border = '1.5px solid rgba(0,87,184,0.6)'
                 e.currentTarget.style.background = 'rgba(255,255,255,0.09)'
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.12)'
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,87,184,0.12)'
               }}
               onBlur={e => {
                 e.currentTarget.style.border = `1.5px solid ${errors.password ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.08)'}`
@@ -194,10 +194,10 @@ export function AdminLoginForm() {
         {/* Submit */}
         <motion.div custom={2} variants={fieldVariant} initial="hidden" animate="visible">
           <motion.button type="submit" disabled={isSubmitting}
-            whileHover={{ y: -2, boxShadow: '0 10px 32px rgba(255,107,26,0.42)' }}
+            whileHover={{ y: -2, boxShadow: '0 10px 32px rgba(0,87,184,0.42)' }}
             whileTap={{ scale: 0.98 }}
             className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold text-white transition-all disabled:opacity-60"
-            style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)', boxShadow: '0 4px 24px rgba(255,107,26,0.32)' }}>
+            style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)', boxShadow: '0 4px 24px rgba(0,87,184,0.32)' }}>
             {isSubmitting
               ? <><Loader2 size={16} className="animate-spin" />Signing in…</>
               : <>Sign in<ArrowRight size={16} /></>}

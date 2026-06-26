@@ -38,7 +38,7 @@ function ObsCredsInline({ liveId }: { liveId: string }) {
       <button
         onClick={handleOpen}
         className="flex items-center gap-1.5 text-xs font-semibold transition-opacity hover:opacity-70"
-        style={{ color: '#FF6B1A' }}>
+        style={{ color: '#0057b8' }}>
         {isFetching
           ? <Loader2 size={11} className="animate-spin" />
           : open ? <EyeOff size={11} /> : <Eye size={11} />}
@@ -184,7 +184,7 @@ export default function MonitorPage({ params }: { params: Promise<{ id: string }
   if (isLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 size={28} className="animate-spin" style={{ color: '#FF6B1A' }} />
+        <Loader2 size={28} className="animate-spin" style={{ color: '#0057b8' }} />
       </div>
     )
   }
@@ -195,7 +195,7 @@ export default function MonitorPage({ params }: { params: Promise<{ id: string }
       <div className="mx-auto max-w-md py-20 text-center">
         <AlertCircle size={32} className="mx-auto mb-4" style={{ color: '#EF4444' }} />
         <p className="font-bold text-white">Live class not found</p>
-        <Link href="/courses" className="mt-4 inline-block text-sm" style={{ color: '#FF6B1A' }}>
+        <Link href="/courses" className="mt-4 inline-block text-sm" style={{ color: '#0057b8' }}>
           ← Back to courses
         </Link>
       </div>
@@ -280,7 +280,7 @@ export default function MonitorPage({ params }: { params: Promise<{ id: string }
           <div className="mt-8 flex justify-center gap-3">
             <Link href={courseHref}
               className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white"
-              style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+              style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}>
               ← Back to course
             </Link>
           </div>
@@ -312,8 +312,8 @@ export default function MonitorPage({ params }: { params: Promise<{ id: string }
 
           {/* Icon */}
           <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl"
-            style={{ background: 'rgba(255,107,26,0.12)', border: '1px solid rgba(255,107,26,0.25)' }}>
-            <Tv2 size={36} style={{ color: '#FF6B1A' }} />
+            style={{ background: 'rgba(0,87,184,0.12)', border: '1px solid rgba(0,87,184,0.25)' }}>
+            <Tv2 size={36} style={{ color: '#0057b8' }} />
           </div>
 
           <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
@@ -333,7 +333,7 @@ export default function MonitorPage({ params }: { params: Promise<{ id: string }
                 <Calendar size={14} style={{ color: '#818CF8' }} />
                 {fmtDateTime(live.scheduledStart)}
               </p>
-              <p className="mt-0.5 text-xs" style={{ color: '#FF6B1A' }}>{countdown}</p>
+              <p className="mt-0.5 text-xs" style={{ color: '#0057b8' }}>{countdown}</p>
             </div>
             <div className="text-center">
               <p className="flex items-center gap-1.5 text-sm font-semibold text-white">
@@ -349,10 +349,10 @@ export default function MonitorPage({ params }: { params: Promise<{ id: string }
             {/* Browser option */}
             <Link href={`/live-classes/${id}/studio`}
               className="flex items-start gap-3 rounded-xl px-4 py-3 transition-colors hover:brightness-110"
-              style={{ background: 'rgba(255,107,26,0.09)', border: '1px solid rgba(255,107,26,0.22)' }}>
-              <Monitor size={16} className="mt-0.5 flex-shrink-0" style={{ color: '#FF6B1A' }} />
+              style={{ background: 'rgba(0,87,184,0.09)', border: '1px solid rgba(0,87,184,0.22)' }}>
+              <Monitor size={16} className="mt-0.5 flex-shrink-0" style={{ color: '#0057b8' }} />
               <div>
-                <p className="text-sm font-semibold" style={{ color: '#FF6B1A' }}>Stream from Browser</p>
+                <p className="text-sm font-semibold" style={{ color: '#0057b8' }}>Stream from Browser</p>
                 <p className="mt-0.5 text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
                   Use your webcam — no software needed. Best for small sessions.
                 </p>
@@ -367,7 +367,7 @@ export default function MonitorPage({ params }: { params: Promise<{ id: string }
               </p>
               <p className="mt-1.5 text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>
                 Set server to{' '}
-                <code className="rounded px-1 py-0.5 text-[10px]" style={{ background: 'rgba(255,255,255,0.08)', color: '#FF6B1A' }}>
+                <code className="rounded px-1 py-0.5 text-[10px]" style={{ background: 'rgba(255,255,255,0.08)', color: '#0057b8' }}>
                   rtmps://global-live.mux.com:443/app
                 </code>
                 {' '}and paste your stream key below.
@@ -404,7 +404,7 @@ export default function MonitorPage({ params }: { params: Promise<{ id: string }
                     }}
                     disabled={recreateMutation.isPending}
                     className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold text-white disabled:opacity-60 transition-all hover:brightness-110"
-                    style={{ background: 'rgba(255,107,26,0.20)', border: '1px solid rgba(255,107,26,0.40)', color: '#FF6B1A' }}>
+                    style={{ background: 'rgba(0,87,184,0.20)', border: '1px solid rgba(0,87,184,0.40)', color: '#0057b8' }}>
                     {recreateMutation.isPending
                       ? <><Loader2 size={12} className="animate-spin" />Regenerating…</>
                       : <>↻ Regenerate stream key</>}
@@ -520,7 +520,7 @@ export default function MonitorPage({ params }: { params: Promise<{ id: string }
           ) : (
             <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 rounded-2xl"
               style={{ background: '#0D0F1A', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <Loader2 size={24} className="animate-spin" style={{ color: '#FF6B1A' }} />
+              <Loader2 size={24} className="animate-spin" style={{ color: '#0057b8' }} />
               <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
                 Waiting for OBS to connect…
               </p>

@@ -12,13 +12,13 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          'bg-gradient-to-br from-[#FF6B1A] to-[#FF8C42] text-white shadow-[0_4px_20px_rgba(255,107,26,0.30)] hover:shadow-[0_8px_28px_rgba(255,107,26,0.40)] hover:-translate-y-0.5 active:translate-y-0',
+          'bg-gradient-to-br from-[#0057b8] to-[#003d80] text-white shadow-[0_4px_20px_rgba(0,87,184,0.30)] hover:shadow-[0_8px_28px_rgba(0,87,184,0.40)] hover:-translate-y-0.5 active:translate-y-0',
         secondary:
           'bg-[#2F6BFF] text-white shadow-[0_4px_20px_rgba(47,107,255,0.24)] hover:bg-[#1A53E0] hover:shadow-[0_8px_28px_rgba(47,107,255,0.34)] hover:-translate-y-0.5 active:translate-y-0',
         outline:
           'border border-[#E4E7ED] bg-white text-[#0D0F1A] hover:bg-[#F4F5F8] hover:border-[#CDD0DA] active:bg-[#EDEEF2]',
         'outline-primary':
-          'border border-[rgba(255,107,26,0.4)] bg-[rgba(255,107,26,0.06)] text-[#FF6B1A] hover:bg-[rgba(255,107,26,0.12)] hover:border-[rgba(255,107,26,0.6)]',
+          'border border-[rgba(0,87,184,0.4)] bg-[rgba(0,87,184,0.06)] text-[#0057b8] hover:bg-[rgba(0,87,184,0.12)] hover:border-[rgba(0,87,184,0.6)]',
         ghost:
           'text-[#4B5563] hover:bg-[#F3F4F6] hover:text-[#0D0F1A] active:bg-[#EDEEF2]',
         'ghost-danger':
@@ -26,7 +26,7 @@ const buttonVariants = cva(
         destructive:
           'bg-[#EF4444] text-white hover:bg-[#DC2626] shadow-[0_4px_16px_rgba(239,68,68,0.25)] hover:-translate-y-0.5 active:translate-y-0',
         link:
-          'text-[#FF6B1A] underline-offset-4 hover:underline p-0 h-auto shadow-none',
+          'text-[#0057b8] underline-offset-4 hover:underline p-0 h-auto shadow-none',
         dark:
           'bg-[#0D0F1A] text-white hover:bg-[#1E2235] shadow-card hover:-translate-y-0.5 active:translate-y-0',
       },

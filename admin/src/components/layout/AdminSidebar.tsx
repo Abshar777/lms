@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, BookOpen, Users, GraduationCap,
-  Tag, Star, Settings, ChevronLeft, LogOut, X,
+  Tag, Star, Settings, ChevronLeft, ChevronRight, LogOut, X,
   ShoppingBag, Ticket, Map, ClipboardList, Video, CalendarDays, BarChart3, ShieldCheck, LifeBuoy, UserCog,
   ClipboardCheck, Eye,
 } from 'lucide-react'
@@ -99,37 +99,30 @@ function SidebarContent({ collapsed, onClose }: SidebarContentProps) {
   return (
     <>
       {/* ── Logo ─────────────────────────────────── */}
-      <div className="flex h-[60px] flex-shrink-0 items-center gap-3 px-4"
+      <div
+        className="flex h-[60px] flex-shrink-0 items-center px-4"
         style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl"
-          style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
-          <GraduationCap size={16} color="#fff" strokeWidth={2} />
-        </div>
         <AnimatePresence>
           {!collapsed && (
-            <motion.span
+            <motion.div
               initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.15 }}
-              className="whitespace-nowrap font-bold text-white"
-              style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 16 }}>
-              LearnOS
-              <span className="ml-1.5 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-                style={{ background: 'rgba(255,107,26,0.18)', color: '#FF6B1A' }}>{roleLabel}</span>
-            </motion.span>
+              className="flex items-center gap-2 overflow-hidden min-w-0">
+              <img src="/logo.png" alt="Delta" style={{ height: 32, width: 'auto', maxWidth: 130, objectFit: 'contain', flexShrink: 0 }} />
+              <span className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider whitespace-nowrap"
+                style={{ background: 'rgba(0,87,184,0.18)', color: '#0057b8' }}>{roleLabel}</span>
+            </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Mobile close button (shown only when onClose is provided) */}
-        {onClose ? (
+        {/* Mobile close — only in drawer */}
+        {onClose && (
           <button
             onClick={onClose}
             className="ml-auto flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-white/10"
             style={{ color: 'rgba(255,255,255,0.4)' }}>
             <X size={15} />
           </button>
-        ) : (
-          /* Desktop collapse toggle */
-          <CollapseToggle collapsed={collapsed} />
         )}
       </div>
 
@@ -151,8 +144,8 @@ function SidebarContent({ collapsed, onClose }: SidebarContentProps) {
                 transition={{ type: 'spring', stiffness: 400, damping: 28 }}
                 className="relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors"
                 style={{
-                  background: active ? 'rgba(255,107,26,0.12)' : 'transparent',
-                  color: active ? '#FF6B1A' : 'rgba(255,255,255,0.5)',
+                  background: active ? 'rgba(0,87,184,0.12)' : 'transparent',
+                  color: active ? '#0057b8' : 'rgba(255,255,255,0.5)',
                 }}
                 title={collapsed ? item.label : undefined}
               >
@@ -160,7 +153,7 @@ function SidebarContent({ collapsed, onClose }: SidebarContentProps) {
                   <motion.div
                     layoutId="sidebar-active"
                     className="absolute inset-0 rounded-xl"
-                    style={{ background: 'rgba(255,107,26,0.10)', border: '1px solid rgba(255,107,26,0.20)' }}
+                    style={{ background: 'rgba(0,87,184,0.10)', border: '1px solid rgba(0,87,184,0.20)' }}
                     transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   />
                 )}
@@ -231,7 +224,7 @@ function SidebarContent({ collapsed, onClose }: SidebarContentProps) {
         <div className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5"
           style={{ background: 'rgba(255,255,255,0.04)' }}>
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-            style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>{initial}</div>
+            style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}>{initial}</div>
           <AnimatePresence>
             {!collapsed && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -256,23 +249,8 @@ function SidebarContent({ collapsed, onClose }: SidebarContentProps) {
   )
 }
 
-/* Desktop-only collapse toggle (not shown in mobile drawer) */
-function CollapseToggle({ collapsed }: { collapsed: boolean }) {
-  const { toggleSidebar } = useUIStore()
-  return (
-    <motion.button
-      onClick={toggleSidebar}
-      animate={{ marginLeft: collapsed ? 0 : 'auto', rotate: collapsed ? 180 : 0 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-      className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-white/10"
-      style={{ color: 'rgba(255,255,255,0.4)' }}>
-      <ChevronLeft size={15} />
-    </motion.button>
-  )
-}
-
 export function AdminSidebar() {
-  const { sidebarCollapsed, mobileNavOpen, setMobileNav } = useUIStore()
+  const { sidebarCollapsed, mobileNavOpen, setMobileNav, toggleSidebar } = useUIStore()
   const w = sidebarCollapsed ? 68 : 240
 
   return (
@@ -286,6 +264,26 @@ export function AdminSidebar() {
       >
         <SidebarContent collapsed={sidebarCollapsed} />
       </motion.aside>
+
+      {/* ── Floating collapse/expand toggle ───────────── */}
+      <motion.button
+        initial={{ left: w - 14 }}
+        animate={{ left: w - 14 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        onClick={toggleSidebar}
+        className="fixed top-[22px] z-50 hidden h-8 w-8 items-center justify-center rounded-full border lg:flex"
+        style={{
+          background: '#1a1f36',
+          borderColor: 'rgba(255,255,255,0.25)',
+          color: 'rgba(255,255,255,0.8)',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
+        }}
+        title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        whileHover={{ scale: 1.1, borderColor: 'rgba(0,87,184,0.6)', color: '#0057b8' }}
+        whileTap={{ scale: 0.92 }}
+      >
+        {sidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+      </motion.button>
 
       {/* ── Mobile drawer + backdrop: only shown below lg ─ */}
       <AnimatePresence>

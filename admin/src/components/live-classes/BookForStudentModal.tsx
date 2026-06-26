@@ -143,7 +143,7 @@ export function BookForStudentModal({ live, onClose, onSuccess }: Props) {
                   className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-white/[0.04]"
                   style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                   <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                    style={{ background: 'rgba(255,107,26,0.15)', color: '#FF6B1A' }}>
+                    style={{ background: 'rgba(0,87,184,0.15)', color: '#0057b8' }}>
                     {s.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">

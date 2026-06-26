@@ -134,7 +134,7 @@ export default function AttendancePage({ params }: { params: Promise<{ id: strin
                 <>
                   <span style={{ color: dim }}>·</span>
                   <span className="flex items-center gap-1">
-                    <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: '#FF6B1A' }} />
+                    <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: '#0057b8' }} />
                     {moduleTitle}
                   </span>
                 </>
@@ -187,8 +187,8 @@ export default function AttendancePage({ params }: { params: Promise<{ id: strin
       ) : rows.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16">
           <div className="flex h-14 w-14 items-center justify-center rounded-3xl"
-            style={{ background: 'rgba(255,107,26,0.08)', border: '1px solid rgba(255,107,26,0.18)' }}>
-            <Users size={22} style={{ color: '#FF6B1A' }} />
+            style={{ background: 'rgba(0,87,184,0.08)', border: '1px solid rgba(0,87,184,0.18)' }}>
+            <Users size={22} style={{ color: '#0057b8' }} />
           </div>
           <p className="text-sm font-semibold text-white">No bookings yet</p>
           <p className="text-xs" style={{ color: dim }}>Students haven't booked this session</p>
@@ -226,7 +226,7 @@ export default function AttendancePage({ params }: { params: Promise<{ id: strin
                       <div className="flex items-center gap-2.5">
                         <div
                           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                          style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+                          style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)' }}>
                           {nameInitial}
                         </div>
                         <div>

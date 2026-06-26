@@ -74,10 +74,10 @@ export function UserViewModal({ user, onClose }: Props) {
             style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
             <div className="flex items-center gap-4">
               <div className="relative flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl"
-                style={{ background: 'rgba(255,107,26,0.15)', border: '2px solid rgba(255,107,26,0.25)' }}>
+                style={{ background: 'rgba(0,87,184,0.15)', border: '2px solid rgba(0,87,184,0.25)' }}>
                 {user.avatarUrl
                   ? <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
-                  : <span className="text-2xl font-bold" style={{ color: '#FF6B1A' }}>{user.name[0]?.toUpperCase()}</span>}
+                  : <span className="text-2xl font-bold" style={{ color: '#0057b8' }}>{user.name[0]?.toUpperCase()}</span>}
               </div>
               <div className="min-w-0">
                 <h2 className="text-lg font-bold text-white truncate" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>

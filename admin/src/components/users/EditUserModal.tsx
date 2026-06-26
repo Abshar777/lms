@@ -33,8 +33,8 @@ function SelectField<T extends string>({
           className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm transition-all"
           style={{
             background: disabled ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.06)',
-            border: `1px solid ${open ? 'rgba(255,107,26,0.5)' : 'rgba(255,255,255,0.09)'}`,
-            boxShadow: open ? '0 0 0 3px rgba(255,107,26,0.08)' : 'none',
+            border: `1px solid ${open ? 'rgba(0,87,184,0.5)' : 'rgba(255,255,255,0.09)'}`,
+            boxShadow: open ? '0 0 0 3px rgba(0,87,184,0.08)' : 'none',
             color: disabled ? 'rgba(255,255,255,0.3)' : 'white',
           }}
         >
@@ -71,7 +71,7 @@ function SelectField<T extends string>({
                     type="button"
                     onClick={() => { onChange(o.value); setOpen(false) }}
                     className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-white/06"
-                    style={{ color: o.value === value ? '#FF6B1A' : 'rgba(255,255,255,0.8)' }}
+                    style={{ color: o.value === value ? '#0057b8' : 'rgba(255,255,255,0.8)' }}
                   >
                     <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center">
                       {o.value === value && <Check size={12} />}
@@ -197,8 +197,8 @@ export function EditUserModal({ user, me, onClose, onSuccess }: Props) {
 
   const focusStyle = {
     onFocus: (e: React.FocusEvent<HTMLInputElement>) => {
-      e.currentTarget.style.border = '1px solid rgba(255,107,26,0.5)'
-      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,107,26,0.08)'
+      e.currentTarget.style.border = '1px solid rgba(0,87,184,0.5)'
+      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,87,184,0.08)'
     },
     onBlur: (e: React.FocusEvent<HTMLInputElement>) => {
       e.currentTarget.style.border = '1px solid rgba(255,255,255,0.09)'
@@ -232,7 +232,7 @@ export function EditUserModal({ user, me, onClose, onSuccess }: Props) {
           <div className="flex items-center justify-between px-5 py-4"
             style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#FF6B1A' }}>Edit User</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#0057b8' }}>Edit User</p>
               <h2 className="mt-0.5 text-base font-bold text-white">{user.name}</h2>
               <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{user.email}</p>
             </div>
@@ -311,7 +311,7 @@ export function EditUserModal({ user, me, onClose, onSuccess }: Props) {
               </button>
               <button type="submit" disabled={updateUser.isPending}
                 className="flex items-center gap-1.5 rounded-xl px-5 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)', boxShadow: '0 4px 14px rgba(255,107,26,0.3)' }}>
+                style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)', boxShadow: '0 4px 14px rgba(0,87,184,0.3)' }}>
                 {updateUser.isPending && <Loader2 size={13} className="animate-spin" />}
                 Save changes
               </button>

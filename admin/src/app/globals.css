@@ -1,10 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --font-display: 'Bricolage Grotesque', sans-serif;
-  --font-body:    'DM Sans', sans-serif;
+  --font-display: 'Plus Jakarta Sans', sans-serif;
+  --font-body:    'Plus Jakarta Sans', sans-serif;
   --sidebar-width: 240px;
   --sidebar-collapsed: 68px;
   --topbar-height: 60px;
@@ -15,7 +17,7 @@
 html { -webkit-font-smoothing: antialiased; }
 
 body {
-  font-family: var(--font-body);
+  font-family: 'Plus Jakarta Sans', sans-serif;
   background: #080A12;
   color: #ffffff;
 }
@@ -25,8 +27,8 @@ body {
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
 
-:focus-visible { outline: 2px solid #2F6BFF; outline-offset: 2px; border-radius: 4px; }
-::selection { background: rgba(255,107,26,0.15); color: #E55A0E; }
+:focus-visible { outline: 2px solid #0057b8; outline-offset: 2px; border-radius: 4px; }
+::selection { background: rgba(0,87,184,0.15); color: #003d80; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

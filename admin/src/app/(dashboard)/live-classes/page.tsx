@@ -84,9 +84,9 @@ function StatsBar({ items }: { items: LiveClass[] }) {
     {
       label: 'Scheduled today',
       value: today,
-      color: '#FF6B1A',
-      bg:    'rgba(255,107,26,0.08)',
-      border:'rgba(255,107,26,0.18)',
+      color: '#0057b8',
+      bg:    'rgba(0,87,184,0.08)',
+      border:'rgba(0,87,184,0.18)',
       pulse: false,
     },
     {
@@ -195,7 +195,7 @@ function TableRow({ live, index, showInstructor }: { live: LiveClass; index: num
               )}
               {isScheduled && (
                 <span className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
-                  style={{ background: 'rgba(255,107,26,0.12)', color: '#FF6B1A' }}>
+                  style={{ background: 'rgba(0,87,184,0.12)', color: '#0057b8' }}>
                   {fmtCountdown(live.scheduledStart)}
                 </span>
               )}
@@ -208,8 +208,8 @@ function TableRow({ live, index, showInstructor }: { live: LiveClass; index: num
               ) : (
                 <span className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
                   style={{
-                    background: isInternal ? 'rgba(255,107,26,0.10)' : 'rgba(99,102,241,0.10)',
-                    color:      isInternal ? '#FF6B1A' : '#818CF8',
+                    background: isInternal ? 'rgba(0,87,184,0.10)' : 'rgba(99,102,241,0.10)',
+                    color:      isInternal ? '#0057b8' : '#818CF8',
                   }}>
                   {isInternal ? 'In-App' : 'External'}
                 </span>
@@ -235,7 +235,7 @@ function TableRow({ live, index, showInstructor }: { live: LiveClass; index: num
         {/* Module */}
         <td className="px-4 py-3 text-sm">
           {sectionTitle
-            ? <span className="text-[11px] font-semibold" style={{ color: '#FF6B1A' }}>{sectionTitle}</span>
+            ? <span className="text-[11px] font-semibold" style={{ color: '#0057b8' }}>{sectionTitle}</span>
             : <span style={{ color: 'rgba(255,255,255,0.2)' }}>—</span>
           }
         </td>
@@ -312,7 +312,7 @@ function TableRow({ live, index, showInstructor }: { live: LiveClass; index: num
                 size="icon-sm"
                 onClick={() => router.push(`/live-classes/${live.id}/monitor`)}
                 className="h-7 w-7 rounded-lg"
-                style={{ color: isLiveNow ? '#EF4444' : '#FF6B1A' }}
+                style={{ color: isLiveNow ? '#EF4444' : '#0057b8' }}
                 title={isLiveNow ? 'Monitor' : 'Go Live'}>
                 {isLiveNow ? <Radio size={13} /> : <PlayCircle size={13} />}
               </Button>
@@ -425,7 +425,7 @@ function CalendarView({ items, onSlotClick }: { items: LiveClass[]; onSlotClick:
     if (live.status === 'live')      return { bg: 'rgba(239,68,68,0.18)',   color: '#EF4444',                border: 'rgba(239,68,68,0.30)' }
     if (live.status === 'scheduled') {
       if (isOffline) return { bg: 'rgba(16,185,129,0.15)', color: '#10B981', border: 'rgba(16,185,129,0.28)' }
-      return { bg: 'rgba(255,107,26,0.15)', color: '#FF6B1A', border: 'rgba(255,107,26,0.28)' }
+      return { bg: 'rgba(0,87,184,0.15)', color: '#0057b8', border: 'rgba(0,87,184,0.28)' }
     }
     if (live.status === 'ended')     return { bg: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.35)', border: 'rgba(255,255,255,0.08)' }
     /* cancelled */                  return { bg: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.20)', border: 'rgba(255,255,255,0.06)' }
@@ -502,7 +502,7 @@ function CalendarView({ items, onSlotClick }: { items: LiveClass[]; onSlotClick:
                   style={{
                     borderRight: di < 6 ? BORDER : 'none',
                     minHeight: 128,
-                    background: isToday ? 'rgba(255,107,26,0.05)' : 'transparent',
+                    background: isToday ? 'rgba(0,87,184,0.05)' : 'transparent',
                   }}>
 
                   {/* Day number — top-left, orange circle for today */}
@@ -510,7 +510,7 @@ function CalendarView({ items, onSlotClick }: { items: LiveClass[]; onSlotClick:
                     <span
                       className="inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold leading-none"
                       style={isToday
-                        ? { background: '#FF6B1A', color: '#fff' }
+                        ? { background: '#0057b8', color: '#fff' }
                         : { color: isCurrentMonth ? 'rgba(255,255,255,0.60)' : 'rgba(255,255,255,0.16)' }}>
                       {day.getDate()}
                     </span>
@@ -665,7 +665,7 @@ function QuickCreateModal({ onClose, onSuccess, categoryProgram }: { onClose: ()
               <button type="button" onClick={() => setType('internal')}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all"
                 style={type === 'internal'
-                  ? { background: 'rgba(255,107,26,0.20)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.35)' }
+                  ? { background: 'rgba(0,87,184,0.20)', color: '#0057b8', border: '1px solid rgba(0,87,184,0.35)' }
                   : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <Radio size={11} />In-App Stream
               </button>
@@ -760,7 +760,7 @@ function QuickCreateModal({ onClose, onSuccess, categoryProgram }: { onClose: ()
             </button>
             <button type="submit" disabled={createMutation.isPending}
               className="flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold disabled:opacity-60"
-              style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)', color: '#fff' }}>
+              style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)', color: '#fff' }}>
               {createMutation.isPending
                 ? <><Loader2 size={14} className="animate-spin" />Creating…</>
                 : 'Create session'}
@@ -795,8 +795,8 @@ function GridCalendarView({ items, onEditClick }: { items: LiveClass[]; onEditCl
     return (
       <div className="flex flex-col items-center gap-4 py-20 text-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-3xl"
-          style={{ background: 'rgba(255,107,26,0.08)', border: '1px solid rgba(255,107,26,0.15)' }}>
-          <Video size={26} style={{ color: '#FF6B1A' }} />
+          style={{ background: 'rgba(0,87,184,0.08)', border: '1px solid rgba(0,87,184,0.15)' }}>
+          <Video size={26} style={{ color: '#0057b8' }} />
         </div>
         <p className="text-base font-bold text-white">No sessions found</p>
       </div>
@@ -809,8 +809,8 @@ function GridCalendarView({ items, onEditClick }: { items: LiveClass[]; onEditCl
         <div key={label}>
           {/* Month group header */}
           <div className="mb-4 flex items-center gap-3">
-            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#FF6B1A' }}>{label}</span>
-            <div className="h-px flex-1" style={{ background: 'rgba(255,107,26,0.15)' }} />
+            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#0057b8' }}>{label}</span>
+            <div className="h-px flex-1" style={{ background: 'rgba(0,87,184,0.15)' }} />
             <span className="text-[10px] font-semibold" style={{ color: 'rgba(255,255,255,0.25)' }}>
               {list.length} {list.length === 1 ? 'session' : 'sessions'}
             </span>
@@ -827,9 +827,9 @@ function GridCalendarView({ items, onEditClick }: { items: LiveClass[]; onEditCl
               const fillPct     = live.sessionCapacity > 0 ? Math.min(100, (live.bookedCount / live.sessionCapacity) * 100) : 0
               const barColor    = fillPct >= 90 ? '#EF4444' : fillPct >= 70 ? '#F59E0B' : '#22C55E'
 
-              const accentColor  = isLive ? '#EF4444' : isScheduled ? '#FF6B1A' : 'rgba(255,255,255,0.18)'
-              const cardBg       = isLive ? 'rgba(239,68,68,0.06)' : isScheduled ? 'rgba(255,107,26,0.05)' : 'rgba(255,255,255,0.025)'
-              const cardBorder   = isLive ? 'rgba(239,68,68,0.22)' : isScheduled ? 'rgba(255,107,26,0.18)' : 'rgba(255,255,255,0.07)'
+              const accentColor  = isLive ? '#EF4444' : isScheduled ? '#0057b8' : 'rgba(255,255,255,0.18)'
+              const cardBg       = isLive ? 'rgba(239,68,68,0.06)' : isScheduled ? 'rgba(0,87,184,0.05)' : 'rgba(255,255,255,0.025)'
+              const cardBorder   = isLive ? 'rgba(239,68,68,0.22)' : isScheduled ? 'rgba(0,87,184,0.18)' : 'rgba(255,255,255,0.07)'
 
               return (
                 <motion.div
@@ -857,7 +857,7 @@ function GridCalendarView({ items, onEditClick }: { items: LiveClass[]; onEditCl
                       )}
                       {isScheduled && (
                         <span className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
-                          style={{ background: 'rgba(255,107,26,0.15)', color: '#FF6B1A' }}>
+                          style={{ background: 'rgba(0,87,184,0.15)', color: '#0057b8' }}>
                           {fmtCountdown(live.scheduledStart)}
                         </span>
                       )}
@@ -881,8 +881,8 @@ function GridCalendarView({ items, onEditClick }: { items: LiveClass[]; onEditCl
                       ) : (
                         <span className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
                           style={{
-                            background: isInternal ? 'rgba(255,107,26,0.10)' : 'rgba(99,102,241,0.10)',
-                            color:      isInternal ? '#FF6B1A' : '#818CF8',
+                            background: isInternal ? 'rgba(0,87,184,0.10)' : 'rgba(99,102,241,0.10)',
+                            color:      isInternal ? '#0057b8' : '#818CF8',
                           }}>
                           {isInternal ? 'In-App' : 'External'}
                         </span>
@@ -947,7 +947,7 @@ function GridCalendarView({ items, onEditClick }: { items: LiveClass[]; onEditCl
                           size="icon-sm"
                           onClick={() => router.push(`/live-classes/${live.id}/monitor`)}
                           className="h-7 w-7 rounded-lg"
-                          style={{ color: isLive ? '#EF4444' : '#FF6B1A' }}
+                          style={{ color: isLive ? '#EF4444' : '#0057b8' }}
                           title={isLive ? 'Monitor' : 'Go Live'}>
                           {isLive ? <Radio size={13} /> : <PlayCircle size={13} />}
                         </Button>
@@ -1091,8 +1091,8 @@ export default function LiveClassesPage() {
         className="mb-3">
         <div className="flex items-center gap-4">
         <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl"
-          style={{ background: 'rgba(255,107,26,0.12)', border: '1px solid rgba(255,107,26,0.22)' }}>
-          <Video size={20} style={{ color: '#FF6B1A' }} />
+          style={{ background: 'rgba(0,87,184,0.12)', border: '1px solid rgba(0,87,184,0.22)' }}>
+          <Video size={20} style={{ color: '#0057b8' }} />
         </div>
         <div>
           <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
@@ -1119,7 +1119,7 @@ export default function LiveClassesPage() {
           <MotionButton
             variant="default"
             onClick={() => setCreateOpen(true)}
-            whileHover={{ y: -1, boxShadow: '0 6px 20px rgba(255,107,26,0.28)' }}
+            whileHover={{ y: -1, boxShadow: '0 6px 20px rgba(0,87,184,0.28)' }}
             whileTap={{ scale: 0.97 }}
             className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold">
             <Plus size={14} />New Session
@@ -1178,7 +1178,7 @@ export default function LiveClassesPage() {
                   ? k === 'offline'
                     ? { background: 'rgba(16,185,129,0.18)', color: '#10B981' }
                     : k === 'online'
-                    ? { background: 'rgba(255,107,26,0.18)', color: '#FF6B1A' }
+                    ? { background: 'rgba(0,87,184,0.18)', color: '#0057b8' }
                     : { background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.85)' }
                   : { background: 'transparent', color: 'rgba(255,255,255,0.30)' }}>
                 {icon}<span>{label}</span>
@@ -1204,7 +1204,7 @@ export default function LiveClassesPage() {
             className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
               { label: 'Total Sessions',    value: offlineStats.total,          color: 'rgba(255,255,255,0.6)', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.08)', pulse: false },
-              { label: "Today's Classes",   value: offlineStats.today,          color: '#FF6B1A', bg: 'rgba(255,107,26,0.08)',  border: 'rgba(255,107,26,0.18)',  pulse: false },
+              { label: "Today's Classes",   value: offlineStats.today,          color: '#0057b8', bg: 'rgba(0,87,184,0.08)',  border: 'rgba(0,87,184,0.18)',  pulse: false },
               { label: 'Upcoming Sessions', value: offlineStats.upcoming,       color: '#818CF8', bg: 'rgba(99,102,241,0.08)', border: 'rgba(99,102,241,0.18)', pulse: false },
               { label: 'Available Seats',   value: offlineStats.availableSeats, color: '#EF4444', bg: 'rgba(239,68,68,0.08)',  border: 'rgba(239,68,68,0.18)',  pulse: offlineStats.availableSeats > 0 },
             ].map((s, i) => (
@@ -1238,7 +1238,7 @@ export default function LiveClassesPage() {
               onClick={() => setActiveFilter(f.key)}
               className="rounded-xl px-3.5 py-1.5 text-xs font-semibold"
               style={activeFilter === f.key
-                ? { background: 'rgba(255,107,26,0.18)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.30)' }
+                ? { background: 'rgba(0,87,184,0.18)', color: '#0057b8', border: '1px solid rgba(0,87,184,0.30)' }
                 : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.07)' }}>
               {f.label}
               {f.key === 'live' && liveNowCount > 0 && (
@@ -1264,8 +1264,8 @@ export default function LiveClassesPage() {
             style={{
               /* Solid dark bg so the native dropdown popup renders dark (not white) */
               background: courseFilter ? '#2a1a0a' : '#1e2035',
-              border: courseFilter ? '1px solid rgba(255,107,26,0.35)' : '1px solid rgba(255,255,255,0.10)',
-              color: courseFilter ? '#FF6B1A' : 'rgba(255,255,255,0.65)',
+              border: courseFilter ? '1px solid rgba(0,87,184,0.35)' : '1px solid rgba(255,255,255,0.10)',
+              color: courseFilter ? '#0057b8' : 'rgba(255,255,255,0.65)',
             }}>
             <option value="">All courses</option>
             {courses.map(c => (
@@ -1282,8 +1282,8 @@ export default function LiveClassesPage() {
             className="rounded-xl px-3 py-1.5 text-xs font-semibold outline-none transition-all"
             style={{
               background: instructorFilter ? '#2a1a0a' : '#1e2035',
-              border: instructorFilter ? '1px solid rgba(255,107,26,0.35)' : '1px solid rgba(255,255,255,0.10)',
-              color: instructorFilter ? '#FF6B1A' : 'rgba(255,255,255,0.65)',
+              border: instructorFilter ? '1px solid rgba(0,87,184,0.35)' : '1px solid rgba(255,255,255,0.10)',
+              color: instructorFilter ? '#0057b8' : 'rgba(255,255,255,0.65)',
             }}>
             <option value="">All Instructors</option>
             {instructors.map(i => (
@@ -1299,7 +1299,7 @@ export default function LiveClassesPage() {
               className="rounded-lg px-2.5 py-1 text-[11px] font-semibold"
               style={typeFilter === k
                 ? k === 'internal'
-                  ? { background: 'rgba(255,107,26,0.15)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.25)' }
+                  ? { background: 'rgba(0,87,184,0.15)', color: '#0057b8', border: '1px solid rgba(0,87,184,0.25)' }
                   : k === 'external'
                   ? { background: 'rgba(99,102,241,0.15)', color: '#818CF8', border: '1px solid rgba(99,102,241,0.25)' }
                   : { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.65)', border: '1px solid rgba(255,255,255,0.12)' }
@@ -1318,8 +1318,8 @@ export default function LiveClassesPage() {
           className="rounded-xl px-3 py-1.5 text-xs font-semibold outline-none transition-all"
           style={{
             background: languageFilter ? '#0e1f3a' : '#1e2035',
-            border: languageFilter ? '1px solid rgba(255,107,26,0.35)' : '1px solid rgba(255,255,255,0.10)',
-            color: languageFilter ? '#FF6B1A' : 'rgba(255,255,255,0.65)',
+            border: languageFilter ? '1px solid rgba(0,87,184,0.35)' : '1px solid rgba(255,255,255,0.10)',
+            color: languageFilter ? '#0057b8' : 'rgba(255,255,255,0.65)',
           }}>
           <option value="">All Languages</option>
           {['English','Malayalam','Hindi','Tamil'].map(lang => (
@@ -1384,8 +1384,8 @@ export default function LiveClassesPage() {
             <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="flex flex-col items-center gap-4 py-20 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-3xl"
-                style={{ background: 'rgba(255,107,26,0.08)', border: '1px solid rgba(255,107,26,0.15)' }}>
-                <Video size={26} style={{ color: '#FF6B1A' }} />
+                style={{ background: 'rgba(0,87,184,0.08)', border: '1px solid rgba(0,87,184,0.15)' }}>
+                <Video size={26} style={{ color: '#0057b8' }} />
               </div>
               <div>
                 <p className="text-base font-bold text-white">No sessions found</p>

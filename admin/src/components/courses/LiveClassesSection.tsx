@@ -162,13 +162,13 @@ function LiveRow({
       <div className="flex items-center gap-3">
         {/* Icon */}
         <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg"
-          style={{ background: isLiveNow ? 'rgba(239,68,68,0.12)' : isInternal ? 'rgba(255,107,26,0.10)' : 'rgba(99,102,241,0.10)' }}>
+          style={{ background: isLiveNow ? 'rgba(239,68,68,0.12)' : isInternal ? 'rgba(0,87,184,0.10)' : 'rgba(99,102,241,0.10)' }}>
           {isLiveNow
             ? <motion.div animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1.4, repeat: Infinity }}>
                 <Radio size={14} style={{ color: '#EF4444' }} />
               </motion.div>
             : isInternal
-            ? <Tv2 size={14} style={{ color: isCancelled ? 'rgba(255,255,255,0.25)' : '#FF6B1A' }} />
+            ? <Tv2 size={14} style={{ color: isCancelled ? 'rgba(255,255,255,0.25)' : '#0057b8' }} />
             : <Calendar size={14} style={{ color: isCancelled ? 'rgba(255,255,255,0.25)' : '#818CF8' }} />}
         </div>
 
@@ -192,8 +192,8 @@ function LiveRow({
             {/* Type badge */}
             <span className="rounded-md px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest"
               style={{
-                background: isInternal ? 'rgba(255,107,26,0.12)' : 'rgba(99,102,241,0.12)',
-                color:      isInternal ? '#FF6B1A' : '#818CF8',
+                background: isInternal ? 'rgba(0,87,184,0.12)' : 'rgba(99,102,241,0.12)',
+                color:      isInternal ? '#0057b8' : '#818CF8',
               }}>
               {isInternal ? 'In-App' : 'External'}
             </span>
@@ -240,7 +240,7 @@ function LiveRow({
               disabled={startMutation.isPending}
               title="Start with OBS"
               className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-bold text-white disabled:opacity-50 hover:brightness-110 transition-all"
-              style={{ background: 'linear-gradient(135deg, #FF6B1A, #EF4444)' }}>
+              style={{ background: 'linear-gradient(135deg, #0057b8, #EF4444)' }}>
               {startMutation.isPending ? <Loader2 size={9} className="animate-spin" /> : <PlayCircle size={9} />}
               OBS
             </button>
@@ -252,7 +252,7 @@ function LiveRow({
               onClick={() => router.push(`/live-classes/${live.id}/studio`)}
               title="Stream from browser"
               className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-bold transition-all hover:brightness-110"
-              style={{ background: 'rgba(255,107,26,0.15)', border: '1px solid rgba(255,107,26,0.30)', color: '#FF6B1A' }}>
+              style={{ background: 'rgba(0,87,184,0.15)', border: '1px solid rgba(0,87,184,0.30)', color: '#0057b8' }}>
               <Monitor size={9} />Browser
             </button>
           )}
@@ -314,7 +314,7 @@ function LiveRow({
               disabled={updateMutation.isPending}
               title="Mark as live now"
               className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-bold text-white disabled:opacity-50 hover:brightness-110 transition-all"
-              style={{ background: 'linear-gradient(135deg, #FF6B1A, #EF4444)' }}>
+              style={{ background: 'linear-gradient(135deg, #0057b8, #EF4444)' }}>
               {updateMutation.isPending ? <Loader2 size={9} className="animate-spin" /> : <Zap size={9} />}
               Go Live
             </button>
@@ -499,9 +499,9 @@ function CreateForm({
             <button key={t} type="button" onClick={() => setType(t)}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all"
               style={type === t
-                ? { background: t === 'internal' ? 'rgba(255,107,26,0.20)' : 'rgba(99,102,241,0.20)',
-                    color:      t === 'internal' ? '#FF6B1A' : '#818CF8',
-                    border:     `1px solid ${t === 'internal' ? 'rgba(255,107,26,0.35)' : 'rgba(99,102,241,0.35)'}` }
+                ? { background: t === 'internal' ? 'rgba(0,87,184,0.20)' : 'rgba(99,102,241,0.20)',
+                    color:      t === 'internal' ? '#0057b8' : '#818CF8',
+                    border:     `1px solid ${t === 'internal' ? 'rgba(0,87,184,0.35)' : 'rgba(99,102,241,0.35)'}` }
                 : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)',
                     border: '1px solid rgba(255,255,255,0.08)' }}>
               {t === 'internal' ? <Tv2 size={11} /> : <ExternalLink size={11} />}
@@ -513,7 +513,7 @@ function CreateForm({
         {/* Internal type hint */}
         {type === 'internal' && (
           <p className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-[11px]"
-            style={{ background: 'rgba(255,107,26,0.08)', color: 'rgba(255,107,26,0.85)', border: '1px solid rgba(255,107,26,0.18)' }}>
+            style={{ background: 'rgba(0,87,184,0.08)', color: 'rgba(0,87,184,0.85)', border: '1px solid rgba(0,87,184,0.18)' }}>
             <Tv2 size={11} />
             RTMP credentials (for OBS) are generated after saving.
           </p>
@@ -590,7 +590,7 @@ function CreateForm({
         <div className="flex justify-end">
           <button type="submit" disabled={pending}
             className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
-            style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+            style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}>
             {pending
               ? <><Loader2 size={11} className="animate-spin" />Scheduling…</>
               : <>Schedule session</>}
@@ -650,20 +650,20 @@ export function LiveClassesSection({ courseId }: Props) {
       {/* Header row */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Video size={14} style={{ color: '#FF6B1A' }} />
+          <Video size={14} style={{ color: '#0057b8' }} />
           <h3 className="text-base font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
             Live classes
           </h3>
           {items && (
             <span className="rounded-md px-1.5 py-0.5 text-[10px] font-bold"
-              style={{ background: 'rgba(255,107,26,0.15)', color: '#FF6B1A' }}>
+              style={{ background: 'rgba(0,87,184,0.15)', color: '#0057b8' }}>
               {items.length}
             </span>
           )}
         </div>
         <button onClick={() => { setShowForm(v => !v); setError(null) }}
           className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold text-white"
-          style={{ background: showForm ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+          style={{ background: showForm ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #0057b8, #003d80)' }}>
           {showForm ? <><X size={12} />Cancel</> : <><Plus size={12} />New session</>}
         </button>
       </div>
@@ -694,7 +694,7 @@ export function LiveClassesSection({ courseId }: Props) {
               <button key={f.key} onClick={() => handleStatusChange(f.key)}
                 className="rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all"
                 style={statusFilter === f.key
-                  ? { background: 'rgba(255,107,26,0.18)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.30)' }
+                  ? { background: 'rgba(0,87,184,0.18)', color: '#0057b8', border: '1px solid rgba(0,87,184,0.30)' }
                   : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.40)', border: '1px solid rgba(255,255,255,0.07)' }}>
                 {f.label}
               </button>

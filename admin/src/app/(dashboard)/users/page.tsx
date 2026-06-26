@@ -19,7 +19,7 @@ export default function UsersPage() {
     return (
       <div className="flex h-48 items-center justify-center">
         <div className="h-6 w-6 animate-spin rounded-full border-2"
-          style={{ borderColor: '#FF6B1A', borderTopColor: 'transparent' }} />
+          style={{ borderColor: '#0057b8', borderTopColor: 'transparent' }} />
       </div>
     )
   }

@@ -11,7 +11,7 @@ const ALL_CATEGORIES: ProgramCategory[] = ['4x-trading', 'digital-marketing', 'a
 
 const CATEGORY_META: Record<ProgramCategory, { label: string; color: string; bg: string }> = {
   '4x-trading':        { label: 'FOREX Trading',     color: '#10B981', bg: 'rgba(16,185,129,0.14)'  },
-  'digital-marketing': { label: 'Digital Marketing', color: '#FF6B1A', bg: 'rgba(255,107,26,0.14)' },
+  'digital-marketing': { label: 'Digital Marketing', color: '#0057b8', bg: 'rgba(0,87,184,0.14)' },
   'ai':                { label: 'AI',                 color: '#8B5CF6', bg: 'rgba(139,92,246,0.14)'  },
 }
 

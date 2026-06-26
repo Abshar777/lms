@@ -38,7 +38,7 @@ export default function DashboardPage() {
   const rev = splitCompact(stats?.revenueEstimate ?? 0)
 
   const statCards = [
-    { label: 'Total Courses',    value: stats?.totalCourses     ?? 0, change: 0, changeLabel: `${stats?.publishedCourses ?? 0} published · ${stats?.draftCourses ?? 0} drafts`, icon: BookOpen,      color: '#FF6B1A', prefix: '',  suffix: '',         delay: 0     },
+    { label: 'Total Courses',    value: stats?.totalCourses     ?? 0, change: 0, changeLabel: `${stats?.publishedCourses ?? 0} published · ${stats?.draftCourses ?? 0} drafts`, icon: BookOpen,      color: '#0057b8', prefix: '',  suffix: '',         delay: 0     },
     { label: 'Total Students',   value: stats?.totalStudents    ?? 0, change: 0, changeLabel: `${stats?.totalEnrollments ?? 0} active enrollments`,                            icon: Users,         color: '#2F6BFF', prefix: '',  suffix: '',         delay: 0.05  },
     { label: 'Instructors',      value: stats?.totalInstructors ?? 0, change: 0, changeLabel: 'Course authors',                                                                 icon: GraduationCap, color: '#A78BFA', prefix: '',  suffix: '',         delay: 0.1   },
     { label: 'Revenue (est.)',   value: rev.value,                     change: 0, changeLabel: 'Sum of paid course earnings',                                                   icon: DollarSign,    color: '#4ADE80', prefix: '$', suffix: rev.suffix, delay: 0.15  },
@@ -55,7 +55,7 @@ export default function DashboardPage() {
           {timeGreeting()}, {firstName} 👋
         </h1>
         <p className="mt-1 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
-          Here&apos;s what&apos;s happening with LearnOS today.
+          Here&apos;s what&apos;s happening with Delta Institutions today.
         </p>
       </motion.div>
 
@@ -93,7 +93,7 @@ export default function DashboardPage() {
           style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
           <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
             <h2 className="text-sm font-semibold text-white">Recent Courses</h2>
-            <Link href="/courses" className="flex items-center gap-1 text-xs font-semibold transition-opacity hover:opacity-70" style={{ color: '#FF6B1A' }}>
+            <Link href="/courses" className="flex items-center gap-1 text-xs font-semibold transition-opacity hover:opacity-70" style={{ color: '#0057b8' }}>
               View all <ArrowUpRight size={12} />
             </Link>
           </div>
@@ -158,7 +158,7 @@ export default function DashboardPage() {
               { label: 'Total enrollments', value: stats?.totalEnrollments,  color: '#4ADE80' },
               { label: 'Reviews submitted', value: stats?.totalReviews,      color: '#FACC15' },
               { label: 'Published courses', value: stats?.publishedCourses,  color: '#2F6BFF' },
-              { label: 'Draft courses',     value: stats?.draftCourses,      color: '#FF6B1A' },
+              { label: 'Draft courses',     value: stats?.draftCourses,      color: '#0057b8' },
               { label: 'Instructors',       value: stats?.totalInstructors,  color: '#A78BFA' },
             ].map((row, i) => (
               <motion.div key={row.label}
@@ -185,7 +185,7 @@ export default function DashboardPage() {
         transition={{ delay: 0.35, type: 'spring', stiffness: 240, damping: 24 }}
         className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
-          { label: 'Add Course',      href: '/courses/new',  icon: BookOpen,   color: '#FF6B1A' },
+          { label: 'Add Course',      href: '/courses/new',  icon: BookOpen,   color: '#0057b8' },
           { label: 'View Students',   href: '/students',     icon: Users,      color: '#2F6BFF' },
           { label: 'Categories',      href: '/categories',   icon: TrendingUp, color: '#4ADE80' },
           { label: 'Reviews Queue',   href: '/reviews',      icon: Star,       color: '#FACC15' },

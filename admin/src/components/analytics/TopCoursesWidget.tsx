@@ -61,7 +61,7 @@ export function TopCoursesWidget() {
                         <motion.div className="h-full rounded-full"
                           initial={{ width: 0 }} animate={{ width: `${pct}%` }}
                           transition={{ duration: 0.7, ease: 'easeOut', delay: i * 0.05 }}
-                          style={{ background: 'linear-gradient(90deg, #FF6B1A, #F59E0B)' }} />
+                          style={{ background: 'linear-gradient(90deg, #0057b8, #F59E0B)' }} />
                       </div>
                       <div className="flex items-center gap-2.5 text-[10px] flex-shrink-0" style={{ color: 'rgba(255,255,255,0.45)' }}>
                         <span className="inline-flex items-center gap-0.5">

@@ -47,7 +47,7 @@ const inputCls = (hasError?: boolean) =>
   `w-full rounded-xl py-2.5 pl-9 pr-4 text-sm outline-none transition-all placeholder:text-gray-300 ${
     hasError
       ? 'border border-red-300 bg-red-50 text-gray-800'
-      : 'border border-[#E4E7ED] bg-[#F8F9FB] text-gray-800 focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100'
+      : 'border border-[#E4E7ED] bg-[#F8F9FB] text-gray-800 focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-blue-100'
   }`
 
 /* ── Modal component ────────────────────────────────── */
@@ -124,8 +124,8 @@ export function AddInstructorModal({ open, onClose }: AddInstructorModalProps) {
             {/* Header */}
             <div className="flex items-center gap-3 px-6 py-4" style={{ borderBottom: '1px solid #E4E7ED' }}>
               <div className="flex h-9 w-9 items-center justify-center rounded-xl"
-                style={{ background: 'rgba(255,107,26,0.10)' }}>
-                <GraduationCap size={18} style={{ color: '#FF6B1A' }} />
+                style={{ background: 'rgba(0,87,184,0.10)' }}>
+                <GraduationCap size={18} style={{ color: '#0057b8' }} />
               </div>
               <div>
                 <p className="text-sm font-bold" style={{ color: '#0D0F1A' }}>Add Instructor</p>
@@ -185,7 +185,7 @@ export function AddInstructorModal({ open, onClose }: AddInstructorModalProps) {
 
                   <Field label="Role *" error={errors.role?.message}>
                     <select {...register('role')}
-                      className="w-full rounded-xl border border-[#E4E7ED] bg-[#F8F9FB] py-2.5 pl-3 pr-4 text-sm text-gray-800 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100">
+                      className="w-full rounded-xl border border-[#E4E7ED] bg-[#F8F9FB] py-2.5 pl-3 pr-4 text-sm text-gray-800 outline-none focus:border-orange-400 focus:ring-2 focus:ring-blue-100">
                       <option value="instructor">Instructor</option>
                       <option value="admin">Admin</option>
                     </select>
@@ -195,7 +195,7 @@ export function AddInstructorModal({ open, onClose }: AddInstructorModalProps) {
                 {/* Program Category */}
                 <Field label="Program Category" error={errors.category?.message}>
                   <select {...register('category')}
-                    className="w-full rounded-xl border border-[#E4E7ED] bg-[#F8F9FB] py-2.5 pl-3 pr-4 text-sm text-gray-800 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100">
+                    className="w-full rounded-xl border border-[#E4E7ED] bg-[#F8F9FB] py-2.5 pl-3 pr-4 text-sm text-gray-800 outline-none focus:border-orange-400 focus:ring-2 focus:ring-blue-100">
                     <option value="">Select category…</option>
                     <option value="4x-trading">FOREX Trading</option>
                     <option value="digital-marketing">Digital Marketing</option>
@@ -239,7 +239,7 @@ export function AddInstructorModal({ open, onClose }: AddInstructorModalProps) {
                 {/* Bio */}
                 <Field label="Bio" error={errors.bio?.message}>
                   <textarea {...register('bio')} rows={3} placeholder="Short instructor bio…"
-                    className="w-full resize-none rounded-xl border border-[#E4E7ED] bg-[#F8F9FB] px-4 py-2.5 text-sm text-gray-800 outline-none placeholder:text-gray-300 focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100" />
+                    className="w-full resize-none rounded-xl border border-[#E4E7ED] bg-[#F8F9FB] px-4 py-2.5 text-sm text-gray-800 outline-none placeholder:text-gray-300 focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-blue-100" />
                 </Field>
 
                 {/* Actions */}
@@ -251,10 +251,10 @@ export function AddInstructorModal({ open, onClose }: AddInstructorModalProps) {
                   </button>
                   <motion.button
                     type="submit" disabled={isPending}
-                    whileHover={{ y: -1, boxShadow: '0 6px 20px rgba(255,107,26,0.32)' }}
+                    whileHover={{ y: -1, boxShadow: '0 6px 20px rgba(0,87,184,0.32)' }}
                     whileTap={{ scale: 0.98 }}
                     className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-60"
-                    style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+                    style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}>
                     {isPending
                       ? <><Loader2 size={14} className="animate-spin" />Creating…</>
                       : <>Create Instructor</>}

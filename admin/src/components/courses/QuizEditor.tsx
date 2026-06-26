@@ -143,7 +143,7 @@ export function QuizEditor({ lessonId, onClose }: Props) {
           </button>
           <button onClick={handleSave} disabled={upsert.isPending}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition-all disabled:opacity-60"
-            style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+            style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}>
             {upsert.isPending ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
             Save quiz
           </button>
@@ -234,7 +234,7 @@ function QuestionCard({ index, total, question: q, expanded, onToggle, onUpdate,
         onClick={onToggle}>
         <GripVertical size={12} style={{ color: 'rgba(255,255,255,0.2)' }} />
         <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
-          style={{ background: 'rgba(255,107,26,0.15)', color: '#FF6B1A' }}>
+          style={{ background: 'rgba(0,87,184,0.15)', color: '#0057b8' }}>
           {index + 1}
         </span>
         <span className="flex-1 truncate text-xs" style={{ color: q.text ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.3)' }}>
@@ -305,7 +305,7 @@ function QuestionCard({ index, total, question: q, expanded, onToggle, onUpdate,
                   ))}
                   <button onClick={() => onUpdate({ choices: [...q.choices, ''] })}
                     className="flex items-center gap-1 text-[11px] transition-opacity hover:opacity-70"
-                    style={{ color: '#FF6B1A' }}>
+                    style={{ color: '#0057b8' }}>
                     <Plus size={10} />Add choice
                   </button>
                 </div>

@@ -22,7 +22,7 @@ import { useQueryClient } from '@tanstack/react-query'
 /* ── Constants ─────────────────────────────────────── */
 const CATEGORY_META: Record<ProgramCategory, { label: string; color: string; bg: string; Icon: React.ComponentType<{ size?: number }> }> = {
   '4x-trading':        { label: 'FOREX Trading',     color: '#10B981', bg: 'rgba(16,185,129,0.14)',  Icon: TrendingUp },
-  'digital-marketing': { label: 'Digital Marketing', color: '#FF6B1A', bg: 'rgba(255,107,26,0.14)', Icon: Megaphone  },
+  'digital-marketing': { label: 'Digital Marketing', color: '#0057b8', bg: 'rgba(0,87,184,0.14)', Icon: Megaphone  },
   'ai':                { label: 'AI',                 color: '#8B5CF6', bg: 'rgba(139,92,246,0.14)', Icon: Cpu        },
 }
 
@@ -602,8 +602,8 @@ function ApplicationDetailModal({ user, scopeCategory, onClose, onApprove, onRej
         <div className="flex items-start justify-between px-6 py-4 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
-              style={{ background: 'rgba(255,107,26,0.15)', border: '1px solid rgba(255,107,26,0.3)' }}>
-              <span className="text-sm font-bold" style={{ color: '#FF6B1A' }}>{user.name[0]?.toUpperCase() ?? '?'}</span>
+              style={{ background: 'rgba(0,87,184,0.15)', border: '1px solid rgba(0,87,184,0.3)' }}>
+              <span className="text-sm font-bold" style={{ color: '#0057b8' }}>{user.name[0]?.toUpperCase() ?? '?'}</span>
             </div>
             <div>
               <h2 className="text-base font-bold text-white">{user.name}</h2>
@@ -654,7 +654,7 @@ function ApplicationDetailModal({ user, scopeCategory, onClose, onApprove, onRej
                     <div className="flex flex-wrap gap-1.5 mt-1">
                       {app.programs.map(p => (
                         <span key={p} className="rounded-lg px-2.5 py-1 text-xs font-medium"
-                          style={{ background: 'rgba(255,107,26,0.12)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.25)' }}>
+                          style={{ background: 'rgba(0,87,184,0.12)', color: '#0057b8', border: '1px solid rgba(0,87,184,0.25)' }}>
                           {p}
                         </span>
                       ))}
@@ -964,8 +964,8 @@ export default function EnrollmentRequestsPage() {
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
-                          style={{ background: 'rgba(255,107,26,0.15)', border: '1px solid rgba(255,107,26,0.25)' }}>
-                          <span className="text-xs font-bold" style={{ color: '#FF6B1A' }}>
+                          style={{ background: 'rgba(0,87,184,0.15)', border: '1px solid rgba(0,87,184,0.25)' }}>
+                          <span className="text-xs font-bold" style={{ color: '#0057b8' }}>
                             {r.name[0]?.toUpperCase() ?? '?'}
                           </span>
                         </div>

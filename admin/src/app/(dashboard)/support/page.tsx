@@ -57,7 +57,7 @@ export default function AdminSupportPage() {
     { label: 'Open',     value: stats?.open ?? 0,     color: '#FBBF24' },
     { label: 'Replied',  value: stats?.pending ?? 0,  color: '#60A5FA' },
     { label: 'Resolved', value: stats?.resolved ?? 0, color: '#4ADE80' },
-    { label: 'Unread',   value: stats?.unread ?? 0,   color: '#FF6B1A' },
+    { label: 'Unread',   value: stats?.unread ?? 0,   color: '#0057b8' },
   ]
 
   return (
@@ -65,8 +65,8 @@ export default function AdminSupportPage() {
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
         <div className="mb-1 flex items-center gap-2">
-          <LifeBuoy size={14} style={{ color: '#FF6B1A' }} />
-          <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#FF6B1A' }}>Support</span>
+          <LifeBuoy size={14} style={{ color: '#0057b8' }} />
+          <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#0057b8' }}>Support</span>
         </div>
         <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Help &amp; Complaints</h1>
         <p className="mt-0.5 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>Client requests and conversations.</p>
@@ -103,7 +103,7 @@ export default function AdminSupportPage() {
           <button key={t.key} onClick={() => setStatusFilter(t.key)}
             className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
             style={statusFilter === t.key
-              ? { background: 'rgba(255,107,26,0.15)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.3)' }
+              ? { background: 'rgba(0,87,184,0.15)', color: '#0057b8', border: '1px solid rgba(0,87,184,0.3)' }
               : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.08)' }}>
             {t.label}
           </button>
@@ -120,7 +120,7 @@ export default function AdminSupportPage() {
         {/* Ticket list */}
         <div className="flex w-full max-w-sm flex-shrink-0 flex-col gap-2">
           {isLoading ? (
-            <div className="flex justify-center py-12"><Loader2 size={20} className="animate-spin" style={{ color: '#FF6B1A' }} /></div>
+            <div className="flex justify-center py-12"><Loader2 size={20} className="animate-spin" style={{ color: '#0057b8' }} /></div>
           ) : tickets.length === 0 ? (
             <div className="rounded-2xl p-6 text-center" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
               <MessageSquare size={22} className="mx-auto mb-2" style={{ color: 'rgba(255,255,255,0.2)' }} />
@@ -131,10 +131,10 @@ export default function AdminSupportPage() {
             return (
               <button key={t.id} onClick={() => setSelectedId(t.id)}
                 className="w-full rounded-2xl p-3 text-left transition-all"
-                style={{ background: t.id === selectedId ? 'rgba(255,107,26,0.08)' : 'rgba(255,255,255,0.025)', border: `1px solid ${t.id === selectedId ? 'rgba(255,107,26,0.3)' : 'rgba(255,255,255,0.07)'}` }}>
+                style={{ background: t.id === selectedId ? 'rgba(0,87,184,0.08)' : 'rgba(255,255,255,0.025)', border: `1px solid ${t.id === selectedId ? 'rgba(0,87,184,0.3)' : 'rgba(255,255,255,0.07)'}` }}>
                 <div className="flex items-start justify-between gap-2">
                   <p className="line-clamp-1 text-sm font-bold text-white">{t.subject}</p>
-                  {t.adminUnread && <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full" style={{ background: '#FF6B1A' }} />}
+                  {t.adminUnread && <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full" style={{ background: '#0057b8' }} />}
                 </div>
                 <p className="mt-0.5 text-[11px]" style={{ color: 'rgba(255,255,255,0.45)' }}>{u?.name ?? 'Unknown'} · {u?.email}</p>
                 <div className="mt-1.5 flex items-center justify-between">
@@ -181,7 +181,7 @@ function AdminThread({ ticketId, onBack }: { ticketId: string; onBack: () => voi
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [ticket?.messages.length])
 
   if (isLoading || !ticket) {
-    return <div className="flex items-center justify-center py-24" style={{ minHeight: 480 }}><Loader2 size={20} className="animate-spin" style={{ color: '#FF6B1A' }} /></div>
+    return <div className="flex items-center justify-center py-24" style={{ minHeight: 480 }}><Loader2 size={20} className="animate-spin" style={{ color: '#0057b8' }} /></div>
   }
   const u = userOf(ticket); const s = STATUS_STYLE[ticket.status]
 
@@ -224,7 +224,7 @@ function AdminThread({ ticketId, onBack }: { ticketId: string; onBack: () => voi
               <div className="max-w-[78%]">
                 <div className="rounded-2xl px-3.5 py-2.5 text-sm"
                   style={mine
-                    ? { background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)', color: 'white', borderTopRightRadius: 4 }
+                    ? { background: 'linear-gradient(135deg,#0057b8,#003d80)', color: 'white', borderTopRightRadius: 4 }
                     : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.92)', borderTopLeftRadius: 4 }}>
                   {m.body}
                 </div>
@@ -252,7 +252,7 @@ function AdminThread({ ticketId, onBack }: { ticketId: string; onBack: () => voi
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', maxHeight: 120 }} />
           <button type="submit" disabled={reply.isPending || !body.trim()}
             className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-white disabled:opacity-50"
-            style={{ background: 'linear-gradient(135deg,#FF6B1A,#FF8C42)' }}>
+            style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)' }}>
             {reply.isPending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
           </button>
         </form>

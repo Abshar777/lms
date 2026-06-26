@@ -43,7 +43,7 @@ export default function CategoriesPage() {
         actions={
           <button onClick={() => setShowCreate(v => !v)}
             className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)', boxShadow: '0 4px 16px rgba(255,107,26,0.30)' }}>
+            style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)', boxShadow: '0 4px 16px rgba(0,87,184,0.30)' }}>
             <Plus size={14} />{showCreate ? 'Cancel' : 'New category'}
           </button>
         } />
@@ -159,7 +159,7 @@ function CategoryCard({ category, index, editing, setEditingId }: {
             </button>
             <button onClick={save} disabled={updateMutation.isPending}
               className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-60"
-              style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}>
+              style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}>
               {updateMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}Save
             </button>
           </div>

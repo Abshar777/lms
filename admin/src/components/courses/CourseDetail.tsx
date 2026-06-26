@@ -115,7 +115,7 @@ export function CourseDetail({ id }: { id: string }) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 size={28} className="animate-spin" style={{ color: '#FF6B1A' }} />
+          <Loader2 size={28} className="animate-spin" style={{ color: '#0057b8' }} />
           <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>Loading course…</p>
         </div>
       </div>
@@ -132,7 +132,7 @@ export function CourseDetail({ id }: { id: string }) {
             <AlertCircle size={22} style={{ color: '#EF4444' }} />
           </div>
           <p className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>Course not found</p>
-          <Link href="/courses" className="text-sm font-semibold" style={{ color: '#FF6B1A' }}>
+          <Link href="/courses" className="text-sm font-semibold" style={{ color: '#0057b8' }}>
             Back to courses
           </Link>
         </div>
@@ -209,7 +209,7 @@ export function CourseDetail({ id }: { id: string }) {
             <motion.div
               whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
               className="inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-semibold cursor-pointer"
-              style={{ background: 'rgba(255,107,26,0.15)', color: '#FF6B1A', border: '1px solid rgba(255,107,26,0.25)' }}>
+              style={{ background: 'rgba(0,87,184,0.15)', color: '#0057b8', border: '1px solid rgba(0,87,184,0.25)' }}>
               <Edit2 size={12} />Edit course
             </motion.div>
           </Link>
@@ -269,8 +269,8 @@ export function CourseDetail({ id }: { id: string }) {
           </div>
         ) : (
           <div className="relative h-56 w-full flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, rgba(255,107,26,0.12) 0%, rgba(255,255,255,0.02) 100%)' }}>
-            <BookOpen size={64} style={{ color: 'rgba(255,107,26,0.15)' }} />
+            style={{ background: 'linear-gradient(135deg, rgba(0,87,184,0.12) 0%, rgba(255,255,255,0.02) 100%)' }}>
+            <BookOpen size={64} style={{ color: 'rgba(0,87,184,0.15)' }} />
           </div>
         )}
 
@@ -294,7 +294,7 @@ export function CourseDetail({ id }: { id: string }) {
                 )}
                 {course.isFree && (
                   <span className="rounded-full px-2.5 py-1 text-[11px] font-bold"
-                    style={{ background: 'rgba(255,107,26,0.22)', color: '#FF6B1A' }}>
+                    style={{ background: 'rgba(0,87,184,0.22)', color: '#0057b8' }}>
                     FREE
                   </span>
                 )}
@@ -316,7 +316,7 @@ export function CourseDetail({ id }: { id: string }) {
               {course.instructor && (
                 <div className="mt-2 flex items-center gap-2">
                   <div className="h-5 w-5 rounded-full overflow-hidden flex items-center justify-center shrink-0"
-                    style={{ background: 'rgba(255,107,26,0.35)' }}>
+                    style={{ background: 'rgba(0,87,184,0.35)' }}>
                     {course.instructor.avatarUrl ? (
                       <Image src={course.instructor.avatarUrl} alt={course.instructor.name}
                         width={20} height={20} className="object-cover" unoptimized />
@@ -336,7 +336,7 @@ export function CourseDetail({ id }: { id: string }) {
             {/* Price badge */}
             {!course.isFree && (
               <div className="shrink-0 rounded-2xl px-4 py-2.5 text-center backdrop-blur-sm"
-                style={{ background: 'rgba(255,107,26,0.2)', border: '1px solid rgba(255,107,26,0.3)' }}>
+                style={{ background: 'rgba(0,87,184,0.2)', border: '1px solid rgba(0,87,184,0.3)' }}>
                 <p className="text-[10px] font-medium" style={{ color: 'rgba(255,255,255,0.5)' }}>Price</p>
                 <p className="text-2xl font-bold text-white">${course.price.toFixed(2)}</p>
               </div>
@@ -350,7 +350,7 @@ export function CourseDetail({ id }: { id: string }) {
         <StatCard
           icon={Users} label="Enrolled"
           value={course.enrolledCount.toLocaleString()}
-          color="#FF6B1A" delay={0.08}
+          color="#0057b8" delay={0.08}
         />
         <StatCard
           icon={Star} label="Rating"
@@ -387,8 +387,8 @@ export function CourseDetail({ id }: { id: string }) {
             >
               <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-white">
                 <div className="flex h-6 w-6 items-center justify-center rounded-lg"
-                  style={{ background: 'rgba(255,107,26,0.15)' }}>
-                  <Layers size={12} style={{ color: '#FF6B1A' }} />
+                  style={{ background: 'rgba(0,87,184,0.15)' }}>
+                  <Layers size={12} style={{ color: '#0057b8' }} />
                 </div>
                 About this course
               </h2>
@@ -410,8 +410,8 @@ export function CourseDetail({ id }: { id: string }) {
             >
               <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-white">
                 <div className="flex h-6 w-6 items-center justify-center rounded-lg"
-                  style={{ background: 'rgba(255,107,26,0.15)' }}>
-                  <Tag size={12} style={{ color: '#FF6B1A' }} />
+                  style={{ background: 'rgba(0,87,184,0.15)' }}>
+                  <Tag size={12} style={{ color: '#0057b8' }} />
                 </div>
                 Tags
               </h2>
@@ -443,8 +443,8 @@ export function CourseDetail({ id }: { id: string }) {
               <div className="flex items-center gap-2 px-5 py-3"
                 style={{ background: 'rgba(255,255,255,0.03)' }}>
                 <div className="flex h-6 w-6 items-center justify-center rounded-lg"
-                  style={{ background: 'rgba(255,107,26,0.15)' }}>
-                  <Play size={12} style={{ color: '#FF6B1A' }} />
+                  style={{ background: 'rgba(0,87,184,0.15)' }}>
+                  <Play size={12} style={{ color: '#0057b8' }} />
                 </div>
                 <span className="text-sm font-bold text-white">Preview Video</span>
               </div>
@@ -465,18 +465,18 @@ export function CourseDetail({ id }: { id: string }) {
           >
             <Link href={`/courses/${id}/edit`}>
               <div className="group flex items-center justify-between rounded-2xl p-5 transition-colors"
-                style={{ background: 'rgba(255,107,26,0.06)', border: '1px solid rgba(255,107,26,0.12)' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,107,26,0.28)' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,107,26,0.12)' }}>
+                style={{ background: 'rgba(0,87,184,0.06)', border: '1px solid rgba(0,87,184,0.12)' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(0,87,184,0.28)' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(0,87,184,0.12)' }}>
                 <div>
-                  <h3 className="text-sm font-bold" style={{ color: '#FF6B1A' }}>Edit this course</h3>
+                  <h3 className="text-sm font-bold" style={{ color: '#0057b8' }}>Edit this course</h3>
                   <p className="mt-0.5 text-xs" style={{ color: 'rgba(255,255,255,0.33)' }}>
                     Update content, curriculum, pricing and settings
                   </p>
                 </div>
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl transition-transform group-hover:translate-x-0.5"
-                  style={{ background: 'rgba(255,107,26,0.15)' }}>
-                  <Edit2 size={15} style={{ color: '#FF6B1A' }} />
+                  style={{ background: 'rgba(0,87,184,0.15)' }}>
+                  <Edit2 size={15} style={{ color: '#0057b8' }} />
                 </div>
               </div>
             </Link>
@@ -529,7 +529,7 @@ export function CourseDetail({ id }: { id: string }) {
               </p>
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full overflow-hidden flex items-center justify-center shrink-0"
-                  style={{ background: 'rgba(255,107,26,0.22)', border: '1.5px solid rgba(255,107,26,0.25)' }}>
+                  style={{ background: 'rgba(0,87,184,0.22)', border: '1.5px solid rgba(0,87,184,0.25)' }}>
                   {course.instructor.avatarUrl ? (
                     <Image src={course.instructor.avatarUrl} alt={course.instructor.name}
                       width={40} height={40} className="object-cover" unoptimized />

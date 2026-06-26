@@ -24,10 +24,10 @@ export default function InstructorsPage() {
         {isAdmin && (
           <motion.button
             onClick={() => setModalOpen(true)}
-            whileHover={{ y: -1, boxShadow: '0 6px 20px rgba(255,107,26,0.28)' }}
+            whileHover={{ y: -1, boxShadow: '0 6px 20px rgba(0,87,184,0.28)' }}
             whileTap={{ scale: 0.97 }}
             className="mt-1 flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #FF6B1A, #FF8C42)' }}
+            style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}
           >
             <UserPlus size={15} />
             Add Instructor
