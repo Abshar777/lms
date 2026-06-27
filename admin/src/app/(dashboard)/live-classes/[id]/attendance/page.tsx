@@ -64,7 +64,7 @@ export default function AttendancePage({ params }: { params: Promise<{ id: strin
   const attendanceMutation = useUpdateAttendance()
 
   const isLoading = sessionLoading || bookingsLoading
-  const rows = Array.isArray(bookings) ? bookings : []
+  const rows = bookings?.docs ?? []
 
   const attended   = rows.filter((b: any) => b.status === 'attended').length
   const missed     = rows.filter((b: any) => b.status === 'missed').length
