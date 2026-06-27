@@ -30,6 +30,7 @@ import uploadRoutes        from './upload.routes.ts'
 import bookingRoutes       from './bookings.routes.ts'
 import feedbackRoutes      from './feedback.routes.ts'
 import supportRoutes       from './support.routes.ts'
+import instructorRoutes   from './instructors.routes.ts'
 
 const router = Router()
 
@@ -107,5 +108,7 @@ router.use('/bookings',        bookingRoutes)
 router.use('/feedback',        feedbackRoutes)
 /* Help / Contact-us support tickets */
 router.use('/support',         supportRoutes)
+/* Public instructor list (for client-side mentor filter) */
+router.use('/instructors',     instructorRoutes)
 
 export default router

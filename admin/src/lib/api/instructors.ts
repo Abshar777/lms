@@ -8,14 +8,15 @@ export interface CourseEnrollmentDto {
 }
 
 export interface CreateInstructorDto {
-  name:      string
-  email:     string
-  password:  string
-  role:      'student' | 'instructor' | 'admin'
-  bio?:      string
-  headline?: string
-  category?: '4x-trading' | 'digital-marketing' | 'ai'
-  courses?:  CourseEnrollmentDto[]
+  name:       string
+  email:      string
+  password:   string
+  role:       'student' | 'instructor' | 'admin'
+  bio?:       string
+  headline?:  string
+  category?:  '4x-trading' | 'digital-marketing' | 'ai'
+  avatarUrl?: string
+  courses?:   CourseEnrollmentDto[]
 }
 
 export interface InstructorUser {

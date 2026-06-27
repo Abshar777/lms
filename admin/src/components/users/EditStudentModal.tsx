@@ -6,8 +6,9 @@ import {
   X, Loader2, AlertCircle, User, Mail,
   Lock, Unlock, BookOpen, Plus, Trash2,
   ChevronDown, ChevronUp, FileText, ExternalLink,
-  Phone, MapPin, CreditCard, ClipboardList,
+  Phone, MapPin, CreditCard, ClipboardList, Camera,
 } from 'lucide-react'
+import { api } from '@/lib/axios'
 import {
   useUpdateUser, useStudentEnrollments, useUpdateEnrollmentAccess,
   useEnrollStudent, useRemoveEnrollment, type AdminUser,
@@ -200,6 +201,19 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
   const [email, setEmail] = useState(user.email)
   const [error, setError] = useState<string | null>(null)
 
+  /* Photo upload */
+  const [avatarFile,    setAvatarFile]    = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(user.avatarUrl ?? null)
+  const [uploading,     setUploading]     = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvatarFile(file)
+    setAvatarPreview(URL.createObjectURL(file))
+  }
+
   /* Course access — localBlocked stores SECTION IDs (not lesson IDs) */
   const { data: enrollments, isLoading: enrollmentsLoading } = useStudentEnrollments(user.id)
   const [localBlocked, setLocalBlocked] = useState<Record<string, Set<string>>>({})
@@ -286,11 +300,29 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
     e.preventDefault()
     setError(null)
 
+    let newAvatarUrl: string | undefined
+    if (avatarFile) {
+      try {
+        setUploading(true)
+        const fd = new FormData()
+        fd.append('file', avatarFile)
+        const res = await api.post<{ success: true; data: { url: string } }>('/uploads/document', fd)
+        newAvatarUrl = res.data.data.url
+      } catch (err: any) {
+        setUploading(false)
+        setError(err?.response?.data?.error?.message ?? 'Photo upload failed.')
+        return
+      } finally {
+        setUploading(false)
+      }
+    }
+
     const promises: Promise<unknown>[] = []
 
-    const dto: { name?: string; email?: string } = {}
+    const dto: { name?: string; email?: string; avatarUrl?: string } = {}
     if (name.trim()  !== user.name)  dto.name  = name.trim()
     if (email.trim() !== user.email) dto.email = email.trim().toLowerCase()
+    if (newAvatarUrl)                dto.avatarUrl = newAvatarUrl
     if (Object.keys(dto).length > 0) promises.push(update.mutateAsync({ id: user.id, ...dto }))
 
     enrollments?.forEach(e => {
@@ -314,7 +346,7 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
     }
   }
 
-  const isPending = update.isPending || updateAccess.isPending
+  const isPending = update.isPending || updateAccess.isPending || uploading
 
   const base   = 'w-full rounded-xl py-2.5 pl-9 pr-4 text-sm text-white outline-none transition-all placeholder:text-white/30'
   const iStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' } as React.CSSProperties
@@ -366,6 +398,33 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
           {/* Scrollable body */}
           <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-y-auto">
             <div className="space-y-3 px-6 py-4">
+              {/* Profile photo */}
+              <div className="flex flex-col items-center gap-2 pb-1">
+                <div className="relative">
+                  <div
+                    className="h-20 w-20 overflow-hidden rounded-full flex items-center justify-center cursor-pointer transition-opacity hover:opacity-80"
+                    style={{ background: 'rgba(255,255,255,0.08)', border: '2px solid rgba(255,255,255,0.12)' }}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {avatarPreview
+                      ? <img src={avatarPreview} alt="Avatar" className="h-full w-full object-cover" />
+                      : <User size={28} style={{ color: 'rgba(255,255,255,0.3)' }} />}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full transition-colors hover:brightness-110"
+                    style={{ background: '#0057b8', border: '2px solid #161829' }}
+                  >
+                    <Camera size={11} className="text-white" />
+                  </button>
+                </div>
+                <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  {avatarPreview ? 'Click to change photo' : 'Upload profile photo'}
+                </span>
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+              </div>
+
               {/* Name */}
               <div>
                 <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
@@ -703,7 +762,9 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  {isPending
+                  {uploading
+                    ? <><Loader2 size={14} className="animate-spin" />Uploading…</>
+                    : isPending
                     ? <><Loader2 size={14} className="animate-spin" />Saving…</>
                     : 'Save changes'}
                 </MotionButton>

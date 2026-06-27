@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Loader2, ChevronDown, Check } from 'lucide-react'
+import { X, Loader2, ChevronDown, Check, Camera } from 'lucide-react'
 import { useUpdateUser, type AdminUser, type AdminUserRole } from '@/lib/api/users'
 import { useToast } from '@/store/ui.store'
+import { api } from '@/lib/axios'
 import type { CurrentAdmin } from '@/lib/api/user'
 
 /* ── Custom dark select ──────────────────────────── */
@@ -156,12 +157,16 @@ interface Props {
 }
 
 export function EditUserModal({ user, me, onClose, onSuccess }: Props) {
-  const [name,       setName]       = useState(user.name)
-  const [email,      setEmail]      = useState(user.email)
-  const [role,       setRole]       = useState<AdminUserRole>(user.role)
-  const [category,   setCategory]   = useState<'4x-trading' | 'digital-marketing' | 'ai' | ''>(user.category ?? '')
-  const [isActive,   setIsActive]   = useState(user.isActive)
-  const [isVerified, setIsVerified] = useState(user.isVerified)
+  const [name,          setName]          = useState(user.name)
+  const [email,         setEmail]         = useState(user.email)
+  const [role,          setRole]          = useState<AdminUserRole>(user.role)
+  const [category,      setCategory]      = useState<'4x-trading' | 'digital-marketing' | 'ai' | ''>(user.category ?? '')
+  const [isActive,      setIsActive]      = useState(user.isActive)
+  const [isVerified,    setIsVerified]    = useState(user.isVerified)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(user.avatarUrl ?? null)
+  const [avatarFile,    setAvatarFile]    = useState<File | null>(null)
+  const [uploading,     setUploading]     = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const updateUser = useUpdateUser()
   const toast      = useToast()
@@ -174,6 +179,21 @@ export function EditUserModal({ user, me, onClose, onSuccess }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
+      let avatarUrl: string | undefined
+      if (avatarFile) {
+        setUploading(true)
+        try {
+          const fd = new FormData()
+          fd.append('file', avatarFile)
+          const r = await api.post<{ success: true; data: { url: string } }>('/uploads/document', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          })
+          avatarUrl = r.data.data.url
+        } finally {
+          setUploading(false)
+        }
+      }
+
       const dto: Parameters<typeof updateUser.mutateAsync>[0] = {
         id: user.id, name: name.trim(), email: email.trim(), isActive, isVerified,
       }
@@ -181,6 +201,7 @@ export function EditUserModal({ user, me, onClose, onSuccess }: Props) {
       dto.category = needsCategory(activeRole)
         ? ((category || null) as '4x-trading' | 'digital-marketing' | 'ai' | null)
         : null
+      if (avatarUrl) (dto as any).avatarUrl = avatarUrl
       await updateUser.mutateAsync(dto)
       toast.success('User updated')
       onSuccess()
@@ -246,6 +267,54 @@ export function EditUserModal({ user, me, onClose, onSuccess }: Props) {
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-5">
             <div className="space-y-3">
+              {/* Avatar photo */}
+              <div className="flex items-center gap-4 pb-1">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={e => {
+                    const f = e.target.files?.[0]
+                    if (!f) return
+                    setAvatarFile(f)
+                    setAvatarPreview(URL.createObjectURL(f))
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="group relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-full transition-all"
+                  style={{
+                    border: avatarPreview ? '2px solid rgba(0,87,184,0.5)' : '2px dashed rgba(255,255,255,0.2)',
+                    background: 'rgba(255,255,255,0.05)',
+                  }}
+                >
+                  {avatarPreview
+                    ? <img src={avatarPreview} alt="Avatar" className="h-full w-full object-cover" />
+                    : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <Camera size={18} style={{ color: 'rgba(255,255,255,0.3)' }} />
+                      </div>
+                    )
+                  }
+                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                    <Camera size={14} className="text-white" />
+                  </div>
+                </button>
+                <div>
+                  <p className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.7)' }}>Profile photo</p>
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    className="mt-1 text-[11px] transition-colors hover:opacity-80"
+                    style={{ color: '#0057b8' }}
+                  >
+                    {avatarPreview ? 'Change photo' : 'Upload photo'}
+                  </button>
+                </div>
+              </div>
+
               {/* Name */}
               <div>
                 <label className="mb-1.5 block text-xs font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>Name</label>
@@ -309,11 +378,11 @@ export function EditUserModal({ user, me, onClose, onSuccess }: Props) {
                 style={{ color: 'rgba(255,255,255,0.5)' }}>
                 Cancel
               </button>
-              <button type="submit" disabled={updateUser.isPending}
+              <button type="submit" disabled={updateUser.isPending || uploading}
                 className="flex items-center gap-1.5 rounded-xl px-5 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)', boxShadow: '0 4px 14px rgba(0,87,184,0.3)' }}>
-                {updateUser.isPending && <Loader2 size={13} className="animate-spin" />}
-                Save changes
+                {(updateUser.isPending || uploading) && <Loader2 size={13} className="animate-spin" />}
+                {uploading ? 'Uploading…' : 'Save changes'}
               </button>
             </div>
           </form>

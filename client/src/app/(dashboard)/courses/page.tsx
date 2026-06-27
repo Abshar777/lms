@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useCourses } from '@/lib/api/courses'
 import { useCategories } from '@/lib/api/categories'
+import { useInstructors } from '@/lib/api/instructors'
 import { useMyEnrollments, useEnroll } from '@/lib/api/enrollments'
 import { useUIStore } from '@/store/ui.store'
 import { FavoriteButton } from '@/components/courses/FavoriteButton'
@@ -126,6 +127,7 @@ export default function CoursesPage() {
   const [duration,    setDuration]    = useState<DurationKey>('any')
   const [priceRange,  setPriceRange]  = useState<PriceKey>('any')
   const [program,     setProgram]     = useState('all')
+  const [instructor,  setInstructor]  = useState('')
 
   const lvl = level === 'all' ? '' : level
   const cat = category === 'all' ? '' : category
@@ -141,8 +143,10 @@ export default function CoursesPage() {
     price_min:    pr?.min,
     price_max:    pr?.max,
     program:      program === 'all' ? undefined : program,
+    instructor:   instructor || undefined,
   })
   const { data: categoriesData } = useCategories()
+  const { data: instructors = [] } = useInstructors()
   const categories: string[] = ['all', ...(categoriesData?.map(c => c.slug) ?? [])]
   const categoryLabel = (slug: string) => slug === 'all'
     ? 'All categories'
@@ -154,7 +158,8 @@ export default function CoursesPage() {
     (category !== 'all' ? 1 : 0) +
     (free || pr?.free ? 1 : 0) +
     (duration !== 'any' ? 1 : 0) +
-    (priceRange !== 'any' && !pr?.free ? 1 : 0)
+    (priceRange !== 'any' && !pr?.free ? 1 : 0) +
+    (instructor ? 1 : 0)
 
   /* Responsive grid: no desktop sidebar, so more columns available */
   const gridCols = `grid-cols-1 sm:grid-cols-2 md:grid-cols-3 ${rightPanelOpen ? 'xl:grid-cols-3' : 'xl:grid-cols-4'}`
@@ -396,6 +401,42 @@ export default function CoursesPage() {
                     ))}
                   </div>
                 </div>
+                {/* Instructor */}
+                {instructors.length > 0 && (
+                  <div>
+                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#9CA3AF' }}>Instructor</p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        onClick={() => { setInstructor(''); setPage(1) }}
+                        variant="ghost" size="sm"
+                        className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold h-auto transition-all"
+                        style={!instructor
+                          ? { background: 'rgba(0,87,184,0.10)', color: '#0057b8', border: '1px solid rgba(0,87,184,0.28)' }
+                          : { background: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}>
+                        All instructors
+                      </Button>
+                      {instructors.map(ins => (
+                        <Button
+                          key={ins.id}
+                          onClick={() => { setInstructor(instructor === ins.id ? '' : ins.id); setPage(1) }}
+                          variant="ghost" size="sm"
+                          className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold h-auto transition-all"
+                          style={instructor === ins.id
+                            ? { background: 'rgba(0,87,184,0.10)', color: '#0057b8', border: '1px solid rgba(0,87,184,0.28)' }
+                            : { background: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}>
+                          {ins.avatarUrl
+                            ? <img src={ins.avatarUrl} alt="" className="h-4 w-4 rounded-full object-cover flex-shrink-0" />
+                            : <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                                style={{ background: '#0057b8' }}>
+                                {ins.name[0]?.toUpperCase()}
+                              </span>
+                          }
+                          {ins.name}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {/* Free toggle + clear */}
                 <div className="flex items-center gap-3 pt-1" style={{ borderTop: '1px solid #F3F4F6' }}>
                   <Button onClick={() => { setFree(v => !v); setPage(1) }}
@@ -409,7 +450,8 @@ export default function CoursesPage() {
                   </Button>
                   <Button onClick={() => {
                     setLevel('all'); setCategory('all'); setFree(false)
-                    setContentType('all'); setDuration('any'); setPriceRange('any'); setPage(1)
+                    setContentType('all'); setDuration('any'); setPriceRange('any')
+                    setInstructor(''); setPage(1)
                   }}
                     variant="ghost"
                     size="sm"

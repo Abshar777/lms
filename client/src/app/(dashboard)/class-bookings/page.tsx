@@ -715,6 +715,124 @@ function FilterSelect({ placeholder, value, onChange, options }: {
   )
 }
 
+/* ── Instructor filter with photo ──────────────────────────── */
+function InstructorFilterSelect({ value, onChange, instructors }: {
+  value: string
+  onChange: (v: string) => void
+  instructors: { id: string; name: string; avatarUrl?: string }[]
+}) {
+  const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const dropRef = useRef<HTMLDivElement>(null)
+  const active = value !== 'all'
+  const selected = instructors.find(i => i.id === value)
+
+  const toggleOpen = () => {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setPos({ top: r.bottom + 6, left: r.left })
+    }
+    setOpen(v => !v)
+  }
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (
+        btnRef.current && !btnRef.current.contains(e.target as Node) &&
+        dropRef.current && !dropRef.current.contains(e.target as Node)
+      ) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div className="relative">
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={toggleOpen}
+        className="dm flex items-center gap-2 rounded-2xl py-2 pl-3 pr-8 text-[12px] font-semibold outline-none cursor-pointer transition-all whitespace-nowrap"
+        style={{
+          background: active ? 'rgba(0,87,184,0.08)' : 'white',
+          color:      active ? '#EA6010'              : '#475569',
+          border:     active ? '1.5px solid rgba(0,87,184,0.30)' : '1px solid #E2EAF4',
+          boxShadow:  active ? '0 0 0 3px rgba(0,87,184,0.07)' : '0 1px 4px rgba(15,23,42,0.04)',
+        }}
+      >
+        {selected ? (
+          <>
+            {selected.avatarUrl
+              ? <img src={selected.avatarUrl} alt="" className="h-5 w-5 rounded-full object-cover flex-shrink-0" />
+              : <div className="h-5 w-5 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-bold text-white" style={{ background: '#0057b8' }}>
+                  {selected.name[0]?.toUpperCase()}
+                </div>}
+            <span className="max-w-[110px] truncate">{selected.name}</span>
+          </>
+        ) : (
+          <span>All Instructors</span>
+        )}
+        <ChevronDown size={11} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: active ? '#0057b8' : '#94A3B8' }} />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            ref={dropRef}
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.12 }}
+            style={{
+              position: 'fixed',
+              top: pos.top,
+              left: pos.left,
+              zIndex: 9999,
+              minWidth: 190,
+              background: 'white',
+              border: '1px solid #E2EAF4',
+              boxShadow: '0 8px 32px rgba(15,23,42,0.12)',
+              borderRadius: 16,
+              overflow: 'hidden',
+              paddingTop: 6,
+              paddingBottom: 6,
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => { onChange('all'); setOpen(false) }}
+              className="dm flex w-full items-center gap-2.5 px-3 py-2 text-[12px] font-semibold transition-colors hover:bg-blue-50"
+              style={{ color: value === 'all' ? '#0057b8' : '#475569' }}
+            >
+              <div className="h-6 w-6 rounded-full flex-shrink-0 flex items-center justify-center" style={{ background: '#F1F5F9' }}>
+                <User size={11} style={{ color: '#94A3B8' }} />
+              </div>
+              All Instructors
+            </button>
+            {instructors.map(i => (
+              <button
+                key={i.id}
+                type="button"
+                onClick={() => { onChange(i.id); setOpen(false) }}
+                className="dm flex w-full items-center gap-2.5 px-3 py-2 text-[12px] font-semibold transition-colors hover:bg-blue-50"
+                style={{ color: value === i.id ? '#0057b8' : '#475569' }}
+              >
+                {i.avatarUrl
+                  ? <img src={i.avatarUrl} alt="" className="h-6 w-6 rounded-full object-cover flex-shrink-0 ring-1 ring-slate-200" />
+                  : <div className="h-6 w-6 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-white" style={{ background: '#0057b8' }}>
+                      {i.name[0]?.toUpperCase()}
+                    </div>}
+                <span className="truncate">{i.name}</span>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 /* ── Contact admin modal ───────────────────────────────────── */
 function ContactAdminModal({onClose}:{onClose:()=>void}) {
   return(
@@ -804,12 +922,12 @@ export default function ClassBookingsPage() {
   },[allClasses])
 
   const uniqueInstructors = useMemo(()=>{
-    const map = new Map<string,{id:string;name:string;count:number}>()
+    const map = new Map<string,{id:string;name:string;avatarUrl?:string;count:number}>()
     allClasses.forEach(lc=>{
       if(!lc.instructor?.id) return
       const ex = map.get(lc.instructor.id)
       if(ex) ex.count++
-      else map.set(lc.instructor.id,{id:lc.instructor.id,name:lc.instructor.name??'',count:1})
+      else map.set(lc.instructor.id,{id:lc.instructor.id,name:lc.instructor.name??'',avatarUrl:lc.instructor.avatarUrl,count:1})
     })
     return Array.from(map.values()).sort((a,b)=>b.count-a.count)
   },[allClasses])
@@ -1342,11 +1460,10 @@ export default function ClassBookingsPage() {
                 )}
                 {/* Instructor dropdown */}
                 {programInstructors.length>0&&(
-                  <FilterSelect
-                    placeholder="All Instructors"
+                  <InstructorFilterSelect
                     value={filterInstructor}
                     onChange={v=>{setFilterInstructor(v)}}
-                    options={programInstructors.map(i=>({value:i.id,label:i.name}))}
+                    instructors={programInstructors}
                   />
                 )}
                 {/* Language dropdown */}

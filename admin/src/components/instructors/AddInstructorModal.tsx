@@ -1,15 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, User, Mail, Lock, Eye, EyeOff, FileText,
-  Loader2, AlertCircle, CheckCircle2, GraduationCap,
+  Loader2, AlertCircle, CheckCircle2, GraduationCap, Camera,
 } from 'lucide-react'
 import { useCreateInstructor } from '@/lib/api/instructors'
+import { api } from '@/lib/axios'
 
 /* ── Validation schema ──────────────────────────────── */
 const schema = z.object({
@@ -57,8 +58,14 @@ interface AddInstructorModalProps {
 }
 
 export function AddInstructorModal({ open, onClose }: AddInstructorModalProps) {
-  const [showPw, setShowPw]   = useState(false)
-  const [success, setSuccess] = useState(false)
+  const [showPw, setShowPw]         = useState(false)
+  const [success, setSuccess]       = useState(false)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [avatarError, setAvatarError]     = useState<string | null>(null)
+  const [uploading, setUploading]   = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
   const { mutateAsync, isPending, error: apiError } = useCreateInstructor()
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<Values>({
@@ -74,29 +81,56 @@ export function AddInstructorModal({ open, onClose }: AddInstructorModalProps) {
   })()
 
   const onSubmit = async (values: Values) => {
+    if (!avatarFile) {
+      setAvatarError('Profile photo is required')
+      return
+    }
+    setAvatarError(null)
+
+    setUploading(true)
+    let avatarUrl = ''
+    try {
+      const fd = new FormData()
+      fd.append('file', avatarFile)
+      const r = await api.post<{ success: true; data: { url: string } }>('/uploads/document', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      avatarUrl = r.data.data.url
+    } finally {
+      setUploading(false)
+    }
+
     await mutateAsync({
-      name:     values.name,
-      email:    values.email,
-      password: values.password,
-      role:     values.role,
-      headline: values.headline || undefined,
-      bio:      values.bio      || undefined,
-      category: (values.category || undefined) as '4x-trading' | 'digital-marketing' | 'ai' | undefined,
+      name:      values.name,
+      email:     values.email,
+      password:  values.password,
+      role:      values.role,
+      headline:  values.headline || undefined,
+      bio:       values.bio      || undefined,
+      category:  (values.category || undefined) as '4x-trading' | 'digital-marketing' | 'ai' | undefined,
+      avatarUrl,
     })
     setSuccess(true)
     setTimeout(() => {
       setSuccess(false)
       reset()
+      setAvatarFile(null)
+      setAvatarPreview(null)
       onClose()
     }, 1800)
   }
 
   const handleClose = () => {
-    if (isPending) return
+    if (isPending || uploading) return
     reset()
     setSuccess(false)
+    setAvatarFile(null)
+    setAvatarPreview(null)
+    setAvatarError(null)
     onClose()
   }
+
+  const isSubmitting = isPending || uploading
 
   return (
     <AnimatePresence>
@@ -173,6 +207,58 @@ export function AddInstructorModal({ open, onClose }: AddInstructorModalProps) {
                   )}
                 </AnimatePresence>
 
+                {/* ── Profile photo (required) ── */}
+                <div className="flex flex-col items-center gap-2 pb-1">
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => {
+                      const f = e.target.files?.[0]
+                      if (!f) return
+                      setAvatarFile(f)
+                      setAvatarPreview(URL.createObjectURL(f))
+                      setAvatarError(null)
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    className="group relative h-20 w-20 overflow-hidden rounded-full transition-all"
+                    style={{
+                      border: avatarError
+                        ? '2px dashed #EF4444'
+                        : avatarPreview ? '2px solid #0057b8' : '2px dashed #D1D5DB',
+                      background: avatarPreview ? 'transparent' : '#F9FAFB',
+                    }}
+                  >
+                    {avatarPreview
+                      ? <img src={avatarPreview} alt="Preview" className="h-full w-full object-cover" />
+                      : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <Camera size={22} style={{ color: avatarError ? '#EF4444' : '#D1D5DB' }}
+                            className="transition-colors group-hover:text-blue-400" />
+                        </div>
+                      )
+                    }
+                    <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/30 opacity-0 transition-opacity group-hover:opacity-100">
+                      <Camera size={16} className="text-white" />
+                    </div>
+                  </button>
+                  <p className="text-[11px] text-gray-500">
+                    Profile photo <span className="text-red-500">*</span>
+                  </p>
+                  <AnimatePresence>
+                    {avatarError && (
+                      <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                        className="flex items-center gap-1 text-xs text-red-500">
+                        <AlertCircle size={10} />{avatarError}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+                </div>
+
                 {/* Row: Name + Role */}
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Full name *" error={errors.name?.message}>
@@ -244,19 +330,19 @@ export function AddInstructorModal({ open, onClose }: AddInstructorModalProps) {
 
                 {/* Actions */}
                 <div className="flex items-center justify-end gap-3 pt-1">
-                  <button type="button" onClick={handleClose} disabled={isPending}
+                  <button type="button" onClick={handleClose} disabled={isSubmitting}
                     className="rounded-xl px-4 py-2.5 text-sm font-medium transition-colors hover:bg-gray-100 disabled:opacity-50"
                     style={{ color: '#4B5563' }}>
                     Cancel
                   </button>
                   <motion.button
-                    type="submit" disabled={isPending}
+                    type="submit" disabled={isSubmitting}
                     whileHover={{ y: -1, boxShadow: '0 6px 20px rgba(0,87,184,0.32)' }}
                     whileTap={{ scale: 0.98 }}
                     className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-60"
                     style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}>
-                    {isPending
-                      ? <><Loader2 size={14} className="animate-spin" />Creating…</>
+                    {isSubmitting
+                      ? <><Loader2 size={14} className="animate-spin" />{uploading ? 'Uploading…' : 'Creating…'}</>
                       : <>Create Instructor</>}
                   </motion.button>
                 </div>

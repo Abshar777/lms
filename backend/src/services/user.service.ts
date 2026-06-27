@@ -34,7 +34,7 @@ export class UserService {
      Deactivation also revokes all refresh tokens for that user. */
   async adminUpdate(
     id: string,
-    dto: { role?: UserRole; isActive?: boolean; isVerified?: boolean; name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | 'ai' | null },
+    dto: { role?: UserRole; isActive?: boolean; isVerified?: boolean; name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | 'ai' | null; avatarUrl?: string },
   ): Promise<IUser> {
     if (!Types.ObjectId.isValid(id)) {
       throw new UserError('INVALID_ID', 'Invalid user id', 400)
@@ -44,6 +44,7 @@ export class UserService {
     if (dto.isActive   !== undefined) update.isActive   = dto.isActive
     if (dto.isVerified !== undefined) update.isVerified = dto.isVerified
     if (dto.name       !== undefined) update.name       = dto.name.trim()
+    if (dto.avatarUrl  !== undefined) update.avatarUrl  = dto.avatarUrl || undefined
     if (dto.category !== undefined) {
       update.category = dto.category ?? undefined
       // Keep categories array in sync with single category field
@@ -80,13 +81,14 @@ export class UserService {
   }
 
   async adminCreateUser(dto: {
-    name:      string
-    email:     string
-    password:  string
-    role:      UserRole
-    bio?:      string
-    headline?: string
-    category?: '4x-trading' | 'digital-marketing' | 'ai'
+    name:       string
+    email:      string
+    password:   string
+    role:       UserRole
+    bio?:       string
+    headline?:  string
+    category?:  '4x-trading' | 'digital-marketing' | 'ai'
+    avatarUrl?: string
   }): Promise<IUser> {
     const exists = await this.repo.emailExists(dto.email)
     if (exists) {
@@ -100,11 +102,12 @@ export class UserService {
       role:         dto.role,
       category:     dto.category,
     })
-    /* Patch bio / headline if provided */
-    if (dto.bio || dto.headline) {
+    /* Patch bio / headline / avatarUrl if provided */
+    if (dto.bio || dto.headline || dto.avatarUrl) {
       const patch: Partial<IUser> = {}
-      if (dto.bio)      patch.bio      = dto.bio
-      if (dto.headline) patch.headline = dto.headline
+      if (dto.bio)       patch.bio       = dto.bio
+      if (dto.headline)  patch.headline  = dto.headline
+      if (dto.avatarUrl) patch.avatarUrl = dto.avatarUrl
       await this.repo.updateById(user.id, patch)
       Object.assign(user, patch)
     }

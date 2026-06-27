@@ -141,6 +141,7 @@ const userUpdateSchema = z.object({
   name:       z.string().min(2).max(100).trim().optional(),
   email:      z.string().email().optional(),
   category:   z.enum(['4x-trading', 'digital-marketing', 'ai']).nullable().optional(),
+  avatarUrl:  z.string().url().or(z.literal('')).optional(),
 }).refine(d => Object.keys(d).length > 0, { message: 'Provide at least one field' })
 
 const userCreateSchema = z.object({
@@ -151,6 +152,7 @@ const userCreateSchema = z.object({
   bio:       z.string().max(2000).optional(),
   headline:  z.string().max(255).optional(),
   category:  z.enum(['4x-trading', 'digital-marketing', 'ai']).optional(),
+  avatarUrl: z.string().url().or(z.literal('')).optional(),
   courses:   z.array(z.object({
     courseId:       z.string().min(1),
     blockedLessons: z.array(z.string()).default([]),

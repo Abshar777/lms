@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -10,6 +10,7 @@ import {
   ChevronRight, PlayCircle, CalendarDays, Pencil, Search, X, Plus,
   LayoutList, CalendarRange, ChevronLeft, GraduationCap,
   UserCheck, LayoutGrid, Building2, MapPin, UserPlus,
+  ChevronDown, User,
 } from 'lucide-react'
 import { useAllLiveClasses, useCreateLiveClass, type LiveClass, type LiveClassType } from '@/lib/api/liveClasses'
 import { datetimeLocalToISO } from '@/lib/timezone'
@@ -21,6 +22,96 @@ import { EditLiveClassModal } from '@/components/live-classes/EditLiveClassModal
 import { CreateOfflineClassModal } from '@/components/live-classes/CreateOfflineClassModal'
 import { BookForStudentModal } from '@/components/live-classes/BookForStudentModal'
 import { Button, MotionButton } from '@/components/ui/button'
+
+/* ── Instructor dropdown (dark theme) ───────────────────── */
+function InstructorDropdown({ value, onChange, instructors }: {
+  value: string
+  onChange: (v: string) => void
+  instructors: { id: string; name: string; avatarUrl?: string }[]
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const active = !!value
+  const selected = instructors.find(i => i.id === value)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-2 rounded-xl py-1.5 pl-2.5 pr-7 text-xs font-semibold outline-none cursor-pointer transition-all whitespace-nowrap"
+        style={{
+          background: active ? 'rgba(0,87,184,0.15)' : '#1e2035',
+          border:     active ? '1px solid rgba(0,87,184,0.35)' : '1px solid rgba(255,255,255,0.10)',
+          color:      active ? '#60a5fa' : 'rgba(255,255,255,0.65)',
+        }}
+      >
+        {selected ? (
+          <>
+            {selected.avatarUrl
+              ? <img src={selected.avatarUrl} alt="" className="h-5 w-5 rounded-full object-cover flex-shrink-0 ring-1 ring-white/20" />
+              : <div className="h-5 w-5 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-bold text-white" style={{ background: '#0057b8' }}>
+                  {selected.name[0]?.toUpperCase()}
+                </div>}
+            <span className="max-w-[110px] truncate">{selected.name}</span>
+          </>
+        ) : (
+          <span>All Instructors</span>
+        )}
+        <ChevronDown size={11} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 opacity-50" />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.12 }}
+            className="absolute left-0 top-full z-50 mt-1.5 min-w-[180px] overflow-hidden rounded-xl py-1"
+            style={{ background: '#1a1d2e', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 16px 40px rgba(0,0,0,0.5)' }}
+          >
+            <button
+              type="button"
+              onClick={() => { onChange(''); setOpen(false) }}
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-colors hover:bg-white/08"
+              style={{ color: !value ? '#60a5fa' : 'rgba(255,255,255,0.7)' }}
+            >
+              <div className="h-6 w-6 rounded-full flex-shrink-0 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                <User size={11} style={{ color: 'rgba(255,255,255,0.4)' }} />
+              </div>
+              All Instructors
+            </button>
+            {instructors.map(i => (
+              <button
+                key={i.id}
+                type="button"
+                onClick={() => { onChange(i.id); setOpen(false) }}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-colors hover:bg-white/08"
+                style={{ color: value === i.id ? '#60a5fa' : 'rgba(255,255,255,0.7)' }}
+              >
+                {i.avatarUrl
+                  ? <img src={i.avatarUrl} alt="" className="h-6 w-6 rounded-full object-cover flex-shrink-0 ring-1 ring-white/15" />
+                  : <div className="h-6 w-6 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-white" style={{ background: '#0057b8' }}>
+                      {i.name[0]?.toUpperCase()}
+                    </div>}
+                <span className="truncate">{i.name}</span>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 /* ── Helpers ─────────────────────────────────────────── */
 function fmtDate(iso: string): string {
@@ -1276,20 +1367,11 @@ export default function LiveClassesPage() {
 
         {/* Instructor filter */}
         {instructors.length > 0 && !isInstructor && (
-          <select
+          <InstructorDropdown
             value={instructorFilter}
-            onChange={e => setInstructorFilter(e.target.value)}
-            className="rounded-xl px-3 py-1.5 text-xs font-semibold outline-none transition-all"
-            style={{
-              background: instructorFilter ? '#2a1a0a' : '#1e2035',
-              border: instructorFilter ? '1px solid rgba(0,87,184,0.35)' : '1px solid rgba(255,255,255,0.10)',
-              color: instructorFilter ? '#0057b8' : 'rgba(255,255,255,0.65)',
-            }}>
-            <option value="">All Instructors</option>
-            {instructors.map(i => (
-              <option key={i.id} value={i.id}>{i.name}</option>
-            ))}
-          </select>
+            onChange={setInstructorFilter}
+            instructors={instructors.map(i => ({ id: i.id, name: i.name, avatarUrl: i.avatarUrl }))}
+          />
         )}
 
         {/* Type filter */}
