@@ -1,28 +1,49 @@
 import crypto from 'node:crypto'
-import Razorpay from 'razorpay'
 import { env } from '@/config/env.ts'
 import { logger } from '@/utils/logger.ts'
 
-/* Lazily initialised so the server doesn't crash when RAZORPAY_KEY_ID is absent */
-let _instance: Razorpay | null = null
+const RAZORPAY_BASE = 'https://api.razorpay.com/v1'
 
-function getInstance(): Razorpay {
-  if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
-    throw new Error('Razorpay is not configured — add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to .env')
+function getAuthHeader(): string {
+  const id     = env.RAZORPAY_KEY_ID
+  const secret = env.RAZORPAY_KEY_SECRET
+  if (!id || !secret) {
+    throw Object.assign(
+      new Error('Razorpay is not configured — add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to .env'),
+      { statusCode: 503 },
+    )
   }
-  if (!_instance) {
-    _instance = new Razorpay({
-      key_id:     env.RAZORPAY_KEY_ID,
-      key_secret: env.RAZORPAY_KEY_SECRET,
-    })
-  }
-  return _instance
+  return 'Basic ' + Buffer.from(`${id}:${secret}`).toString('base64')
 }
 
+async function rzPost<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  let res: Response
+  try {
+    res = await fetch(`${RAZORPAY_BASE}${path}`, {
+      method:  'POST',
+      headers: { Authorization: getAuthHeader(), 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body),
+    })
+  } catch (networkErr) {
+    logger.error({ networkErr }, '[razorpay] network error reaching api.razorpay.com')
+    throw new Error('Razorpay: unable to reach payment gateway — check internet connectivity')
+  }
+
+  const data = await res.json() as any
+  if (!res.ok) {
+    const msg = data?.error?.description ?? data?.error?.code ?? `HTTP ${res.status}`
+    logger.error({ data, status: res.status }, `[razorpay] ${path} failed: ${msg}`)
+    throw new Error(`Razorpay: ${msg}`)
+  }
+  return data as T
+}
+
+/* ── Types ──────────────────────────────────────────── */
+
 export interface RazorpayOrderParams {
-  amountPaise: number   // 1 INR = 100 paise
-  currency:    string   // 'INR'
-  receipt:     string   // max 40 chars, unique per order
+  amountPaise: number
+  currency:    string
+  receipt:     string
   notes?:      Record<string, string>
 }
 
@@ -33,48 +54,61 @@ export interface RazorpayOrderResult {
   receipt:  string
 }
 
+/* ── Service ────────────────────────────────────────── */
+
 export class RazorpayService {
-  /* Create an order on Razorpay's side — returns the order_id the frontend needs */
   async createOrder(params: RazorpayOrderParams): Promise<RazorpayOrderResult> {
-    const rz = getInstance()
-    const order = await rz.orders.create({
+    const order = await rzPost<any>('/orders', {
       amount:   params.amountPaise,
       currency: params.currency,
       receipt:  params.receipt.slice(0, 40),
       notes:    params.notes ?? {},
-    }) as any
+    })
     return {
-      id:       order.id,
-      amount:   order.amount as number,
+      id:       order.id       as string,
+      amount:   order.amount   as number,
       currency: order.currency as string,
-      receipt:  order.receipt as string,
+      receipt:  order.receipt  as string,
     }
   }
 
-  /* HMAC-SHA256 signature verification — must match before marking order paid */
-  verifySignature(razorpayOrderId: string, razorpayPaymentId: string, razorpaySignature: string): boolean {
+  verifySignature(
+    razorpayOrderId:   string,
+    razorpayPaymentId: string,
+    razorpaySignature: string,
+  ): boolean {
     if (!env.RAZORPAY_KEY_SECRET) return false
-    const body    = `${razorpayOrderId}|${razorpayPaymentId}`
     const expected = crypto
       .createHmac('sha256', env.RAZORPAY_KEY_SECRET)
-      .update(body)
+      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
       .digest('hex')
-    return crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(razorpaySignature, 'hex'))
+    try {
+      return crypto.timingSafeEqual(
+        Buffer.from(expected,         'hex'),
+        Buffer.from(razorpaySignature, 'hex'),
+      )
+    } catch {
+      return false  // buffer length mismatch → invalid signature
+    }
   }
 
-  /* Verify webhook signature (X-Razorpay-Signature header) */
   verifyWebhookSignature(rawBody: string, signature: string, secret: string): boolean {
     const expected = crypto
       .createHmac('sha256', secret)
       .update(rawBody)
       .digest('hex')
-    return crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(signature, 'hex'))
+    try {
+      return crypto.timingSafeEqual(
+        Buffer.from(expected,  'hex'),
+        Buffer.from(signature, 'hex'),
+      )
+    } catch {
+      return false
+    }
   }
 
-  /* Full refund for a captured payment */
   async refundPayment(paymentId: string): Promise<void> {
-    const rz = getInstance()
-    await (rz.payments as any).refund(paymentId)
+    await rzPost(`/payments/${paymentId}/refund`, {})
     logger.info({ paymentId }, '[razorpay] refund initiated')
   }
 }

@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { useCourse } from '@/lib/api/courses'
 import { useCourseProgress, useEnroll } from '@/lib/api/enrollments'
-import { useCheckout, useValidateCoupon } from '@/lib/api/checkout'
+import { useRazorpayCheckout, useValidateCoupon } from '@/lib/api/checkout'
 import { formatPrice } from '@/lib/formatPrice'
 import { CertificateButton } from '@/components/learn/CertificateButton'
 import { CourseReviews } from '@/components/courses/CourseReviews'
@@ -51,7 +51,7 @@ function CourseDetailInner({ slug }: { slug: string }) {
   const { data, isLoading, isError } = useCourse(slug)
   const { data: progress } = useCourseProgress(slug)
   const enroll   = useEnroll()
-  const checkout = useCheckout()
+  const checkout = useRazorpayCheckout()
 
   const [enrollError,   setEnrollError]   = useState<string | null>(null)
   const [couponOpen,    setCouponOpen]     = useState(false)
@@ -127,10 +127,10 @@ function CourseDetailInner({ slug }: { slug: string }) {
     setEnrollError(null)
     try {
       await checkout.mutateAsync({ courseId: course.id, couponCode: couponCode || undefined })
-      /* onSuccess in useCheckout redirects to Stripe — no further action here */
     } catch (err: any) {
-      const msg = err?.response?.data?.error?.message
-      setEnrollError(msg ?? 'Unable to start checkout. Please try again.')
+      if (err?.message !== 'DISMISSED') {
+        setEnrollError(err?.message ?? 'Unable to start checkout. Please try again.')
+      }
     }
   }
 

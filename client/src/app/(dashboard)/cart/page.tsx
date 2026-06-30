@@ -9,7 +9,7 @@ import {
   CheckCircle2, GraduationCap,
 } from 'lucide-react'
 import { useCartStore, type CartItem } from '@/store/cart.store'
-import { useCheckout, useValidateCoupon } from '@/lib/api/checkout'
+import { useRazorpayCheckout, useValidateCoupon } from '@/lib/api/checkout'
 
 /* ── helpers ─────────────────────────────────────────── */
 function fmt(cents: number, currency = 'USD') {
@@ -74,7 +74,7 @@ function CouponRow({
 
 /* ── Single cart item card ───────────────────────────── */
 function CartItemCard({ item, onRemove }: { item: CartItem; onRemove: () => void }) {
-  const checkout  = useCheckout()
+  const checkout  = useRazorpayCheckout()
   const isFree    = item.isFree || !item.price || item.price === 0
   const [coupon,  setCoupon]  = useState<string | undefined>(undefined)
   const [buying,  setBuying]  = useState(false)
@@ -181,7 +181,7 @@ function CartItemCard({ item, onRemove }: { item: CartItem; onRemove: () => void
       {checkout.isError && (
         <p className="mt-2 flex items-center gap-1 text-xs" style={{ color: '#EF4444' }}>
           <AlertCircle size={10} />
-          {(checkout.error as any)?.response?.data?.error?.message ?? 'Checkout failed. Please try again.'}
+          {(checkout.error as any)?.message ?? 'Checkout failed. Please try again.'}
         </p>
       )}
     </motion.div>

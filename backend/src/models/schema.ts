@@ -1043,6 +1043,7 @@ export interface IOrder extends Document {
   stripePaymentIntentId?:   string
   razorpayOrderId?:         string
   razorpayPaymentId?:       string
+  razorpaySignature?:       string
   amount:                   number    // charged amount in cents
   currency:                 string
   status:                   OrderStatus
@@ -1063,6 +1064,7 @@ const OrderSchema = new Schema<IOrder>(
     stripePaymentIntentId:   { type: String },
     razorpayOrderId:         { type: String },
     razorpayPaymentId:       { type: String },
+    razorpaySignature:       { type: String },
     amount:                  { type: Number, required: true, min: 0 },
     currency:                { type: String, required: true, default: 'usd', maxlength: 3 },
     status:                  { type: String, enum: ['pending', 'paid', 'refunded'], default: 'pending' },
@@ -1077,7 +1079,10 @@ const OrderSchema = new Schema<IOrder>(
 OrderSchema.index({ userId: 1, createdAt: -1 })
 OrderSchema.index({ courseId: 1 })
 OrderSchema.index({ status: 1 })
-OrderSchema.index({ stripeCheckoutSessionId: 1 }, { sparse: true, unique: true })
+OrderSchema.index(
+  { stripeCheckoutSessionId: 1 },
+  { unique: true, partialFilterExpression: { stripeCheckoutSessionId: { $type: 'string' } } },
+)
 
 export const OrderModel = mongoose.model<IOrder>('Order', OrderSchema)
 

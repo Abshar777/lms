@@ -15,6 +15,19 @@ async function bootstrap() {
   /* 1a. Ensure system roles exist (idempotent — skips existing) */
   await seedDefaultRoles()
 
+  /* 1b-pre. Drop the old sparse unique index on stripeCheckoutSessionId so
+     Razorpay orders (which have no Stripe session) can coexist in the collection.
+     The schema now uses a partialFilterExpression instead. Idempotent — safe to run
+     every boot; throws are swallowed if the index doesn't exist. */
+  try {
+    const { OrderModel } = await import('@/models/schema.ts')
+    await OrderModel.collection.dropIndex('stripeCheckoutSessionId_1')
+    await OrderModel.syncIndexes()
+    logger.info('✅  Re-indexed orders: stripeCheckoutSessionId partial index applied')
+  } catch {
+    // Index already gone or collection doesn't exist yet — no action needed
+  }
+
   /* 1b. Migrate legacy student accounts that predate the enrollmentStatus field */
   const migrated = await UserModel.updateMany(
     { role: 'student', enrollmentStatus: { $exists: false } },
