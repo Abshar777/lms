@@ -68,7 +68,8 @@ app.options('*', cors(corsOptions))
    Stripe signature verification requires the unmodified body
    bytes. We buffer them as express.raw() then the global JSON
    middleware runs for every other route. */
-app.use('/api/v1/webhooks/stripe', express.raw({ type: 'application/json' }))
+app.use('/api/v1/webhooks/stripe',    express.raw({ type: 'application/json' }))
+app.use('/api/v1/webhooks/razorpay', express.raw({ type: 'application/json' }))
 
 /* ─── Body + cookie parsers ──────────────────────── */
 app.use(express.json({ limit: '10mb' }))

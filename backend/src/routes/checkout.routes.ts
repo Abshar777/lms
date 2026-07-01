@@ -34,7 +34,7 @@ const razorpayCreateSchema = z.object({
   couponCode: z.string().trim().optional(),
 })
 
-router.post('/razorpay/create-order', authenticate, requireEnrollmentApproval, validate(razorpayCreateSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/razorpay/create-order', authenticate, validate(razorpayCreateSchema), async (req: Request, res: Response, next: NextFunction) => {
   if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
     sendError(res, 'RAZORPAY_NOT_CONFIGURED', 'Razorpay is not configured on this server.', 503)
     return

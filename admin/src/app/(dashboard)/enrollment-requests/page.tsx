@@ -7,7 +7,7 @@ import {
   TrendingUp, Megaphone, Cpu, LayoutGrid, ChevronDown, Check,
   ShieldCheck, Mail, X, Plus, Eye, RotateCcw, ShieldOff,
   FileText, User, Phone, MapPin, BookOpen, CreditCard, ExternalLink,
-  ImageIcon, ZoomIn, AlertTriangle, Upload,
+  ImageIcon, ZoomIn, AlertTriangle, Upload, Trash2,
 } from 'lucide-react'
 import {
   useEnrollmentRequests, useApproveEnrollment, useRejectEnrollment, useRemoveEnrollmentCategory,
@@ -18,6 +18,7 @@ import { useCurrentUser } from '@/lib/api/user'
 import { useToast } from '@/store/ui.store'
 import { api } from '@/lib/axios'
 import { useQueryClient } from '@tanstack/react-query'
+import { useDeleteUser } from '@/lib/api/users'
 
 /* ── Constants ─────────────────────────────────────── */
 const CATEGORY_META: Record<ProgramCategory, { label: string; color: string; bg: string; Icon: React.ComponentType<{ size?: number }> }> = {
@@ -720,6 +721,32 @@ function ApplicationDetailModal({ user, scopeCategory, onClose, onApprove, onRej
   )
 }
 
+/* ── Delete confirmation inline ────────────────────── */
+function DeleteConfirm({ onConfirm, onCancel, loading }: {
+  onConfirm: () => void
+  onCancel:  () => void
+  loading:   boolean
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-[10px]" style={{ color: 'rgba(248,113,113,0.8)' }}>Delete?</span>
+      <button
+        onClick={onConfirm}
+        disabled={loading}
+        className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold transition-all disabled:opacity-50"
+        style={{ background: 'rgba(239,68,68,0.15)', color: '#F87171', border: '1px solid rgba(239,68,68,0.3)' }}>
+        {loading ? <Loader2 size={8} className="animate-spin" /> : 'Yes'}
+      </button>
+      <button
+        onClick={onCancel}
+        className="rounded-lg px-2 py-1 text-[10px] font-medium transition-all"
+        style={{ color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.1)' }}>
+        No
+      </button>
+    </div>
+  )
+}
+
 /* ── Main page ─────────────────────────────────────── */
 export default function EnrollmentRequestsPage() {
   const { data: me } = useCurrentUser()
@@ -731,12 +758,15 @@ export default function EnrollmentRequestsPage() {
   const [rejectTarget,   setRejectTarget]   = useState<EnrollmentRequest | null>(null)
   const [removingCat,    setRemovingCat]    = useState<{ userId: string; cat: ProgramCategory } | null>(null)
   const [detailTarget,   setDetailTarget]   = useState<EnrollmentRequest | null>(null)
+  const [deleteTarget,   setDeleteTarget]   = useState<string | null>(null)
+  const [blockFilter,    setBlockFilter]    = useState<'all' | 'blocked' | 'unblocked'>('all')
 
   const approve         = useApproveEnrollment()
   const reject          = useRejectEnrollment()
   const revokeToViewer  = useRevokeToViewer()
   const removeCategory  = useRemoveEnrollmentCategory()
   const toggleBlock     = useToggleBlock()
+  const deleteUser      = useDeleteUser()
 
   // Category scope: category admins are locked to their program
   const scopeCategory: ProgramCategory | null = me?.role ? (CATEGORY_SCOPE[me.role] ?? null) : null
@@ -753,9 +783,15 @@ export default function EnrollmentRequestsPage() {
   const { data, isLoading } = useEnrollmentRequests(statusFilter)
 
   const requests = (data?.data ?? []).filter(r => {
-    if (!search) return true
-    const q = search.toLowerCase()
-    return r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q)
+    if (search) {
+      const q = search.toLowerCase()
+      if (!r.name.toLowerCase().includes(q) && !r.email.toLowerCase().includes(q)) return false
+    }
+    if ((statusFilter === 'pending' || statusFilter === 'rejected') && blockFilter !== 'all') {
+      if (blockFilter === 'blocked'   &&  r.isActive) return false
+      if (blockFilter === 'unblocked' && !r.isActive) return false
+    }
+    return true
   })
 
   const handleApprove = async (cats: ProgramCategory[]) => {
@@ -803,6 +839,16 @@ export default function EnrollmentRequestsPage() {
       toast.success('Reverted to viewer', `${r.name} is now in viewer mode and pending re-approval.`)
     } catch (err: any) {
       toast.error('Action failed', err?.response?.data?.error?.message)
+    }
+  }
+
+  const handleDelete = async (userId: string) => {
+    try {
+      await deleteUser.mutateAsync(userId)
+      toast.success('User deleted', 'The account has been permanently removed.')
+      setDeleteTarget(null)
+    } catch (err: any) {
+      toast.error('Delete failed', err?.response?.data?.error?.message)
     }
   }
 
@@ -867,7 +913,7 @@ export default function EnrollmentRequestsPage() {
           {STATUS_TABS.map(t => (
             <button
               key={t.value}
-              onClick={() => setStatusFilter(t.value)}
+              onClick={() => { setStatusFilter(t.value); setBlockFilter('all') }}
               className="relative px-4 py-2 text-sm font-medium transition-all"
               style={{
                 color:      statusFilter === t.value ? t.color : 'rgba(255,255,255,0.45)',
@@ -885,6 +931,32 @@ export default function EnrollmentRequestsPage() {
             </button>
           ))}
         </div>
+
+        {/* Block filter — shown only for pending / rejected */}
+        {(statusFilter === 'pending' || statusFilter === 'rejected') && (
+          <div className="flex overflow-hidden rounded-xl" style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
+            {(['all', 'unblocked', 'blocked'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setBlockFilter(f)}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-all"
+                style={{
+                  color:      blockFilter === f
+                    ? f === 'blocked' ? '#F87171' : f === 'unblocked' ? '#4ADE80' : 'rgba(255,255,255,0.7)'
+                    : 'rgba(255,255,255,0.35)',
+                  background: blockFilter === f
+                    ? f === 'blocked' ? 'rgba(248,113,113,0.12)' : f === 'unblocked' ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.06)'
+                    : 'transparent',
+                  borderRight: '1px solid rgba(255,255,255,0.06)',
+                }}
+              >
+                {f === 'blocked'   && <ShieldOff size={10} />}
+                {f === 'unblocked' && <ShieldCheck size={10} />}
+                {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="relative flex-1" style={{ minWidth: 180, maxWidth: 320 }}>
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
@@ -1079,19 +1151,50 @@ export default function EnrollmentRequestsPage() {
                     {/* Actions */}
                     <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
                       {isPending && (
-                        <div className="flex items-center justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                          <button
-                            onClick={() => setApproveTarget(r)}
-                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
-                            style={{ background: 'rgba(74,222,128,0.85)' }}>
-                            <CheckCircle2 size={11} />Approve
-                          </button>
-                          <button
-                            onClick={() => setRejectTarget(r)}
-                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
-                            style={{ background: 'rgba(239,68,68,0.85)' }}>
-                            <XCircle size={11} />Reject
-                          </button>
+                        <div className="flex items-center justify-end gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                          {deleteTarget === r.id ? (
+                            <DeleteConfirm
+                              loading={deleteUser.isPending}
+                              onConfirm={() => handleDelete(r.id)}
+                              onCancel={() => setDeleteTarget(null)}
+                            />
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => setApproveTarget(r)}
+                                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
+                                style={{ background: 'rgba(74,222,128,0.85)' }}>
+                                <CheckCircle2 size={11} />Approve
+                              </button>
+                              <button
+                                onClick={() => setRejectTarget(r)}
+                                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
+                                style={{ background: 'rgba(239,68,68,0.85)' }}>
+                                <XCircle size={11} />Reject
+                              </button>
+                              <button
+                                onClick={() => handleToggleBlock(r)}
+                                disabled={toggleBlock.isPending}
+                                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all disabled:opacity-40"
+                                style={r.isActive
+                                  ? { color: '#F87171', border: '1px solid rgba(248,113,113,0.3)' }
+                                  : { color: '#4ADE80', border: '1px solid rgba(74,222,128,0.3)' }}>
+                                {toggleBlock.isPending
+                                  ? <Loader2 size={10} className="animate-spin" />
+                                  : r.isActive ? <ShieldOff size={10} /> : <ShieldCheck size={10} />}
+                                {r.isActive ? 'Block' : 'Unblock'}
+                              </button>
+                              {isFullAdmin && (
+                                <button
+                                  onClick={() => setDeleteTarget(r.id)}
+                                  className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium transition-all"
+                                  style={{ color: 'rgba(239,68,68,0.6)', border: '1px solid rgba(239,68,68,0.2)' }}
+                                  title="Permanently delete this account">
+                                  <Trash2 size={10} />
+                                </button>
+                              )}
+                            </>
+                          )}
                         </div>
                       )}
 
@@ -1144,13 +1247,44 @@ export default function EnrollmentRequestsPage() {
                       )}
 
                       {isRejected && (
-                        <div className="flex justify-end opacity-0 transition-opacity group-hover:opacity-100">
-                          <button
-                            onClick={() => setApproveTarget(r)}
-                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
-                            style={{ background: 'rgba(74,222,128,0.85)' }}>
-                            <CheckCircle2 size={11} />Re-approve
-                          </button>
+                        <div className="flex items-center justify-end gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                          {deleteTarget === r.id ? (
+                            <DeleteConfirm
+                              loading={deleteUser.isPending}
+                              onConfirm={() => handleDelete(r.id)}
+                              onCancel={() => setDeleteTarget(null)}
+                            />
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => setApproveTarget(r)}
+                                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
+                                style={{ background: 'rgba(74,222,128,0.85)' }}>
+                                <CheckCircle2 size={11} />Re-approve
+                              </button>
+                              <button
+                                onClick={() => handleToggleBlock(r)}
+                                disabled={toggleBlock.isPending}
+                                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all disabled:opacity-40"
+                                style={r.isActive
+                                  ? { color: '#F87171', border: '1px solid rgba(248,113,113,0.3)' }
+                                  : { color: '#4ADE80', border: '1px solid rgba(74,222,128,0.3)' }}>
+                                {toggleBlock.isPending
+                                  ? <Loader2 size={10} className="animate-spin" />
+                                  : r.isActive ? <ShieldOff size={10} /> : <ShieldCheck size={10} />}
+                                {r.isActive ? 'Block' : 'Unblock'}
+                              </button>
+                              {isFullAdmin && (
+                                <button
+                                  onClick={() => setDeleteTarget(r.id)}
+                                  className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium transition-all"
+                                  style={{ color: 'rgba(239,68,68,0.6)', border: '1px solid rgba(239,68,68,0.2)' }}
+                                  title="Permanently delete this account">
+                                  <Trash2 size={10} />
+                                </button>
+                              )}
+                            </>
+                          )}
                         </div>
                       )}
                     </td>

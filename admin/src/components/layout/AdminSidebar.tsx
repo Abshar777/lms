@@ -7,7 +7,7 @@ import {
   LayoutDashboard, BookOpen, Users, GraduationCap,
   Tag, Star, Settings, ChevronLeft, ChevronRight, LogOut, X,
   ShoppingBag, Ticket, Map, ClipboardList, Video, CalendarDays, BarChart3, ShieldCheck, LifeBuoy, UserCog,
-  ClipboardCheck, Eye,
+  ClipboardCheck,
 } from 'lucide-react'
 import { useUIStore } from '@/store/ui.store'
 import { useAllLiveClasses } from '@/lib/api/liveClasses'
@@ -19,7 +19,6 @@ import { useRouter } from 'next/navigation'
 const adminNavItems = [
   { label: 'Dashboard',      href: '/',                       icon: LayoutDashboard },
   { label: 'Users',          href: '/users',                  icon: UserCog },
-  { label: 'Viewers',        href: '/viewers',                icon: Eye },
   { label: 'Requests',       href: '/enrollment-requests',    icon: ClipboardCheck },
   { label: 'Courses',        href: '/courses',                icon: BookOpen },
   { label: 'Learning Paths', href: '/learning-paths',   icon: Map },
@@ -40,7 +39,6 @@ const adminNavItems = [
 /* ── Scoped-admin nav (4x_admin, digital_marketing_admin) ─ */
 const scopedAdminNavItems = [
   { label: 'Dashboard',        href: '/',                       icon: LayoutDashboard },
-  { label: 'Viewers',          href: '/viewers',                icon: Eye },
   { label: 'Requests',         href: '/enrollment-requests',    icon: ClipboardCheck },
   { label: 'Users',            href: '/users',                  icon: UserCog },
   { label: 'Courses',          href: '/courses',                icon: BookOpen },
@@ -165,10 +163,10 @@ function SidebarContent({ collapsed, onClose }: SidebarContentProps) {
                       exit={{ opacity: 0, x: -6 }} transition={{ duration: 0.13 }}
                       className="relative z-10 flex flex-1 items-center justify-between whitespace-nowrap text-sm font-medium">
                       {item.label}
-                      {/* Viewers / pending badge */}
-                      {(item.href === '/viewers' || item.href === '/enrollment-requests') && pendingCount > 0 && (
+                      {/* Pending requests badge */}
+                      {item.href === '/enrollment-requests' && pendingCount > 0 && (
                         <span className="ml-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
-                          style={{ background: item.href === '/viewers' ? '#818CF8' : '#F59E0B' }}>
+                          style={{ background: '#F59E0B' }}>
                           {pendingCount}
                         </span>
                       )}

@@ -211,6 +211,7 @@ export class OrderService {
     }
 
     await this._createEnrollment(order.userId.toString(), order.courseId.toString())
+    await this._autoApproveViaPayment(order.userId.toString(), order.courseId.toString())
     void this._sendPostPaymentNotifications(order.userId.toString(), order.courseId.toString(), order.id)
 
     return { orderId: order.id }
@@ -237,6 +238,7 @@ export class OrderService {
     }
 
     await this._createEnrollment(order.userId.toString(), order.courseId.toString())
+    await this._autoApproveViaPayment(order.userId.toString(), order.courseId.toString())
     void this._sendPostPaymentNotifications(order.userId.toString(), order.courseId.toString(), order.id)
   }
 
@@ -261,6 +263,7 @@ export class OrderService {
     }
 
     await this._createEnrollment(order.userId.toString(), order.courseId.toString())
+    await this._autoApproveViaPayment(order.userId.toString(), order.courseId.toString())
     void this._sendPostPaymentNotifications(order.userId.toString(), order.courseId.toString(), order.id)
   }
 
@@ -317,6 +320,38 @@ export class OrderService {
       await enrollRepo.create_({ userId, courseId })
       await courseRepo.incrementEnrollment(courseId, 1)
     }
+  }
+
+  /* Auto-approve a viewer/rejected user when they successfully pay for a course.
+     Sets enrollmentStatus → 'approved', assigns the course's program category,
+     and marks approval as a paid self-enrollment so admins can see it in the UI. */
+  private async _autoApproveViaPayment(userId: string, courseId: string): Promise<void> {
+    const user = await UserModel.findById(userId)
+      .select('enrollmentStatus categories category').lean()
+    if (!user || (user as any).enrollmentStatus === 'approved') return
+
+    const course = await CourseModel.findById(courseId).select('program').lean()
+    const newCat  = (course as any)?.program as string | undefined
+
+    const existingCats: string[] = (user as any).categories
+      ?? ((user as any).category ? [(user as any).category] : [])
+    const mergedCats = newCat
+      ? [...new Set([...existingCats, newCat])]
+      : existingCats
+
+    await UserModel.findByIdAndUpdate(userId, {
+      $set: {
+        enrollmentStatus: 'approved',
+        approvedByEmail:  'payment@system',
+        approvedByName:   'Paid Enrollment',
+        approvedByRole:   'system',
+        approvedAt:       new Date(),
+        ...(mergedCats.length > 0 && { categories: mergedCats, category: mergedCats[0] }),
+      },
+      $unset: { rejectionReason: '', enrollmentCancellationReason: '' },
+    })
+
+    logger.info({ userId, courseId, category: newCat }, '✅ Viewer auto-approved via paid enrollment')
   }
 
   private async _sendPostPaymentNotifications(userId: string, courseId: string, orderId: string): Promise<void> {
