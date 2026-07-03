@@ -30,7 +30,7 @@ export function AINotesPanel({ slug }: { slug: string }) {
       transition={{ delay: 0.22, type: 'spring', stiffness: 260, damping: 26 }}
       className="mt-8 overflow-hidden rounded-2xl"
       style={{
-        background: 'linear-gradient(135deg, rgba(0,87,184,0.04) 0%, rgba(99,102,241,0.04) 100%)',
+        background: 'rgba(0,87,184,0.05)',
         border: '1px solid rgba(0,87,184,0.15)',
       }}>
 

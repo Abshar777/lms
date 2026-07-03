@@ -29,7 +29,7 @@ export function SessionFeedback({ sessionId, sessionTitle }: Props) {
         <div className="flex items-center gap-2">
           <CheckCircle size={14} style={{ color: '#10B981' }} />
           <p className="text-sm font-semibold" style={{ color: '#10B981' }}>
-            Feedback submitted — {rating} star{rating !== 1 ? 's' : ''}
+            Feedback submitted: {rating} star{rating !== 1 ? 's' : ''}
           </p>
         </div>
         {existing?.comment && (
@@ -95,7 +95,7 @@ export function SessionFeedback({ sessionId, sessionTitle }: Props) {
               }}
               disabled={mutation.isPending}
               className="flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }}
+              style={{ background: '#0057b8' }}
             >
               {mutation.isPending
                 ? <><Loader2 size={12} className="animate-spin" /><span>Submitting…</span></>

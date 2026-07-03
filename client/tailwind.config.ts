@@ -37,7 +37,7 @@ const config: Config = {
       },
       borderRadius: {
         xs: '4px', sm: '6px', md: '10px',
-        lg: '14px', xl: '20px', '2xl': '28px',
+        lg: '14px', xl: '14px', '2xl': '14px', full: '14px',
       },
       animation: {
         'fade-up':    'fade-up 0.3s ease forwards',

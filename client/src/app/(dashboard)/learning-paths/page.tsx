@@ -70,7 +70,7 @@ export default function LearningPathsPage() {
                     style={{ border: '1px solid #E4E7ED' }}>
                     {/* Thumbnail */}
                     <div className="relative h-36 w-full overflow-hidden"
-                      style={{ background: 'linear-gradient(135deg, #0057b818, #2F6BFF18)' }}>
+                      style={{ background: 'rgba(0,87,184,0.09)' }}>
                       {path.thumbnailUrl
                         ? <img src={path.thumbnailUrl} alt={path.title} className="h-full w-full object-cover" />
                         : (

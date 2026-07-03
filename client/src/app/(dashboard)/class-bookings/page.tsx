@@ -44,12 +44,12 @@ function fmtTime(iso: string) {
 function fmtShortSlot(iso: string) { return `${zonedDayLabel(iso)}, ${fmtTime(iso)}` }
 function fmtSlotLabel(iso: string, dur: number) {
   const end = new Date(new Date(iso).getTime() + dur * 60_000)
-  return `${zonedDayLabel(iso)} · ${fmtTime(iso)}–${fmtTime(end.toISOString())}`
+  return `${zonedDayLabel(iso)}, ${fmtTime(iso)} to ${fmtTime(end.toISOString())}`
 }
 function fmtDateRange(s: Date, e: Date): string {
   if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear())
-    return `${s.toLocaleDateString('en-US',{month:'long'})} ${s.getDate()}–${e.getDate()}, ${e.getFullYear()}`
-  return `${s.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${e.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`
+    return `${s.toLocaleDateString('en-US',{month:'long'})} ${s.getDate()} to ${e.getDate()}, ${e.getFullYear()}`
+  return `${s.toLocaleDateString('en-US',{month:'short',day:'numeric'})} to ${e.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`
 }
 
 /* ── Status ────────────────────────────────────────────────── */
@@ -571,7 +571,7 @@ function SlotModal({group,bookingMap,onBook,onCancel,bookPending,cancelPending,o
                         <div className="rounded-xl px-3 py-2.5 text-[11px] leading-relaxed"
                           style={{background:'rgba(5,150,105,0.08)',color:'#064E3B',border:'1px solid rgba(5,150,105,0.18)'}}>
                           <CheckCircle2 size={11} className="mr-1.5 inline" style={{color:'#059669'}} strokeWidth={3}/>
-                          You reserved a seat. Your <strong>join link was emailed 5 min before</strong> class — check your inbox!
+                          You reserved a seat. Your <strong>join link was emailed 5 min before</strong> class. Check your inbox!
                         </div>
                       ):(
                         <p className="text-[11px] leading-relaxed" style={{color:'#64748B'}}>
@@ -588,7 +588,7 @@ function SlotModal({group,bookingMap,onBook,onCancel,bookPending,cancelPending,o
                       whileTap={{scale:0.98}}
                       onClick={()=>onBook(sel.id)} disabled={bookPending.has(sel.id)}
                       className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white disabled:opacity-60"
-                      style={{background:'linear-gradient(135deg,#0057b8 0%,#FF9044 100%)'}}>
+                      style={{background:'#0057b8'}}>
                       {bookPending.has(sel.id)
                         ?<><Loader2 size={14} className="animate-spin"/>Booking…</>
                         :<><BookOpen size={14}/>Reserve Seat · {fmtShortSlot(sel.scheduledStart)}</>}
@@ -616,7 +616,7 @@ function SlotModal({group,bookingMap,onBook,onCancel,bookPending,cancelPending,o
                       </div>
                       <div className="rounded-2xl px-4 py-3 text-[11px] leading-relaxed" style={{background:'#F8FAFC',border:'1px solid #E8EEF4',color:'#64748B'}}>
                         <Clock size={11} className="mr-1.5 inline" style={{color:'#94A3B8'}}/>
-                        {mins<=5?'Join link sent — check your inbox!':<>Your <strong>join link will be emailed 5 min before</strong> class.</>}
+                        {mins<=5?'Join link sent. Check your inbox!':<>Your <strong>join link will be emailed 5 min before</strong> class.</>}
                       </div>
                       {!(isOff && offlineDayOffset(sel.scheduledStart) === 0) && (
                         <button type="button" onClick={()=>onCancel(selBk.id,fmtShortSlot(sel.scheduledStart))} disabled={cancelPending.has(selBk.id)}
@@ -654,7 +654,7 @@ function SlotModal({group,bookingMap,onBook,onCancel,bookPending,cancelPending,o
                 {selSt==='attended'&&(
                   <div className="flex items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold"
                     style={{background:'rgba(37,99,235,0.07)',color:'#1D4ED8',border:'1px solid rgba(37,99,235,0.18)'}}>
-                    <CheckCircle2 size={14} strokeWidth={3}/>Attended — great work!
+                    <CheckCircle2 size={14} strokeWidth={3}/>Attended! Great work!
                   </div>
                 )}
                 {selSt==='missed'&&(
@@ -852,7 +852,7 @@ function ContactAdminModal({onClose}:{onClose:()=>void}) {
         </p>
         <button type="button" onClick={onClose}
           className="w-full rounded-2xl py-3 text-sm font-bold text-white"
-          style={{background:'linear-gradient(135deg,#0057b8,#FF9044)'}}>Got it</button>
+          style={{background:'#0057b8'}}>Got it</button>
       </motion.div>
     </div>
   )
@@ -1183,7 +1183,7 @@ export default function ClassBookingsPage() {
             <div>
               <div className="mb-1 flex items-center gap-2">
                 <div className="flex h-6 w-6 items-center justify-center rounded-lg"
-                  style={{background:'linear-gradient(135deg,#0057b8,#FF9044)',boxShadow:'0 3px 10px rgba(0,87,184,0.30)'}}>
+                  style={{background:'#0057b8',boxShadow:'0 3px 10px rgba(0,87,184,0.30)'}}>
                   <CalendarDays size={12} color="white"/>
                 </div>
                 <span className="dm text-[10px] font-bold uppercase tracking-widest" style={{color:'#0057b8'}}>Class Schedule</span>
@@ -1214,7 +1214,7 @@ export default function ClassBookingsPage() {
                     className="flex items-center gap-1.5 rounded-xl px-2 py-1 hover:bg-slate-50">
                     <Calendar size={11} style={{color:showCal?'#0057b8':'#94A3B8'}}/>
                     <span className="dm whitespace-nowrap text-[11px] font-semibold" style={{color:'#334155'}}>
-                      {rangeStart.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – {rangeEnd.toLocaleDateString('en-US',{month:'short',day:'numeric'})}
+                      {rangeStart.toLocaleDateString('en-US',{month:'short',day:'numeric'})} to {rangeEnd.toLocaleDateString('en-US',{month:'short',day:'numeric'})}
                     </span>
                   </button>
                   <button type="button" onClick={()=>shiftRange(1)}
@@ -1554,7 +1554,7 @@ export default function ClassBookingsPage() {
                       <div className="mb-4 flex items-center gap-3">
                         <div className="flex items-center gap-2 rounded-2xl px-3.5 py-2"
                           style={{
-                            background:sec.isToday?'linear-gradient(135deg,rgba(0,87,184,0.10),rgba(255,140,66,0.06))':'white',
+                            background:sec.isToday?'rgba(0,87,184,0.08)':'white',
                             border:`1px solid ${sec.isToday?'rgba(0,87,184,0.22)':'#E2EAF4'}`,
                             boxShadow:sec.isToday?'0 3px 10px rgba(0,87,184,0.10)':'0 1px 3px rgba(15,23,42,0.04)',
                           }}>
@@ -1570,7 +1570,7 @@ export default function ClassBookingsPage() {
                               style={{background:'rgba(0,87,184,0.14)',color:'#0057b8'}}>Today</span>
                           )}
                         </div>
-                        <div className="h-px flex-1" style={{background:'linear-gradient(to right,#E2EAF4,transparent)'}}/>
+                        <div className="h-px flex-1" style={{background:'#E2EAF4'}}/>
                         <span className="dm text-[10px]" style={{color:'#CBD5E1'}}>
                           {sec.groups.length} class{sec.groups.length!==1?'es':''}
                         </span>

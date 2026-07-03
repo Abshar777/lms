@@ -209,7 +209,7 @@ function WriteReview({
         </p>
         <button type="submit" disabled={pending}
           className="rounded-xl px-4 py-1.5 text-xs font-bold text-white transition-all disabled:opacity-60"
-          style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
+          style={{ background: '#0057b8' }}>
           {pending ? 'Saving…' : 'Post review'}
         </button>
       </div>

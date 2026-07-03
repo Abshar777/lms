@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { cn } from '@/lib/utils'
+import { TermsModal } from './TermsModal'
 
 /* ── Types ─────────────────────────────────────────── */
 interface FormData {
@@ -33,9 +34,9 @@ const INITIAL: FormData = {
 }
 
 const PROGRAMS = [
-  { id: 'forex-beginner',     label: 'Forex — Beginner',      group: 'Forex Academy' },
-  { id: 'forex-intermediate', label: 'Forex — Intermediate',   group: 'Forex Academy' },
-  { id: 'forex-advanced',     label: 'Forex — Advanced',       group: 'Forex Academy' },
+  { id: 'forex-beginner',     label: 'Forex: Beginner',      group: 'Forex Academy' },
+  { id: 'forex-intermediate', label: 'Forex: Intermediate',   group: 'Forex Academy' },
+  { id: 'forex-advanced',     label: 'Forex: Advanced',       group: 'Forex Academy' },
   { id: 'dm-social',          label: 'Social Media Marketing', group: 'Digital Marketing' },
   { id: 'dm-seo',             label: 'SEO & Content',          group: 'Digital Marketing' },
   { id: 'ai-fundamentals',    label: 'AI Fundamentals',        group: 'AI Academy' },
@@ -595,6 +596,7 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
   const [avatarFile,    setAvatarFile]    = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [avatarError,   setAvatarError]   = useState<string | null>(null)
+  const [showTerms,     setShowTerms]     = useState(false)
 
   const set = (k: keyof FormData, v: unknown) => {
     setData(d => ({ ...d, [k]: v }))
@@ -908,7 +910,7 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
           </Field>
         </div>
 
-        <FileDropzone label="Passport Copy * (PDF, JPG, PNG — max 10 MB)" accept=".pdf,.jpg,.jpeg,.png,.webp"
+        <FileDropzone label="Passport Copy * (PDF, JPG, PNG, max 10 MB)" accept=".pdf,.jpg,.jpeg,.png,.webp"
           file={data.passportFile} onFile={f => set('passportFile', f)} onClear={() => set('passportFile', null)}
           hint="PDF or image of passport identity page" />
         {errors.passportFile && (
@@ -1002,7 +1004,7 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
               className="pl-9"
               onChange={e => set('paymentMethod', e.target.value)}>
               <option value="">Select payment method</option>
-              {['Cash — Full','Card — Full','Card — Split','Card Debit','Card Credit','USDT','Tabby','Tamara'].map(m => (
+              {['Cash / Full','Card / Full','Card / Split','Card Debit','Card Credit','USDT','Tabby','Tamara'].map(m => (
                 <option key={m}>{m}</option>
               ))}
             </Select>
@@ -1057,7 +1059,16 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
             onChange={e => set('termsAccepted', e.target.checked)}
             className="mt-0.5 h-4 w-4 flex-shrink-0 cursor-pointer rounded accent-blue-600" />
           <span className="text-xs leading-relaxed text-gray-600">
-            I agree to Delta Institutions&apos; Terms & Conditions, Privacy Policy, and KHDA training regulations.
+            I agree to Delta Institutions&apos;{' '}
+            <button
+              type="button"
+              onClick={e => { e.preventDefault(); setShowTerms(true) }}
+              className="font-semibold transition-colors hover:opacity-80"
+              style={{ color: '#0057b8' }}
+            >
+              Terms &amp; Conditions
+            </button>
+            , Privacy Policy, and KHDA training regulations.
             I confirm the information provided is accurate and complete.
           </span>
         </label>
@@ -1158,13 +1169,13 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
         {step < 3 ? (
           <button type="button" onClick={next}
             className="ml-auto flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]"
-            style={{ background: 'linear-gradient(135deg, #0057b8, #1565d8)', boxShadow: '0 4px 14px rgba(0,87,184,0.3)' }}>
+            style={{ background: '#0057b8', boxShadow: '0 4px 14px rgba(0,87,184,0.3)' }}>
             Continue <ChevronRight size={15} />
           </button>
         ) : (
           <button type="button" onClick={submit} disabled={loading}
             className="ml-auto flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
-            style={{ background: 'linear-gradient(135deg, #0057b8, #1565d8)', boxShadow: '0 4px 14px rgba(0,87,184,0.3)' }}>
+            style={{ background: '#0057b8', boxShadow: '0 4px 14px rgba(0,87,184,0.3)' }}>
             {loading ? <><Loader2 size={14} className="animate-spin" /> Submitting…</> : 'Submit Application'}
           </button>
         )}
@@ -1175,6 +1186,9 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
         Already have an account?{' '}
         <button onClick={onSwitch} className="font-semibold text-blue-600 hover:underline">Sign in</button>
       </p>
+
+      {/* ── Terms modal — always mounted so it can open from any step ── */}
+      <TermsModal open={showTerms} onClose={() => setShowTerms(false)} />
     </div>
   )
 }

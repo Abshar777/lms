@@ -11,9 +11,7 @@ function isRecentlyDismissed(): boolean {
   if (typeof window === 'undefined') return false
   const at = window.localStorage.getItem(STORAGE_KEY)
   if (!at) return false
-  const since = Date.now() - Number(at)
-  /* Snooze for 24h */
-  return since < 24 * 60 * 60 * 1000
+  return Date.now() - Number(at) < 24 * 60 * 60 * 1000
 }
 
 export function VerifyEmailBanner() {
@@ -33,14 +31,13 @@ export function VerifyEmailBanner() {
   }
 
   const resend = async () => {
-    setSending(true)
-    setError(null)
+    setSending(true); setError(null)
     try {
       await resendVerification()
       setSent(true)
       setTimeout(() => setSent(false), 4000)
     } catch (err: any) {
-      setError(err?.response?.data?.error?.message ?? 'Could not send. Try again later.')
+      setError(err?.response?.data?.error?.message ?? 'Could not send.')
     } finally {
       setSending(false)
     }
@@ -49,41 +46,41 @@ export function VerifyEmailBanner() {
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-        className="mb-5 flex items-center gap-3 rounded-2xl px-4 py-3"
+        initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+        className="mb-4 flex items-center gap-2.5 rounded-xl px-3.5 py-2.5"
         style={{
-          background: 'linear-gradient(135deg, rgba(0,87,184,0.06) 0%, rgba(255,140,66,0.04) 100%)',
-          border: '1px solid rgba(0,87,184,0.18)',
+          background: 'rgba(0,87,184,0.06)',
+          border: '1px solid rgba(0,87,184,0.16)',
         }}>
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl"
-          style={{ background: 'rgba(0,87,184,0.12)' }}>
-          <Mail size={14} style={{ color: '#0057b8' }} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold" style={{ color: '#0D0F1A' }}>
-            Verify your email to unlock the full LearnOS experience
-          </p>
-          <p className="text-xs" style={{ color: '#6B7280' }}>
-            We sent a link to <span className="font-semibold">{user.email}</span>.
-            {error && <> <span style={{ color: '#EF4444' }}>{error}</span></>}
-          </p>
-        </div>
+
+        <Mail size={13} className="flex-shrink-0" style={{ color: '#0057b8' }} />
+
+        <p className="min-w-0 flex-1 text-xs font-medium truncate" style={{ color: '#1e3a5f' }}>
+          <span className="hidden sm:inline">Verify your email to unlock full access. </span>
+          <span className="sm:hidden">Verify </span>
+          <span className="font-semibold truncate">{user.email}</span>
+        </p>
+
+        {error && (
+          <span className="hidden sm:inline text-xs" style={{ color: '#EF4444' }}>{error}</span>
+        )}
+
         <button
           onClick={resend}
           disabled={sending || sent}
-          className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-white transition-all disabled:opacity-60"
-          style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
+          className="flex-shrink-0 flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold text-white transition-all disabled:opacity-60"
+          style={{ background: '#0057b8' }}>
           {sending
-            ? <><Loader2 size={12} className="animate-spin" />Sending…</>
+            ? <><Loader2 size={11} className="animate-spin" /><span className="hidden sm:inline">Sending…</span></>
             : sent
-              ? <><CheckCircle2 size={12} />Sent</>
-              : 'Resend email'}
+              ? <><CheckCircle2 size={11} /><span className="hidden sm:inline">Sent</span></>
+              : <><Mail size={11} /><span className="hidden sm:inline">Resend</span><span className="sm:hidden">Resend</span></>}
         </button>
-        <button onClick={dismiss}
-          aria-label="Dismiss"
-          className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/60"
+
+        <button onClick={dismiss} aria-label="Dismiss"
+          className="flex-shrink-0 flex h-6 w-6 items-center justify-center rounded-lg transition-colors hover:bg-blue-50"
           style={{ color: '#9CA3AF' }}>
-          <X size={13} />
+          <X size={12} />
         </button>
       </motion.div>
     </AnimatePresence>

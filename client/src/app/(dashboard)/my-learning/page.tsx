@@ -105,7 +105,7 @@ export default function MyLearningPage() {
         <div className="mb-5 flex items-center gap-1 rounded-2xl p-1 overflow-x-auto scrollbar-none" style={{ background: '#F3F4F6' }}>
           {STATUS_TABS.map(tab => (
             <motion.button key={tab} onClick={() => setActiveTab(tab)}
-              className="relative rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
+              className="relative flex-shrink-0 rounded-xl px-4 py-2 text-sm font-semibold transition-colors whitespace-nowrap"
               style={{ color: activeTab === tab ? '#111827' : '#9CA3AF' }}>
               {activeTab === tab && (
                 <motion.div layoutId="my-learning-tab"
@@ -144,7 +144,7 @@ export default function MyLearningPage() {
           ) : (
             <motion.div key="grid"
               variants={stagger} initial="hidden" animate="show"
-              className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+              className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filtered.map(e => <EnrollmentCard key={e.id} enrollment={e} />)}
             </motion.div>
           )}

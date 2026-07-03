@@ -49,10 +49,24 @@ export class LiveClassService {
     return live
   }
 
-  async listForCourseSlug(slug: string): Promise<ILiveClass[]> {
+  async listForCourseSlug(slug: string, userId?: string): Promise<(ILiveClass & { isEnrolled: boolean })[]> {
     const course = await this.courseRepo.findBySlug(slug)
     if (!course) throw new LiveClassError('COURSE_NOT_FOUND', 'Course not found', 404)
-    return this.liveRepo.listForCourse(course.id)
+    const sessions = await this.liveRepo.listForCourse(course.id)
+
+    let enrolled = false
+    if (userId) {
+      const enrollments = await this.enrollRepo.listForUser(userId)
+      const courseIdStr = String(course.id)
+      enrolled = enrollments.some(e => {
+        const cId = e.courseId && typeof e.courseId === 'object'
+          ? String((e.courseId as { _id?: unknown })._id ?? '')
+          : String(e.courseId)
+        return cId === courseIdStr
+      })
+    }
+
+    return sessions.map(s => Object.assign(s, { isEnrolled: enrolled }))
   }
 
   async listForCourseId(courseId: string): Promise<ILiveClass[]> {

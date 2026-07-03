@@ -34,8 +34,8 @@ type DurationKey = 'any' | 'lt1h' | '1to3' | '3to6' | 'gt6'
 const DURATIONS: { key: DurationKey; label: string; min?: number; max?: number }[] = [
   { key: 'any',  label: 'Any length' },
   { key: 'lt1h', label: '< 1 hour',    max: 60 },
-  { key: '1to3', label: '1 – 3 hours', min: 60,  max: 180 },
-  { key: '3to6', label: '3 – 6 hours', min: 180, max: 360 },
+  { key: '1to3', label: '1 to 3 hours', min: 60,  max: 180 },
+  { key: '3to6', label: '3 to 6 hours', min: 180, max: 360 },
   { key: 'gt6',  label: '> 6 hours',   min: 360 },
 ]
 
@@ -43,8 +43,8 @@ type PriceKey = 'any' | 'free' | 'lt30' | '30to100' | 'gt100'
 const PRICES: { key: PriceKey; label: string; min?: number; max?: number; free?: boolean }[] = [
   { key: 'any',     label: 'Any price' },
   { key: 'free',    label: 'Free',      free: true },
-  { key: 'lt30',    label: '$1 – $29',  min: 1,   max: 29 },
-  { key: '30to100', label: '$30 – $99', min: 30,  max: 99 },
+  { key: 'lt30',    label: '$1 to $29',  min: 1,   max: 29 },
+  { key: '30to100', label: '$30 to $99', min: 30,  max: 99 },
   { key: 'gt100',   label: '$100+',     min: 100 },
 ]
 
@@ -60,28 +60,28 @@ const PROGRAM_FILTERS = [
   {
     id: 'all', label: 'All', icon: LayoutGrid,
     color: '#374151',
-    activeGrad: 'linear-gradient(135deg,#374151,#111827)',
+    activeGrad: '#374151',
     shadow: 'rgba(17,24,39,0.25)',
     ring: 'rgba(55,65,81,0.15)',
   },
   {
     id: '4x-trading', label: 'Forex', icon: TrendingUp,
     color: '#10B981',
-    activeGrad: 'linear-gradient(135deg,#10B981,#059669)',
+    activeGrad: '#10B981',
     shadow: 'rgba(16,185,129,0.35)',
     ring: 'rgba(16,185,129,0.15)',
   },
   {
     id: 'digital-marketing', label: 'Digital Marketing', icon: Megaphone,
     color: '#0057b8',
-    activeGrad: 'linear-gradient(135deg,#0057b8,#1a73e8)',
+    activeGrad: '#0057b8',
     shadow: 'rgba(0,87,184,0.35)',
     ring: 'rgba(0,87,184,0.15)',
   },
   {
     id: 'ai', label: 'AI', icon: Cpu,
     color: '#8B5CF6',
-    activeGrad: 'linear-gradient(135deg,#8B5CF6,#6D28D9)',
+    activeGrad: '#8B5CF6',
     shadow: 'rgba(139,92,246,0.35)',
     ring: 'rgba(139,92,246,0.15)',
   },
@@ -227,7 +227,7 @@ export default function CoursesPage() {
 
         <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
           {/* Status tabs */}
-          <div className="flex shrink-0 items-center gap-1 overflow-x-auto rounded-2xl p-1 scrollbar-none self-start"
+          <div className="flex w-full sm:w-auto shrink-0 items-center gap-1 overflow-x-auto rounded-2xl p-1 scrollbar-none self-start"
             style={{ background: '#F3F4F6' }}>
             {STATUS_TABS.map(tab => (
               <MotionButton key={tab} onClick={() => setActiveTab(tab)}
@@ -254,7 +254,7 @@ export default function CoursesPage() {
                 style={{ color: '#9CA3AF' }} />
               <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
                 placeholder="Search…"
-                className="w-36 rounded-xl py-2 pl-9 pr-3 text-sm transition-all focus:w-48"
+                className="w-full sm:w-36 rounded-xl py-2 pl-9 pr-3 text-sm sm:transition-all sm:focus:w-48"
                 style={{ background: 'white', border: '1px solid #E5E7EB', color: '#111827' }} />
             </div>
 
@@ -614,7 +614,7 @@ function MaterialCard({ course }: { course: Course }) {
             ? <img src={course.thumbnailUrl} alt={course.title}
                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
             : <div className="flex h-full w-full items-center justify-center"
-                style={{ background: 'linear-gradient(135deg, #F3F4F6, #E9EAED)' }}>
+                style={{ background: '#F3F4F6' }}>
                 <BookOpen size={28} style={{ color: '#D1D5DB' }} />
               </div>
           }
@@ -722,8 +722,8 @@ function MaterialCard({ course }: { course: Course }) {
               style={(isEnrolled || (!isFree && inCart))
                 ? { background: '#F0FDF4', color: '#16A34A', border: '1px solid rgba(34,197,94,0.28)' }
                 : isFree
-                  ? { background: 'linear-gradient(135deg, #22C55E, #16A34A)', color: 'white', boxShadow: '0 2px 8px rgba(34,197,94,0.25)' }
-                  : { background: 'linear-gradient(135deg, #0057b8, #1a73e8)', color: 'white', boxShadow: '0 2px 8px rgba(0,87,184,0.25)' }
+                  ? { background: '#22C55E', color: 'white', boxShadow: '0 2px 8px rgba(34,197,94,0.25)' }
+                  : { background: '#0057b8', color: 'white', boxShadow: '0 2px 8px rgba(0,87,184,0.25)' }
               }>
               {isEnrolled
                 ? <><Check size={10} />Enrolled</>

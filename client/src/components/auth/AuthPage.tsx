@@ -61,7 +61,7 @@ export function AuthPage({ initialMode }: AuthPageProps) {
         {/* Left-edge depth shadow */}
         <div
           className="pointer-events-none absolute inset-y-0 left-0 z-10 hidden w-6 lg:block"
-          style={{ background: 'linear-gradient(to right, rgba(0,0,0,0.06), transparent)' }}
+          style={{ background: 'rgba(0,0,0,0.04)' }}
         />
 
         {/* ── Top bar ── */}

@@ -115,7 +115,12 @@ router.post('/razorpay', async (req: Request, res: Response) => {
 
   let payload: any
   try {
-    payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
+    const raw = req.body
+    payload = Buffer.isBuffer(raw)
+      ? JSON.parse(raw.toString('utf8'))
+      : typeof raw === 'string'
+        ? JSON.parse(raw)
+        : raw
   } catch {
     res.status(200).json({ received: true })
     return

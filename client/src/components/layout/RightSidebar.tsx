@@ -136,7 +136,7 @@ export function RightSidebar() {
               <div
                 className="m-3 rounded-2xl p-3.5"
                 style={{
-                  background: 'linear-gradient(135deg,#fff8f2 0%,#fff 70%)',
+                  background: '#ffffff',
                   border: '1px solid rgba(0,87,184,0.14)',
                 }}>
                 {/* Close */}
@@ -144,7 +144,7 @@ export function RightSidebar() {
                   <div className="flex items-center gap-2.5">
                     <div className="relative flex-shrink-0">
                       <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl text-sm font-bold text-white"
-                        style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)', boxShadow: '0 2px 8px rgba(0,87,184,0.25)' }}>
+                        style={{ background: '#0057b8', boxShadow: '0 2px 8px rgba(0,87,184,0.20)' }}>
                         {hasAvatarImage
                           ? <img src={user!.avatarUrl} alt="" className="h-full w-full object-cover" />
                           : avatarInitial}
@@ -232,7 +232,7 @@ export function RightSidebar() {
                               <div className="mt-1 flex items-center gap-1.5">
                                 <div className="h-1 flex-1 rounded-full" style={{ background: '#F0F2F5' }}>
                                   <div className="h-full rounded-full"
-                                    style={{ background: 'linear-gradient(90deg,#22C55E,#4ADE80)', width: `${t.enrollment.progressPercent}%` }} />
+                                    style={{ background: '#22C55E', width: `${t.enrollment.progressPercent}%` }} />
                                 </div>
                                 <span className="text-[10px] font-bold tabular-nums" style={{ color: '#22C55E' }}>
                                   {t.enrollment.progressPercent}%
@@ -328,7 +328,7 @@ export function RightSidebar() {
                       </div>
                     </div>
                     <p className="mt-2 text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                      Keep the streak going — next lesson is waiting.
+                      Keep the streak going. Next lesson is waiting.
                     </p>
                   </div>
                 </>

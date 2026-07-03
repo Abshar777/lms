@@ -14,15 +14,16 @@ export interface SupportMessage {
 }
 
 export interface SupportTicket {
-  id:            string
-  subject:       string
-  category:      SupportCategory
-  status:        SupportStatus
-  messages:      SupportMessage[]
-  lastMessageAt: string
-  userUnread:    boolean
-  adminUnread:   boolean
-  createdAt:     string
+  id:             string
+  subject:        string
+  category:       SupportCategory
+  status:         SupportStatus
+  messages:       SupportMessage[]
+  lastMessageAt:  string
+  lastSenderRole: 'student' | 'admin'
+  userUnread:     boolean
+  adminUnread:    boolean
+  createdAt:      string
 }
 
 export const supportKeys = {

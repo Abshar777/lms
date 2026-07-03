@@ -20,14 +20,23 @@ export class SupportController {
     try {
       const { subject, category, message } = req.body as { subject: string; category?: any; message: string }
 
-      // Attach the student's program so tickets are scoped to their category
+      // Attach the student's program so tickets are scoped to their category.
+      // If enrolled in exactly 1 program → scope to that team.
+      // If enrolled in 0 or 2+ programs → leave undefined so all relevant admin
+      // teams (and super admins) can see the ticket.
       let program: string | undefined
       const userRole = req.user!.role
       if (userRole === 'student') {
         const { UserModel } = await import('@/models/schema.ts')
-        const user = await UserModel.findById(req.user!.id).select('category').lean()
-        const cat = (user as any)?.category as string | undefined
-        if (cat === '4x-trading' || cat === 'digital-marketing' || cat === 'ai') program = cat
+        const user = await UserModel.findById(req.user!.id).select('category categories').lean()
+        const VALID = ['4x-trading', 'digital-marketing', 'ai'] as const
+        type ValidProg = typeof VALID[number]
+        const multi  = ((user as any)?.categories as string[] | undefined) ?? []
+        const single = (user as any)?.category as string | undefined
+        const all    = (multi.length ? multi : single ? [single] : [])
+                         .filter((c): c is ValidProg => VALID.includes(c as ValidProg))
+        if (all.length === 1) program = all[0]
+        // 0 or 2+ programs → program stays undefined → visible to all admin teams
       }
 
       const ticket = await this.service.create(requester(req), { subject, category, message, program })
@@ -72,6 +81,12 @@ export class SupportController {
       const scope   = (req.user as any).categoryScope as string | undefined
       const program = scope ?? (req.query['program'] ? String(req.query['program']) : undefined)
       sendSuccess(res, await this.service.adminStats(program))
+    } catch (err) { next(err) }
+  }
+
+  performance = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      sendSuccess(res, await this.service.adminPerformance())
     } catch (err) { next(err) }
   }
 

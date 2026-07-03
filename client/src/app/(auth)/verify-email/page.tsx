@@ -54,7 +54,7 @@ function VerifyEmailInner() {
           Thanks for confirming. You now have full access to notifications, certificates, and account recovery.
         </p>
         <Link href="/my-learning" className="mt-3 rounded-xl px-5 py-2.5 text-sm font-bold text-white"
-          style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
+          style={{ background: '#0057b8' }}>
           Go to My Learning
         </Link>
       </div>

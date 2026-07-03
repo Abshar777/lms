@@ -148,7 +148,7 @@ function TwoFactorSection() {
       {!enabled && !setupData && (
         <button onClick={handleSetup} disabled={setup.isPending}
           className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-white transition-all disabled:opacity-60 hover:opacity-90"
-          style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)', boxShadow: '0 4px 14px rgba(0,87,184,0.25)' }}>
+          style={{ background: '#0057b8', boxShadow: '0 4px 14px rgba(0,87,184,0.25)' }}>
           {setup.isPending ? <><Loader2 size={13} className="animate-spin" />Setting up…</> : <><KeyRound size={13} />Enable 2FA</>}
         </button>
       )}
@@ -161,7 +161,7 @@ function TwoFactorSection() {
 
             <div className="rounded-xl p-4 space-y-3" style={{ background: '#FFFBF7', border: '1px solid rgba(0,87,184,0.18)' }}>
               <p className="text-xs font-semibold" style={{ color: '#374151' }}>
-                Step 1 — Open your authenticator app and scan the QR code, or enter the key manually.
+                Step 1: Open your authenticator app and scan the QR code, or enter the key manually.
               </p>
 
               {/* otpauth link — mobile users can tap this to open their authenticator directly */}
@@ -193,7 +193,7 @@ function TwoFactorSection() {
 
             <div className="space-y-2">
               <p className="text-xs font-semibold" style={{ color: '#374151' }}>
-                Step 2 — Enter the 6-digit code your app shows now
+                Step 2: Enter the 6-digit code your app shows now
               </p>
               <div className="flex items-center gap-2">
                 <input
@@ -209,7 +209,7 @@ function TwoFactorSection() {
                 />
                 <button onClick={handleEnable} disabled={code.length !== 6 || enable.isPending}
                   className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all disabled:opacity-50"
-                  style={{ background: 'linear-gradient(135deg,#22C55E,#16A34A)' }}>
+                  style={{ background: '#22C55E' }}>
                   {enable.isPending ? <><Loader2 size={13} className="animate-spin" />Verifying…</> : <><CheckCircle2 size={13} />Verify & enable</>}
                 </button>
                 <button onClick={() => { setSetupData(null); setCode(''); setError(null) }}

@@ -7,7 +7,7 @@ import Link from 'next/link'
 import {
   Search, Bell, X, MessageSquare, BookOpen,
   GraduationCap, Heart, Sparkles, Trophy,
-  Settings, Clock, Star, Users, Video, Flame, Menu, ShoppingCart, Map, CalendarDays,
+  Settings, Clock, Star, Users, Video, Flame, Menu, ShoppingCart, Map, CalendarDays, LifeBuoy,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
@@ -29,6 +29,7 @@ const SIDEBAR_TABS = [
   { label: 'Catalog',     href: '/courses',         icon: BookOpen },
   { label: 'Learning Paths', href: '/learning-paths', icon: Map },
   { label: 'Favorites',   href: '/favorites',       icon: Heart, badge: 1 },
+  { label: 'Support',     href: '/support',         icon: LifeBuoy },
 ]
 
 /* Nav tabs shown when topbar-only layout is active (full navigation) */
@@ -41,6 +42,7 @@ const TOPBAR_TABS = [
   { label: 'Streaks',        href: '/streaks',         icon: Flame },
   { label: 'Favorites',      href: '/favorites',       icon: Heart, badge: 1 },
   { label: 'Settings',       href: '/settings',        icon: Settings },
+  { label: 'Help & Support', href: '/support',         icon: LifeBuoy },
 ]
 
 function relTime(iso: string): string {
@@ -184,11 +186,11 @@ export function ClientTopbar() {
           </button>
 
           {/* Logo — always visible (no desktop sidebar) */}
-          <div className="flex items-center mr-4 flex-shrink-0">
+          <div className="flex items-center mr-2 sm:mr-4 flex-shrink-0">
             <img
               src="/logo-dark.png"
               alt="Delta International"
-              className="h-11 w-auto object-contain"
+              className="h-8 sm:h-11 w-auto object-contain"
             />
           </div>
 
@@ -240,7 +242,7 @@ export function ClientTopbar() {
               type="submit"
               whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
               className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-lg text-white"
-              style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)', boxShadow: '0 2px 8px rgba(0,87,184,0.30)' }}>
+              style={{ background: '#0057b8', boxShadow: '0 2px 8px rgba(0,87,184,0.30)' }}>
               <Search size={12} />
             </motion.button> */}
             </form>
@@ -330,16 +332,18 @@ export function ClientTopbar() {
               onClick={() => setAiChatOpen(v => !v)}
               whileHover={{ scale: 1.02, boxShadow: '0 6px 20px rgba(0,87,184,0.35)' }} whileTap={{ scale: 0.97 }}
               className="hidden sm:flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold text-white"
-              style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)', boxShadow: '0 3px 12px rgba(0,87,184,0.28)' }}>
+              style={{ background: '#0057b8', boxShadow: '0 3px 12px rgba(0,87,184,0.22)' }}>
               <Sparkles size={12} />Ask AI
             </motion.button>
 
-            {/* Messages */}
-            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              className="flex h-9 w-9 items-center justify-center rounded-xl transition-colors hover:bg-blue-50"
-              style={{ color: '#0057b8' }}>
-              <MessageSquare size={16} />
-            </motion.button>
+            {/* Help & Support */}
+            <Link href="/support">
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                className="flex h-9 w-9 items-center justify-center rounded-xl transition-colors hover:bg-blue-50"
+                style={{ color: '#0057b8' }}>
+                <MessageSquare size={16} />
+              </motion.div>
+            </Link>
 
             {/* Cart */}
             <Link href="/cart">
@@ -449,7 +453,7 @@ export function ClientTopbar() {
             <Link href="/settings">
               <div className="flex cursor-pointer items-center gap-2.5 rounded-xl px-2 py-1 transition-colors hover:bg-blue-50">
                 <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full text-xs font-bold text-white ring-2 ring-blue-100"
-                  style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>
+                  style={{ background: '#0057b8' }}>
                   {hasAvatarImage
                     ? <img src={user!.avatarUrl} alt="" className="h-full w-full object-cover" />
                     : avatarInitial}
@@ -469,7 +473,7 @@ export function ClientTopbar() {
         </Suspense>
 
         {/* ── Row 2: Nav tabs — scrollable on mobile ── */}
-        <div className="flex h-[40px] items-end overflow-x-auto px-4 sm:px-6 scrollbar-none">
+        <div className="flex h-[44px] sm:h-[40px] items-end overflow-x-auto px-4 sm:px-6 scrollbar-none">
           {tabs.map((tab, i) => {
             const active = isActive(tab.href)
             return (

@@ -170,7 +170,7 @@ function CourseDetailInner({ slug }: { slug: string }) {
               )}
             </div>
 
-            <h1 className="text-3xl font-bold leading-tight tracking-tight"
+            <h1 className="text-2xl sm:text-3xl font-bold leading-tight tracking-tight"
               style={{ color: '#0D0F1A', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
               {course.title}
             </h1>
@@ -224,7 +224,7 @@ function CourseDetailInner({ slug }: { slug: string }) {
             <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.06 }} className="mt-6 overflow-hidden rounded-2xl lg:hidden"
               style={{ border: '1px solid #E4E7ED' }}>
-              <img src={course.thumbnailUrl} alt={course.title} className="w-full object-cover" style={{ maxHeight: 240 }} />
+              <img src={course.thumbnailUrl} alt={course.title} className="w-full object-cover max-h-48 sm:max-h-60" />
             </motion.div>
           )}
 
@@ -345,8 +345,8 @@ function CourseDetailInner({ slug }: { slug: string }) {
             </motion.div>
           )}
 
-          {/* Live classes (only renders when there are upcoming sessions) */}
-          <LiveClassesPanel slug={course.slug} />
+          {/* Live classes — only shows join buttons to enrolled students */}
+          <LiveClassesPanel slug={course.slug} isEnrolled={isEnrolled} />
 
           {/* AI Study Notes */}
           <AINotesPanel slug={course.slug} />
@@ -372,13 +372,13 @@ function CourseDetailInner({ slug }: { slug: string }) {
             initial={{ opacity: 0, y: 20, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ delay: 0.08, type: 'spring', stiffness: 260, damping: 26 }}
-            className="lg:sticky lg:top-[76px] overflow-hidden rounded-3xl bg-white"
+            className="lg:sticky lg:top-[108px] overflow-hidden rounded-3xl bg-white"
             style={{ border: '1px solid #E4E7ED', boxShadow: '0 8px 32px rgba(13,15,26,0.10)' }}>
 
             {course.thumbnailUrl && (
               <div className="relative hidden overflow-hidden lg:block" style={{ height: 180 }}>
                 <img src={course.thumbnailUrl} alt={course.title} className="h-full w-full object-cover" />
-                <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 40%, rgba(13,15,26,0.6))' }} />
+                <div className="absolute inset-0" style={{ background: 'rgba(13,15,26,0.40)' }} />
                 <motion.div whileHover={{ scale: 1.1 }} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex h-14 w-14 cursor-pointer items-center justify-center rounded-full"
                   style={{ background: 'rgba(0,87,184,0.92)', backdropFilter: 'blur(8px)', boxShadow: '0 8px 24px rgba(0,87,184,0.45)' }}>
                   <Play size={18} fill="white" color="white" />
@@ -400,7 +400,7 @@ function CourseDetailInner({ slug }: { slug: string }) {
                   <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
                     className="mb-4 rounded-xl px-4 py-3 text-sm font-semibold"
                     style={{ background: 'rgba(239,68,68,0.08)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.18)' }}>
-                    Payment cancelled — you were not charged.
+                    Payment cancelled. You were not charged.
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -437,7 +437,7 @@ function CourseDetailInner({ slug }: { slug: string }) {
                     whileHover={{ y: -2, boxShadow: '0 12px 32px rgba(0,87,184,0.40)' }}
                     whileTap={{ scale: 0.97 }}
                     className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all"
-                    style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)', boxShadow: '0 6px 24px rgba(0,87,184,0.30)' }}>
+                    style={{ background: '#0057b8', boxShadow: '0 6px 24px rgba(0,87,184,0.30)' }}>
                     <Play size={15} fill="white" />
                     Continue learning
                   </motion.button>
@@ -450,7 +450,7 @@ function CourseDetailInner({ slug }: { slug: string }) {
                     whileHover={{ y: -2, boxShadow: '0 12px 32px rgba(0,87,184,0.40)' }}
                     whileTap={{ scale: 0.97 }}
                     className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all disabled:opacity-70"
-                    style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)', boxShadow: '0 6px 24px rgba(0,87,184,0.30)' }}>
+                    style={{ background: '#0057b8', boxShadow: '0 6px 24px rgba(0,87,184,0.30)' }}>
                     {checkout.isPending
                       ? <><Loader2 size={15} className="animate-spin" />Redirecting…</>
                       : <><ShoppingCart size={15} />Buy for {formatPrice(discountedPrice)}</>}
@@ -513,7 +513,7 @@ function CourseDetailInner({ slug }: { slug: string }) {
                   whileHover={{ y: -2, boxShadow: '0 12px 32px rgba(0,87,184,0.40)' }}
                   whileTap={{ scale: 0.97 }}
                   className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all disabled:opacity-70"
-                  style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)', boxShadow: '0 6px 24px rgba(0,87,184,0.30)' }}>
+                  style={{ background: '#0057b8', boxShadow: '0 6px 24px rgba(0,87,184,0.30)' }}>
                   {enroll.isPending
                     ? <><Loader2 size={15} className="animate-spin" />Enrolling…</>
                     : <><Zap size={15} fill="white" />Enroll for free</>}

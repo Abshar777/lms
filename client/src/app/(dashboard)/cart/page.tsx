@@ -103,7 +103,7 @@ function CartItemCard({ item, onRemove }: { item: CartItem; onRemove: () => void
         {/* Thumbnail */}
         <Link href={`/courses/${item.slug}`} className="flex-shrink-0">
           <div className="h-16 w-24 overflow-hidden rounded-xl"
-            style={{ background: 'linear-gradient(135deg,#F3F4F6,#E9EAED)' }}>
+            style={{ background: '#F3F4F6' }}>
             {item.thumbnailUrl
               ? <img src={item.thumbnailUrl} alt={item.title} className="h-full w-full object-cover" />
               : <div className="flex h-full w-full items-center justify-center">
@@ -150,7 +150,7 @@ function CartItemCard({ item, onRemove }: { item: CartItem; onRemove: () => void
                 <motion.button
                   whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
                   className="flex items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-bold text-white"
-                  style={{ background: 'linear-gradient(135deg,#22C55E,#16A34A)' }}>
+                  style={{ background: '#22C55E' }}>
                   <GraduationCap size={11} />Enroll Free
                 </motion.button>
               </Link>
@@ -160,7 +160,7 @@ function CartItemCard({ item, onRemove }: { item: CartItem; onRemove: () => void
                 onClick={handleBuy}
                 disabled={buying || checkout.isPending}
                 className="flex items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-bold text-white disabled:opacity-60 transition-all"
-                style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)', boxShadow: '0 2px 8px rgba(0,87,184,0.25)' }}>
+                style={{ background: '#0057b8', boxShadow: '0 2px 8px rgba(0,87,184,0.25)' }}>
                 {buying || checkout.isPending
                   ? <><Loader2 size={11} className="animate-spin" />Processing…</>
                   : <><ArrowRight size={11} />Checkout</>}
@@ -245,7 +245,7 @@ export default function CartPage() {
           <Link href="/courses">
             <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
               className="flex items-center gap-2 rounded-2xl px-6 py-2.5 text-sm font-bold text-white"
-              style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)', boxShadow: '0 4px 14px rgba(0,87,184,0.30)' }}>
+              style={{ background: '#0057b8', boxShadow: '0 4px 14px rgba(0,87,184,0.30)' }}>
               <Sparkles size={14} />Browse Catalog
             </motion.button>
           </Link>

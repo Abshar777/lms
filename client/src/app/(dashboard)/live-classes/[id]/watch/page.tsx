@@ -137,7 +137,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
             </p>
             <a href={data.meetingUrl} target="_blank" rel="noreferrer noopener"
               className="mt-6 inline-flex items-center gap-2 rounded-2xl px-6 py-3 text-sm font-bold text-white"
-              style={{ background: 'linear-gradient(135deg,#6366F1,#818CF8)', boxShadow: '0 4px 14px rgba(99,102,241,0.30)' }}>
+              style={{ background: '#6366F1', boxShadow: '0 4px 14px rgba(99,102,241,0.30)' }}>
               <ExternalLink size={14} />Join Session
             </a>
             <StatusBadge status={data.status} />
@@ -232,7 +232,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
 
             {isEnded && !data.recordingUrl && (
               <span className="text-sm" style={{ color: '#6B7280' }}>
-                Stream ended. Recording is being processed — check back in a few minutes.
+                Stream ended. Recording is being processed. Check back in a few minutes.
               </span>
             )}
           </div>
@@ -250,7 +250,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
                 ? data.recordingUrl
                   ? 'This session has ended. You\'re watching the recording.'
                   : 'This session has ended. The recording will be available shortly.'
-                : 'This session hasn\'t started yet. Stay on this page — it will update automatically.'}
+                : 'This session hasn\'t started yet. Stay on this page. It will update automatically.'}
             </p>
 
             {/* Live chat coming soon notice */}

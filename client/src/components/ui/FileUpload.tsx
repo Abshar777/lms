@@ -167,7 +167,7 @@ export function FileUpload({
                   style={{ background: '#E4E7ED' }}>
                   <motion.div
                     className="h-full rounded-full"
-                    style={{ background: 'linear-gradient(90deg,#0057b8,#1a73e8)' }}
+                    style={{ background: '#0057b8' }}
                     animate={{ width: `${progress}%` }}
                     transition={{ duration: 0.3 }}
                   />
@@ -222,8 +222,8 @@ export function FileUpload({
                   {dragOver ? 'Drop to upload' : 'Drag & drop or click to browse'}
                 </p>
                 <p className="mt-0.5 text-xs" style={{ color: '#9CA3AF' }}>
-                  {type === 'image' && 'JPEG, PNG, GIF, WebP — max 5 MB'}
-                  {type === 'video' && 'MP4, WebM, MOV, AVI, MKV — max 500 MB'}
+                  {type === 'image' && 'JPEG, PNG, GIF, WebP, max 5 MB'}
+                  {type === 'video' && 'MP4, WebM, MOV, AVI, MKV, max 500 MB'}
                   {type === 'any'   && `Images (5 MB) or Videos (500 MB)`}
                 </p>
               </div>

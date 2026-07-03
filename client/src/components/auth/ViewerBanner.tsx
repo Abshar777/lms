@@ -14,7 +14,7 @@ export function ViewerBanner() {
       initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
       className="mb-5 flex items-center gap-3 rounded-2xl px-4 py-3"
       style={{
-        background: 'linear-gradient(135deg, rgba(99,102,241,0.06) 0%, rgba(139,92,246,0.04) 100%)',
+        background: 'rgba(99,102,241,0.06)',
         border: '1px solid rgba(99,102,241,0.18)',
       }}>
       <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl"

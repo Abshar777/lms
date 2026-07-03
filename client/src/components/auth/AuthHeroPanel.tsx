@@ -19,7 +19,7 @@ export function AuthHeroPanel() {
   return (
     <div
       className="relative h-full w-full overflow-hidden select-none flex flex-col items-center justify-center"
-      style={{ background: 'linear-gradient(135deg, #0057b8 0%, #003d80 100%)' }}
+      style={{ background: '#0057b8' }}
     >
       {/* CSS animations */}
       <style>{`
@@ -28,11 +28,7 @@ export function AuthHeroPanel() {
           to   { background-position: 40px 0; }
         }
         .delta-grid-anim {
-          background-image:
-            linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px);
-          background-size: 40px 40px;
-          animation: deltaGridScroll 6s linear infinite;
+          background-image: none;
         }
         @keyframes deltaFloat {
           0%, 100% { transform: translateY(0); }
@@ -50,24 +46,6 @@ export function AuthHeroPanel() {
       {/* Animated grid overlay */}
       <div className="absolute inset-0 delta-grid-anim pointer-events-none" />
 
-      {/* Top-right glow */}
-      <div
-        className="absolute pointer-events-none"
-        style={{
-          top: -100, right: -100, width: 420, height: 420,
-          background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 65%)',
-          borderRadius: '50%',
-        }}
-      />
-
-      {/* Bottom-left glow */}
-      <div
-        className="absolute bottom-0 left-0 pointer-events-none"
-        style={{
-          width: 320, height: 320,
-          background: 'radial-gradient(circle, rgba(0,180,216,0.16) 0%, transparent 70%)',
-        }}
-      />
 
       {/* Center content */}
       <div className="relative z-10 flex flex-col items-center px-10 text-center">
@@ -150,7 +128,7 @@ export function AuthHeroPanel() {
             marginBottom: 40,
           }}
         >
-          UAE&apos;s leading trading academy — complete the form to begin your journey.
+          UAE&apos;s leading trading academy. Complete the form to begin your journey.
         </motion.p>
 
         {/* Stats row */}

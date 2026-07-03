@@ -83,7 +83,7 @@ export function InstallPrompt() {
               <div className="mt-3 flex items-center gap-2">
                 <button onClick={onInstall}
                   className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-white transition-all hover:opacity-90"
-                  style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
+                  style={{ background: '#0057b8' }}>
                   <Download size={11} />Install
                 </button>
                 <button onClick={onDismiss}

@@ -21,7 +21,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <ClientTopbar />
 
       <motion.main
-        className="min-h-screen pt-[100px]">
+        className="min-h-screen pt-[104px] sm:pt-[100px]">
         {/* Reserve right-panel space on lg+ when open */}
         <div className={`px-4 py-5 sm:px-6 sm:py-7 transition-[padding] duration-300 ease-out ${
           rightPanelOpen ? 'lg:pr-[344px]' : 'lg:pr-6'

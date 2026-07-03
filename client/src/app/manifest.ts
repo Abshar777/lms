@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name:             'LearnOS — Learn Without Limits',
+    name:             'LearnOS | Learn Without Limits',
     short_name:       'Delta Institutions',
     description:      'Expert-led courses, hands-on projects, and a community that grows with you.',
     start_url:        '/',

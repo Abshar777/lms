@@ -58,7 +58,7 @@ function WeekCalendar({ weekStartDate, weekProgress }: { weekStartDate: string; 
           <div className="flex h-9 w-9 items-center justify-center rounded-2xl transition-all"
             style={{
               background: isActive
-                ? 'linear-gradient(135deg,#0057b8,#1a73e8)'
+                ? '#0057b8'
                 : isToday
                   ? 'rgba(0,87,184,0.12)'
                   : '#F4F5F8',
@@ -156,7 +156,7 @@ function GoalEditor({ current }: { current: number }) {
             <div className="mt-3 flex gap-2">
               <button onClick={save} disabled={update.isPending}
                 className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold text-white transition-all disabled:opacity-60"
-                style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>
+                style={{ background: '#0057b8' }}>
                 {update.isPending ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
                 {update.isPending ? 'Saving…' : 'Save goal'}
               </button>
@@ -210,7 +210,7 @@ export default function StreaksPage() {
         initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
         className="mb-8 flex items-center gap-4">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl"
-          style={{ background: 'linear-gradient(135deg,rgba(239,68,68,0.15),rgba(239,68,68,0.08))', border: '1px solid rgba(239,68,68,0.25)' }}>
+          style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)' }}>
           <Flame size={22} style={{ color: '#EF4444' }} />
         </div>
         <div>
@@ -218,7 +218,7 @@ export default function StreaksPage() {
             Learning Streak
           </h1>
           <p className="mt-0.5 text-sm" style={{ color: '#9CA3AF' }}>
-            Keep the flame alive — consistency is everything.
+            Keep the flame alive. Consistency is everything.
           </p>
         </div>
 
@@ -301,7 +301,7 @@ export default function StreaksPage() {
               animate={{ width: `${progressPct}%` }}
               transition={{ duration: 0.8, ease: 'easeOut' }}
               className="h-full rounded-full"
-              style={{ background: progressPct >= 100 ? '#10B981' : 'linear-gradient(90deg,#0057b8,#1a73e8)' }}
+              style={{ background: progressPct >= 100 ? '#10B981' : '#0057b8' }}
             />
           </div>
           {progressPct >= 100 && (
@@ -347,7 +347,7 @@ export default function StreaksPage() {
             <div className="h-px" style={{ background: '#F4F5F8' }} />
             <p className="text-[11px] leading-relaxed" style={{ color: '#9CA3AF' }}>
               Your streak increments each day you complete at least one lesson.
-              Missing a day resets your current streak — but your longest streak is
+              Missing a day resets your current streak, but your longest streak is
               preserved forever.
             </p>
           </div>

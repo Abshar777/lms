@@ -8,6 +8,11 @@ import {
 import { NotificationService } from '@/services/notification.service.ts'
 import { logger } from '@/utils/logger.ts'
 
+export interface ProgramStat {
+  program: string; label: string; total: number; open: number; pending: number
+  resolved: number; closed: number; unread: number; avgResponseHours: number; responded: number
+}
+
 export class SupportError extends Error {
   constructor(
     public readonly code: string,
@@ -151,6 +156,35 @@ export class SupportService {
     )
     if (!ticket) throw new SupportError('NOT_FOUND', 'Ticket not found', 404)
     return this.populate(ticketId)
+  }
+
+  /* ── Admin: per-program performance stats ──────────── */
+  async adminPerformance(): Promise<ProgramStat[]> {
+    const programs: { id: string; label: string }[] = [
+      { id: 'ai',                 label: 'AI' },
+      { id: '4x-trading',        label: 'Forex' },
+      { id: 'digital-marketing', label: 'Digital Marketing' },
+    ]
+    return Promise.all(programs.map(async prog => {
+      const tickets = await SupportTicketModel.find({ program: prog.id }).lean()
+      const total    = tickets.length
+      const open     = tickets.filter(t => t.status === 'open').length
+      const pending  = tickets.filter(t => t.status === 'pending').length
+      const resolved = tickets.filter(t => t.status === 'resolved').length
+      const closed   = tickets.filter(t => t.status === 'closed').length
+      const unread   = tickets.filter(t => t.adminUnread).length
+      const times = tickets
+        .map(t => {
+          const first = (t.messages as any[]).find((m: any) => m.senderRole === 'admin')
+          if (!first) return null
+          return (new Date(first.createdAt).getTime() - new Date(t.createdAt).getTime()) / 3_600_000
+        })
+        .filter((r): r is number => r !== null)
+      const avgResponseHours = times.length
+        ? Math.round((times.reduce((a, b) => a + b, 0) / times.length) * 10) / 10
+        : 0
+      return { program: prog.id, label: prog.label, total, open, pending, resolved, closed, unread, avgResponseHours, responded: times.length }
+    }))
   }
 
   /* ── helpers ───────────────────────────────────────── */

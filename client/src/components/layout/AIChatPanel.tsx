@@ -30,7 +30,7 @@ function Bubble({ msg }: { msg: ChatMessage }) {
       {/* Avatar */}
       <div className={`flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-full text-white
         ${isUser ? '' : ''}`}
-        style={{ background: isUser ? 'linear-gradient(135deg,#0057b8,#1a73e8)' : '#6B7280' }}>
+        style={{ background: isUser ? '#0057b8' : '#6B7280' }}>
         {isUser ? <User size={12} /> : <Bot size={12} />}
       </div>
 
@@ -41,7 +41,7 @@ function Bubble({ msg }: { msg: ChatMessage }) {
             ? 'rounded-tr-sm text-white'
             : 'rounded-tl-sm'}`}
         style={isUser
-          ? { background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }
+          ? { background: '#0057b8' }
           : { background: '#F3F4F6', color: '#374151' }}>
         {msg.content}
       </div>
@@ -139,7 +139,7 @@ export function AIChatPanel({ open, onClose }: AIChatPanelProps) {
             <div className="flex items-center gap-3 px-4 py-3.5 flex-shrink-0"
               style={{ borderBottom: '1px solid #F3F4F6' }}>
               <div className="flex h-8 w-8 items-center justify-center rounded-xl"
-                style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>
+                style={{ background: '#0057b8' }}>
                 <Sparkles size={14} className="text-white" />
               </div>
               <div className="flex-1 min-w-0">
@@ -168,7 +168,7 @@ export function AIChatPanel({ open, onClose }: AIChatPanelProps) {
               {history.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-full text-center py-8">
                   <div className="flex h-14 w-14 items-center justify-center rounded-2xl mb-3"
-                    style={{ background: 'linear-gradient(135deg,#FFF7ED,#FFEDD5)' }}>
+                    style={{ background: '#FFF7ED' }}>
                     <Sparkles size={22} style={{ color: '#0057b8' }} />
                   </div>
                   <p className="text-sm font-semibold mb-1" style={{ color: '#111827' }}>
@@ -240,7 +240,7 @@ export function AIChatPanel({ open, onClose }: AIChatPanelProps) {
                   disabled={!input.trim() || chat.isPending}
                   whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                   className="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-white disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>
+                  style={{ background: '#0057b8' }}>
                   <Send size={12} />
                 </motion.button>
               </div>

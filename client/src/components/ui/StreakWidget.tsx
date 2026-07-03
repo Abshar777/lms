@@ -82,7 +82,7 @@ export function StreakWidget() {
             initial={{ width: 0 }}
             animate={{ width: `${pct}%` }}
             transition={{ duration: 0.6, ease: 'easeOut' }}
-            style={{ background: pct >= 100 ? '#22C55E' : 'linear-gradient(90deg, #0057b8, #F59E0B)' }}
+            style={{ background: pct >= 100 ? '#22C55E' : '#0057b8' }}
           />
         </div>
       </div>

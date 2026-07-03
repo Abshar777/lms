@@ -35,7 +35,7 @@ function RecommendationCard({ course, i }: { course: Course; i: number }) {
               ? <img src={course.thumbnailUrl} alt={course.title}
                   className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
               : <div className="h-full w-full flex items-center justify-center"
-                  style={{ background: 'linear-gradient(135deg,#FFF7ED,#FFEDD5)' }}>
+                  style={{ background: '#FFF7ED' }}>
                   <Sparkles size={24} style={{ color: '#0057b8', opacity: 0.4 }} />
                 </div>
             }

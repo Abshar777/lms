@@ -110,7 +110,7 @@ function CommentList({ thread, lessonId }: { thread: DiscussionThread; lessonId:
         />
         <button onClick={submit} disabled={!body.trim() || createComment.isPending}
           className="flex h-8 w-8 items-center justify-center rounded-xl transition-opacity disabled:opacity-40"
-          style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
+          style={{ background: '#0057b8' }}>
           {createComment.isPending
             ? <Loader2 size={12} className="animate-spin text-white" />
             : <Send size={12} className="text-white" />}
@@ -200,7 +200,7 @@ export function DiscussionPanel({ lessonId }: { lessonId: string }) {
         </p>
         <button onClick={() => setShowForm(f => !f)}
           className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-white transition-opacity hover:opacity-80"
-          style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
+          style={{ background: '#0057b8' }}>
           <PlusCircle size={11} /> Ask
         </button>
       </div>

@@ -28,8 +28,8 @@ const monoFont = JetBrains_Mono({
 
 /* ─── Metadata ──────────────────────────────────── */
 export const metadata: Metadata = {
-  title: { template: '%s — Delta Institutions', default: 'Delta Institutions — Leading Trading Academy' },
-  description: 'UAE leading trading academy — begin your learning journey at Delta Institutions.',
+  title: { template: '%s | Delta Institutions', default: 'Delta Institutions | Leading Trading Academy' },
+  description: 'UAE leading trading academy. Begin your learning journey at Delta Institutions.',
   icons: {
     icon:     [{ url: '/icons/icone.png', type: 'image/png' }],
     shortcut: '/icons/icone.png',

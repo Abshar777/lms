@@ -112,14 +112,14 @@ function BookingCard({ booking }: { booking: MyBooking }) {
           {!isPast && isBooked && isExternal && session.meetingUrl && (
             <a href={session.meetingUrl} target="_blank" rel="noreferrer"
               className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-white"
-              style={{ background: isLiveNow ? '#EF4444' : 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>
+              style={{ background: isLiveNow ? '#EF4444' : '#0057b8' }}>
               <ExternalLink size={11} />Join
             </a>
           )}
           {!isPast && isBooked && !isExternal && session.muxPlaybackId && (
             <a href={`/live-classes/${session.id}/watch`}
               className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-white"
-              style={{ background: isLiveNow ? '#EF4444' : 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>
+              style={{ background: isLiveNow ? '#EF4444' : '#0057b8' }}>
               <Video size={11} />Watch
             </a>
           )}

@@ -71,7 +71,7 @@ function SidebarPreview() {
     <div className="flex h-full w-full gap-2 p-3">
       <div className="flex w-14 flex-shrink-0 flex-col gap-1.5 rounded-xl p-2"
         style={{ background: 'white', border: '1px solid #E5E7EB' }}>
-        <div className="h-4 w-4 rounded-lg" style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }} />
+        <div className="h-4 w-4 rounded-lg" style={{ background: '#0057b8' }} />
         {[0,1,2].map(i => (
           <div key={i} className="h-2 rounded-full"
             style={{ background: i === 0 ? 'rgba(0,87,184,0.2)' : '#F3F4F6', width: i === 0 ? '100%' : '80%' }} />
@@ -81,7 +81,7 @@ function SidebarPreview() {
         <div className="flex items-center justify-between rounded-xl px-2 py-1.5"
           style={{ background: 'white', border: '1px solid #E5E7EB' }}>
           <div className="h-2 w-16 rounded-full" style={{ background: '#F3F4F6' }} />
-          <div className="h-4 w-4 rounded-full" style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }} />
+          <div className="h-4 w-4 rounded-full" style={{ background: '#0057b8' }} />
         </div>
         <div className="flex flex-1 flex-col gap-1">
           <div className="h-2 w-3/4 rounded-full" style={{ background: '#E5E7EB' }} />
@@ -100,11 +100,11 @@ function TopbarPreview() {
       <div className="rounded-xl overflow-hidden" style={{ background: 'white', border: '1px solid #E5E7EB' }}>
         <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: '1px solid #F3F4F6' }}>
           <div className="flex items-center gap-1.5">
-            <div className="h-4 w-4 rounded-lg" style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }} />
+            <div className="h-4 w-4 rounded-lg" style={{ background: '#0057b8' }} />
             <div className="h-2 w-12 rounded-full" style={{ background: '#F3F4F6' }} />
           </div>
           <div className="flex gap-1">
-            <div className="h-4 w-10 rounded-lg" style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }} />
+            <div className="h-4 w-10 rounded-lg" style={{ background: '#0057b8' }} />
             <div className="h-4 w-4 rounded-full" style={{ background: '#F3F4F6' }} />
           </div>
         </div>
@@ -218,11 +218,11 @@ function SettingsContent() {
 
   return (
     <motion.div variants={stagger} initial="hidden" animate="show"
-      className="grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr]">
+      className="grid grid-cols-1 gap-6 md:grid-cols-[180px_1fr] lg:grid-cols-[220px_1fr]">
 
       {/* ── Sidebar menu ──────────────────────────── */}
       <motion.div variants={fadeUp}
-        className="rounded-2xl bg-white p-3 lg:sticky lg:top-[116px] lg:self-start"
+        className="rounded-2xl bg-white p-3 md:sticky md:top-[116px] md:self-start"
         style={{ border: '1px solid #E5E7EB' }}>
         <div className="space-y-0.5">
           {MENU.map(item => {
@@ -269,7 +269,7 @@ function SettingsContent() {
               <div className="mb-6 flex items-center gap-4">
                 <div className="relative">
                   <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full text-xl font-bold text-white"
-                    style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>
+                    style={{ background: '#0057b8' }}>
                     {user?.avatarUrl
                       ? <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
                       : (profile.name?.trim()?.[0]?.toUpperCase() ?? '?')}
@@ -346,7 +346,7 @@ function SettingsContent() {
                   disabled={updateMutation.isPending || (mounted && userLoading)}
                   className="flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold text-white transition-all disabled:opacity-70"
                   style={{
-                    background: saved ? '#22C55E' : 'linear-gradient(135deg,#0057b8,#1a73e8)',
+                    background: saved ? '#22C55E' : '#0057b8',
                     boxShadow: saved ? '0 4px 14px rgba(34,197,94,0.28)' : '0 4px 14px rgba(0,87,184,0.28)',
                   }}>
                   {updateMutation.isPending
@@ -447,7 +447,7 @@ function SettingsContent() {
                   disabled={changePasswordMutation.isPending || !pwForm.current || !pwForm.next || !pwForm.confirm}
                   className="flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold text-white transition-all disabled:opacity-50"
                   style={{
-                    background: pwSaved ? '#22C55E' : 'linear-gradient(135deg,#0057b8,#1a73e8)',
+                    background: pwSaved ? '#22C55E' : '#0057b8',
                     boxShadow: pwSaved ? '0 4px 14px rgba(34,197,94,0.28)' : '0 4px 14px rgba(0,87,184,0.28)',
                   }}>
                   {changePasswordMutation.isPending
@@ -480,7 +480,7 @@ function SettingsContent() {
                     selected={navLayout === 'sidebar'} onSelect={() => setNavLayout('sidebar')}
                     preview={<SidebarPreview />} />
                   <LayoutCard value="topbar" label="Top Navigation"
-                    desc="Full-width top nav bar — more screen space for content"
+                    desc="Full-width top nav bar, more screen space for content"
                     selected={navLayout === 'topbar'} onSelect={() => setNavLayout('topbar')}
                     preview={<TopbarPreview />} />
                 </div>

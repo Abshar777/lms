@@ -72,12 +72,22 @@ function toDTO(doc: any) {
 export class LiveClassController {
   private readonly service = new LiveClassService()
 
-  /* GET /courses/:slug/live-classes — public */
+  /* GET /courses/:slug/live-classes — optionally authenticated */
   listForCourseSlug = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const slug = String(req.params['slug'] ?? '')
-      const docs = await this.service.listForCourseSlug(slug)
-      sendSuccess(res, docs.map(toDTO))
+      const slug   = String(req.params['slug'] ?? '')
+      const userId = req.user?.id
+      const docs   = await this.service.listForCourseSlug(slug, userId)
+      sendSuccess(res, docs.map(d => {
+        const dto = toDTO(d)
+        /* Strip meeting URL and stream credentials from the course listing.
+           Students receive the join link via email after booking a session. */
+        delete (dto as any).meetingUrl
+        delete (dto as any).muxPlaybackId
+        delete (dto as any).playbackUrl
+        ;(dto as any).isEnrolled = (d as any).isEnrolled ?? false
+        return dto
+      }))
     } catch (err) { next(err) }
   }
 

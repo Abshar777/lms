@@ -270,7 +270,7 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
             whileTap={{ scale: 0.98 }}
             className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold text-white transition-all disabled:cursor-not-allowed disabled:opacity-60"
             style={{
-              background: 'linear-gradient(135deg, #0057b8 0%, #1a73e8 100%)',
+              background: '#0057b8',
               boxShadow: '0 4px 20px rgba(0,87,184,0.30)',
             }}
           >

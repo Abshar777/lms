@@ -1,261 +1,504 @@
 'use client'
 
-import { useState, useMemo, useRef, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useRef, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
-  LifeBuoy, Send, Loader2, MessageSquare, Search, ShieldCheck,
-  CheckCircle2, ChevronLeft,
+  LifeBuoy, Search, ChevronRight, Send, Loader2,
+  CheckCircle2, Clock, AlertCircle, XCircle, Inbox,
+  BarChart2, Users, TrendingUp, MessageSquare, RefreshCw,
+  Filter, Circle,
 } from 'lucide-react'
 import {
-  useAdminTickets, useAdminTicket, useAdminReply, useSetTicketStatus, useSupportStats,
-  type SupportTicket, type SupportStatus, type SupportUser,
+  useAdminTickets, useAdminTicket, useAdminReply, useSetTicketStatus,
+  useSupportStats, useSupportPerformance,
+  type SupportTicket, type SupportStatus, type SupportProgram,
+  PROGRAM_LABELS, CATEGORY_LABELS,
 } from '@/lib/api/support'
 import { useCurrentUser } from '@/lib/api/user'
 
-const STATUS_STYLE: Record<SupportStatus, { label: string; color: string; bg: string }> = {
-  open:     { label: 'Open',     color: '#FBBF24', bg: 'rgba(245,158,11,0.15)' },
-  pending:  { label: 'Replied',  color: '#60A5FA', bg: 'rgba(37,99,235,0.15)' },
-  resolved: { label: 'Resolved', color: '#4ADE80', bg: 'rgba(22,163,74,0.15)' },
-  closed:   { label: 'Closed',   color: 'rgba(255,255,255,0.45)', bg: 'rgba(255,255,255,0.06)' },
-}
-const STATUS_TABS: { key: string; label: string }[] = [
-  { key: 'all', label: 'All' }, { key: 'open', label: 'Open' }, { key: 'pending', label: 'Replied' },
-  { key: 'resolved', label: 'Resolved' }, { key: 'closed', label: 'Closed' },
-]
-const ALL_STATUSES: SupportStatus[] = ['open', 'pending', 'resolved', 'closed']
-
-const PROGRAM_TABS: { key: string; label: string }[] = [
-  { key: 'all',                label: 'All Programs' },
-  { key: '4x-trading',        label: 'FOREX Trading' },
-  { key: 'digital-marketing', label: 'Digital Marketing' },
-]
-
-function userOf(t: SupportTicket): SupportUser | null {
-  return typeof t.userId === 'object' ? t.userId : null
-}
-function fmtWhen(iso: string) {
-  return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+/* ─── helpers ──────────────────────────────────────── */
+const fmtDate = (iso: string) => {
+  const d = new Date(iso)
+  const now = new Date()
+  const diff = (now.getTime() - d.getTime()) / 1000
+  if (diff < 60)    return 'just now'
+  if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
-export default function AdminSupportPage() {
-  const { data: currentUser } = useCurrentUser()
-  const isSuperAdmin = currentUser?.role === 'admin' || currentUser?.role === 'super_admin'
+const STATUS_META: Record<SupportStatus, { label: string; color: string; bg: string; icon: React.ElementType }> = {
+  open:     { label: 'Open',     color: '#2563EB', bg: '#EFF6FF', icon: Circle },
+  pending:  { label: 'Pending',  color: '#D97706', bg: '#FEF3C7', icon: Clock },
+  resolved: { label: 'Resolved', color: '#16A34A', bg: '#DCFCE7', icon: CheckCircle2 },
+  closed:   { label: 'Closed',   color: '#6B7280', bg: '#F3F4F6', icon: XCircle },
+}
 
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [programFilter, setProgramFilter] = useState('all')
-  const [search, setSearch]             = useState('')
-  const [selectedId, setSelectedId]     = useState<string | null>(null)
-
-  // category-scoped admins have a fixed program; super/admin can toggle
-  const effectiveProgram = isSuperAdmin ? (programFilter !== 'all' ? programFilter : undefined) : undefined
-
-  const { data: tickets = [], isLoading } = useAdminTickets({ status: statusFilter, search, program: effectiveProgram })
-  const { data: stats } = useSupportStats(effectiveProgram)
-
-  const cards = [
-    { label: 'Total',    value: stats?.total ?? 0,    color: '#A78BFA' },
-    { label: 'Open',     value: stats?.open ?? 0,     color: '#FBBF24' },
-    { label: 'Replied',  value: stats?.pending ?? 0,  color: '#60A5FA' },
-    { label: 'Resolved', value: stats?.resolved ?? 0, color: '#4ADE80' },
-    { label: 'Unread',   value: stats?.unread ?? 0,   color: '#0057b8' },
-  ]
-
+function StatusBadge({ status }: { status: SupportStatus }) {
+  const m = STATUS_META[status]
+  const Icon = m.icon
   return (
-    <div className="mx-auto max-w-7xl pb-10">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-        <div className="mb-1 flex items-center gap-2">
-          <LifeBuoy size={14} style={{ color: '#0057b8' }} />
-          <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#0057b8' }}>Support</span>
-        </div>
-        <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Help &amp; Complaints</h1>
-        <p className="mt-0.5 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>Client requests and conversations.</p>
-      </motion.div>
+    <span className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-semibold"
+      style={{ background: m.bg, color: m.color }}>
+      <Icon size={10} />
+      {m.label}
+    </span>
+  )
+}
 
-      {/* Stats */}
-      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
-        {cards.map(c => (
-          <div key={c.label} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <p className="text-2xl font-bold" style={{ color: c.color }}>{c.value}</p>
-            <p className="text-[11px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.4)' }}>{c.label}</p>
-          </div>
-        ))}
+function ProgramBadge({ program }: { program?: string }) {
+  if (!program) return null
+  const COLORS: Record<string, { bg: string; color: string }> = {
+    'ai':                { bg: '#F0F4FF', color: '#4F46E5' },
+    '4x-trading':        { bg: '#FFF7ED', color: '#C2410C' },
+    'digital-marketing': { bg: '#F0FDF4', color: '#15803D' },
+  }
+  const c = COLORS[program] ?? { bg: '#F3F4F6', color: '#374151' }
+  return (
+    <span className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+      style={{ background: c.bg, color: c.color }}>
+      {PROGRAM_LABELS[program] ?? program}
+    </span>
+  )
+}
+
+/* ─── Stat card ─────────────────────────────────────── */
+function StatCard({ label, value, icon: Icon, color }: { label: string; value: number; icon: React.ElementType; color: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl bg-white p-4"
+      style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl"
+        style={{ background: `${color}14` }}>
+        <Icon size={16} style={{ color }} />
       </div>
-
-      {/* Program filter — only super_admin and admin see this */}
-      {isSuperAdmin && (
-        <div className="mb-4 flex items-center gap-2">
-          {PROGRAM_TABS.map(t => (
-            <button key={t.key} onClick={() => setProgramFilter(t.key)}
-              className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
-              style={programFilter === t.key
-                ? { background: 'rgba(167,139,250,0.15)', color: '#A78BFA', border: '1px solid rgba(167,139,250,0.3)' }
-                : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.08)' }}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Status filters + search */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        {STATUS_TABS.map(t => (
-          <button key={t.key} onClick={() => setStatusFilter(t.key)}
-            className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
-            style={statusFilter === t.key
-              ? { background: 'rgba(0,87,184,0.15)', color: '#0057b8', border: '1px solid rgba(0,87,184,0.3)' }
-              : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.08)' }}>
-            {t.label}
-          </button>
-        ))}
-        <div className="relative ml-auto">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(255,255,255,0.3)' }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search subject…"
-            className="w-56 rounded-xl py-1.5 pl-8 pr-3 text-xs text-white outline-none"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }} />
-        </div>
-      </div>
-
-      <div className="flex gap-5 items-start">
-        {/* Ticket list */}
-        <div className="flex w-full max-w-sm flex-shrink-0 flex-col gap-2">
-          {isLoading ? (
-            <div className="flex justify-center py-12"><Loader2 size={20} className="animate-spin" style={{ color: '#0057b8' }} /></div>
-          ) : tickets.length === 0 ? (
-            <div className="rounded-2xl p-6 text-center" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
-              <MessageSquare size={22} className="mx-auto mb-2" style={{ color: 'rgba(255,255,255,0.2)' }} />
-              <p className="text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>No tickets here.</p>
-            </div>
-          ) : tickets.map(t => {
-            const u = userOf(t); const s = STATUS_STYLE[t.status]
-            return (
-              <button key={t.id} onClick={() => setSelectedId(t.id)}
-                className="w-full rounded-2xl p-3 text-left transition-all"
-                style={{ background: t.id === selectedId ? 'rgba(0,87,184,0.08)' : 'rgba(255,255,255,0.025)', border: `1px solid ${t.id === selectedId ? 'rgba(0,87,184,0.3)' : 'rgba(255,255,255,0.07)'}` }}>
-                <div className="flex items-start justify-between gap-2">
-                  <p className="line-clamp-1 text-sm font-bold text-white">{t.subject}</p>
-                  {t.adminUnread && <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full" style={{ background: '#0057b8' }} />}
-                </div>
-                <p className="mt-0.5 text-[11px]" style={{ color: 'rgba(255,255,255,0.45)' }}>{u?.name ?? 'Unknown'} · {u?.email}</p>
-                <div className="mt-1.5 flex items-center justify-between">
-                  <span className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: s.bg, color: s.color }}>{s.label}</span>
-                  <div className="flex items-center gap-2">
-                    {t.program && (
-                      <span className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
-                        style={{ background: t.program === '4x-trading' ? 'rgba(167,139,250,0.12)' : 'rgba(96,165,250,0.12)', color: t.program === '4x-trading' ? '#A78BFA' : '#60A5FA' }}>
-                        {t.program === '4x-trading' ? 'FOREX' : 'DM'}
-                      </span>
-                    )}
-                    <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{fmtWhen(t.lastMessageAt)}</span>
-                  </div>
-                </div>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Thread */}
-        <div className="min-w-0 flex-1 rounded-2xl" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)', minHeight: 480 }}>
-          {selectedId
-            ? <AdminThread ticketId={selectedId} onBack={() => setSelectedId(null)} />
-            : (
-              <div className="flex h-full flex-col items-center justify-center gap-3 py-24 text-center" style={{ minHeight: 480 }}>
-                <LifeBuoy size={28} style={{ color: 'rgba(255,255,255,0.15)' }} />
-                <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>Select a ticket to read and reply.</p>
-              </div>
-            )}
-        </div>
+      <div>
+        <p className="text-xl font-bold leading-none" style={{ color: '#111827' }}>{value}</p>
+        <p className="mt-0.5 text-xs" style={{ color: '#9CA3AF' }}>{label}</p>
       </div>
     </div>
   )
 }
 
-/* ── Conversation + reply (admin) ── */
-function AdminThread({ ticketId, onBack }: { ticketId: string; onBack: () => void }) {
+/* ─── Ticket row ─────────────────────────────────────── */
+function TicketRow({ ticket, active, onClick }: { ticket: SupportTicket; active: boolean; onClick: () => void }) {
+  const user = typeof ticket.userId === 'object' ? ticket.userId : null
+  return (
+    <button onClick={onClick}
+      className="w-full text-left transition-all"
+      style={{}}>
+      <div className="flex items-start gap-3 rounded-xl px-3 py-3 transition-colors"
+        style={{
+          background: active ? 'rgba(0,87,184,0.06)' : 'transparent',
+          border: active ? '1px solid rgba(0,87,184,0.14)' : '1px solid transparent',
+        }}>
+        <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+          style={{ background: '#0057b8' }}>
+          {(user?.name ?? '?').charAt(0).toUpperCase()}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <p className="truncate text-sm font-semibold" style={{ color: '#111827' }}>{ticket.subject}</p>
+            {ticket.adminUnread && (
+              <span className="flex h-2 w-2 flex-shrink-0 rounded-full" style={{ background: '#0057b8' }} />
+            )}
+          </div>
+          <p className="truncate text-xs" style={{ color: '#6B7280' }}>{user?.name ?? 'Unknown'}</p>
+          <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+            <StatusBadge status={ticket.status} />
+            <ProgramBadge program={ticket.program} />
+            <span className="text-[11px]" style={{ color: '#9CA3AF' }}>{fmtDate(ticket.lastMessageAt)}</span>
+          </div>
+        </div>
+      </div>
+    </button>
+  )
+}
+
+/* ─── Thread panel ───────────────────────────────────── */
+function ThreadPanel({ ticketId, onClose }: { ticketId: string; onClose: () => void }) {
   const { data: ticket, isLoading } = useAdminTicket(ticketId)
-  const reply  = useAdminReply(ticketId)
-  const status = useSetTicketStatus(ticketId)
-  const [body, setBody] = useState('')
-  const endRef = useRef<HTMLDivElement>(null)
+  const replyMut  = useAdminReply(ticketId)
+  const statusMut = useSetTicketStatus(ticketId)
+  const [draft, setDraft] = useState('')
+  const bottomRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [ticket?.messages.length])
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [ticket?.messages.length])
 
-  if (isLoading || !ticket) {
-    return <div className="flex items-center justify-center py-24" style={{ minHeight: 480 }}><Loader2 size={20} className="animate-spin" style={{ color: '#0057b8' }} /></div>
+  const send = async () => {
+    if (!draft.trim() || replyMut.isPending) return
+    await replyMut.mutateAsync(draft.trim())
+    setDraft('')
   }
-  const u = userOf(ticket); const s = STATUS_STYLE[ticket.status]
 
-  const send = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!body.trim()) return
-    try { await reply.mutateAsync(body.trim()); setBody('') } catch { /* ignore */ }
-  }
+  if (isLoading) return (
+    <div className="flex h-full items-center justify-center gap-2">
+      <Loader2 size={18} className="animate-spin" style={{ color: '#0057b8' }} />
+      <span className="text-sm" style={{ color: '#9CA3AF' }}>Loading…</span>
+    </div>
+  )
+  if (!ticket) return null
+
+  const user = typeof ticket.userId === 'object' ? ticket.userId : null
+  const statuses: SupportStatus[] = ['open', 'pending', 'resolved', 'closed']
 
   return (
-    <div className="flex h-full flex-col" style={{ minHeight: 480 }}>
+    <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center gap-3 border-b p-4" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
-        <button onClick={onBack} className="flex h-8 w-8 items-center justify-center rounded-xl hover:bg-white/10 lg:hidden" style={{ color: 'rgba(255,255,255,0.5)' }}><ChevronLeft size={16} /></button>
-        <div className="min-w-0 flex-1">
-          <p className="line-clamp-1 text-sm font-bold text-white">{ticket.subject}</p>
-          <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
-            {u?.name} · {u?.email} · <span className="capitalize">{ticket.category}</span>
-            {ticket.program && (
-              <span className="ml-1.5 rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                style={{ background: ticket.program === '4x-trading' ? 'rgba(167,139,250,0.12)' : 'rgba(96,165,250,0.12)', color: ticket.program === '4x-trading' ? '#A78BFA' : '#60A5FA' }}>
-                {ticket.program === '4x-trading' ? 'FOREX Trading' : 'Digital Marketing'}
+      <div className="flex-shrink-0 p-5" style={{ borderBottom: '1px solid #E5E7EB' }}>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h3 className="text-base font-bold" style={{ color: '#111827' }}>{ticket.subject}</h3>
+            <div className="mt-1 flex items-center gap-2 flex-wrap">
+              <span className="text-xs" style={{ color: '#6B7280' }}>
+                {user?.name ?? 'Unknown'} · {user?.email}
               </span>
-            )}
-          </p>
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <StatusBadge status={ticket.status} />
+              <ProgramBadge program={ticket.program} />
+              {ticket.category && (
+                <span className="text-[11px]" style={{ color: '#9CA3AF' }}>
+                  {CATEGORY_LABELS[ticket.category] ?? ticket.category}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-shrink-0 items-center gap-2">
+            <select
+              value={ticket.status}
+              onChange={e => statusMut.mutate(e.target.value as SupportStatus)}
+              disabled={statusMut.isPending}
+              className="rounded-xl border px-3 py-1.5 text-xs font-semibold outline-none"
+              style={{ borderColor: '#E5E7EB', color: '#374151' }}>
+              {statuses.map(s => (
+                <option key={s} value={s}>{STATUS_META[s].label}</option>
+              ))}
+            </select>
+          </div>
         </div>
-        <select value={ticket.status} onChange={e => status.mutate(e.target.value as SupportStatus)}
-          className="rounded-lg px-2 py-1 text-xs font-semibold outline-none"
-          style={{ background: '#1e2035', color: s.color, border: '1px solid rgba(255,255,255,0.12)' }}>
-          {ALL_STATUSES.map(st => <option key={st} value={st} style={{ background: '#1e2035', color: 'white' }}>{STATUS_STYLE[st].label}</option>)}
-        </select>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 space-y-3 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {ticket.messages.map((m, i) => {
-          const mine = m.senderRole === 'admin'
+          const fromAdmin = m.senderRole === 'admin'
+          const sender = typeof m.senderId === 'object' ? m.senderId : null
           return (
-            <div key={m._id ?? i} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-              <div className="max-w-[78%]">
-                <div className="rounded-2xl px-3.5 py-2.5 text-sm"
-                  style={mine
-                    ? { background: 'linear-gradient(135deg,#0057b8,#003d80)', color: 'white', borderTopRightRadius: 4 }
-                    : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.92)', borderTopLeftRadius: 4 }}>
+            <div key={m._id ?? i} className={`flex ${fromAdmin ? 'justify-end' : 'justify-start'}`}>
+              <div className="max-w-[80%]">
+                <div className="rounded-2xl px-4 py-2.5 text-sm"
+                  style={fromAdmin
+                    ? { background: '#0057b8', color: 'white', borderBottomRightRadius: 6 }
+                    : { background: '#F3F4F6', color: '#111827', borderBottomLeftRadius: 6 }}>
                   {m.body}
                 </div>
-                <div className={`mt-1 flex items-center gap-1 text-[10px] ${mine ? 'justify-end' : ''}`} style={{ color: 'rgba(255,255,255,0.35)' }}>
-                  {mine && <ShieldCheck size={9} style={{ color: '#4ADE80' }} />}
-                  {mine ? 'You (Support)' : (u?.name ?? 'Client')} · {fmtWhen(m.createdAt)}
-                </div>
+                <p className={`mt-1 text-[10px] ${fromAdmin ? 'text-right' : ''}`} style={{ color: '#9CA3AF' }}>
+                  {fromAdmin ? (sender?.name ?? 'Support Team') : (user?.name ?? 'Student')} · {fmtDate(m.createdAt)}
+                </p>
               </div>
             </div>
           )
         })}
-        <div ref={endRef} />
+        <div ref={bottomRef} />
       </div>
 
       {/* Reply */}
-      {ticket.status === 'closed' ? (
-        <div className="flex items-center gap-2 border-t p-4 text-xs" style={{ borderColor: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.4)' }}>
-          <CheckCircle2 size={13} /> Ticket closed. Set it to Open to continue the conversation.
+      {ticket.status !== 'closed' ? (
+        <div className="flex-shrink-0 p-4" style={{ borderTop: '1px solid #E5E7EB' }}>
+          <div className="flex gap-2">
+            <textarea
+              value={draft} onChange={e => setDraft(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+              placeholder="Reply to this ticket…"
+              rows={3}
+              className="flex-1 resize-none rounded-xl p-3 text-sm outline-none"
+              style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', color: '#111827' }} />
+            <button onClick={send} disabled={!draft.trim() || replyMut.isPending}
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl transition-all disabled:opacity-40"
+              style={{ background: '#0057b8' }}>
+              {replyMut.isPending ? <Loader2 size={14} className="animate-spin text-white" /> : <Send size={14} color="white" />}
+            </button>
+          </div>
         </div>
       ) : (
-        <form onSubmit={send} className="flex items-end gap-2 border-t p-3" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
-          <textarea value={body} onChange={e => setBody(e.target.value)} rows={1} maxLength={5000}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(e) } }}
-            placeholder="Reply to the client…" className="flex-1 resize-none rounded-xl px-3 py-2.5 text-sm text-white outline-none"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', maxHeight: 120 }} />
-          <button type="submit" disabled={reply.isPending || !body.trim()}
-            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-white disabled:opacity-50"
-            style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)' }}>
-            {reply.isPending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-          </button>
-        </form>
+        <div className="flex-shrink-0 p-4 text-center text-sm" style={{ color: '#9CA3AF', borderTop: '1px solid #E5E7EB' }}>
+          This ticket is closed. Change the status to reply.
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ─── Performance tab ────────────────────────────────── */
+function PerformancePanel() {
+  const { data, isLoading } = useSupportPerformance()
+
+  if (isLoading) return (
+    <div className="flex h-64 items-center justify-center gap-2">
+      <Loader2 size={18} className="animate-spin" style={{ color: '#0057b8' }} />
+    </div>
+  )
+
+  const PROG_COLORS: Record<string, { accent: string; bg: string }> = {
+    'ai':                { accent: '#4F46E5', bg: '#F0F4FF' },
+    '4x-trading':        { accent: '#C2410C', bg: '#FFF7ED' },
+    'digital-marketing': { accent: '#15803D', bg: '#F0FDF4' },
+  }
+
+  return (
+    <div className="p-6 space-y-6">
+      <div>
+        <h3 className="text-base font-bold" style={{ color: '#111827' }}>Admin Team Performance</h3>
+        <p className="mt-0.5 text-sm" style={{ color: '#6B7280' }}>Ticket resolution stats by program team</p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {(data ?? []).map(prog => {
+          const c = PROG_COLORS[prog.program] ?? { accent: '#374151', bg: '#F3F4F6' }
+          const resolvedPct = prog.total > 0 ? Math.round((prog.resolved / prog.total) * 100) : 0
+          return (
+            <div key={prog.program} className="rounded-2xl bg-white p-5"
+              style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl"
+                  style={{ background: c.bg }}>
+                  <Users size={14} style={{ color: c.accent }} />
+                </div>
+                <div>
+                  <p className="text-sm font-bold" style={{ color: '#111827' }}>{prog.label}</p>
+                  <p className="text-[11px]" style={{ color: '#9CA3AF' }}>admin team</p>
+                </div>
+              </div>
+
+              {/* Resolution bar */}
+              <div className="mb-3">
+                <div className="flex justify-between mb-1">
+                  <span className="text-xs" style={{ color: '#6B7280' }}>Resolution rate</span>
+                  <span className="text-xs font-bold" style={{ color: c.accent }}>{resolvedPct}%</span>
+                </div>
+                <div className="h-1.5 w-full rounded-full" style={{ background: '#F3F4F6' }}>
+                  <div className="h-full rounded-full transition-all" style={{ width: `${resolvedPct}%`, background: c.accent }} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: 'Total',    value: prog.total,    color: '#374151' },
+                  { label: 'Open',     value: prog.open,     color: '#2563EB' },
+                  { label: 'Pending',  value: prog.pending,  color: '#D97706' },
+                  { label: 'Resolved', value: prog.resolved, color: '#16A34A' },
+                ].map(s => (
+                  <div key={s.label} className="rounded-xl p-2.5" style={{ background: '#F9FAFB' }}>
+                    <p className="text-base font-bold" style={{ color: s.color }}>{s.value}</p>
+                    <p className="text-[10px]" style={{ color: '#9CA3AF' }}>{s.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-3 flex items-center justify-between rounded-xl px-3 py-2"
+                style={{ background: c.bg }}>
+                <span className="text-[11px] font-medium" style={{ color: c.accent }}>Avg first reply</span>
+                <span className="text-xs font-bold" style={{ color: c.accent }}>
+                  {prog.responded > 0 ? `${prog.avgResponseHours}h` : '—'}
+                </span>
+              </div>
+
+              {prog.unread > 0 && (
+                <div className="mt-2 flex items-center gap-1.5 rounded-xl px-3 py-2"
+                  style={{ background: '#FEF2F2' }}>
+                  <AlertCircle size={12} style={{ color: '#EF4444' }} />
+                  <span className="text-[11px] font-medium" style={{ color: '#EF4444' }}>
+                    {prog.unread} unread {prog.unread === 1 ? 'ticket' : 'tickets'}
+                  </span>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/* ─── Main page ──────────────────────────────────────── */
+const PROGRAM_TABS: { id: string; label: string }[] = [
+  { id: 'all',                label: 'All' },
+  { id: 'ai',                 label: 'AI' },
+  { id: '4x-trading',        label: 'Forex' },
+  { id: 'digital-marketing', label: 'Digital Marketing' },
+]
+
+const STATUS_FILTERS = [
+  { id: 'all',      label: 'All' },
+  { id: 'open',     label: 'Open' },
+  { id: 'pending',  label: 'Pending' },
+  { id: 'resolved', label: 'Resolved' },
+  { id: 'closed',   label: 'Closed' },
+]
+
+export default function AdminSupportPage() {
+  const { data: me } = useCurrentUser()
+  const role = me?.role ?? ''
+  const isSuperAdmin = role === 'admin' || role === 'super_admin'
+  const isScoped     = role === 'ai_admin' || role === '4x_admin' || role === 'digital_marketing_admin'
+
+  const [activeTab,    setActiveTab]    = useState<'inbox' | 'performance'>('inbox')
+  const [programFilter, setProgramFilter] = useState('all')
+  const [statusFilter,  setStatusFilter]  = useState('all')
+  const [search,        setSearch]        = useState('')
+  const [activeTicket,  setActiveTicket]  = useState<string | null>(null)
+
+  const filter = {
+    status:  statusFilter !== 'all' ? statusFilter : undefined,
+    search:  search || undefined,
+    program: isSuperAdmin && programFilter !== 'all' ? programFilter : undefined,
+  }
+
+  const { data: tickets = [], isLoading: ticketsLoading } = useAdminTickets(filter)
+  const { data: stats }                                   = useSupportStats(isSuperAdmin ? (programFilter !== 'all' ? programFilter : undefined) : undefined)
+
+  const unread = tickets.filter(t => t.adminUnread).length
+
+  return (
+    <div className="flex h-[calc(100vh-64px)] flex-col overflow-hidden">
+      {/* ── Page header ── */}
+      <div className="flex-shrink-0 px-6 pt-5 pb-0">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl"
+              style={{ background: 'rgba(0,87,184,0.10)' }}>
+              <LifeBuoy size={17} style={{ color: '#0057b8' }} />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold" style={{ color: '#F9FAFB', fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+                Support Inbox
+              </h1>
+              {unread > 0 && (
+                <p className="text-xs" style={{ color: '#9CA3AF' }}>
+                  {unread} unread {unread === 1 ? 'ticket' : 'tickets'}
+                </p>
+              )}
+            </div>
+          </div>
+          {/* Tab switch — super admin / admin only */}
+          {isSuperAdmin && (
+            <div className="flex rounded-xl p-1" style={{ background: 'rgba(255,255,255,0.06)' }}>
+              {[
+                { id: 'inbox',       label: 'Inbox',       icon: Inbox },
+                { id: 'performance', label: 'Performance', icon: BarChart2 },
+              ].map(t => (
+                <button key={t.id} onClick={() => setActiveTab(t.id as any)}
+                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all"
+                  style={activeTab === t.id
+                    ? { background: '#0057b8', color: 'white' }
+                    : { color: 'rgba(255,255,255,0.4)' }}>
+                  <t.icon size={12} />{t.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Stats row */}
+        {stats && activeTab === 'inbox' && (
+          <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+            <StatCard label="Total"    value={stats.total}    icon={MessageSquare} color="#374151" />
+            <StatCard label="Open"     value={stats.open}     icon={Circle}        color="#2563EB" />
+            <StatCard label="Pending"  value={stats.pending}  icon={Clock}         color="#D97706" />
+            <StatCard label="Resolved" value={stats.resolved} icon={CheckCircle2}  color="#16A34A" />
+            <StatCard label="Closed"   value={stats.closed}   icon={XCircle}       color="#6B7280" />
+            <StatCard label="Unread"   value={stats.unread}   icon={AlertCircle}   color="#EF4444" />
+          </div>
+        )}
+
+        {/* Program filter tabs — super admin / admin only */}
+        {isSuperAdmin && activeTab === 'inbox' && (
+          <div className="mb-4 flex gap-1 overflow-x-auto scrollbar-none">
+            {PROGRAM_TABS.map(t => (
+              <button key={t.id} onClick={() => { setProgramFilter(t.id); setActiveTicket(null) }}
+                className="flex-shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap"
+                style={programFilter === t.id
+                  ? { background: '#0057b8', color: 'white' }
+                  : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Performance tab ── */}
+      {activeTab === 'performance' ? (
+        <div className="flex-1 overflow-y-auto rounded-2xl mx-6 mb-6 bg-white"
+          style={{ border: '1px solid #E5E7EB' }}>
+          <PerformancePanel />
+        </div>
+      ) : (
+        /* ── Inbox: split panel ── */
+        <div className="mx-6 mb-6 flex flex-1 gap-4 overflow-hidden min-h-0">
+          {/* Left: ticket list */}
+          <div className="flex w-80 flex-shrink-0 flex-col overflow-hidden rounded-2xl bg-white"
+            style={{ border: '1px solid #E5E7EB' }}>
+            {/* Filters */}
+            <div className="flex-shrink-0 p-3 space-y-2" style={{ borderBottom: '1px solid #F3F4F6' }}>
+              <div className="relative">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }} />
+                <input
+                  value={search} onChange={e => setSearch(e.target.value)}
+                  placeholder="Search tickets…"
+                  className="w-full rounded-xl py-2 pl-8 pr-3 text-sm outline-none"
+                  style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }} />
+              </div>
+              <div className="flex gap-1 overflow-x-auto scrollbar-none">
+                {STATUS_FILTERS.map(f => (
+                  <button key={f.id} onClick={() => setStatusFilter(f.id)}
+                    className="flex-shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all whitespace-nowrap"
+                    style={statusFilter === f.id
+                      ? { background: '#0057b8', color: 'white' }
+                      : { background: '#F3F4F6', color: '#6B7280' }}>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* List */}
+            <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+              {ticketsLoading ? (
+                <div className="flex h-32 items-center justify-center gap-2">
+                  <Loader2 size={16} className="animate-spin" style={{ color: '#0057b8' }} />
+                </div>
+              ) : tickets.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <Inbox size={28} style={{ color: '#D1D5DB' }} />
+                  <p className="text-sm" style={{ color: '#9CA3AF' }}>No tickets found</p>
+                </div>
+              ) : (
+                tickets.map(t => (
+                  <TicketRow key={t.id} ticket={t} active={activeTicket === t.id}
+                    onClick={() => setActiveTicket(t.id)} />
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Right: thread */}
+          <div className="flex-1 overflow-hidden rounded-2xl bg-white"
+            style={{ border: '1px solid #E5E7EB' }}>
+            {activeTicket ? (
+              <ThreadPanel key={activeTicket} ticketId={activeTicket} onClose={() => setActiveTicket(null)} />
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center gap-3">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl"
+                  style={{ background: '#F3F4F6' }}>
+                  <LifeBuoy size={24} style={{ color: '#D1D5DB' }} />
+                </div>
+                <p className="text-sm font-semibold" style={{ color: '#374151' }}>Select a ticket</p>
+                <p className="text-xs" style={{ color: '#9CA3AF' }}>Pick a conversation from the list to view and reply</p>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   )

@@ -86,13 +86,13 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
           style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.25)' }}>
           <Lock size={22} style={{ color: '#F59E0B' }} />
         </div>
-        <p className="text-base font-semibold" style={{ color: '#0D0F1A' }}>Lesson locked — viewer mode</p>
+        <p className="text-base font-semibold" style={{ color: '#0D0F1A' }}>Lesson locked (viewer mode)</p>
         <p className="max-w-xs text-center text-sm" style={{ color: '#9CA3AF' }}>
           Your account is pending admin approval. Course content will be unlocked once you're approved.
         </p>
         <Link href={`/courses/${slug}`}
           className="rounded-xl px-5 py-2.5 text-sm font-bold text-white"
-          style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
+          style={{ background: '#0057b8' }}>
           Back to course
         </Link>
       </div>
@@ -111,7 +111,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
         <p className="text-base font-semibold" style={{ color: '#0D0F1A' }}>You need to enroll to watch this lesson</p>
         <Link href={`/courses/${slug}`}
           className="rounded-xl px-5 py-2.5 text-sm font-bold text-white"
-          style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
+          style={{ background: '#0057b8' }}>
           Go to course page
         </Link>
       </div>
@@ -132,7 +132,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
         </p>
         <Link href={`/courses/${slug}`}
           className="rounded-xl px-5 py-2.5 text-sm font-bold text-white"
-          style={{ background: 'linear-gradient(135deg, #6366F1, #818CF8)' }}>
+          style={{ background: '#6366F1' }}>
           Back to course
         </Link>
       </div>
@@ -321,7 +321,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
                 onClick={async () => { await markComplete.mutateAsync(lessonId); if (nextLesson) router.push(`/learn/${slug}/${nextLesson.id}`) }}
                 disabled={markComplete.isPending}
                 className="flex items-center gap-1 rounded-xl px-4 py-2 text-xs font-bold disabled:opacity-60"
-                style={{ background: isCompleted ? '#22C55E' : 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
+                style={{ background: isCompleted ? '#22C55E' : '#0057b8' }}>
                 {markComplete.isPending
                   ? <><Loader2 size={13} className="animate-spin" />Saving…</>
                   : isCompleted
@@ -345,8 +345,8 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
               <ChevronDown size={16} style={{ color: '#9CA3AF', transform: sidebarOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
             </Button>
             {sidebarOpen && (
-              <div className="mt-2 flex flex-col rounded-2xl bg-white overflow-hidden"
-                style={{ border: '1px solid #E4E7ED', maxHeight: '60vh' }}>
+              <div className="mt-2 flex flex-col rounded-2xl bg-white overflow-hidden max-h-[60vh]"
+                style={{ border: '1px solid #E4E7ED' }}>
                 <SidebarContent />
               </div>
             )}
@@ -354,8 +354,8 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
         </main>
 
         {/* ── Sidebar — desktop only ───────────────────── */}
-        <aside className="hidden lg:flex lg:order-1 rounded-2xl bg-white flex-col"
-          style={{ border: '1px solid #E4E7ED', maxHeight: 'calc(100vh - 160px)' }}>
+        <aside className="hidden lg:flex lg:order-1 rounded-2xl bg-white flex-col max-h-[calc(100vh-160px)]"
+          style={{ border: '1px solid #E4E7ED' }}>
           <SidebarContent />
         </aside>
       </div>

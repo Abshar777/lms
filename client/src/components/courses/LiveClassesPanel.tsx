@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Calendar, Video, Loader2, Radio, Clock, AlertCircle } from 'lucide-react'
+import { Calendar, Video, Loader2, Radio, Clock, AlertCircle, Lock } from 'lucide-react'
 import Link from 'next/link'
 import { Tv2 } from 'lucide-react'
 import { useLiveClassesForCourse, isLive, isUpcoming, fmtCountdown, type LiveClass } from '@/lib/api/liveClasses'
@@ -22,7 +22,7 @@ function fmtDuration(mins: number): string {
 }
 
 
-export function LiveClassesPanel({ slug }: { slug: string }) {
+export function LiveClassesPanel({ slug, isEnrolled }: { slug: string; isEnrolled: boolean }) {
   const { data: items, isLoading, isError } = useLiveClassesForCourse(slug)
   /* Tick every 30s so live/upcoming/countdown flip in real time */
   const [now, setNow] = useState(() => Date.now())
@@ -40,13 +40,16 @@ export function LiveClassesPanel({ slug }: { slug: string }) {
     return null
   }
 
+  /* Use isEnrolled from props; backend also annotates it on each item */
+  const enrolled = isEnrolled || (items?.some(l => (l as any).isEnrolled) ?? false)
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.18, type: 'spring', stiffness: 260, damping: 26 }}
       className="mt-8 overflow-hidden rounded-2xl"
       style={{
-        background: 'linear-gradient(135deg, rgba(99,102,241,0.04) 0%, rgba(0,87,184,0.04) 100%)',
+        background: 'rgba(0,87,184,0.05)',
         border: '1px solid rgba(99,102,241,0.18)',
       }}>
 
@@ -67,6 +70,13 @@ export function LiveClassesPanel({ slug }: { slug: string }) {
             </p>
           </div>
         </div>
+        {enrolled && (
+          <Link href="/live-classes"
+            className="text-xs font-semibold transition-opacity hover:opacity-70"
+            style={{ color: '#0057b8' }}>
+            View all →
+          </Link>
+        )}
       </div>
 
       <div className="p-5">
@@ -84,14 +94,22 @@ export function LiveClassesPanel({ slug }: { slug: string }) {
         )}
 
         <div className="space-y-3">
-          {visible.map((l, i) => <LiveClassRow key={l.id} live={l} now={now} index={i} />)}
+          {visible.map((l, i) => <LiveClassRow key={l.id} live={l} now={now} index={i} isEnrolled={enrolled} />)}
         </div>
+
+        {!enrolled && visible.length > 0 && (
+          <div className="mt-4 flex items-center gap-2 rounded-xl px-4 py-3 text-xs"
+            style={{ background: 'rgba(0,87,184,0.06)', border: '1px solid rgba(0,87,184,0.14)', color: '#0057b8' }}>
+            <Lock size={12} />
+            Enroll in this course to access live sessions. Join links are sent via email after booking.
+          </div>
+        )}
       </div>
     </motion.section>
   )
 }
 
-function LiveClassRow({ live, now, index }: { live: LiveClass; now: number; index: number }) {
+function LiveClassRow({ live, now, index, isEnrolled }: { live: LiveClass; now: number; index: number; isEnrolled: boolean }) {
   const isLiveNow  = isLive(live)
   const isInternal = live.type === 'internal'
   const countdown  = fmtCountdown(live.scheduledStart, now)
@@ -138,23 +156,31 @@ function LiveClassRow({ live, now, index }: { live: LiveClass; now: number; inde
         </div>
       </div>
 
-      {/* CTA — internal uses watch page, external opens link */}
-      {isInternal ? (
-        <Link href={`/live-classes/${live.id}/watch`}
-          className="rounded-xl px-3.5 py-2 text-xs font-bold text-white transition-all"
-          style={isLiveNow
-            ? { background: 'linear-gradient(135deg, #EF4444, #DC2626)', boxShadow: '0 4px 16px rgba(239,68,68,0.32)' }
-            : { background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
-          {isLiveNow ? 'Watch now' : 'View'}
-        </Link>
+      {/* CTA — gated by enrollment. Links are never exposed directly; students receive them via email. */}
+      {isEnrolled ? (
+        isInternal ? (
+          /* Internal Mux stream — /watch endpoint enforces enrollment server-side */
+          <Link href={`/live-classes/${live.id}/watch`}
+            className="shrink-0 rounded-xl px-3.5 py-2 text-xs font-bold text-white transition-all"
+            style={isLiveNow
+              ? { background: '#EF4444', boxShadow: '0 4px 16px rgba(239,68,68,0.32)' }
+              : { background: '#0057b8' }}>
+            {isLiveNow ? 'Watch now' : 'View'}
+          </Link>
+        ) : (
+          /* External session — redirect to schedule page, join link comes via email */
+          <Link href="/live-classes"
+            className="shrink-0 rounded-xl px-3.5 py-2 text-xs font-bold transition-all"
+            style={{ background: 'rgba(99,102,241,0.10)', color: '#6366F1', border: '1px solid rgba(99,102,241,0.25)' }}>
+            View schedule
+          </Link>
+        )
       ) : (
-        <a href={live.meetingUrl ?? '#'} target="_blank" rel="noreferrer noopener"
-          className="rounded-xl px-3.5 py-2 text-xs font-bold text-white transition-all"
-          style={isLiveNow
-            ? { background: 'linear-gradient(135deg, #EF4444, #DC2626)', boxShadow: '0 4px 16px rgba(239,68,68,0.32)' }
-            : { background: 'linear-gradient(135deg, #6366F1, #818CF8)' }}>
-          {isLiveNow ? 'Join now' : 'Open link'}
-        </a>
+        /* Not enrolled — show lock; no URL exposed */
+        <div className="shrink-0 flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold"
+          style={{ background: '#F3F4F6', color: '#9CA3AF' }}>
+          <Lock size={11} />Enroll
+        </div>
       )}
     </motion.div>
   )

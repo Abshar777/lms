@@ -144,7 +144,7 @@ function SummaryPanel({ quiz, summary, onStart }: {
 
       <button onClick={onStart}
         className="inline-flex items-center gap-2 rounded-xl px-8 py-3 text-sm font-bold text-white"
-        style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
+        style={{ background: '#0057b8' }}>
         {summary?.hasAttempted ? <><RotateCcw size={14} />Retry quiz</> : <><ChevronRight size={14} />Start quiz</>}
       </button>
     </motion.div>
@@ -197,7 +197,7 @@ function TakingPanel({ quiz, answers, timeLeft, onAnswer, onSubmit, isPending }:
       <div className="border-t px-6 py-4" style={{ borderColor: '#F0F1F5' }}>
         <button onClick={onSubmit} disabled={isPending}
           className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white disabled:opacity-60"
-          style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
+          style={{ background: '#0057b8' }}>
           {isPending ? <Loader2 size={14} className="animate-spin" /> : null}
           Submit quiz ({answered}/{quiz.questions.length} answered)
         </button>
@@ -327,7 +327,7 @@ function ResultPanel({ result, passPercent, onRetry }: {
       {!result.passed && (
         <button onClick={onRetry}
           className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white"
-          style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
+          style={{ background: '#0057b8' }}>
           <RotateCcw size={14} />Try again
         </button>
       )}

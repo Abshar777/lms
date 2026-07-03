@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   BookOpen, GraduationCap, Trophy,
-  Settings, LogOut, Flame, Map, X, Video, CalendarDays,
+  Settings, LogOut, Flame, Map, X, Video, CalendarDays, LifeBuoy,
 } from 'lucide-react'
 import { useUIStore } from '@/store/ui.store'
 
@@ -17,6 +17,7 @@ const navItems = [
   { label: 'Learning Paths', href: '/learning-paths',  icon: Map },
   { label: 'Achievements',   href: '/achievements',    icon: Trophy },
   { label: 'Streaks',        href: '/streaks',         icon: Flame },
+  { label: 'Help & Support', href: '/support',         icon: LifeBuoy },
 ]
 const bottomItems = [{ label: 'Settings', href: '/settings', icon: Settings }]
 
@@ -98,7 +99,7 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
           style={{ background: '#F4F5F8', border: '1px solid #E4E7ED' }}>
           <div className="relative h-8 w-8 flex-shrink-0 overflow-hidden rounded-full">
             <div className="flex h-full w-full items-center justify-center text-xs font-bold text-white"
-              style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>A</div>
+              style={{ background: '#0057b8' }}>A</div>
             <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white"
               style={{ background: '#0ECC8E' }} />
           </div>
@@ -137,11 +138,11 @@ export function ClientSidebar() {
           {/* Drawer */}
           <motion.aside
             key="client-mobile-drawer"
-            initial={{ x: -280 }}
+            initial={{ x: '-100%' }}
             animate={{ x: 0 }}
-            exit={{ x: -280 }}
+            exit={{ x: '-100%' }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed left-0 top-0 z-50 flex h-screen w-[280px] flex-col overflow-hidden bg-white"
+            className="fixed left-0 top-0 z-50 flex h-screen w-[min(280px,85vw)] flex-col overflow-hidden bg-white"
             style={{ borderRight: '1px solid #E4E7ED' }}>
             <SidebarContent onClose={() => setMobileNav(false)} />
           </motion.aside>

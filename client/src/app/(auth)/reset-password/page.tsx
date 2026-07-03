@@ -40,7 +40,7 @@ function ResetPasswordForm() {
         <AlertCircle size={15} className="mt-0.5" />
         <div>
           <p className="font-semibold">Missing reset token</p>
-          <p className="mt-1 text-xs">Open the link from your email — the token is part of the URL.</p>
+          <p className="mt-1 text-xs">Open the link from your email. The token is part of the URL.</p>
         </div>
       </div>
     )
@@ -130,7 +130,7 @@ function ResetPasswordForm() {
       <motion.button type="submit" disabled={isSubmitting}
         whileHover={{ y: -1 }} whileTap={{ scale: 0.98 }}
         className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white transition-all disabled:opacity-60"
-        style={{ background: 'linear-gradient(135deg, #0057b8, #1a73e8)', boxShadow: '0 4px 18px rgba(0,87,184,0.30)' }}>
+        style={{ background: '#0057b8', boxShadow: '0 4px 18px rgba(0,87,184,0.30)' }}>
         {isSubmitting ? <><Loader2 size={14} className="animate-spin" />Updating…</> : 'Set new password'}
       </motion.button>
     </form>

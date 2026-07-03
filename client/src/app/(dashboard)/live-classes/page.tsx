@@ -39,12 +39,12 @@ function firstDayOfMonth(y: number, m: number) {
 
 /* Gradient fallbacks by index */
 const GRADIENTS = [
-  'linear-gradient(135deg,#0057b8,#FF3D77)',
-  'linear-gradient(135deg,#6366F1,#818CF8)',
-  'linear-gradient(135deg,#0EA5E9,#6366F1)',
-  'linear-gradient(135deg,#22C55E,#0EA5E9)',
-  'linear-gradient(135deg,#F59E0B,#EF4444)',
-  'linear-gradient(135deg,#EC4899,#8B5CF6)',
+  '#0057b8',
+  '#6366F1',
+  '#0EA5E9',
+  '#22C55E',
+  '#F59E0B',
+  '#EC4899',
 ]
 
 type FilterKey = 'all' | 'live' | 'upcoming' | 'recordings'
@@ -187,7 +187,7 @@ function LiveHeroCard({ live, index }: { live: LiveClass; index: number }) {
 
       {/* Dark overlay */}
       <div className="absolute inset-0"
-        style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.45) 55%, rgba(0,0,0,0.15) 100%)' }} />
+        style={{ background: 'rgba(0,0,0,0.60)' }} />
 
       {/* LIVE badge */}
       <div className="absolute left-4 top-4">
@@ -240,13 +240,13 @@ function LiveHeroCard({ live, index }: { live: LiveClass; index: number }) {
           {isInt ? (
             <Link href={`/live-classes/${live.id}/watch`}
               className="ml-auto flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white transition-all hover:brightness-110"
-              style={{ background: 'linear-gradient(135deg,#EF4444,#DC2626)', boxShadow: '0 4px 14px rgba(239,68,68,0.4)' }}>
+              style={{ background: '#EF4444', boxShadow: '0 4px 14px rgba(239,68,68,0.4)' }}>
               <Radio size={12} />Watch now
             </Link>
           ) : live.meetingUrl ? (
             <a href={live.meetingUrl} target="_blank" rel="noreferrer"
               className="ml-auto flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white transition-all hover:brightness-110"
-              style={{ background: 'linear-gradient(135deg,#EF4444,#DC2626)', boxShadow: '0 4px 14px rgba(239,68,68,0.4)' }}>
+              style={{ background: '#EF4444', boxShadow: '0 4px 14px rgba(239,68,68,0.4)' }}>
               <ExternalLink size={12} />Join now
             </a>
           ) : null}
@@ -283,7 +283,7 @@ function ContactAdminModal({ onClose }: { onClose: () => void }) {
         </p>
         <button onClick={onClose}
           className="w-full rounded-2xl px-4 py-2.5 text-sm font-semibold text-white"
-          style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>
+          style={{ background: '#0057b8' }}>
           Got it
         </button>
       </motion.div>
@@ -320,7 +320,7 @@ function SessionCard({ live, index, now }: { live: LiveClass; now: number; index
         )}
         {/* Overlay */}
         <div className="absolute inset-0"
-          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%)' }} />
+          style={{ background: 'rgba(0,0,0,0.40)' }} />
 
         {/* Status badge */}
         <div className="absolute left-3 top-3">
@@ -410,7 +410,7 @@ function SessionCard({ live, index, now }: { live: LiveClass; now: number; index
                 <Link href={`/live-classes/${live.id}/watch`}>
                   <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
                     className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold text-white"
-                    style={{ background: 'linear-gradient(135deg,#EF4444,#DC2626)' }}>
+                    style={{ background: '#EF4444' }}>
                     <Radio size={9} />Watch
                   </motion.button>
                 </Link>
@@ -438,7 +438,7 @@ function SessionCard({ live, index, now }: { live: LiveClass; now: number; index
                 <Link href={`/live-classes/${live.id}/watch`}>
                   <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
                     className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold text-white"
-                    style={{ background: liveNow ? 'linear-gradient(135deg,#EF4444,#DC2626)' : 'linear-gradient(135deg,#6366F1,#818CF8)' }}>
+                    style={{ background: liveNow ? '#EF4444' : '#6366F1' }}>
                     <ExternalLink size={9} />{liveNow ? 'Join' : 'Open'}
                   </motion.button>
                 </Link>
@@ -572,7 +572,7 @@ export default function LiveClassesPage() {
             )}
           </AnimatePresence>
 
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+          <div className="flex flex-col gap-5 md:flex-row md:items-start">
             {/* ── Left: filters + cards ── */}
             <div className="flex-1 min-w-0">
               {/* Filter tabs */}
@@ -597,9 +597,9 @@ export default function LiveClassesPage() {
               </div>
 
               {/* Search + type row */}
-              <div className="mb-5 flex flex-wrap items-center gap-2">
+              <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 {/* Search */}
-                <div className="relative flex-1 min-w-[180px]">
+                <div className="relative w-full sm:flex-1 sm:min-w-[180px]">
                   <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }} />
                   <input
                     value={search}
@@ -669,7 +669,7 @@ export default function LiveClassesPage() {
                 ) : (
                   <motion.div key="grid"
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
                     {filtered.map((l, i) => (
                       <SessionCard key={l.id} live={l} index={i} now={now} />
                     ))}
@@ -679,7 +679,7 @@ export default function LiveClassesPage() {
             </div>
 
             {/* ── Right: mini calendar ── */}
-            <div className="w-full lg:w-64 lg:flex-shrink-0">
+            <div className="w-full md:w-64 md:flex-shrink-0">
               <MiniCalendar
                 classes={all}
                 selectedDate={selectedDate}

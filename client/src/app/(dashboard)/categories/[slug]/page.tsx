@@ -113,7 +113,7 @@ export default function CategoryLandingPage({ params }: { params: Promise<{ slug
             <BookOpen size={24} style={{ color: '#D1D5DB' }} />
           </div>
           <p className="text-base font-bold" style={{ color: '#111827' }}>No courses yet</p>
-          <p className="text-sm" style={{ color: '#9CA3AF' }}>Check back soon — new content is added regularly.</p>
+          <p className="text-sm" style={{ color: '#9CA3AF' }}>Check back soon. New content is added regularly.</p>
           <Link href="/courses"
             className="mt-1 rounded-xl px-5 py-2 text-sm font-semibold transition-colors hover:opacity-90"
             style={{ background: 'rgba(0,87,184,0.10)', color: '#0057b8' }}>

@@ -23,7 +23,7 @@ export function RatingHistogram({ slug }: Props) {
     return (
       <div className="rounded-2xl p-5 text-center text-sm"
         style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', color: '#9CA3AF' }}>
-        No ratings yet — be the first to leave a review.
+        No ratings yet. Be the first to leave a review.
       </div>
     )
   }

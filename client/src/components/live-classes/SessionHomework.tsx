@@ -107,7 +107,7 @@ function HomeworkCard({ hw, sessionId }: { hw: Homework; sessionId: string }) {
                     disabled={(!submissionText.trim() && !submissionUrl.trim()) || submitMutation.isPending}
                     onClick={handleSubmit}
                     className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 transition-opacity hover:opacity-90"
-                    style={{ background: 'linear-gradient(135deg,#0057b8,#1a73e8)' }}>
+                    style={{ background: '#0057b8' }}>
                     {submitMutation.isPending
                       ? <Loader2 size={13} className="animate-spin" />
                       : <Send size={13} />}

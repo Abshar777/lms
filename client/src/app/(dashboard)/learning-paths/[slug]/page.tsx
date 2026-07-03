@@ -37,7 +37,7 @@ function CourseCard({
       {/* Step indicator */}
       <div className="flex-shrink-0 flex flex-col items-center">
         <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white"
-          style={{ background: isPrerequisiteBlocked ? '#E5E7EB' : 'linear-gradient(135deg, #0057b8, #1a73e8)' }}>
+          style={{ background: isPrerequisiteBlocked ? '#E5E7EB' : '#0057b8' }}>
           {index + 1}
         </div>
         {index < 99 && (
@@ -154,7 +154,7 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ s
       {/* Hero */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
         className="overflow-hidden rounded-3xl"
-        style={{ background: 'linear-gradient(135deg, rgba(0,87,184,0.08) 0%, rgba(47,107,255,0.08) 100%)', border: '1px solid #E4E7ED' }}>
+        style={{ background: 'rgba(0,87,184,0.08)', border: '1px solid #E4E7ED' }}>
         <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-start">
           {/* Thumbnail */}
           {path.thumbnailUrl && (
