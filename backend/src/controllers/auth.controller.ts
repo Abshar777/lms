@@ -104,6 +104,22 @@ export class AuthController {
     }
   }
 
+  /* ── POST /admin/auth/refresh ───────────────────── */
+  adminRefresh = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const rawToken = req.cookies?.[ADMIN_REFRESH_COOKIE]
+      if (!rawToken) {
+        res.status(401).json({ success: false, error: { code: 'NO_REFRESH_TOKEN', message: 'No refresh token' } })
+        return
+      }
+      const tokens = await this.service.refresh(rawToken, sessionMeta(req))
+      setAdminAuthCookies(res, tokens)
+      sendSuccess(res, null, 'Session refreshed')
+    } catch (err) {
+      next(err)
+    }
+  }
+
   /* ── POST /admin/auth/logout ─────────────────────── */
   adminLogout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

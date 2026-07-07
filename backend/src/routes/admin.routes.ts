@@ -32,9 +32,10 @@ const userSvc    = new UserService()
    These use lms_admin_at / lms_admin_rt so the admin session is fully
    independent from the client-portal session (lms_at / lms_rt).
 ─────────────────────────────────────────────────────────────────────── */
-router.post('/auth/login',  authCtrl.adminLogin)
-router.post('/auth/logout', authCtrl.adminLogout)
-router.get ('/auth/me',     authenticateAdmin, authCtrl.me)
+router.post('/auth/login',   authCtrl.adminLogin)
+router.post('/auth/refresh', authCtrl.adminRefresh)
+router.post('/auth/logout',  authCtrl.adminLogout)
+router.get ('/auth/me',      authenticateAdmin, authCtrl.me)
 
 /* Admin routes are open to admins and instructors. Per-resource
    ownership checks inside the controllers reject instructors who

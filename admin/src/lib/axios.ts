@@ -26,16 +26,47 @@ api.interceptors.request.use(config => {
   return config
 })
 
-/* ── Response interceptor — 401 → redirect to login ─── */
+/* ── Response interceptor — 401 → try refresh → retry → login ── */
+let isRefreshing  = false
+let refreshQueue: Array<(ok: boolean) => void> = []
+
+function drainQueue(ok: boolean) {
+  refreshQueue.forEach(fn => fn(ok))
+  refreshQueue = []
+}
+
 api.interceptors.response.use(
   res => res,
-  err => {
-    if (err.response?.status === 401 && typeof window !== 'undefined') {
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login'
-      }
+  async err => {
+    const original = err.config
+
+    if (err.response?.status !== 401 || original?._retry) {
+      return Promise.reject(err)
     }
-    return Promise.reject(err)
+
+    if (typeof window === 'undefined') return Promise.reject(err)
+    if (window.location.pathname === '/login') return Promise.reject(err)
+
+    original._retry = true
+
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        refreshQueue.push(ok => ok ? resolve(api(original)) : reject(err))
+      })
+    }
+
+    isRefreshing = true
+    try {
+      await axios.post('/api/v1/admin/auth/refresh', null, { withCredentials: true })
+      isRefreshing = false
+      drainQueue(true)
+      return api(original)
+    } catch {
+      isRefreshing = false
+      drainQueue(false)
+      window.location.href = '/login'
+      return Promise.reject(err)
+    }
   },
 )
 
