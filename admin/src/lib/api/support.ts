@@ -56,7 +56,7 @@ const CATEGORY_LABELS: Record<SupportCategory, string> = {
 
 export const PROGRAM_LABELS: Record<string, string> = {
   'ai':                'AI',
-  '4x-trading':        'Forex',
+  '4x-trading':        'FOREX',
   'digital-marketing': 'Digital Marketing',
 }
 

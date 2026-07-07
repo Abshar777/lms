@@ -324,7 +324,7 @@ function PerformancePanel() {
 const PROGRAM_TABS: { id: string; label: string }[] = [
   { id: 'all',                label: 'All' },
   { id: 'ai',                 label: 'AI' },
-  { id: '4x-trading',        label: 'Forex' },
+  { id: '4x-trading',        label: 'FOREX' },
   { id: 'digital-marketing', label: 'Digital Marketing' },
 ]
 

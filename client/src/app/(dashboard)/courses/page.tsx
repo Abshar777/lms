@@ -65,7 +65,7 @@ const PROGRAM_FILTERS = [
     ring: 'rgba(55,65,81,0.15)',
   },
   {
-    id: '4x-trading', label: 'Forex', icon: TrendingUp,
+    id: '4x-trading', label: 'FOREX', icon: TrendingUp,
     color: '#10B981',
     activeGrad: '#10B981',
     shadow: 'rgba(16,185,129,0.35)',

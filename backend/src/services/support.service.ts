@@ -162,7 +162,7 @@ export class SupportService {
   async adminPerformance(): Promise<ProgramStat[]> {
     const programs: { id: string; label: string }[] = [
       { id: 'ai',                 label: 'AI' },
-      { id: '4x-trading',        label: 'Forex' },
+      { id: '4x-trading',        label: 'FOREX' },
       { id: 'digital-marketing', label: 'Digital Marketing' },
     ]
     return Promise.all(programs.map(async prog => {

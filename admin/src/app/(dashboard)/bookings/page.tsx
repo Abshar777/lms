@@ -535,7 +535,7 @@ export default function BookingsPage() {
 
   /* Scope label for header */
   const scopeLabel = (me as any)?.categoryScope
-    ? `${(me as any).categoryScope === 'digital-marketing' ? 'Digital Marketing' : '4X Trading'} Bookings`
+    ? `${(me as any).categoryScope === 'digital-marketing' ? 'Digital Marketing' : 'FOREX'} Bookings`
     : isInstructor ? 'My Session Bookings' : 'All Bookings'
 
   return (

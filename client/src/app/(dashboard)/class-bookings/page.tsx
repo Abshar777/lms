@@ -153,7 +153,7 @@ interface DateSection { dateKey:string; dateLabel:string; isToday:boolean; group
 interface GroupKey { title:string; dateKey:string }
 
 const PROGRAM_LABELS: Record<string,string> = {
-  all:'All', '4x-trading':'4x Trading', 'digital-marketing':'Digital Marketing', ai:'AI',
+  all:'All', '4x-trading':'FOREX', 'digital-marketing':'Digital Marketing', ai:'AI',
 }
 
 /* ── Panel chip ────────────────────────────────────────────── */
