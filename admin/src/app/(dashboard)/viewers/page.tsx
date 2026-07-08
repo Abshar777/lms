@@ -191,7 +191,14 @@ function ViewerDetailModal({ user, onClose }: { user: AdminUser; onClose: () => 
                 <Row label="Nationality"       value={app.nationality} />
                 <Row label="Home Country"      value={app.homeCountry} />
                 <Row label="Occupation"        value={app.occupation} />
-                <Row label="Emirates ID"       value={app.emiratesId} />
+                {(app.idType || app.idNumber) ? (
+                  <>
+                    <Row label="ID Type"   value={app.idType} />
+                    <Row label="ID Number" value={app.idNumber} />
+                  </>
+                ) : (
+                  <Row label="Emirates ID" value={app.emiratesId} />
+                )}
               </Section>
 
               <Section icon={MapPin} title="Address">
@@ -235,8 +242,9 @@ function ViewerDetailModal({ user, onClose }: { user: AdminUser; onClose: () => 
                     Submitted Documents
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <DocCard label="Passport Copy" url={app.passportUrl} />
+                  <DocCard label={app.idType === 'Emirates ID' ? 'Emirates ID Card' : app.idType === 'Aadhaar Card' ? 'Aadhaar Card' : app.idType === 'Other' ? 'ID Document' : 'Passport Copy'} url={app.idDocUrl} />
                   <DocCard label="Profile Photo" url={app.photoUrl} />
                 </div>
               </div>

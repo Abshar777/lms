@@ -294,7 +294,7 @@ export class AdminController {
         filter['enrollmentStatus'] = status
       }
 
-      const projection = 'id name email avatarUrl category categories enrollmentStatus enrollmentCancellationReason rejectionReason approvedBy approvedByEmail approvedByName approvedByRole approvedAt rejectedByEmail rejectedAt isActive createdAt enrollmentApplication'
+      const projection = 'id name email avatarUrl category categories enrollmentStatus enrollmentApplication enrollmentCancellationReason rejectionReason approvedBy approvedByEmail approvedByName approvedByRole approvedAt rejectedByEmail rejectedAt isActive createdAt'
 
       const [docs, totalCount] = await Promise.all([
         UserModel.find(filter).select(projection).sort({ createdAt: -1 })
@@ -515,9 +515,10 @@ export class AdminController {
         res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid user ID' } }); return
       }
 
-      const { passportUrl, photoUrl } = req.body as { passportUrl?: string; photoUrl?: string }
+      const { passportUrl, idDocUrl, photoUrl } = req.body as { passportUrl?: string; idDocUrl?: string; photoUrl?: string }
       const update: Record<string, unknown> = {}
       if (passportUrl !== undefined) update['enrollmentApplication.passportUrl'] = passportUrl
+      if (idDocUrl    !== undefined) update['enrollmentApplication.idDocUrl']    = idDocUrl
       if (photoUrl    !== undefined) update['enrollmentApplication.photoUrl']    = photoUrl
 
       await UserModel.findByIdAndUpdate(userId, { $set: update })

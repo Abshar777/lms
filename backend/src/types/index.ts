@@ -114,12 +114,15 @@ export interface RegisterDto {
     nationality?:        string
     homeCountry?:        string
     occupation?:         string
+    idType?:             string
+    idNumber?:           string
     emiratesId?:         string
     countryAttendance?:  string
     villa?:              string
     city?:               string
     addressCountry?:     string
     passportUrl?:        string
+    idDocUrl?:           string
     photoUrl?:           string
     experienceLevel?:    string
     preferredStartDate?: string

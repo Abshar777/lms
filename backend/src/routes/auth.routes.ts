@@ -18,12 +18,15 @@ const enrollmentAppSchema = z.object({
   nationality:        z.string().max(80).optional(),
   homeCountry:        z.string().max(80).optional(),
   occupation:         z.string().max(120).optional(),
+  idType:             z.string().max(40).optional(),
+  idNumber:           z.string().max(40).optional(),
   emiratesId:         z.string().max(20).optional(),
   countryAttendance:  z.string().max(80).optional(),
   villa:              z.string().max(120).optional(),
   city:               z.string().max(80).optional(),
   addressCountry:     z.string().max(80).optional(),
   passportUrl:        z.string().url().optional().or(z.literal('')),
+  idDocUrl:           z.string().url().optional().or(z.literal('')),
   photoUrl:           z.string().url().optional().or(z.literal('')),
   experienceLevel:    z.enum(['Beginner', 'Intermediate', 'Advanced']).optional(),
   preferredStartDate: z.string().optional(),
@@ -85,9 +88,10 @@ const updateMeSchema = z.object({
   websiteUrl: z.string().url().or(z.literal('')).optional(),
 })
 
-/* Enrollment docs update (passport + photo URLs after upload) */
+/* Enrollment docs update (passport + id doc + photo URLs after upload) */
 const enrollmentDocsSchema = z.object({
   passportUrl: z.string().url().optional().or(z.literal('')),
+  idDocUrl:    z.string().url().optional().or(z.literal('')),
   photoUrl:    z.string().url().optional().or(z.literal('')),
 })
 

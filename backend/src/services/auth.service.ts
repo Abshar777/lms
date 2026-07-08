@@ -321,11 +321,12 @@ export class AuthService {
   /* ── Update enrollment document URLs after upload ── */
   async updateEnrollmentDocs(
     userId: string,
-    input: { passportUrl?: string; photoUrl?: string },
+    input: { passportUrl?: string; idDocUrl?: string; photoUrl?: string },
   ): Promise<SafeUser> {
     const { UserModel } = await import('@/models/schema.ts')
     const update: Record<string, unknown> = {}
     if (input.passportUrl !== undefined) update['enrollmentApplication.passportUrl'] = input.passportUrl
+    if (input.idDocUrl    !== undefined) update['enrollmentApplication.idDocUrl']    = input.idDocUrl
     if (input.photoUrl    !== undefined) update['enrollmentApplication.photoUrl']    = input.photoUrl
     const updated = await UserModel.findByIdAndUpdate(userId, { $set: update }, { new: true }).exec()
     if (!updated) throw new AuthError('USER_NOT_FOUND', 'Account not found.', 404)

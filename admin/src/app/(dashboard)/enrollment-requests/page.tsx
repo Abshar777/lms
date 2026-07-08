@@ -349,22 +349,32 @@ function RejectDialog({ user, isRevoke, onClose, onConfirm, loading }: {
 }
 
 /* ── Document viewer with lightbox + admin upload ────── */
-function DocumentsSection({ passportUrl, photoUrl, userId }: {
+const ID_DOC_LABEL: Record<string, string> = {
+  'Emirates ID':  'Emirates ID',
+  'Passport':     'Passport (ID)',
+  'Aadhaar Card': 'Aadhaar Card',
+  'Other':        'Govt. ID',
+}
+
+function DocumentsSection({ passportUrl, idDocUrl, photoUrl, userId, idType }: {
   passportUrl?: string
+  idDocUrl?:    string
   photoUrl?:    string
   userId:       string
+  idType?:      string
 }) {
   const [lightbox,    setLightbox]    = useState<string | null>(null)
-  const [pdfView,     setPdfView]     = useState<'passport' | 'photo' | null>(null)
-  const [uploading,   setUploading]   = useState<'passport' | 'photo' | null>(null)
+  const [pdfView,     setPdfView]     = useState<'passport' | 'idDoc' | 'photo' | null>(null)
+  const [uploading,   setUploading]   = useState<'passport' | 'idDoc' | 'photo' | null>(null)
   const passportRef = useRef<HTMLInputElement>(null)
+  const idDocRef    = useRef<HTMLInputElement>(null)
   const photoRef    = useRef<HTMLInputElement>(null)
   const toast       = useToast()
   const qc          = useQueryClient()
 
   const isImage = (url: string) => /\.(jpg|jpeg|png|webp)$/i.test(url)
 
-  async function handleUpload(file: File, field: 'passport' | 'photo') {
+  async function handleUpload(file: File, field: 'passport' | 'idDoc' | 'photo') {
     setUploading(field)
     try {
       const fd = new FormData()
@@ -374,10 +384,13 @@ function DocumentsSection({ passportUrl, photoUrl, userId }: {
       })
       const url = uploadRes.data.data.url
 
-      const body = field === 'passport' ? { passportUrl: url } : { photoUrl: url }
+      const body = field === 'passport' ? { passportUrl: url }
+        : field === 'idDoc' ? { idDocUrl: url }
+        : { photoUrl: url }
       await api.patch(`/admin/enrollment-requests/${userId}/docs`, body)
 
-      toast.success(`${field === 'passport' ? 'Passport' : 'Photo'} uploaded`)
+      const label = field === 'passport' ? 'Passport' : field === 'idDoc' ? (ID_DOC_LABEL[idType ?? ''] ?? 'ID Document') : 'Photo'
+      toast.success(`${label} uploaded`)
       qc.invalidateQueries({ queryKey: ['admin', 'enrollment-requests'] })
     } catch {
       toast.error('Upload failed. Please try again.')
@@ -386,8 +399,8 @@ function DocumentsSection({ passportUrl, photoUrl, userId }: {
     }
   }
 
-  function DocCard({ label, url, field }: { label: string; url?: string; field: 'passport' | 'photo' }) {
-    const inputRef = field === 'passport' ? passportRef : photoRef
+  function DocCard({ label, url, field }: { label: string; url?: string; field: 'passport' | 'idDoc' | 'photo' }) {
+    const inputRef = field === 'passport' ? passportRef : field === 'idDoc' ? idDocRef : photoRef
     const isLoading = uploading === field
 
     if (!url) {
@@ -461,11 +474,10 @@ function DocumentsSection({ passportUrl, photoUrl, userId }: {
     }
 
     /* PDF */
-    const pdfKey = field
     return (
       <div className="flex flex-col gap-2">
         <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>{label}</p>
-        {pdfView === pdfKey ? (
+        {pdfView === field ? (
           <div className="flex flex-col gap-1">
             <iframe src={url} className="h-48 w-full rounded-xl" style={{ border: '1px solid rgba(255,255,255,0.1)', background: '#fff' }} />
             <button onClick={() => setPdfView(null)} className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>Close preview</button>
@@ -475,7 +487,7 @@ function DocumentsSection({ passportUrl, photoUrl, userId }: {
             style={{ background: 'rgba(96,165,250,0.06)', border: '1px solid rgba(96,165,250,0.2)' }}>
             <FileText size={24} style={{ color: '#60A5FA' }} />
             <div className="flex flex-col items-center gap-1.5">
-              <button onClick={() => setPdfView(pdfKey as 'passport' | 'photo')}
+              <button onClick={() => setPdfView(field)}
                 className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-80"
                 style={{ background: 'rgba(96,165,250,0.15)', color: '#60A5FA', border: '1px solid rgba(96,165,250,0.3)' }}>
                 Preview PDF
@@ -517,9 +529,10 @@ function DocumentsSection({ passportUrl, photoUrl, userId }: {
           <ImageIcon size={13} style={{ color: 'rgba(255,255,255,0.4)' }} />
           <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.4)' }}>Submitted Documents</span>
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <DocCard label="Passport Copy" url={passportUrl} field="passport" />
-          <DocCard label="Profile Photo" url={photoUrl}    field="photo"    />
+        <div className="grid grid-cols-3 gap-4">
+          <DocCard label="Passport Copy"                                    url={passportUrl} field="passport" />
+          <DocCard label={ID_DOC_LABEL[idType ?? ''] ?? 'ID Document'}     url={idDocUrl}    field="idDoc"    />
+          <DocCard label="Profile Photo"                                    url={photoUrl}    field="photo"    />
         </div>
       </div>
 
@@ -634,7 +647,14 @@ function ApplicationDetailModal({ user, scopeCategory, onClose, onApprove, onRej
                 <Row label="Nationality" value={app.nationality} />
                 <Row label="Home Country" value={app.homeCountry} />
                 <Row label="Occupation" value={app.occupation} />
-                <Row label="Emirates ID" value={app.emiratesId} />
+                {(app.idType || app.idNumber) ? (
+                  <>
+                    <Row label="ID Type"   value={app.idType} />
+                    <Row label="ID Number" value={app.idNumber} />
+                  </>
+                ) : (
+                  <Row label="Emirates ID" value={app.emiratesId} />
+                )}
               </Section>
 
               <Section icon={MapPin} title="Address">
@@ -669,7 +689,7 @@ function ApplicationDetailModal({ user, scopeCategory, onClose, onApprove, onRej
               </Section>
 
               {/* Documents — always shown */}
-              <DocumentsSection passportUrl={app.passportUrl} photoUrl={app.photoUrl} userId={user.id} />
+              <DocumentsSection passportUrl={app.passportUrl} idDocUrl={app.idDocUrl} photoUrl={app.photoUrl} userId={user.id} idType={app.idType} />
             </>
           )}
         </div>

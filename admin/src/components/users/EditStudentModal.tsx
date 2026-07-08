@@ -506,7 +506,14 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
                                 <Row label="Nationality" value={app.nationality} />
                                 <Row label="Home Country" value={app.homeCountry} />
                                 <Row label="Occupation" value={app.occupation} />
-                                <Row label="Emirates ID" value={app.emiratesId} />
+                                {(app.idType || app.idNumber) ? (
+                                  <>
+                                    <Row label="ID Type"   value={app.idType} />
+                                    <Row label="ID Number" value={app.idNumber} />
+                                  </>
+                                ) : (
+                                  <Row label="Emirates ID" value={app.emiratesId} />
+                                )}
                               </div>
                             </div>
                             {/* Address */}
@@ -559,16 +566,16 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
                               </div>
                             )}
                             {/* Documents */}
-                            {(app.passportUrl || app.photoUrl) && (
+                            {(app.passportUrl || app.idDocUrl || app.photoUrl) && (
                               <div>
                                 <div className="mb-1.5 flex items-center gap-1.5">
                                   <FileText size={10} style={{ color: 'rgba(255,255,255,0.3)' }} />
                                   <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>Documents</span>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-3 gap-2">
                                   {app.passportUrl && (
                                     <div>
-                                      <span className="text-[9px] font-semibold uppercase tracking-wide block mb-1" style={{ color: 'rgba(255,255,255,0.25)' }}>Passport</span>
+                                      <span className="text-[9px] font-semibold uppercase tracking-wide block mb-1" style={{ color: 'rgba(255,255,255,0.25)' }}>Passport Copy</span>
                                       {app.passportUrl.match(/\.(jpg|jpeg|png|webp)$/i) ? (
                                         <a href={app.passportUrl} target="_blank" rel="noopener noreferrer">
                                           <img src={app.passportUrl} alt="Passport" className="h-20 w-full rounded-lg object-cover hover:opacity-80 transition-opacity"
@@ -576,6 +583,23 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
                                         </a>
                                       ) : (
                                         <a href={app.passportUrl} target="_blank" rel="noopener noreferrer"
+                                          className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] transition-colors hover:bg-white/05"
+                                          style={{ border: '1px solid rgba(255,255,255,0.08)', color: '#60A5FA' }}>
+                                          <FileText size={11} />PDF <ExternalLink size={9} />
+                                        </a>
+                                      )}
+                                    </div>
+                                  )}
+                                  {app.idDocUrl && (
+                                    <div>
+                                      <span className="text-[9px] font-semibold uppercase tracking-wide block mb-1" style={{ color: 'rgba(255,255,255,0.25)' }}>{app.idType === 'Emirates ID' ? 'Emirates ID Card' : app.idType === 'Aadhaar Card' ? 'Aadhaar Card' : app.idType === 'Other' ? 'ID Document' : 'Passport Copy'}</span>
+                                      {app.idDocUrl.match(/\.(jpg|jpeg|png|webp)$/i) ? (
+                                        <a href={app.idDocUrl} target="_blank" rel="noopener noreferrer">
+                                          <img src={app.idDocUrl} alt={app.idType ?? 'ID Doc'} className="h-20 w-full rounded-lg object-cover hover:opacity-80 transition-opacity"
+                                            style={{ border: '1px solid rgba(255,255,255,0.08)' }} />
+                                        </a>
+                                      ) : (
+                                        <a href={app.idDocUrl} target="_blank" rel="noopener noreferrer"
                                           className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] transition-colors hover:bg-white/05"
                                           style={{ border: '1px solid rgba(255,255,255,0.08)', color: '#60A5FA' }}>
                                           <FileText size={11} />PDF <ExternalLink size={9} />

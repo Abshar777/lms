@@ -26,7 +26,7 @@ async function proxy(req: NextRequest, ctx: Context): Promise<NextResponse> {
   if (auth) fwdHeaders.set('authorization', auth)
 
   const hasBody = req.method !== 'GET' && req.method !== 'HEAD'
-  const body    = hasBody ? await req.text() : undefined
+  const body    = hasBody ? await req.arrayBuffer() : undefined
 
   let backendRes: Response
   try {

@@ -15,9 +15,9 @@ import { TermsModal } from './TermsModal'
 interface FormData {
   name: string; email: string; phone: string; emergencyContact: string
   gender: string; dateOfBirth: string; nationality: string; homeCountry: string
-  occupation: string; emiratesId: string
+  occupation: string; idType: string; idNumber: string
   countryAttendance: string; villa: string; city: string; addressCountry: string
-  passportFile: File | null; photoFile: File | null
+  passportFile: File | null; idDocFile: File | null; photoFile: File | null
   experienceLevel: string; preferredStartDate: string; hearAboutUs: string
   referralName: string; programs: string[]
   paymentMethod: string; password: string; confirmPassword: string; termsAccepted: boolean
@@ -26,8 +26,8 @@ interface FormData {
 const INITIAL: FormData = {
   name: '', email: '', phone: '', emergencyContact: '',
   gender: '', dateOfBirth: '', nationality: '', homeCountry: '',
-  occupation: '', emiratesId: '', countryAttendance: '', villa: '',
-  city: '', addressCountry: '', passportFile: null, photoFile: null,
+  occupation: '', idType: '', idNumber: '', countryAttendance: '', villa: '',
+  city: '', addressCountry: '', passportFile: null, idDocFile: null, photoFile: null,
   experienceLevel: '', preferredStartDate: '', hearAboutUs: '',
   referralName: '', programs: [], paymentMethod: '',
   password: '', confirmPassword: '', termsAccepted: false,
@@ -227,14 +227,40 @@ function getStrength(pw: string) {
   return { score: s, ...map[s] }
 }
 
-function formatEmiratesId(raw: string): string {
-  const d = raw.replace(/\D/g, '').slice(0, 15)
-  const parts: string[] = []
-  if (d.length > 0)  parts.push(d.slice(0, 3))
-  if (d.length > 3)  parts.push(d.slice(3, 7))
-  if (d.length > 7)  parts.push(d.slice(7, 14))
-  if (d.length > 14) parts.push(d.slice(14, 15))
-  return parts.join('-')
+const ID_TYPES = [
+  { value: 'Emirates ID',  label: 'Emirates ID',  flag: '🇦🇪', placeholder: '784-0000-0000000-0',   hint: '15 digits — UAE residents' },
+  { value: 'Passport',     label: 'Passport',      flag: '🛂',  placeholder: 'e.g. A12345678',      hint: '6–9 alphanumeric characters' },
+  { value: 'Aadhaar Card', label: 'Aadhaar Card',  flag: '🇮🇳', placeholder: '0000 0000 0000',      hint: '12-digit Indian national ID' },
+  { value: 'Other',        label: 'Other Govt. ID', flag: '🪪',  placeholder: 'Enter your ID number', hint: 'Any valid government-issued ID' },
+] as const
+
+const MAX_FILE_BYTES = 3 * 1024 * 1024 // 3 MB — enforced on all document uploads
+
+const ID_DOC_META: Record<string, { label: string; hint: string }> = {
+  'Emirates ID':  { label: 'Emirates ID Card Copy',  hint: 'Front & back of your Emirates ID card (PDF, JPG, PNG, max 3 MB)' },
+  'Passport':     { label: 'Passport Copy',           hint: 'PDF or image of your passport identity page (max 3 MB)' },
+  'Aadhaar Card': { label: 'Aadhaar Card Copy',       hint: 'Front & back of your Aadhaar card (PDF, JPG, PNG, max 3 MB)' },
+  'Other':        { label: 'ID Document Copy',        hint: 'Clear scan or photo of your government-issued ID (max 3 MB)' },
+}
+
+function formatIdNumber(raw: string, type: string): string {
+  if (type === 'Emirates ID') {
+    const d = raw.replace(/\D/g, '').slice(0, 15)
+    const parts: string[] = []
+    if (d.length > 0)  parts.push(d.slice(0, 3))
+    if (d.length > 3)  parts.push(d.slice(3, 7))
+    if (d.length > 7)  parts.push(d.slice(7, 14))
+    if (d.length > 14) parts.push(d.slice(14, 15))
+    return parts.join('-')
+  }
+  if (type === 'Aadhaar Card') {
+    const d = raw.replace(/\D/g, '').slice(0, 12)
+    return d.replace(/(\d{4})(?=\d)/g, '$1 ').trim()
+  }
+  if (type === 'Passport') {
+    return raw.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 9)
+  }
+  return raw.slice(0, 30)
 }
 
 function extractLocalPhone(full: string): string {
@@ -670,13 +696,25 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
       if (!data.occupation.trim()) errs.occupation = 'Occupation is required'
       else if (data.occupation.trim().length < 2) errs.occupation = 'Enter a valid occupation'
 
-      const eid = data.emiratesId.replace(/\D/g, '')
-      if (!data.emiratesId.trim()) {
-        errs.emiratesId = 'Emirates ID is required'
-      } else if (eid.length !== 15) {
-        errs.emiratesId = 'Emirates ID must be 15 digits (784-XXXX-XXXXXXX-X)'
-      } else if (!eid.startsWith('784')) {
-        errs.emiratesId = 'Emirates ID must start with 784'
+      if (!data.idType) {
+        errs.idType = 'Please select your ID type'
+      } else if (!data.idNumber.trim()) {
+        errs.idNumber = 'ID number is required'
+      } else {
+        const num = data.idNumber.trim()
+        if (data.idType === 'Emirates ID') {
+          const digits = num.replace(/\D/g, '')
+          if (digits.length !== 15)       errs.idNumber = 'Emirates ID must be 15 digits (784-XXXX-XXXXXXX-X)'
+          else if (!digits.startsWith('784')) errs.idNumber = 'Emirates ID must start with 784'
+        } else if (data.idType === 'Passport') {
+          const clean = num.replace(/[^A-Z0-9]/gi, '')
+          if (clean.length < 6 || clean.length > 9) errs.idNumber = 'Passport number must be 6–9 alphanumeric characters'
+        } else if (data.idType === 'Aadhaar Card') {
+          const digits = num.replace(/\D/g, '')
+          if (digits.length !== 12) errs.idNumber = 'Aadhaar Card must be exactly 12 digits'
+        } else if (num.length < 4) {
+          errs.idNumber = 'ID number must be at least 4 characters'
+        }
       }
     }
 
@@ -685,7 +723,11 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
       if (!data.villa.trim())       errs.villa             = 'Villa / Apartment is required'
       if (!data.city.trim())        errs.city              = 'City is required'
       if (!data.addressCountry)     errs.addressCountry    = 'Please select your country'
-      if (!data.passportFile)       errs.passportFile      = 'Passport copy is required'
+      if (!data.passportFile)                              errs.passportFile = 'Passport copy is required'
+      else if (data.passportFile.size > MAX_FILE_BYTES)   errs.passportFile = 'Passport copy must not exceed 3 MB'
+      if (!data.idType)                                   errs.idType       = 'Please select your ID type first'
+      else if (!data.idDocFile)                           errs.idDocFile    = `${ID_DOC_META[data.idType]?.label ?? 'ID document'} is required`
+      else if (data.idDocFile.size > MAX_FILE_BYTES)      errs.idDocFile    = `${ID_DOC_META[data.idType]?.label ?? 'ID document'} must not exceed 3 MB`
     }
 
     if (s === 2) {
@@ -719,6 +761,33 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
   /* ── Submit (unchanged) ─────────────────────────────── */
   async function submit() {
     if (!validateStep(3)) return
+
+    // Hard guard — reject missing or oversized files before creating the account
+    if (!avatarFile) {
+      setAvatarError('Profile photo is required')
+      setStep(0); return
+    }
+    if (avatarFile.size > MAX_FILE_BYTES) {
+      setAvatarError('Profile photo must not exceed 3 MB')
+      setStep(0); return
+    }
+    if (!data.passportFile) {
+      setErrors(e => ({ ...e, passportFile: 'Passport copy is required' }))
+      setStep(1); return
+    }
+    if (data.passportFile.size > MAX_FILE_BYTES) {
+      setErrors(e => ({ ...e, passportFile: 'Passport copy must not exceed 3 MB' }))
+      setStep(1); return
+    }
+    if (!data.idDocFile) {
+      setErrors(e => ({ ...e, idDocFile: `${ID_DOC_META[data.idType]?.label ?? 'ID document'} is required` }))
+      setStep(1); return
+    }
+    if (data.idDocFile.size > MAX_FILE_BYTES) {
+      setErrors(e => ({ ...e, idDocFile: `${ID_DOC_META[data.idType]?.label ?? 'ID document'} must not exceed 3 MB` }))
+      setStep(1); return
+    }
+
     setLoading(true); setApiErr(null)
     try {
       await api.post('/auth/register', {
@@ -729,7 +798,7 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
           phone: data.phone, emergencyContact: data.emergencyContact,
           gender: data.gender, dateOfBirth: data.dateOfBirth,
           nationality: data.nationality, homeCountry: data.homeCountry,
-          occupation: data.occupation, emiratesId: data.emiratesId,
+          occupation: data.occupation, idType: data.idType, idNumber: data.idNumber,
           countryAttendance: data.countryAttendance, villa: data.villa,
           city: data.city, addressCountry: data.addressCountry,
           experienceLevel: data.experienceLevel, preferredStartDate: data.preferredStartDate,
@@ -738,29 +807,38 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
         },
       })
 
-      let passportUrl = '', photoUrl = ''
-      if (data.passportFile) {
-        const fd = new FormData(); fd.append('file', data.passportFile)
-        const r = await api.post<{ success: true; data: { url: string } }>('/uploads/document', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-        passportUrl = r.data.data.url
+      async function uploadDoc(file: File): Promise<string> {
+        const fd = new FormData()
+        fd.append('file', file)
+        const res = await fetch('/api/v1/uploads/document', {
+          method: 'POST',
+          body: fd,
+          credentials: 'include',
+        })
+        const json = await res.json() as { success: boolean; data?: { url: string }; error?: { message: string } }
+        if (!res.ok) throw new Error(json.error?.message ?? 'Upload failed')
+        return json.data!.url
       }
+
+      let passportUrl = '', idDocUrl = '', photoUrl = ''
+      if (data.passportFile) passportUrl = await uploadDoc(data.passportFile)
+      if (data.idDocFile)    idDocUrl    = await uploadDoc(data.idDocFile)
       if (avatarFile) {
-        const fd = new FormData(); fd.append('file', avatarFile)
-        const r = await api.post<{ success: true; data: { url: string } }>('/uploads/document', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-        photoUrl = r.data.data.url
+        photoUrl = await uploadDoc(avatarFile)
         await api.patch('/auth/me', { avatarUrl: photoUrl })
       }
-      if (passportUrl || photoUrl) {
+      if (passportUrl || idDocUrl || photoUrl) {
         await api.patch('/auth/me/enrollment-docs', {
           ...(passportUrl ? { passportUrl } : {}),
+          ...(idDocUrl    ? { idDocUrl }    : {}),
           ...(photoUrl    ? { photoUrl }    : {}),
         })
       }
       window.location.href = '/my-learning'
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: { message?: string } } } })
-        ?.response?.data?.error?.message ?? 'Registration failed. Please try again.'
-      setApiErr(msg)
+      const axiosMsg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message
+      const nativeMsg = err instanceof Error ? err.message : undefined
+      setApiErr(axiosMsg ?? nativeMsg ?? 'Registration failed. Please try again.')
       setLoading(false)
     }
   }
@@ -791,12 +869,17 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
             onChange={e => {
               const f = e.target.files?.[0]
               if (!f) return
+              if (f.size > MAX_FILE_BYTES) {
+                setAvatarError('Profile photo must not exceed 3 MB')
+                e.target.value = ''
+                return
+              }
               setAvatarFile(f)
               setAvatarPreview(URL.createObjectURL(f))
               setAvatarError(null)
             }}
           />
-          <p className="text-[11px] text-gray-400">Profile photo <span className="text-red-400">*</span></p>
+          <p className="text-[11px] text-gray-400">Profile photo <span className="text-red-400">*</span> <span className="text-gray-400">(max 3 MB)</span></p>
           {avatarError && (
             <p className="flex items-center gap-1 text-[11px] font-medium text-red-500">
               <AlertCircle size={10} strokeWidth={2.5} />{avatarError}
@@ -870,11 +953,44 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
           </div>
         </Field>
 
-        <Field label="Emirates ID Number *" error={errors.emiratesId}>
-          <Input error={errors.emiratesId} value={data.emiratesId} placeholder="784-0000-0000000-0"
-            maxLength={18}
-            onChange={e => set('emiratesId', formatEmiratesId(e.target.value))} />
+        <Field label="ID Type *" error={errors.idType}>
+          <div className="relative">
+            <CreditCard size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <select
+              value={data.idType}
+              onChange={e => { set('idType', e.target.value); set('idNumber', '') }}
+              className={cn(
+                'w-full appearance-none rounded-[10px] border bg-white py-2.5 pl-9 pr-9 text-sm text-gray-900 outline-none transition',
+                errors.idType
+                  ? 'border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100'
+                  : 'border-gray-200 focus:border-[#0057b8] focus:ring-2 focus:ring-blue-100',
+              )}
+            >
+              <option value="">Select ID type…</option>
+              {ID_TYPES.map(t => (
+                <option key={t.value} value={t.value}>{t.flag} {t.label}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          </div>
         </Field>
+
+        {data.idType && (() => {
+          const cfg = ID_TYPES.find(t => t.value === data.idType)!
+          return (
+            <Field label={`${cfg.label} Number *`} error={errors.idNumber}>
+              <div className="space-y-1">
+                <Input
+                  error={errors.idNumber}
+                  value={data.idNumber}
+                  placeholder={cfg.placeholder}
+                  onChange={e => set('idNumber', formatIdNumber(e.target.value, data.idType))}
+                />
+                <p className="pl-0.5 text-[11px] text-gray-400">{cfg.hint}</p>
+              </div>
+            </Field>
+          )
+        })()}
       </div>
     )
 
@@ -910,14 +1026,58 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
           </Field>
         </div>
 
-        <FileDropzone label="Passport Copy * (PDF, JPG, PNG, max 10 MB)" accept=".pdf,.jpg,.jpeg,.png,.webp"
-          file={data.passportFile} onFile={f => set('passportFile', f)} onClear={() => set('passportFile', null)}
-          hint="PDF or image of passport identity page" />
-        {errors.passportFile && (
-          <p className="flex items-center gap-1 text-[11px] font-medium text-red-500">
-            <AlertCircle size={10} strokeWidth={2.5} />{errors.passportFile}
-          </p>
-        )}
+        <div className="sm:col-span-2 flex flex-col gap-4">
+          {/* Passport upload — always required */}
+          <div>
+            <FileDropzone
+              label="Passport Copy * (PDF, JPG, PNG)"
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
+              file={data.passportFile}
+              onFile={f => {
+                if (f.size > MAX_FILE_BYTES) {
+                  setErrors(e => ({ ...e, passportFile: 'Passport copy must not exceed 3 MB' }))
+                  return
+                }
+                set('passportFile', f)
+              }}
+              onClear={() => set('passportFile', null)}
+              hint="Clear scan or photo of your passport identity page (max 3 MB)"
+            />
+            {errors.passportFile && (
+              <p className="flex items-center gap-1 text-[11px] font-medium text-red-500 mt-1">
+                <AlertCircle size={10} strokeWidth={2.5} />{errors.passportFile}
+              </p>
+            )}
+          </div>
+
+          {/* Selected ID document upload — label depends on idType */}
+          {(() => {
+            const docMeta = ID_DOC_META[data.idType] ?? { label: 'ID Document Copy', hint: 'Clear scan or photo of your government-issued ID (max 3 MB)' }
+            return (
+              <div>
+                <FileDropzone
+                  label={`${docMeta.label} * (PDF, JPG, PNG)`}
+                  accept=".pdf,.jpg,.jpeg,.png,.webp"
+                  file={data.idDocFile}
+                  onFile={f => {
+                    if (f.size > MAX_FILE_BYTES) {
+                      setErrors(e => ({ ...e, idDocFile: `${docMeta.label} must not exceed 3 MB` }))
+                      return
+                    }
+                    set('idDocFile', f)
+                  }}
+                  onClear={() => set('idDocFile', null)}
+                  hint={docMeta.hint}
+                />
+                {errors.idDocFile && (
+                  <p className="flex items-center gap-1 text-[11px] font-medium text-red-500 mt-1">
+                    <AlertCircle size={10} strokeWidth={2.5} />{errors.idDocFile}
+                  </p>
+                )}
+              </div>
+            )
+          })()}
+        </div>
 
       </div>
     )

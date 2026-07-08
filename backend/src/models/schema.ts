@@ -33,12 +33,15 @@ export interface IEnrollmentApplication {
   nationality?:       string
   homeCountry?:       string
   occupation?:        string
+  idType?:            string
+  idNumber?:          string
   emiratesId?:        string
   countryAttendance?: string
   villa?:             string
   city?:              string
   addressCountry?:    string
   passportUrl?:       string
+  idDocUrl?:          string
   photoUrl?:          string
   experienceLevel?:   string
   preferredStartDate?: string
@@ -137,12 +140,15 @@ const UserSchema = new Schema<IUser>(
         nationality:        { type: String },
         homeCountry:        { type: String },
         occupation:         { type: String },
+        idType:             { type: String },
+        idNumber:           { type: String },
         emiratesId:         { type: String },
         countryAttendance:  { type: String },
         villa:              { type: String },
         city:               { type: String },
         addressCountry:     { type: String },
         passportUrl:        { type: String },
+        idDocUrl:           { type: String }, // ID document copy URL
         photoUrl:           { type: String },
         experienceLevel:    { type: String },
         preferredStartDate: { type: String },

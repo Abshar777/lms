@@ -1,4 +1,4 @@
-import '@/config/timezone.ts'   // MUST be first — pins the process to UAE time
+import '@/config/timezone.ts'   // MUST be first — pins the process to UAE time (reload)
 import 'dotenv/config'
 import app from './app.ts'
 import { env } from '@/config/env.ts'

@@ -272,6 +272,7 @@ router.patch('/enrollment-requests/:userId/remove-category', requireAnyAdmin, va
 
 const enrollmentDocsAdminSchema = z.object({
   passportUrl: z.string().url().optional().or(z.literal('')),
+  idDocUrl:    z.string().url().optional().or(z.literal('')),
   photoUrl:    z.string().url().optional().or(z.literal('')),
 })
 router.patch('/enrollment-requests/:userId/docs', requireAnyAdmin, validate(enrollmentDocsAdminSchema), ctrl.updateStudentDocs)
