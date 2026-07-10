@@ -2,8 +2,9 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { Crown, Star, Users, Loader2, BookOpen, ArrowUpRight } from 'lucide-react'
+import { Crown, Star, Users, BookOpen, ArrowUpRight } from 'lucide-react'
 import { useTopCourses } from '@/lib/api/stats'
+import Spinner from '@/components/ui/Spinner'
 
 export function TopCoursesWidget() {
   const { data, isLoading } = useTopCourses(5)
@@ -31,7 +32,7 @@ export function TopCoursesWidget() {
 
       {isLoading ? (
         <div className="flex items-center gap-2 py-8 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
-          <Loader2 size={14} className="animate-spin" />Loading…
+          <Spinner size={14} />Loading…
         </div>
       ) : !data || data.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-8 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>

@@ -4,10 +4,11 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, Mail, Calendar, Shield, Tag, CheckCircle2, XCircle,
-  BookOpen, Clock, Loader2,
+  BookOpen, Clock,
 } from 'lucide-react'
 import type { AdminUser } from '@/lib/api/users'
 import { useStudentEnrollments } from '@/lib/api/users'
+import Spinner from '@/components/ui/Spinner'
 
 const ROLE_STYLE: Record<string, { bg: string; color: string; label: string }> = {
   super_admin:             { bg: 'rgba(168,85,247,0.18)',  color: '#A855F7', label: 'Super Admin' },
@@ -155,7 +156,7 @@ export function UserViewModal({ user, onClose }: Props) {
                 </p>
                 {enrollmentsLoading ? (
                   <div className="flex items-center gap-2 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                    <Loader2 size={11} className="animate-spin" />Loading…
+                    <Spinner size={11} />Loading…
                   </div>
                 ) : !enrollments || enrollments.length === 0 ? (
                   <p className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>Not enrolled in any courses yet.</p>

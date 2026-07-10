@@ -2,8 +2,9 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, ShieldOff } from 'lucide-react'
+import { ShieldOff } from 'lucide-react'
 import { useCurrentUser, logout } from '@/lib/api/user'
+import Spinner from '@/components/ui/Spinner'
 
 const ALLOWED_ROLES = ['super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'instructor']
 
@@ -33,7 +34,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center gap-3" style={{ background: '#080A12' }}>
-        <Loader2 size={20} className="animate-spin" style={{ color: '#0057b8' }} />
+        <Spinner size={20} />
         <p className="text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>Verifying access…</p>
       </div>
     )

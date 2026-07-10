@@ -46,6 +46,42 @@ const PROGRAMS = [
 const STEP_LABELS = ['Personal', 'Address & Docs', 'Program', 'Account']
 const STEP_ICONS  = ['👤', '📄', '🎓', '🔐']
 
+const GENDER_OPTIONS = [
+  { value: 'Male',              label: 'Male',              icon: '👨' },
+  { value: 'Female',            label: 'Female',            icon: '👩' },
+  { value: 'Prefer not to say', label: 'Prefer not to say', icon: '🤐' },
+]
+
+const EXPERIENCE_OPTIONS = [
+  { value: 'Beginner',     label: 'Beginner',     icon: '🌱' },
+  { value: 'Intermediate', label: 'Intermediate', icon: '📈' },
+  { value: 'Advanced',     label: 'Advanced',     icon: '🚀' },
+]
+
+const HEAR_OPTIONS = [
+  { value: 'Instagram',         label: 'Instagram',         icon: '📸' },
+  { value: 'TikTok',            label: 'TikTok',             icon: '🎵' },
+  { value: 'WhatsApp',          label: 'WhatsApp',           icon: '💬' },
+  { value: 'Friend / Referral', label: 'Friend / Referral', icon: '👥' },
+  { value: 'Google',            label: 'Google',             icon: '🔍' },
+  { value: 'Walk-in',           label: 'Walk-in',            icon: '🚶' },
+]
+
+const PAYMENT_OPTIONS = [
+  { value: 'Cash / Full',  label: 'Cash / Full',  icon: '💵' },
+  { value: 'Card / Full',  label: 'Card / Full',  icon: '💳' },
+  { value: 'Card / Split', label: 'Card / Split', icon: '🔀' },
+  { value: 'Card Debit',   label: 'Card Debit',   icon: '💳' },
+  { value: 'Card Credit',  label: 'Card Credit',  icon: '💳' },
+  { value: 'USDT',         label: 'USDT',         icon: '₮'  },
+  { value: 'Tabby',        label: 'Tabby',        icon: '⏳' },
+  { value: 'Tamara',       label: 'Tamara',       icon: '⭐' },
+]
+
+const MONTHS_LONG  = ['January','February','March','April','May','June','July','August','September','October','November','December']
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const WEEK_DAYS    = ['Su','Mo','Tu','We','Th','Fr','Sa']
+
 /* ── Country data ───────────────────────────────────── */
 interface Country { name: string; dial: string; flag: string }
 
@@ -329,6 +365,317 @@ function Select({ error, children, ...props }: { error?: string } & React.Select
         {children}
       </select>
       <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+    </div>
+  )
+}
+
+/* ── CustomSelect — animated dropdown to replace native <select> ── */
+function CustomSelect({ options, value, onChange, error, placeholder, icon: FieldIcon }: {
+  options: { value: string; label: string; icon?: string }[]
+  value: string
+  onChange: (v: string) => void
+  error?: string
+  placeholder?: string
+  icon?: React.ComponentType<{ size?: number; className?: string }>
+}) {
+  const [open, setOpen] = useState(false)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const selected = options.find(o => o.value === value)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const triggerCls = cn(
+    'flex w-full items-center gap-2.5 rounded-xl border bg-white px-3.5 py-2.5 text-left text-sm transition-all duration-150',
+    error
+      ? open ? 'border-red-400 ring-2 ring-red-100' : 'border-red-300 bg-red-50'
+      : open ? 'border-blue-500 ring-2 ring-blue-100' : 'border-gray-200 hover:border-gray-300'
+  )
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <button type="button" onClick={() => setOpen(o => !o)} className={triggerCls}>
+        {FieldIcon && !selected?.icon && (
+          <FieldIcon size={14} className="flex-shrink-0 text-gray-400" />
+        )}
+        {selected ? (
+          <>
+            {selected.icon && (
+              <span style={{ fontSize: 16, lineHeight: 1, flexShrink: 0 }}>{selected.icon}</span>
+            )}
+            <span className="flex-1 truncate font-medium text-gray-900">{selected.label}</span>
+          </>
+        ) : (
+          <span className="flex-1 truncate text-gray-400">{placeholder ?? 'Select…'}</span>
+        )}
+        <ChevronDown size={13} className={cn('flex-shrink-0 text-gray-400 transition-transform duration-150', open && 'rotate-180')} />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.98 }}
+            transition={{ duration: 0.12 }}
+            className="absolute left-0 right-0 top-full z-[999] mt-1.5 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+            {options.map(opt => (
+              <button key={opt.value} type="button"
+                onClick={() => { onChange(opt.value); setOpen(false) }}
+                className={cn(
+                  'flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm transition-colors',
+                  opt.value === value ? 'bg-blue-50' : 'hover:bg-gray-50'
+                )}>
+                {opt.icon && (
+                  <span style={{ fontSize: 16, lineHeight: 1, flexShrink: 0 }}>{opt.icon}</span>
+                )}
+                <span className={cn('flex-1', opt.value === value ? 'font-semibold text-blue-700' : 'text-gray-700')}>
+                  {opt.label}
+                </span>
+                {opt.value === value && <Check size={13} className="flex-shrink-0 text-blue-600" />}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+/* ── DatePicker — custom calendar replacing native <input type="date"> ── */
+type PickerMode = 'day' | 'month' | 'year'
+
+function DatePicker({ value, onChange, error, min, max, placeholder = 'Select date' }: {
+  value: string; onChange: (v: string) => void; error?: string
+  min?: string; max?: string; placeholder?: string
+}) {
+  const todayObj = new Date(); todayObj.setHours(0,0,0,0)
+  const parsed   = value ? new Date(value + 'T00:00:00') : null
+  const selected = parsed && !isNaN(parsed.getTime()) ? parsed : null
+  const minDate  = min ? new Date(min  + 'T00:00:00') : null
+  const maxDate  = max ? new Date(max  + 'T00:00:00') : null
+
+  const initRef  = selected ?? (maxDate ?? todayObj)
+  const [open,      setOpen]      = useState(false)
+  const [mode,      setMode]      = useState<PickerMode>('day')
+  const [viewYear,  setViewYear]  = useState(initRef.getFullYear())
+  const [viewMonth, setViewMonth] = useState(initRef.getMonth())
+  const [yearPage,  setYearPage]  = useState(Math.floor(initRef.getFullYear() / 12) * 12)
+  const wrapRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false); setMode('day')
+      }
+    }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+
+  const handleOpen = () => {
+    if (!open) {
+      const ref = selected ?? (maxDate ?? todayObj)
+      setViewYear(ref.getFullYear()); setViewMonth(ref.getMonth())
+      setYearPage(Math.floor(ref.getFullYear() / 12) * 12)
+      setMode('day')
+    }
+    setOpen(o => !o)
+  }
+
+  const toStr = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+
+  const isDisabled = (d: Date) => !!(
+    (minDate && d < minDate) || (maxDate && d > maxDate)
+  )
+  const isSelected = (d: Date) => !!(selected && toStr(d) === toStr(selected))
+  const isToday    = (d: Date) => toStr(d) === toStr(todayObj)
+
+  const handleSelect = (d: Date) => {
+    if (isDisabled(d)) return
+    onChange(toStr(d)); setOpen(false); setMode('day')
+  }
+
+  const prevMonth = () => viewMonth === 0  ? (setViewMonth(11), setViewYear(y=>y-1)) : setViewMonth(m=>m-1)
+  const nextMonth = () => viewMonth === 11 ? (setViewMonth(0),  setViewYear(y=>y+1)) : setViewMonth(m=>m+1)
+
+  /* Build day-grid cells (null = empty leading cell) */
+  const firstDow  = new Date(viewYear, viewMonth, 1).getDay()
+  const daysInMon = new Date(viewYear, viewMonth + 1, 0).getDate()
+  const cells: (Date|null)[] = [
+    ...Array(firstDow).fill(null),
+    ...Array.from({length: daysInMon}, (_,i) => new Date(viewYear, viewMonth, i+1)),
+  ]
+
+  /* Year picker grid */
+  const yearList = Array.from({length: 12}, (_, i) => yearPage + i)
+
+  const displayValue = selected
+    ? `${String(selected.getDate()).padStart(2,'0')} ${MONTHS_SHORT[selected.getMonth()]} ${selected.getFullYear()}`
+    : ''
+
+  const triggerCls = cn(
+    'flex w-full items-center gap-2.5 rounded-xl border bg-white px-3.5 py-2.5 text-left text-sm transition-all duration-150',
+    error
+      ? open ? 'border-red-400 ring-2 ring-red-100' : 'border-red-300 bg-red-50'
+      : open ? 'border-blue-500 ring-2 ring-blue-100' : 'border-gray-200 hover:border-gray-300'
+  )
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <button type="button" onClick={handleOpen} className={triggerCls}>
+        <Calendar size={14} className="flex-shrink-0 text-gray-400" />
+        {displayValue
+          ? <span className="flex-1 font-medium text-gray-900">{displayValue}</span>
+          : <span className="flex-1 text-gray-400">{placeholder}</span>
+        }
+        <ChevronDown size={13} className={cn('flex-shrink-0 text-gray-400 transition-transform duration-150', open && 'rotate-180')} />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.98 }}
+            transition={{ duration: 0.12 }}
+            className="absolute left-0 top-full z-[999] mt-1.5 w-72 select-none overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+
+            {/* ── Day view ── */}
+            {mode === 'day' && (<>
+              <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #F1F3F8' }}>
+                <button type="button" onClick={prevMonth}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700">
+                  <ChevronLeft size={14} />
+                </button>
+                <button type="button"
+                  onClick={() => { setYearPage(Math.floor(viewYear/12)*12); setMode('year') }}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-bold text-gray-800 transition-colors hover:bg-gray-100">
+                  {MONTHS_LONG[viewMonth]} {viewYear}
+                  <ChevronDown size={11} className="text-gray-400" />
+                </button>
+                <button type="button" onClick={nextMonth}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700">
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+
+              {/* Weekday headers */}
+              <div className="grid grid-cols-7 px-3 pt-3 pb-1">
+                {WEEK_DAYS.map(d => (
+                  <div key={d} className="flex items-center justify-center text-[10px] font-bold uppercase tracking-wide text-gray-400">{d}</div>
+                ))}
+              </div>
+
+              {/* Day cells */}
+              <div className="grid grid-cols-7 gap-y-0.5 px-3 pb-3">
+                {cells.map((d, i) => {
+                  if (!d) return <div key={`e${i}`} className="h-8" />
+                  const dis = isDisabled(d), sel = isSelected(d), tod = isToday(d)
+                  return (
+                    <button key={d.getTime()} type="button" onClick={() => handleSelect(d)} disabled={dis}
+                      className={cn(
+                        'mx-auto flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium transition-all',
+                        sel  ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
+                        : tod ? 'border-2 border-blue-500 text-blue-600 hover:bg-blue-50'
+                        : dis ? 'cursor-not-allowed text-gray-200'
+                        :       'text-gray-700 hover:bg-gray-100'
+                      )}>
+                      {d.getDate()}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between px-4 py-2.5" style={{ borderTop: '1px solid #F1F3F8' }}>
+                <button type="button" onClick={() => onChange('')}
+                  className="text-xs text-gray-400 transition-colors hover:text-red-400">Clear</button>
+                <button type="button"
+                  onClick={() => !isDisabled(todayObj) && handleSelect(todayObj)}
+                  className={cn('text-xs font-semibold transition-colors',
+                    isDisabled(todayObj) ? 'cursor-not-allowed text-gray-300' : 'text-blue-600 hover:text-blue-700')}>
+                  Today
+                </button>
+              </div>
+            </>)}
+
+            {/* ── Year view ── */}
+            {mode === 'year' && (<>
+              <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #F1F3F8' }}>
+                <button type="button" onClick={() => setYearPage(p => p - 12)}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100">
+                  <ChevronLeft size={14} />
+                </button>
+                <span className="text-sm font-bold text-gray-800">{yearPage} – {yearPage + 11}</span>
+                <button type="button" onClick={() => setYearPage(p => p + 12)}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100">
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5 p-4">
+                {yearList.map(yr => (
+                  <button key={yr} type="button"
+                    onClick={() => { setViewYear(yr); setMode('month') }}
+                    className={cn(
+                      'rounded-xl py-2.5 text-sm font-semibold transition-all',
+                      yr === viewYear ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'
+                    )}>
+                    {yr}
+                  </button>
+                ))}
+              </div>
+              <button type="button" onClick={() => setMode('day')}
+                className="w-full py-2 text-xs text-gray-400 transition-colors hover:text-gray-600"
+                style={{ borderTop: '1px solid #F1F3F8' }}>
+                ← Back to calendar
+              </button>
+            </>)}
+
+            {/* ── Month view ── */}
+            {mode === 'month' && (<>
+              <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #F1F3F8' }}>
+                <button type="button" onClick={() => setViewYear(y => y - 1)}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100">
+                  <ChevronLeft size={14} />
+                </button>
+                <span className="text-sm font-bold text-gray-800">{viewYear}</span>
+                <button type="button" onClick={() => setViewYear(y => y + 1)}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100">
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5 p-4">
+                {MONTHS_SHORT.map((m, i) => (
+                  <button key={m} type="button"
+                    onClick={() => { setViewMonth(i); setMode('day') }}
+                    className={cn(
+                      'rounded-xl py-2.5 text-sm font-semibold transition-all',
+                      i === viewMonth && viewYear === (selected?.getFullYear() ?? -1)
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : i === viewMonth
+                        ? 'border border-blue-300 text-blue-600'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    )}>
+                    {m}
+                  </button>
+                ))}
+              </div>
+              <button type="button" onClick={() => setMode('year')}
+                className="w-full py-2 text-xs text-gray-400 transition-colors hover:text-gray-600"
+                style={{ borderTop: '1px solid #F1F3F8' }}>
+                ← Back to years
+              </button>
+            </>)}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -913,22 +1260,23 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
         </Field>
 
         <Field label="Gender *" error={errors.gender}>
-          <Select error={errors.gender} value={data.gender} onChange={e => set('gender', e.target.value)}>
-            <option value="">Select gender</option>
-            <option>Male</option>
-            <option>Female</option>
-            <option>Prefer not to say</option>
-          </Select>
+          <CustomSelect
+            options={GENDER_OPTIONS}
+            value={data.gender}
+            onChange={v => set('gender', v)}
+            error={errors.gender}
+            placeholder="Select gender"
+          />
         </Field>
 
         <Field label="Date of Birth *" error={errors.dateOfBirth}>
-          <div className="relative">
-            <Calendar size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-            <Input error={errors.dateOfBirth} value={data.dateOfBirth} type="date"
-              className="pl-9"
-              max={new Date(new Date().setFullYear(new Date().getFullYear() - 10)).toISOString().split('T')[0]}
-              onChange={e => set('dateOfBirth', e.target.value)} />
-          </div>
+          <DatePicker
+            value={data.dateOfBirth}
+            onChange={v => set('dateOfBirth', v)}
+            error={errors.dateOfBirth}
+            max={new Date(new Date().setFullYear(new Date().getFullYear() - 10)).toISOString().split('T')[0]}
+            placeholder="Select date of birth"
+          />
         </Field>
 
         <Field label="Nationality *" error={errors.nationality}>
@@ -954,25 +1302,14 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
         </Field>
 
         <Field label="ID Type *" error={errors.idType}>
-          <div className="relative">
-            <CreditCard size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-            <select
-              value={data.idType}
-              onChange={e => { set('idType', e.target.value); set('idNumber', '') }}
-              className={cn(
-                'w-full appearance-none rounded-[10px] border bg-white py-2.5 pl-9 pr-9 text-sm text-gray-900 outline-none transition',
-                errors.idType
-                  ? 'border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100'
-                  : 'border-gray-200 focus:border-[#0057b8] focus:ring-2 focus:ring-blue-100',
-              )}
-            >
-              <option value="">Select ID type…</option>
-              {ID_TYPES.map(t => (
-                <option key={t.value} value={t.value}>{t.flag} {t.label}</option>
-              ))}
-            </select>
-            <ChevronDown size={14} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-          </div>
+          <CustomSelect
+            options={ID_TYPES.map(t => ({ value: t.value, label: t.label, icon: t.flag }))}
+            value={data.idType}
+            onChange={v => { set('idType', v); set('idNumber', '') }}
+            error={errors.idType}
+            placeholder="Select ID type…"
+            icon={CreditCard}
+          />
         </Field>
 
         {data.idType && (() => {
@@ -1086,33 +1423,33 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Experience Level *" error={errors.experienceLevel}>
-            <Select error={errors.experienceLevel} value={data.experienceLevel}
-              onChange={e => set('experienceLevel', e.target.value)}>
-              <option value="">Select level</option>
-              <option>Beginner</option>
-              <option>Intermediate</option>
-              <option>Advanced</option>
-            </Select>
+            <CustomSelect
+              options={EXPERIENCE_OPTIONS}
+              value={data.experienceLevel}
+              onChange={v => set('experienceLevel', v)}
+              error={errors.experienceLevel}
+              placeholder="Select level"
+            />
           </Field>
 
           <Field label="Preferred Start Date *" error={errors.preferredStartDate}>
-            <div className="relative">
-              <Calendar size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-              <Input error={errors.preferredStartDate} value={data.preferredStartDate} type="date"
-                className="pl-9"
-                min={new Date().toISOString().split('T')[0]}
-                onChange={e => set('preferredStartDate', e.target.value)} />
-            </div>
+            <DatePicker
+              value={data.preferredStartDate}
+              onChange={v => set('preferredStartDate', v)}
+              error={errors.preferredStartDate}
+              min={new Date().toISOString().split('T')[0]}
+              placeholder="Select start date"
+            />
           </Field>
 
           <Field label="How did you hear about us? *" error={errors.hearAboutUs}>
-            <Select error={errors.hearAboutUs} value={data.hearAboutUs}
-              onChange={e => set('hearAboutUs', e.target.value)}>
-              <option value="">Select source</option>
-              {['Instagram','TikTok','WhatsApp','Friend / Referral','Google','Walk-in'].map(s => (
-                <option key={s}>{s}</option>
-              ))}
-            </Select>
+            <CustomSelect
+              options={HEAR_OPTIONS}
+              value={data.hearAboutUs}
+              onChange={v => set('hearAboutUs', v)}
+              error={errors.hearAboutUs}
+              placeholder="Select source"
+            />
           </Field>
 
           {data.hearAboutUs === 'Friend / Referral' && (
@@ -1158,17 +1495,14 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
     return (
       <div className="flex flex-col gap-4">
         <Field label="Payment Method *" error={errors.paymentMethod}>
-          <div className="relative">
-            <CreditCard size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-            <Select error={errors.paymentMethod} value={data.paymentMethod}
-              className="pl-9"
-              onChange={e => set('paymentMethod', e.target.value)}>
-              <option value="">Select payment method</option>
-              {['Cash / Full','Card / Full','Card / Split','Card Debit','Card Credit','USDT','Tabby','Tamara'].map(m => (
-                <option key={m}>{m}</option>
-              ))}
-            </Select>
-          </div>
+          <CustomSelect
+            options={PAYMENT_OPTIONS}
+            value={data.paymentMethod}
+            onChange={v => set('paymentMethod', v)}
+            error={errors.paymentMethod}
+            placeholder="Select payment method"
+            icon={CreditCard}
+          />
         </Field>
 
         <Field label="Password *" error={errors.password}>

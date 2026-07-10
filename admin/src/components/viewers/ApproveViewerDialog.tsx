@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { CheckCircle2, Check, ChevronDown, Loader2, X } from 'lucide-react'
+import { CheckCircle2, Check, ChevronDown, X } from 'lucide-react'
 import type { AdminUser } from '@/lib/api/users'
+import Spinner from '@/components/ui/Spinner'
 
 type ProgramCategory = '4x-trading' | 'digital-marketing' | 'ai'
 
@@ -133,7 +134,7 @@ export function ApproveViewerDialog({ user, scopeCategory, loading, onClose, onC
               disabled={loading || cats.length === 0}
               className="flex items-center gap-1.5 rounded-xl px-5 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40"
               style={{ background: 'linear-gradient(135deg,#4ADE80,#22c55e)', boxShadow: '0 4px 14px rgba(74,222,128,0.3)' }}>
-              {loading && <Loader2 size={13} className="animate-spin" />}
+              {loading && <Spinner size={13} />}
               <CheckCircle2 size={13} />
               Approve as Student
             </button>

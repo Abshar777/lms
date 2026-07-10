@@ -2,8 +2,9 @@
 
 import { motion } from 'framer-motion'
 import { useMemo } from 'react'
-import { TrendingUp, Loader2 } from 'lucide-react'
+import { TrendingUp } from 'lucide-react'
 import { useEnrollmentsTimeseries } from '@/lib/api/stats'
+import Spinner from '@/components/ui/Spinner'
 
 export function EnrollmentsChart() {
   const { data, isLoading } = useEnrollmentsTimeseries(30)
@@ -65,7 +66,7 @@ export function EnrollmentsChart() {
 
       {isLoading ? (
         <div className="flex items-center gap-2 py-12 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
-          <Loader2 size={14} className="animate-spin" />Loading…
+          <Spinner size={14} />Loading…
         </div>
       ) : total === 0 ? (
         <div className="py-10 text-center text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>

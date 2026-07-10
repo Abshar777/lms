@@ -1,8 +1,9 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { CheckCircle2, Loader2, Activity } from 'lucide-react'
+import { CheckCircle2, Activity } from 'lucide-react'
 import { useCompletionStats } from '@/lib/api/stats'
+import Spinner from '@/components/ui/Spinner'
 
 export function CompletionWidget() {
   const { data, isLoading } = useCompletionStats()
@@ -25,7 +26,7 @@ export function CompletionWidget() {
 
       {isLoading ? (
         <div className="flex items-center gap-2 py-8 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
-          <Loader2 size={14} className="animate-spin" />Loading…
+          <Spinner size={14} />Loading…
         </div>
       ) : (
         <div className="flex items-center gap-5">

@@ -77,6 +77,19 @@ export function useAdminTickets(filter: { status?: string; search?: string; prog
   })
 }
 
+/* Lightweight count for the sidebar badge — polls every 60 s */
+export function useUnreadSupportCount() {
+  return useQuery({
+    queryKey: ['admin', 'support', 'unread-count'],
+    queryFn:  async () => {
+      const data = (await api.get<{ success: true; data: SupportStats }>('/support/admin/stats')).data.data
+      return data.unread
+    },
+    staleTime:       30_000,
+    refetchInterval: 60_000,
+  })
+}
+
 /* GET /support/admin/stats */
 export function useSupportStats(program?: string) {
   return useQuery({

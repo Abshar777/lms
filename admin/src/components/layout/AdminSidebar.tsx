@@ -13,6 +13,7 @@ import { useUIStore } from '@/store/ui.store'
 import { useAllLiveClasses } from '@/lib/api/liveClasses'
 import { useCurrentUser, logout } from '@/lib/api/user'
 import { useEnrollmentRequests } from '@/lib/api/enrollmentRequests'
+import { useUnreadSupportCount } from '@/lib/api/support'
 import { useRouter } from 'next/navigation'
 
 /* ── All nav items (admin sees all) ──────────────────── */
@@ -80,6 +81,7 @@ function SidebarContent({ collapsed, onClose }: SidebarContentProps) {
 
   const { data: pendingData } = useEnrollmentRequests('pending', undefined)
   const pendingCount = canSeeRequests ? (pendingData?.meta?.total_count ?? 0) : 0
+  const { data: unreadSupport = 0 } = useUnreadSupportCount()
   const navItems  = isInstructor ? instructorNavItems : isManager ? scopedAdminNavItems : adminNavItems
   const roleLabel = isInstructor ? 'Instructor' : isManager ? 'Manager' : 'Admin'
 
@@ -170,6 +172,13 @@ function SidebarContent({ collapsed, onClose }: SidebarContentProps) {
                           {pendingCount}
                         </span>
                       )}
+                      {/* Unread support messages badge */}
+                      {item.href === '/support' && unreadSupport > 0 && (
+                        <span className="ml-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
+                          style={{ background: '#EF4444' }}>
+                          {unreadSupport > 99 ? '99+' : unreadSupport}
+                        </span>
+                      )}
                       {/* Pulsing live badge — only on Live Classes item when streams are active */}
                       {item.href === '/live-classes' && liveNowCount > 0 && (
                         <motion.span
@@ -183,7 +192,7 @@ function SidebarContent({ collapsed, onClose }: SidebarContentProps) {
                     </motion.span>
                   )}
                 </AnimatePresence>
-                {/* Collapsed state: small red dot indicator */}
+                {/* Collapsed state: small dot indicators */}
                 {collapsed && item.href === '/live-classes' && liveNowCount > 0 && (
                   <motion.span
                     animate={{ opacity: [1, 0.3, 1] }}
@@ -191,6 +200,10 @@ function SidebarContent({ collapsed, onClose }: SidebarContentProps) {
                     className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full"
                     style={{ background: '#EF4444' }}
                   />
+                )}
+                {collapsed && item.href === '/support' && unreadSupport > 0 && (
+                  <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full"
+                    style={{ background: '#EF4444' }} />
                 )}
               </motion.div>
             </Link>

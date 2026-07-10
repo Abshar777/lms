@@ -6,8 +6,9 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, AlertCircle, Shield } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Shield } from 'lucide-react'
 import { api } from '@/lib/axios'
+import Spinner from '@/components/ui/Spinner'
 
 const schema = z.object({
   email:    z.string().email('Enter a valid email'),
@@ -199,7 +200,7 @@ export function AdminLoginForm() {
             className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold text-white transition-all disabled:opacity-60"
             style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)', boxShadow: '0 4px 24px rgba(0,87,184,0.32)' }}>
             {isSubmitting
-              ? <><Loader2 size={16} className="animate-spin" />Signing in…</>
+              ? <><Spinner size={16} />Signing in…</>
               : <>Sign in<ArrowRight size={16} /></>}
           </motion.button>
         </motion.div>
