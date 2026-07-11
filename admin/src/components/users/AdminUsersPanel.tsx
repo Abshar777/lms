@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import {
-  Search, Loader2, ChevronLeft, ChevronRight,
+  Search, ChevronLeft, ChevronRight,
   Pencil, Trash2, Eye, UserPlus, ChevronDown,
 } from 'lucide-react'
 import {
   useUsers, useDeleteUser, useImpersonateUser, type AdminUser,
 } from '@/lib/api/users'
+import Spinner from '@/components/ui/Spinner'
 import { useCurrentUser, type CurrentAdmin } from '@/lib/api/user'
 import { useImpersonationStore } from '@/store/impersonation.store'
 import { useToast } from '@/store/ui.store'
@@ -159,7 +160,7 @@ export function AdminUsersPanel() {
   if (meLoading) {
     return (
       <div className="flex h-48 items-center justify-center">
-        <Loader2 size={20} className="animate-spin" style={{ color: 'rgba(255,255,255,0.3)' }} />
+        <Spinner size={20} variant="muted" />
       </div>
     )
   }
@@ -225,7 +226,7 @@ export function AdminUsersPanel() {
               {isLoading && (
                 <tr><td colSpan={6} className="px-4 py-14 text-center">
                   <div className="inline-flex items-center gap-2 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                    <Loader2 size={14} className="animate-spin" />Loading users…
+                    <Spinner size={14} />Loading users…
                   </div>
                 </td></tr>
               )}
@@ -440,7 +441,7 @@ function UserRow({ user, index, canManage, isSuperAdmin, onView, onEdit }: {
                     ? { background: 'rgba(250,204,21,0.15)', color: '#FACC15', border: '1px solid rgba(250,204,21,0.3)' }
                     : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.09)' }}
                   title="Impersonate user">
-                  {impersonate.isPending ? <Loader2 size={11} className="animate-spin" /> : <Eye size={11} />}
+                  {impersonate.isPending ? <Spinner size={11} /> : <Eye size={11} />}
                   {isImpersonating ? 'Viewing' : 'Impersonate'}
                 </button>
               )}
@@ -453,7 +454,7 @@ function UserRow({ user, index, canManage, isSuperAdmin, onView, onEdit }: {
               <button onClick={handleDelete} disabled={deleteUser.isPending}
                 className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-white transition-all disabled:opacity-50"
                 style={{ background: 'rgba(239,68,68,0.85)' }}>
-                {deleteUser.isPending && <Loader2 size={10} className="animate-spin" />}
+                {deleteUser.isPending && <Spinner size={10} />}
                 Yes, delete
               </button>
               <button onClick={() => setConfirmDelete(false)}

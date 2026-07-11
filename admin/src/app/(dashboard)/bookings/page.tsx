@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ChevronLeft, ChevronRight, Calendar, Clock,
-  CheckCircle2, XCircle, Loader2, Search,
+  CheckCircle2, XCircle, Search,
   BookOpen, User, GraduationCap, LayoutList, X,
   Download, TrendingUp, Users,
   Filter, ChevronDown, Check, Wifi, Building2, MapPin,
@@ -17,6 +17,7 @@ import { useCourses } from '@/lib/api/courses'
 import { useUsers } from '@/lib/api/users'
 import { useCurrentUser } from '@/lib/api/user'
 import { APP_TIMEZONE } from '@/lib/timezone'
+import Spinner from '@/components/ui/Spinner'
 
 /* ─── Custom dark dropdown ───────────────────────────────── */
 interface SelectOption { value: string; label: string }
@@ -746,7 +747,7 @@ export default function BookingsPage() {
       {isLoading && (
         <div className="flex items-center justify-center gap-2 py-24 text-sm"
           style={{ color: 'rgba(255,255,255,0.35)' }}>
-          <Loader2 size={20} className="animate-spin" style={{ color: '#0057b8' }} />
+          <Spinner size={20} />
           Loading bookings…
         </div>
       )}

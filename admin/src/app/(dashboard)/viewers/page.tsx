@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Eye, Search, Loader2, Mail, Calendar,
+  Eye, Search, Mail, Calendar,
   ShieldOff, ShieldCheck, ChevronLeft, ChevronRight,
   Clock, Phone, MapPin, BookOpen, CreditCard, User, FileText,
   ImageIcon, Trash2, ExternalLink, X, XCircle,
@@ -12,6 +12,7 @@ import { useUsers, useDeleteUser, type AdminUser } from '@/lib/api/users'
 import { useToggleBlock } from '@/lib/api/enrollmentRequests'
 import { useCurrentUser } from '@/lib/api/user'
 import { useToast } from '@/store/ui.store'
+import Spinner from '@/components/ui/Spinner'
 
 function fmtDate(d?: string) {
   if (!d) return '—'
@@ -270,7 +271,7 @@ function DeleteConfirm({ onConfirm, onCancel, loading }: {
         disabled={loading}
         className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold transition-all disabled:opacity-50"
         style={{ background: 'rgba(239,68,68,0.15)', color: '#F87171', border: '1px solid rgba(239,68,68,0.3)' }}>
-        {loading ? <Loader2 size={8} className="animate-spin" /> : 'Yes'}
+        {loading ? <Spinner size={8} /> : 'Yes'}
       </button>
       <button
         onClick={onCancel}
@@ -435,7 +436,7 @@ export default function ViewersPage() {
               {isLoading && (
                 <tr><td colSpan={5} className="px-4 py-16 text-center">
                   <div className="inline-flex items-center gap-2 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                    <Loader2 size={14} className="animate-spin" />Loading…
+                    <Spinner size={14} />Loading…
                   </div>
                 </td></tr>
               )}
@@ -567,7 +568,7 @@ export default function ViewersPage() {
                               ? { color: '#F87171', border: '1px solid rgba(248,113,113,0.3)' }
                               : { color: '#4ADE80', border: '1px solid rgba(74,222,128,0.3)' }}>
                             {toggleBlock.isPending
-                              ? <Loader2 size={10} className="animate-spin" />
+                              ? <Spinner size={10} />
                               : user.isActive ? <ShieldOff size={10} /> : <ShieldCheck size={10} />}
                             {user.isActive ? 'Block' : 'Unblock'}
                           </button>

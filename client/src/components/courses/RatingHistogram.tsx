@@ -1,8 +1,9 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Star, Loader2 } from 'lucide-react'
+import { Star } from 'lucide-react'
 import { useRatingHistogram } from '@/lib/api/courses'
+import Spinner from '@/components/ui/Spinner'
 
 interface Props {
   slug: string
@@ -14,7 +15,7 @@ export function RatingHistogram({ slug }: Props) {
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 py-6 text-sm" style={{ color: '#9CA3AF' }}>
-        <Loader2 size={14} className="animate-spin" />Loading ratings…
+        <Spinner size={14} />Loading ratings…
       </div>
     )
   }

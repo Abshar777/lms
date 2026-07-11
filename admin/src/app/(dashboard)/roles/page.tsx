@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  ShieldCheck, Plus, Trash2, Edit2, Check, X, Loader2,
+  ShieldCheck, Plus, Trash2, Edit2, Check, X,
   ChevronRight, Lock, Save, AlertCircle, Users as UsersIcon,
   GraduationCap, UserCog, Search, ChevronDown,
 } from 'lucide-react'
@@ -14,6 +14,7 @@ import {
   PERMISSION_RESOURCES, type Role, type ResourcePermission, type PermissionResource,
 } from '@/lib/api/roles'
 import { useUsers, type AdminUser } from '@/lib/api/users'
+import Spinner from '@/components/ui/Spinner'
 
 /* ── Types ─────────────────────────────────────────────────────── */
 type TabKey = 'roles' | 'users'
@@ -233,7 +234,7 @@ function RoleItem({ role, selected, onSelect, onDelete, isDeleting }: RoleItemPr
         <button onClick={e => { e.stopPropagation(); onDelete() }} disabled={isDeleting}
           className="flex-shrink-0 opacity-0 group-hover:opacity-100 flex h-6 w-6 items-center justify-center rounded-lg transition-all hover:bg-red-500/20"
           style={{ color: 'rgba(255,80,80,0.7)' }} title="Delete role">
-          {isDeleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+          {isDeleting ? <Spinner size={12} /> : <Trash2 size={12} />}
         </button>
       )}
       <ChevronRight size={13} className="flex-shrink-0 transition-transform group-hover:translate-x-0.5"
@@ -275,7 +276,7 @@ function RoleSelect({ userId, currentId, roles, disabled }: RoleSelectProps) {
           minWidth: 130,
         }}>
         {assignMutation.isPending
-          ? <Loader2 size={11} className="animate-spin" />
+          ? <Spinner size={11} />
           : <ShieldCheck size={11} style={{ color: currentRole ? '#0057b8' : 'rgba(255,255,255,0.2)' }} />}
         <span className="flex-1 text-left truncate">
           {assignMutation.isPending ? 'Saving…' : (currentRole?.name ?? 'No custom role')}
@@ -392,7 +393,7 @@ function UsersTab({ roles }: { roles: Role[] }) {
       {/* Table */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 size={22} className="animate-spin" style={{ color: '#0057b8' }} />
+          <Spinner size={22} />
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 gap-2">
@@ -624,7 +625,7 @@ export default function RolesPage() {
               <button type="submit" disabled={createMutation.isPending}
                 className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}>
-                {createMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+                {createMutation.isPending ? <Spinner size={13} /> : <Plus size={13} />}
                 Create role
               </button>
             </div>
@@ -637,7 +638,7 @@ export default function RolesPage() {
         <UsersTab roles={roles} />
       ) : isLoading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 size={24} className="animate-spin" style={{ color: '#0057b8' }} />
+          <Spinner size={24} />
         </div>
       ) : (
         <div className="flex gap-5 items-start">
@@ -688,7 +689,7 @@ export default function RolesPage() {
                         <button type="submit" disabled={updateMutation.isPending}
                           className="flex h-8 w-8 items-center justify-center rounded-xl hover:bg-white/10 disabled:opacity-50"
                           style={{ color: '#4ADE80' }}>
-                          {updateMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                          {updateMutation.isPending ? <Spinner size={14} /> : <Check size={14} />}
                         </button>
                         <button type="button" onClick={() => setEditingRole(false)}
                           className="flex h-8 w-8 items-center justify-center rounded-xl hover:bg-white/10"
@@ -756,7 +757,7 @@ export default function RolesPage() {
                         background: draftDirty ? 'linear-gradient(135deg, #0057b8, #003d80)' : 'rgba(255,255,255,0.08)',
                         boxShadow: draftDirty ? '0 4px 16px rgba(0,87,184,0.28)' : 'none',
                       }}>
-                      {permsMutation.isPending ? <Loader2 size={14} className="animate-spin" />
+                      {permsMutation.isPending ? <Spinner size={14} />
                         : saveOk ? <Check size={14} /> : <Save size={14} />}
                       {saveOk ? 'Saved!' : 'Save permissions'}
                     </button>

@@ -4,8 +4,9 @@ import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { CheckCircle2, AlertCircle, Loader2, Mail } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Mail } from 'lucide-react'
 import { verifyEmail } from '@/lib/api/user'
+import Spinner from '@/components/ui/Spinner'
 
 function VerifyEmailInner() {
   const params = useSearchParams()
@@ -37,7 +38,7 @@ function VerifyEmailInner() {
   if (state === 'verifying') {
     return (
       <div className="flex flex-col items-center gap-3 py-6 text-center">
-        <Loader2 size={26} className="animate-spin" style={{ color: '#0057b8' }} />
+        <Spinner size={26} />
         <p className="text-sm" style={{ color: '#6B7280' }}>Verifying your email…</p>
       </div>
     )

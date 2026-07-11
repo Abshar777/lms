@@ -1,8 +1,9 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertTriangle, Loader2, X } from 'lucide-react'
+import { AlertTriangle, X } from 'lucide-react'
 import { useUIStore, useToast } from '@/store/ui.store'
+import Spinner from '@/components/ui/Spinner'
 import { useDeleteCourse } from '@/lib/api/courses'
 
 export function DeleteModal() {
@@ -75,7 +76,7 @@ export function DeleteModal() {
                 disabled={deleteMutation.isPending}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-60"
                 style={{ background: 'linear-gradient(135deg, #EF4444, #DC2626)', boxShadow: '0 4px 16px rgba(239,68,68,0.30)' }}>
-                {deleteMutation.isPending ? <><Loader2 size={14} className="animate-spin" />Deleting…</> : 'Delete course'}
+                {deleteMutation.isPending ? <><Spinner size={14} />Deleting…</> : 'Delete course'}
               </motion.button>
             </div>
           </motion.div>

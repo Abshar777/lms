@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { FileText, Save, Trash2, Loader2 } from 'lucide-react'
+import { FileText, Save, Trash2 } from 'lucide-react'
 import { useMyNote, useUpsertNote, useDeleteNote } from '@/lib/api/notes'
+import Spinner from '@/components/ui/Spinner'
 
 export function NotesPanel({ lessonId }: { lessonId: string }) {
   const { data: note, isLoading } = useMyNote(lessonId)
@@ -44,7 +45,7 @@ export function NotesPanel({ lessonId }: { lessonId: string }) {
   if (isLoading) {
     return (
       <div className="flex justify-center py-8">
-        <Loader2 size={18} className="animate-spin" style={{ color: '#D1D5DB' }} />
+        <Spinner size={18} variant="gray" />
       </div>
     )
   }
@@ -67,7 +68,7 @@ export function NotesPanel({ lessonId }: { lessonId: string }) {
             className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-white transition-opacity disabled:opacity-40"
             style={{ background: saved ? '#22C55E' : '#0057b8' }}>
             {upsert.isPending
-              ? <Loader2 size={11} className="animate-spin" />
+              ? <Spinner size={11} />
               : <Save size={11} />}
             {saved ? 'Saved' : 'Save'}
           </button>

@@ -2,9 +2,10 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { ShoppingBag, Loader2, ExternalLink, CheckCircle2, Clock, RotateCcw } from 'lucide-react'
+import { ShoppingBag, ExternalLink, CheckCircle2, Clock, RotateCcw } from 'lucide-react'
 import { useMyOrders, type MyOrder } from '@/lib/api/checkout'
 import { formatPrice } from '@/lib/formatPrice'
+import Spinner from '@/components/ui/Spinner'
 
 function asCourse(o: MyOrder) {
   return typeof o.courseId === 'object' && o.courseId !== null ? o.courseId : null
@@ -22,7 +23,7 @@ export default function OrdersPage() {
   if (isLoading) {
     return (
       <div className="flex h-[60vh] items-center justify-center gap-3">
-        <Loader2 size={20} className="animate-spin" style={{ color: '#0057b8' }} />
+        <Spinner size={20} />
         <p className="text-sm" style={{ color: '#9CA3AF' }}>Loading your orders…</p>
       </div>
     )

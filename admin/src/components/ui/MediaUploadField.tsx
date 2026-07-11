@@ -25,8 +25,9 @@
 
 import { useRef, useState, useCallback, type DragEvent, type ChangeEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Link, Upload, Image, Film, X, CheckCircle2, Loader2, AlertCircle } from 'lucide-react'
+import { Link, Upload, Image, Film, X, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useUploadImage, uploadVideo } from '@/lib/api/upload'
+import Spinner from '@/components/ui/Spinner'
 
 /* ── Shared styling tokens (match admin dark theme) ── */
 const BASE_INPUT =
@@ -209,7 +210,7 @@ export function MediaUploadField({
             style={{ background: 'rgba(0,87,184,0.15)', border: '1px solid rgba(0,87,184,0.30)', color: '#0057b8' }}
           >
             {isUploading
-              ? <Loader2 size={13} className="animate-spin" />
+              ? <Spinner size={13} />
               : <Upload size={13} />}
           </button>
         </div>
@@ -217,7 +218,7 @@ export function MediaUploadField({
         {(uploading || transcoding) && (
           <div className="flex items-center gap-1.5 rounded-md px-2 py-1"
             style={{ background: 'rgba(0,87,184,0.08)', border: '1px solid rgba(0,87,184,0.18)' }}>
-            <Loader2 size={10} className="animate-spin flex-shrink-0" style={{ color: '#0057b8' }} />
+            <Spinner size={10} className="flex-shrink-0" />
             <p className="text-[10px] font-medium" style={{ color: 'rgba(255,255,255,0.7)' }}>
               {transcoding ? 'Transcoding to HLS…' : `Uploading… ${vidProgress > 0 ? vidProgress + '%' : ''}`}
             </p>
@@ -342,7 +343,7 @@ export function MediaUploadField({
               <div className="space-y-2 rounded-xl px-4 py-3"
                 style={{ background: 'rgba(0,87,184,0.07)', border: '1px solid rgba(0,87,184,0.18)' }}>
                 <div className="flex items-center gap-3">
-                  <Loader2 size={16} className="animate-spin flex-shrink-0" style={{ color: '#0057b8' }} />
+                  <Spinner size={16} className="flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.85)' }}>
                       {transcoding

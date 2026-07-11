@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Trash2, Save, Loader2, ChevronDown, ChevronUp, GripVertical, Check, AlertTriangle } from 'lucide-react'
+import { Plus, Trash2, Save, ChevronDown, ChevronUp, GripVertical, Check, AlertTriangle } from 'lucide-react'
 import {
   useAdminQuiz, useUpsertQuiz, useDeleteQuiz,
   type QuizQuestionDraft, type QuestionType,
 } from '@/lib/api/outline'
 import { useToast } from '@/store/ui.store'
+import Spinner from '@/components/ui/Spinner'
 
 /* ─── Empty question factory ─────────────────────── */
 function emptyQuestion(type: QuestionType = 'mcq'): QuizQuestionDraft {
@@ -117,7 +118,7 @@ export function QuizEditor({ lessonId, onClose }: Props) {
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 p-6 text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>
-        <Loader2 size={14} className="animate-spin" />Loading quiz…
+        <Spinner size={14} />Loading quiz…
       </div>
     )
   }
@@ -144,7 +145,7 @@ export function QuizEditor({ lessonId, onClose }: Props) {
           <button onClick={handleSave} disabled={upsert.isPending}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition-all disabled:opacity-60"
             style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}>
-            {upsert.isPending ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+            {upsert.isPending ? <Spinner size={12} /> : <Save size={12} />}
             Save quiz
           </button>
         </div>

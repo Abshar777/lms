@@ -34,7 +34,7 @@ export class UserService {
      Deactivation also revokes all refresh tokens for that user. */
   async adminUpdate(
     id: string,
-    dto: { role?: UserRole; isActive?: boolean; isVerified?: boolean; name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | 'ai' | null; avatarUrl?: string },
+    dto: { role?: UserRole; isActive?: boolean; isVerified?: boolean; name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | 'ai' | null; categories?: ('4x-trading' | 'digital-marketing' | 'ai')[]; avatarUrl?: string; headline?: string; bio?: string },
   ): Promise<IUser> {
     if (!Types.ObjectId.isValid(id)) {
       throw new UserError('INVALID_ID', 'Invalid user id', 400)
@@ -45,11 +45,15 @@ export class UserService {
     if (dto.isVerified !== undefined) update.isVerified = dto.isVerified
     if (dto.name       !== undefined) update.name       = dto.name.trim()
     if (dto.avatarUrl  !== undefined) update.avatarUrl  = dto.avatarUrl || undefined
-    if (dto.category !== undefined) {
-      update.category = dto.category ?? undefined
-      // Keep categories array in sync with single category field
-      if (dto.category) update.categories = [dto.category] as any
-      else update.categories = [] as any
+    if (dto.headline   !== undefined) update.headline   = dto.headline || undefined
+    if (dto.bio        !== undefined) update.bio        = dto.bio || undefined
+    if (dto.categories !== undefined) {
+      /* Multi-select path: set categories directly, keep category in sync with first */
+      update.categories = dto.categories as any
+      update.category   = dto.categories[0] ?? (undefined as any)
+    } else if (dto.category !== undefined) {
+      update.category   = dto.category ?? undefined
+      update.categories = dto.category ? [dto.category] as any : [] as any
     }
     if (dto.email      !== undefined) {
       /* Check for duplicate email, excluding the current user */
@@ -81,33 +85,47 @@ export class UserService {
   }
 
   async adminCreateUser(dto: {
-    name:       string
-    email:      string
-    password:   string
-    role:       UserRole
-    bio?:       string
-    headline?:  string
-    category?:  '4x-trading' | 'digital-marketing' | 'ai'
-    avatarUrl?: string
+    name:        string
+    email:       string
+    password:    string
+    role:        UserRole
+    bio?:        string
+    headline?:   string
+    category?:   '4x-trading' | 'digital-marketing' | 'ai'
+    categories?: ('4x-trading' | 'digital-marketing' | 'ai')[]
+    avatarUrl?:  string
+    approvedBy?: string
   }): Promise<IUser> {
     const exists = await this.repo.emailExists(dto.email)
     if (exists) {
       throw new UserError('EMAIL_TAKEN', 'An account with this email already exists.', 409)
     }
     const passwordHash = await hashPassword(dto.password)
+    /* Resolve category / categories: multi-select (categories) takes priority */
+    const resolvedCategories = dto.categories && dto.categories.length > 0
+      ? dto.categories
+      : dto.category ? [dto.category] : []
+    const resolvedCategory = resolvedCategories[0]
     const user = await this.repo.createUser({
       name:         dto.name.trim(),
       email:        dto.email,
       passwordHash,
       role:         dto.role,
-      category:     dto.category,
+      category:     resolvedCategory,
+      categories:   resolvedCategories,
     })
-    /* Patch bio / headline / avatarUrl if provided */
-    if (dto.bio || dto.headline || dto.avatarUrl) {
-      const patch: Partial<IUser> = {}
-      if (dto.bio)       patch.bio       = dto.bio
-      if (dto.headline)  patch.headline  = dto.headline
-      if (dto.avatarUrl) patch.avatarUrl = dto.avatarUrl
+    /* Patch bio / headline / avatarUrl / enrollment approval if provided */
+    const patch: Partial<IUser> = {}
+    if (dto.bio)       patch.bio       = dto.bio
+    if (dto.headline)  patch.headline  = dto.headline
+    if (dto.avatarUrl) patch.avatarUrl = dto.avatarUrl
+    if (dto.role === 'student' && dto.approvedBy) {
+      const { Types } = await import('mongoose')
+      ;(patch as any).enrollmentStatus = 'approved'
+      ;(patch as any).approvedBy       = new Types.ObjectId(dto.approvedBy)
+      ;(patch as any).approvedAt       = new Date()
+    }
+    if (Object.keys(patch).length > 0) {
       await this.repo.updateById(user.id, patch)
       Object.assign(user, patch)
     }

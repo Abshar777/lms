@@ -3,12 +3,14 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Search, Loader2, Mail, Calendar, CheckCircle2, XCircle,
+  Search, Mail, Calendar, CheckCircle2, XCircle,
   ChevronLeft, ChevronRight, MoreHorizontal, ShieldCheck, ShieldOff, ArrowUp, ArrowDown, Pencil,
 } from 'lucide-react'
 import { useUsers, useUpdateUser, type AdminUser } from '@/lib/api/users'
+import Spinner from '@/components/ui/Spinner'
 import { useToast } from '@/store/ui.store'
 import { EditStudentModal } from '@/components/users/EditStudentModal'
+import { EditInstructorModal } from '@/components/instructors/EditInstructorModal'
 
 interface Props {
   role:  'student' | 'instructor'
@@ -108,7 +110,7 @@ export function UserTable({ role, label }: Props) {
             {isLoading && (
               <tr><td colSpan={6} className="px-4 py-12 text-center">
                 <div className="inline-flex items-center gap-2 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                  <Loader2 size={14} className="animate-spin" />Loading…
+                  <Spinner size={14} />Loading…
                 </div>
               </td></tr>
             )}
@@ -145,8 +147,15 @@ export function UserTable({ role, label }: Props) {
       </div>
 
       {/* Modal rendered outside <table> to avoid invalid DOM nesting */}
-      {editingUser && (
+      {editingUser && role === 'student' && (
         <EditStudentModal
+          user={editingUser}
+          onClose={() => setEditingUser(null)}
+          onSuccess={() => setEditingUser(null)}
+        />
+      )}
+      {editingUser && role === 'instructor' && (
+        <EditInstructorModal
           user={editingUser}
           onClose={() => setEditingUser(null)}
           onSuccess={() => setEditingUser(null)}
@@ -262,7 +271,7 @@ function UserRow({ user, index, onEdit }: { user: AdminUser; index: number; onEd
           <button onClick={() => setMenuOpen(v => !v)} disabled={update.isPending}
             className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/05 disabled:opacity-40"
             style={{ color: 'rgba(255,255,255,0.45)' }}>
-            {update.isPending ? <Loader2 size={12} className="animate-spin" /> : <MoreHorizontal size={13} />}
+            {update.isPending ? <Spinner size={12} /> : <MoreHorizontal size={13} />}
           </button>
         </div>
         <AnimatePresence>

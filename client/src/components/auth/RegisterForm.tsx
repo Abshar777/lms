@@ -4,12 +4,13 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   User, Mail, Lock, Phone, AlertCircle, Eye, EyeOff,
-  Upload, ChevronRight, ChevronLeft, Loader2, Check, FileText, X,
+  Upload, ChevronRight, ChevronLeft, Check, FileText, X,
   ChevronDown, Search, MapPin, Calendar, Globe, Briefcase, CreditCard, Camera,
 } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { cn } from '@/lib/utils'
 import { TermsModal } from './TermsModal'
+import Spinner from '@/components/ui/Spinner'
 
 /* ── Types ─────────────────────────────────────────── */
 interface FormData {
@@ -1670,7 +1671,7 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
           <button type="button" onClick={submit} disabled={loading}
             className="ml-auto flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
             style={{ background: '#0057b8', boxShadow: '0 4px 14px rgba(0,87,184,0.3)' }}>
-            {loading ? <><Loader2 size={14} className="animate-spin" /> Submitting…</> : 'Submit Application'}
+            {loading ? <><Spinner size={14} /> Submitting…</> : 'Submit Application'}
           </button>
         )}
       </div>

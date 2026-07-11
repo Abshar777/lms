@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Star, CheckCircle, Loader2, MessageSquare } from 'lucide-react'
+import { Star, CheckCircle, MessageSquare } from 'lucide-react'
 import { useSessionFeedback, useSubmitFeedback } from '@/lib/api/feedback'
+import Spinner from '@/components/ui/Spinner'
 
 interface Props {
   sessionId:   string
@@ -98,7 +99,7 @@ export function SessionFeedback({ sessionId, sessionTitle }: Props) {
               style={{ background: '#0057b8' }}
             >
               {mutation.isPending
-                ? <><Loader2 size={12} className="animate-spin" /><span>Submitting…</span></>
+                ? <><Spinner size={12} /><span>Submitting…</span></>
                 : <><CheckCircle size={12} /><span>Submit feedback</span></>}
             </button>
           </motion.div>

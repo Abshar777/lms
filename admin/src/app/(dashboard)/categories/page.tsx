@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Trash2, Edit2, Check, X, Loader2, AlertCircle, Tag } from 'lucide-react'
+import { Plus, Trash2, Edit2, Check, X, AlertCircle, Tag } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import {
   useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory,
   type Category,
 } from '@/lib/api/categories'
+import Spinner from '@/components/ui/Spinner'
 
 export default function CategoriesPage() {
   const { data: categories, isLoading } = useCategories()
@@ -75,7 +76,7 @@ export default function CategoriesPage() {
                 <button type="submit" disabled={createMutation.isPending}
                   className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
                   style={{ background: 'linear-gradient(135deg, #4ADE80, #22C55E)' }}>
-                  {createMutation.isPending ? <><Loader2 size={13} className="animate-spin" />Saving…</> : <><Check size={13} />Create</>}
+                  {createMutation.isPending ? <><Spinner size={13} />Saving…</> : <><Check size={13} />Create</>}
                 </button>
               </div>
             </div>
@@ -85,7 +86,7 @@ export default function CategoriesPage() {
 
       {isLoading && (
         <div className="flex items-center justify-center gap-2 py-16 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
-          <Loader2 size={14} className="animate-spin" />Loading…
+          <Spinner size={14} />Loading…
         </div>
       )}
 
@@ -160,7 +161,7 @@ function CategoryCard({ category, index, editing, setEditingId }: {
             <button onClick={save} disabled={updateMutation.isPending}
               className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-60"
               style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}>
-              {updateMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}Save
+              {updateMutation.isPending ? <Spinner size={11} /> : <Check size={11} />}Save
             </button>
           </div>
         </div>
@@ -209,7 +210,7 @@ function CategoryCard({ category, index, editing, setEditingId }: {
                     <button onClick={remove} disabled={deleteMutation.isPending}
                       className="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-semibold text-white disabled:opacity-60"
                       style={{ background: '#EF4444' }}>
-                      {deleteMutation.isPending ? <Loader2 size={9} className="animate-spin" /> : <X size={9} />}Delete
+                      {deleteMutation.isPending ? <Spinner size={9} /> : <X size={9} />}Delete
                     </button>
                   </div>
                 </div>

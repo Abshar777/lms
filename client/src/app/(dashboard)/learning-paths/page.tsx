@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { BookOpen, Users, ChevronRight, Loader2, Search, GraduationCap } from 'lucide-react'
+import { BookOpen, Users, ChevronRight, Search, GraduationCap } from 'lucide-react'
 import { useLearningPaths } from '@/lib/api/learningpaths'
+import Spinner from '@/components/ui/Spinner'
 
 export default function LearningPathsPage() {
   const [page, setPage] = useState(1)
@@ -48,7 +49,7 @@ export default function LearningPathsPage() {
       {/* Grid */}
       {isLoading ? (
         <div className="flex justify-center py-16">
-          <Loader2 size={26} className="animate-spin" style={{ color: '#0057b8' }} />
+          <Spinner size={26} />
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16">

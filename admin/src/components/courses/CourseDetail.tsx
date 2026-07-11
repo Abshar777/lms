@@ -8,12 +8,13 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Edit2, Trash2, Globe, Archive,
   Users, Star, BookOpen, Clock, DollarSign,
-  Tag, Play, Calendar, Award, Loader2, AlertCircle,
+  Tag, Play, Calendar, Award, AlertCircle,
   Layers, TrendingUp, Hash, Languages,
 } from 'lucide-react'
 import { useCourse, useUpdateCourse, useDeleteCourse } from '@/lib/api/courses'
 import { useToast } from '@/store/ui.store'
 import type { Course, CourseStatus } from '@/types/index'
+import Spinner from '@/components/ui/Spinner'
 
 /* ── Helpers ──────────────────────────────────────────────────── */
 function fmtDuration(mins: number) {
@@ -115,7 +116,7 @@ export function CourseDetail({ id }: { id: string }) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 size={28} className="animate-spin" style={{ color: '#0057b8' }} />
+          <Spinner size={28} />
           <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>Loading course…</p>
         </div>
       </div>
@@ -199,7 +200,7 @@ export function CourseDetail({ id }: { id: string }) {
               border:     `1px solid ${course.status === 'published' ? 'rgba(234,179,8,0.2)' : 'rgba(34,197,94,0.2)'}`,
             }}>
             {publishing
-              ? <Loader2 size={12} className="animate-spin" />
+              ? <Spinner size={12} />
               : course.status === 'published' ? <Archive size={12} /> : <Globe size={12} />}
             {course.status === 'published' ? 'Archive' : 'Publish'}
           </motion.button>

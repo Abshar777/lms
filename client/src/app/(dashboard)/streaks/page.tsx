@@ -4,9 +4,10 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Flame, Trophy, Calendar, Zap, Target, ChevronLeft, ChevronRight,
-  Loader2, Check, TrendingUp,
+  Check, TrendingUp,
 } from 'lucide-react'
 import { useMyStreak, useUpdateStreakGoal } from '@/lib/api/streaks'
+import Spinner from '@/components/ui/Spinner'
 
 /* ─── Helpers ──────────────────────────────────────────── */
 function fmtDate(iso: string): string {
@@ -157,7 +158,7 @@ function GoalEditor({ current }: { current: number }) {
               <button onClick={save} disabled={update.isPending}
                 className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold text-white transition-all disabled:opacity-60"
                 style={{ background: '#0057b8' }}>
-                {update.isPending ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                {update.isPending ? <Spinner size={12} /> : <Check size={12} />}
                 {update.isPending ? 'Saving…' : 'Save goal'}
               </button>
               <button onClick={() => setEditing(false)}
@@ -192,7 +193,7 @@ export default function StreaksPage() {
   if (isLoading) {
     return (
       <div className="flex h-60 items-center justify-center gap-2 text-sm" style={{ color: '#9CA3AF' }}>
-        <Loader2 size={16} className="animate-spin" />Loading your streak…
+        <Spinner size={16} />Loading your streak…
       </div>
     )
   }

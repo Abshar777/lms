@@ -6,10 +6,11 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Radio, Square, ChevronLeft, Users, Clock,
-  Loader2, AlertCircle, Calendar, Tv2, CheckCircle2,
+  AlertCircle, Calendar, Tv2, CheckCircle2,
   Wifi, WifiOff, BookOpen, Monitor, Copy, Eye, EyeOff,
 } from 'lucide-react'
 import MuxPlayer from '@mux/mux-player-react'
+import Spinner from '@/components/ui/Spinner'
 import {
   useLiveClassById, useStartLiveStreamById, useEndLiveStreamById,
   useStreamCredentials, useRecreateLiveStream,
@@ -40,7 +41,7 @@ function ObsCredsInline({ liveId }: { liveId: string }) {
         className="flex items-center gap-1.5 text-xs font-semibold transition-opacity hover:opacity-70"
         style={{ color: '#0057b8' }}>
         {isFetching
-          ? <Loader2 size={11} className="animate-spin" />
+          ? <Spinner size={11} />
           : open ? <EyeOff size={11} /> : <Eye size={11} />}
         {open ? 'Hide credentials' : 'Show stream credentials'}
       </button>
@@ -184,7 +185,7 @@ export default function MonitorPage({ params }: { params: Promise<{ id: string }
   if (isLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 size={28} className="animate-spin" style={{ color: '#0057b8' }} />
+        <Spinner size={28} />
       </div>
     )
   }
@@ -270,7 +271,7 @@ export default function MonitorPage({ params }: { params: Promise<{ id: string }
               ) : (
                 <p className="flex items-center justify-center gap-2 text-sm"
                   style={{ color: 'rgba(255,255,255,0.4)' }}>
-                  <Loader2 size={14} className="animate-spin" />
+                  <Spinner size={14} />
                   Recording is being processed — usually ready within 5 minutes
                 </p>
               )}
@@ -406,7 +407,7 @@ export default function MonitorPage({ params }: { params: Promise<{ id: string }
                     className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold text-white disabled:opacity-60 transition-all hover:brightness-110"
                     style={{ background: 'rgba(0,87,184,0.20)', border: '1px solid rgba(0,87,184,0.40)', color: '#0057b8' }}>
                     {recreateMutation.isPending
-                      ? <><Loader2 size={12} className="animate-spin" />Regenerating…</>
+                      ? <><Spinner size={12} />Regenerating…</>
                       : <>↻ Regenerate stream key</>}
                   </motion.button>
                   <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
@@ -445,7 +446,7 @@ export default function MonitorPage({ params }: { params: Promise<{ id: string }
               className="inline-flex items-center gap-2.5 rounded-2xl px-8 py-3.5 text-sm font-bold text-white disabled:opacity-60"
               style={{ background: 'linear-gradient(135deg, #EF4444, #DC2626)', boxShadow: '0 4px 20px rgba(239,68,68,0.35)' }}>
               {startMutation.isPending
-                ? <><Loader2 size={16} className="animate-spin" />Enabling stream…</>
+                ? <><Spinner size={16} />Enabling stream…</>
                 : <><Radio size={16} />Go Live Now</>}
             </motion.button>
             <p className="mt-2 text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>
@@ -520,7 +521,7 @@ export default function MonitorPage({ params }: { params: Promise<{ id: string }
           ) : (
             <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 rounded-2xl"
               style={{ background: '#0D0F1A', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <Loader2 size={24} className="animate-spin" style={{ color: '#0057b8' }} />
+              <Spinner size={24} />
               <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
                 Waiting for OBS to connect…
               </p>
@@ -620,7 +621,7 @@ export default function MonitorPage({ params }: { params: Promise<{ id: string }
                     disabled={endMutation.isPending}
                     className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold text-white disabled:opacity-60"
                     style={{ background: '#EF4444' }}>
-                    {endMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <Square size={11} />}
+                    {endMutation.isPending ? <Spinner size={11} /> : <Square size={11} />}
                     End now
                   </button>
                 </div>

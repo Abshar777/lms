@@ -2,9 +2,10 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Send, Sparkles, Bot, User, Loader2, RotateCcw } from 'lucide-react'
+import { X, Send, Sparkles, Bot, User, RotateCcw } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useAIChat, type ChatMessage } from '@/lib/api/ai'
+import Spinner from '@/components/ui/Spinner'
 
 /* ─── Context extraction from URL ───────────────────── */
 function useAIContext(): { lessonId?: string; courseSlug?: string } {
@@ -208,7 +209,7 @@ export function AIChatPanel({ open, onClose }: AIChatPanelProps) {
                   </div>
                   <div className="flex items-center gap-1 rounded-2xl rounded-tl-sm px-3.5 py-2.5"
                     style={{ background: '#F3F4F6' }}>
-                    <Loader2 size={12} className="animate-spin" style={{ color: '#9CA3AF' }} />
+                    <Spinner size={12} variant="gray" />
                     <span className="text-xs" style={{ color: '#9CA3AF' }}>Thinking…</span>
                   </div>
                 </div>

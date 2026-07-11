@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { BookOpen, Send, CheckCircle, Clock, Award, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { BookOpen, Send, CheckCircle, Clock, Award, ChevronDown, ChevronUp } from 'lucide-react'
 import { useSessionHomework, useSubmitHomework, type Homework } from '@/lib/api/homework'
+import Spinner from '@/components/ui/Spinner'
 
 interface Props {
   sessionId: string
@@ -109,7 +110,7 @@ function HomeworkCard({ hw, sessionId }: { hw: Homework; sessionId: string }) {
                     className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 transition-opacity hover:opacity-90"
                     style={{ background: '#0057b8' }}>
                     {submitMutation.isPending
-                      ? <Loader2 size={13} className="animate-spin" />
+                      ? <Spinner size={13} />
                       : <Send size={13} />}
                     Submit
                   </button>
@@ -130,7 +131,7 @@ export function SessionHomework({ sessionId }: Props) {
   if (isLoading) {
     return (
       <div className="flex h-20 items-center justify-center gap-2 text-sm text-gray-400">
-        <Loader2 size={14} className="animate-spin" />Loading homework…
+        <Spinner size={14} />Loading homework…
       </div>
     )
   }

@@ -2,10 +2,11 @@
 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Heart, BookOpen, Star, Users, Clock, Loader2 } from 'lucide-react'
+import { Heart, BookOpen, Star, Users, Clock } from 'lucide-react'
 import { useMyFavorites } from '@/lib/api/favorites'
 import { FavoriteButton } from '@/components/courses/FavoriteButton'
 import type { Course } from '@/types/index'
+import Spinner from '@/components/ui/Spinner'
 
 function fmtMins(mins: number) {
   if (mins < 60) return `${mins}m`
@@ -46,7 +47,7 @@ export default function FavoritesPage() {
 
       {isLoading && (
         <div className="flex items-center justify-center gap-2 py-16 text-sm" style={{ color: '#9CA3AF' }}>
-          <Loader2 size={14} className="animate-spin" />Loading…
+          <Spinner size={14} />Loading…
         </div>
       )}
 

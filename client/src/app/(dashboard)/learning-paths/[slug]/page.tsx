@@ -4,10 +4,11 @@ import { use } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import {
-  ArrowLeft, Loader2, AlertCircle, BookOpen, GraduationCap,
+  ArrowLeft, AlertCircle, BookOpen, GraduationCap,
   Users, Star, Lock, CheckCircle2, ChevronRight,
 } from 'lucide-react'
 import { useLearningPath, type LearningPathCourse } from '@/lib/api/learningpaths'
+import Spinner from '@/components/ui/Spinner'
 
 function fmt(mins: number) {
   const h = Math.floor(mins / 60)
@@ -114,7 +115,7 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ s
   if (isLoading) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-3">
-        <Loader2 size={28} className="animate-spin" style={{ color: '#0057b8' }} />
+        <Spinner size={28} />
       </div>
     )
   }

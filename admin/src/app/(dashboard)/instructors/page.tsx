@@ -7,11 +7,19 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { UserTable } from '@/components/users/UserTable'
 import { AddInstructorModal } from '@/components/instructors/AddInstructorModal'
 import { useCurrentUser } from '@/lib/api/user'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function InstructorsPage() {
-  const [modalOpen, setModalOpen] = useState(false)
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const [modalOpen, setModalOpen] = useState(() => searchParams.get('add') === '1')
   const { data: me } = useCurrentUser()
   const isAdmin = ['super_admin', 'admin', '4x_admin', 'digital_marketing_admin'].includes(me?.role ?? '')
+
+  const handleClose = () => {
+    setModalOpen(false)
+    router.replace('/instructors', { scroll: false })
+  }
 
   return (
     <div>
@@ -37,7 +45,7 @@ export default function InstructorsPage() {
 
       <UserTable role="instructor" label="Instructors" />
 
-      {isAdmin && <AddInstructorModal open={modalOpen} onClose={() => setModalOpen(false)} />}
+      {isAdmin && <AddInstructorModal open={modalOpen} onClose={handleClose} />}
     </div>
   )
 }

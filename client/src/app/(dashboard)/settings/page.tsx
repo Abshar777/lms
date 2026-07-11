@@ -6,11 +6,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   User, Bell, Shield, CreditCard, Globe,
   Camera, Check, LogOut, LayoutDashboard,
-  PanelLeft, AlignJustify, Monitor, Loader2, AlertCircle, Lock, Eye, EyeOff,
+  PanelLeft, AlignJustify, Monitor, AlertCircle, Lock, Eye, EyeOff,
 } from 'lucide-react'
 import { useUIStore } from '@/store/ui.store'
 import { useCurrentUser, useUpdateProfile, useChangePassword, logout as apiLogout } from '@/lib/api/user'
 import { PrivacySecuritySection } from '@/components/auth/PrivacySecuritySection'
+import Spinner from '@/components/ui/Spinner'
 
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.05 } } }
 const fadeUp  = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 280, damping: 26 } } }
@@ -287,7 +288,7 @@ function SettingsContent() {
               </div>
               {mounted && userLoading && (
                 <div className="mb-4 flex items-center gap-2 text-xs" style={{ color: '#9CA3AF' }}>
-                  <Loader2 size={12} className="animate-spin" />Loading your profile…
+                  <Spinner size={12} />Loading your profile…
                 </div>
               )}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -350,7 +351,7 @@ function SettingsContent() {
                     boxShadow: saved ? '0 4px 14px rgba(34,197,94,0.28)' : '0 4px 14px rgba(0,87,184,0.28)',
                   }}>
                   {updateMutation.isPending
-                    ? <><Loader2 size={14} className="animate-spin" />Saving…</>
+                    ? <><Spinner size={14} />Saving…</>
                     : saved
                       ? <><Check size={14} />Saved!</>
                       : 'Save changes'}
@@ -451,7 +452,7 @@ function SettingsContent() {
                     boxShadow: pwSaved ? '0 4px 14px rgba(34,197,94,0.28)' : '0 4px 14px rgba(0,87,184,0.28)',
                   }}>
                   {changePasswordMutation.isPending
-                    ? <><Loader2 size={14} className="animate-spin" />Updating…</>
+                    ? <><Spinner size={14} />Updating…</>
                     : pwSaved
                       ? <><Check size={14} />Password updated!</>
                       : <><Lock size={14} />Update password</>}
@@ -601,7 +602,7 @@ export default function SettingsPage() {
   return (
     <Suspense fallback={
       <div className="flex h-40 items-center justify-center">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-orange-200 border-t-blue-500" />
+        <Spinner size={24} />
       </div>
     }>
       <SettingsContent />

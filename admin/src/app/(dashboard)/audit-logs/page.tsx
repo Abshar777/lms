@@ -3,10 +3,11 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import {
-  ClipboardList, ChevronLeft, ChevronRight, Loader2, Search, X,
+  ClipboardList, ChevronLeft, ChevronRight, Search, X,
   AlertCircle, User, BookOpen, Tag, Star, ShoppingBag,
 } from 'lucide-react'
 import { useAuditLogs, type AuditLog } from '@/lib/api/auditlogs'
+import Spinner from '@/components/ui/Spinner'
 
 /* ─── Helpers ──────────────────────────────────────────── */
 function fmtDate(iso: string): string {
@@ -242,7 +243,7 @@ export default function AuditLogsPage() {
             <tbody>
               {isLoading ? (
                 <tr><td colSpan={6} className="py-16 text-center">
-                  <Loader2 size={18} className="inline animate-spin" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                  <Spinner size={18} variant="muted" />
                 </td></tr>
               ) : isError ? (
                 <tr><td colSpan={6} className="py-16 text-center">

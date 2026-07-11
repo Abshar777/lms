@@ -3,10 +3,11 @@
 import { useState } from 'react'
 import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { BookOpen, Plus, Trash2, Award, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { BookOpen, Plus, Trash2, Award, ChevronDown, ChevronUp } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiGet, api } from '@/lib/axios'
+import Spinner from '@/components/ui/Spinner'
 
 /* ── Types ────────────────────────────────────────────── */
 interface Homework {
@@ -133,7 +134,7 @@ export default function HomeworkPage() {
                   onClick={() => createMutation.mutate({ title, description, dueDate: dueDate ? new Date(dueDate).toISOString() : undefined })}
                   className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                   style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)' }}>
-                  {createMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                  {createMutation.isPending ? <Spinner size={14} /> : <Plus size={14} />}
                   Create
                 </button>
                 <button onClick={() => setShowCreate(false)}
@@ -161,7 +162,7 @@ export default function HomeworkPage() {
 
         {homework.isLoading ? (
           <div className="flex h-20 items-center justify-center gap-2 text-sm" style={{ color: '#9CA3AF' }}>
-            <Loader2 size={15} className="animate-spin" /><span>Loading…</span>
+            <Spinner size={15} /><span>Loading…</span>
           </div>
         ) : homeworkList.length === 0 ? (
           <p className="text-sm py-6 text-center" style={{ color: '#9CA3AF' }}>No homework assigned yet</p>
@@ -211,7 +212,7 @@ export default function HomeworkPage() {
 
         {submissions.isLoading ? (
           <div className="flex h-20 items-center justify-center gap-2 text-sm" style={{ color: '#9CA3AF' }}>
-            <Loader2 size={15} className="animate-spin" /><span>Loading…</span>
+            <Spinner size={15} /><span>Loading…</span>
           </div>
         ) : submissionList.length === 0 ? (
           <p className="text-sm py-6 text-center" style={{ color: '#9CA3AF' }}>No submissions yet</p>
@@ -279,7 +280,7 @@ export default function HomeworkPage() {
                           onClick={() => gradeMutation.mutate({ subId: sub.id, grade: Number(g.grade), feedback: g.feedback })}
                           className="flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
                           style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)' }}>
-                          {gradeMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Award size={12} />}
+                          {gradeMutation.isPending ? <Spinner size={12} /> : <Award size={12} />}
                           <span>Save Grade</span>
                         </button>
                       </div>

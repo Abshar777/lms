@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ListChecks, Activity, Clock, CheckCircle2, Play,
-  Flame, X, ChevronRight, Loader2, Sparkles, BookOpen,
+  Flame, X, ChevronRight, Sparkles, BookOpen,
   Trophy, Target, Video, Radio, Calendar, ArrowUpRight,
   TrendingUp, Zap,
 } from 'lucide-react'
@@ -13,6 +13,7 @@ import { useCurrentUser } from '@/lib/api/user'
 import { useMyEnrollments, useMyActivity, type MyEnrollment, type ActivityItem } from '@/lib/api/enrollments'
 import { useUpcomingLiveClasses, isLive, type LiveClass } from '@/lib/api/liveClasses'
 import { useUIStore } from '@/store/ui.store'
+import Spinner from '@/components/ui/Spinner'
 
 /* ── Helpers ──────────────────────────────────────────── */
 function fmtMins(mins: number): string {
@@ -196,7 +197,7 @@ export function RightSidebar() {
                 <SectionHeader icon={ListChecks} title="Today's plan" />
                 {!enrollments && (
                   <div className="flex items-center gap-1.5 py-1.5 text-xs" style={{ color: '#B0B7C3' }}>
-                    <Loader2 size={10} className="animate-spin" />Loading…
+                    <Spinner size={10} />Loading…
                   </div>
                 )}
                 {enrollments && todos.length === 0 && (
@@ -256,7 +257,7 @@ export function RightSidebar() {
                 <SectionHeader icon={Activity} title="Recent activity" />
                 {!activity && (
                   <div className="flex items-center gap-1.5 py-1.5 text-xs" style={{ color: '#B0B7C3' }}>
-                    <Loader2 size={10} className="animate-spin" />Loading…
+                    <Spinner size={10} />Loading…
                   </div>
                 )}
                 {activity && activity.items.length === 0 && (

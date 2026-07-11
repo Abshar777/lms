@@ -1,16 +1,18 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  X, User, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle,
+  X, User, Mail, Lock, Eye, EyeOff, AlertCircle,
   CheckCircle2, Users, ChevronDown, ChevronUp,
   Check, Unlock, ArrowLeft, ArrowRight,
+  TrendingUp, Cpu, BarChart2, Tag,
 } from 'lucide-react'
 import { useCreateInstructor } from '@/lib/api/instructors'
+import Spinner from '@/components/ui/Spinner'
 import { useCourses } from '@/lib/api/courses'
 import { useCourseOutline } from '@/lib/api/outline'
 
@@ -24,60 +26,11 @@ interface BlockState {
   [courseId: string]: CourseState
 }
 
-/* ── Dark custom dropdown ───────────────────────────── */
-function DarkSelect({ value, onChange, options, placeholder }: {
-  value: string; onChange: (v: string) => void
-  options: { value: string; label: string }[]; placeholder?: string
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    function onOut(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
-    document.addEventListener('mousedown', onOut)
-    return () => document.removeEventListener('mousedown', onOut)
-  }, [])
-  const selected = options.find(o => o.value === value)
-  const label = selected?.label ?? placeholder ?? 'Select…'
-  return (
-    <div ref={ref} className="relative">
-      <button type="button" onClick={() => setOpen(v => !v)}
-        className="w-full rounded-xl py-2.5 pl-4 pr-9 text-sm outline-none flex items-center"
-        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', color: value ? '#fff' : 'rgba(255,255,255,0.3)' }}>
-        <span className="truncate">{label}</span>
-        <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
-          style={{ color: 'rgba(255,255,255,0.3)', transform: open ? 'translateY(-50%) rotate(180deg)' : 'translateY(-50%)', transition: 'transform 0.15s' }} />
-      </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={{ duration: 0.12 }}
-            className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl py-1"
-            style={{ background: '#0F1020', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 16px 40px rgba(0,0,0,0.6)' }}>
-            {placeholder && (
-              <button type="button" onClick={() => { onChange(''); setOpen(false) }}
-                className="w-full px-3 py-2 text-left text-sm transition-colors hover:bg-white/05"
-                style={{ color: 'rgba(255,255,255,0.3)' }}>{placeholder}</button>
-            )}
-            {options.map(o => (
-              <button key={o.value} type="button" onClick={() => { onChange(o.value); setOpen(false) }}
-                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors hover:bg-white/05"
-                style={{ color: o.value === value ? '#0057b8' : 'rgba(255,255,255,0.8)' }}>
-                {o.label}
-                {o.value === value && <Check size={12} style={{ color: '#0057b8' }} />}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
-
-const CATEGORY_OPTIONS = [
-  { value: '4x-trading',        label: 'FOREX Trading' },
-  { value: 'digital-marketing', label: 'Digital Marketing' },
-  { value: 'ai',                label: 'AI' },
-]
+const CATS = [
+  { value: '4x-trading',        label: 'FOREX Trading',     color: '#fb923c', Icon: TrendingUp },
+  { value: 'digital-marketing', label: 'Digital Marketing', color: '#60a5fa', Icon: BarChart2 },
+  { value: 'ai',                label: 'AI',                color: '#c084fc', Icon: Cpu },
+] as const
 
 /* ── Zod schema for step 1 ─────────────────────────── */
 const accountSchema = z.object({
@@ -132,7 +85,7 @@ function CourseOutlinePanel({
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 py-3 px-4 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
-        <Loader2 size={11} className="animate-spin" />Loading modules…
+        <Spinner size={11} />Loading modules…
       </div>
     )
   }
@@ -214,12 +167,13 @@ interface Props {
 }
 
 export function AddStudentModal({ open, onClose }: Props) {
-  const [step, setStep]       = useState<1 | 2>(1)
-  const [showPw, setShowPw]   = useState(false)
-  const [success, setSuccess] = useState(false)
+  const [step, setStep]             = useState<1 | 2>(1)
+  const [showPw, setShowPw]         = useState(false)
+  const [success, setSuccess]       = useState(false)
   const [blockState, setBlockState] = useState<BlockState>({})
   const [accountValues, setAccountValues] = useState<AccountValues | null>(null)
-  const [category, setCategory] = useState<'4x-trading' | 'digital-marketing' | 'ai' | ''>('')
+  const [categories, setCategories] = useState<Set<string>>(new Set())
+  const [categoryError, setCategoryError] = useState<string | null>(null)
 
   const { mutateAsync, isPending, error: apiError } = useCreateInstructor()
   const { data: coursesData, isLoading: coursesLoading } = useCourses({ per_page: 50, status: 'published' })
@@ -236,6 +190,8 @@ export function AddStudentModal({ open, onClose }: Props) {
 
   /* Step 1 → Step 2 */
   const onStep1Submit = (values: AccountValues) => {
+    if (categories.size === 0) { setCategoryError('Please select at least one program category'); return }
+    setCategoryError(null)
     setAccountValues(values)
     setStep(2)
   }
@@ -304,11 +260,11 @@ export function AddStudentModal({ open, onClose }: Props) {
       }))
 
     await mutateAsync({
-      name:     accountValues.name,
-      email:    accountValues.email,
-      password: accountValues.password,
-      role:     'student',
-      category: (category || undefined) as '4x-trading' | 'digital-marketing' | 'ai' | undefined,
+      name:       accountValues.name,
+      email:      accountValues.email,
+      password:   accountValues.password,
+      role:       'student',
+      categories: Array.from(categories) as ('4x-trading' | 'digital-marketing' | 'ai')[],
       courses,
     })
     setSuccess(true)
@@ -318,7 +274,7 @@ export function AddStudentModal({ open, onClose }: Props) {
       setStep(1)
       setBlockState({})
       setAccountValues(null)
-      setCategory('')
+      setCategories(new Set())
       onClose()
     }, 1800)
   }
@@ -329,7 +285,8 @@ export function AddStudentModal({ open, onClose }: Props) {
     setStep(1)
     setBlockState({})
     setAccountValues(null)
-    setCategory('')
+    setCategories(new Set())
+    setCategoryError(null)
     setSuccess(false)
     onClose()
   }
@@ -426,14 +383,44 @@ export function AddStudentModal({ open, onClose }: Props) {
                         </div>
                       </Field>
 
-                      <Field label="Program Category">
-                        <DarkSelect
-                          value={category}
-                          onChange={v => setCategory(v as '4x-trading' | 'digital-marketing' | 'ai' | '')}
-                          options={CATEGORY_OPTIONS}
-                          placeholder="Select category…"
-                        />
-                      </Field>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold"
+                          style={{ color: 'rgba(255,255,255,0.5)' }}>Program Category * <span style={{ color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}>(select all that apply)</span></label>
+                        <div className="flex flex-wrap gap-2">
+                          {CATS.map(({ value, label, color, Icon }) => {
+                            const active = categories.has(value)
+                            return (
+                              <button key={value} type="button"
+                                onClick={() => {
+                                  setCategoryError(null)
+                                  setCategories(prev => {
+                                    const next = new Set(prev)
+                                    if (next.has(value)) next.delete(value)
+                                    else next.add(value)
+                                    return next
+                                  })
+                                }}
+                                className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
+                                style={active
+                                  ? { background: `${color}18`, border: `1px solid ${color}45`, color }
+                                  : categoryError
+                                  ? { background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.25)', color: 'rgba(255,255,255,0.32)' }
+                                  : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.32)' }
+                                }>
+                                <Icon size={11} />{label}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        <AnimatePresence>
+                          {categoryError && (
+                            <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                              className="mt-1.5 flex items-center gap-1 text-xs" style={{ color: '#F87171' }}>
+                              <AlertCircle size={10} />{categoryError}
+                            </motion.p>
+                          )}
+                        </AnimatePresence>
+                      </div>
 
                       <Field label="Email address *" error={errors.email?.message}>
                         <div className="relative">
@@ -499,7 +486,7 @@ export function AddStudentModal({ open, onClose }: Props) {
 
                       {coursesLoading ? (
                         <div className="flex items-center gap-2 py-6 justify-center text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                          <Loader2 size={14} className="animate-spin" />Loading courses…
+                          <Spinner size={14} />Loading courses…
                         </div>
                       ) : (coursesData?.docs.length ?? 0) === 0 ? (
                         <p className="py-6 text-center text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
@@ -619,7 +606,7 @@ export function AddStudentModal({ open, onClose }: Props) {
                             className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-60"
                             style={{ background: 'linear-gradient(135deg, #2F6BFF, #5B8FFF)' }}>
                             {isPending
-                              ? <><Loader2 size={14} className="animate-spin" />Creating…</>
+                              ? <><Spinner size={14} />Creating…</>
                               : <>Create Student</>}
                           </motion.button>
                         </div>

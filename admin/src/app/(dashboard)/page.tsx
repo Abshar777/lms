@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion'
 import {
   BookOpen, Users, GraduationCap, DollarSign,
-  TrendingUp, Star, Loader2, ArrowUpRight,
+  TrendingUp, Star, ArrowUpRight,
 } from 'lucide-react'
 import { StatCard } from '@/components/ui/StatCard'
 import { EnrollmentsChart } from '@/components/analytics/EnrollmentsChart'
@@ -14,6 +14,7 @@ import { useCourses } from '@/lib/api/courses'
 import { useAdminStats } from '@/lib/api/stats'
 import { useCurrentUser } from '@/lib/api/user'
 import Link from 'next/link'
+import Spinner from '@/components/ui/Spinner'
 
 function timeGreeting() {
   const h = new Date().getHours()
@@ -100,7 +101,7 @@ export default function DashboardPage() {
           <div className="">
             {!coursesData && (
               <div className="flex items-center justify-center gap-2 px-5 py-10 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                <Loader2 size={14} className="animate-spin" />Loading…
+                <Spinner size={14} />Loading…
               </div>
             )}
             {coursesData?.docs.length === 0 && (

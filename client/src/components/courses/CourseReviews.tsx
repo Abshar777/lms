@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Star, Loader2, AlertCircle, MessageSquare, ThumbsUp, Flag, CornerDownRight } from 'lucide-react'
+import { Star, AlertCircle, MessageSquare, ThumbsUp, Flag, CornerDownRight } from 'lucide-react'
 import { useCourseReviews, useSubmitReview, useVoteHelpful, useReportReview, type Review } from '@/lib/api/reviews'
 import { RatingHistogram } from './RatingHistogram'
+import Spinner from '@/components/ui/Spinner'
 
 interface Props {
   courseId:    string
@@ -54,7 +55,7 @@ export function CourseReviews({ courseId, slug, canReview, ratingAvg, ratingCoun
 
       {isLoading && (
         <div className="mt-6 flex items-center gap-2 text-sm" style={{ color: '#9CA3AF' }}>
-          <Loader2 size={14} className="animate-spin" /> Loading reviews…
+          <Spinner size={14} /> Loading reviews…
         </div>
       )}
 

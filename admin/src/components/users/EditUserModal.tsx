@@ -2,8 +2,9 @@
 
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Loader2, ChevronDown, Check, Camera } from 'lucide-react'
+import { X, ChevronDown, Check, Camera } from 'lucide-react'
 import { useUpdateUser, type AdminUser, type AdminUserRole } from '@/lib/api/users'
+import Spinner from '@/components/ui/Spinner'
 import { useToast } from '@/store/ui.store'
 import { api } from '@/lib/axios'
 import type { CurrentAdmin } from '@/lib/api/user'
@@ -381,7 +382,7 @@ export function EditUserModal({ user, me, onClose, onSuccess }: Props) {
               <button type="submit" disabled={updateUser.isPending || uploading}
                 className="flex items-center gap-1.5 rounded-xl px-5 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)', boxShadow: '0 4px 14px rgba(0,87,184,0.3)' }}>
-                {(updateUser.isPending || uploading) && <Loader2 size={13} className="animate-spin" />}
+                {(updateUser.isPending || uploading) && <Spinner size={13} />}
                 {uploading ? 'Uploading…' : 'Save changes'}
               </button>
             </div>

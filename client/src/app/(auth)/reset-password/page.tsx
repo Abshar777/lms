@@ -7,8 +7,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Lock, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react'
+import { Lock, Eye, EyeOff, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react'
 import { resetPassword } from '@/lib/api/user'
+import Spinner from '@/components/ui/Spinner'
 
 const schema = z.object({
   password: z
@@ -131,7 +132,7 @@ function ResetPasswordForm() {
         whileHover={{ y: -1 }} whileTap={{ scale: 0.98 }}
         className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white transition-all disabled:opacity-60"
         style={{ background: '#0057b8', boxShadow: '0 4px 18px rgba(0,87,184,0.30)' }}>
-        {isSubmitting ? <><Loader2 size={14} className="animate-spin" />Updating…</> : 'Set new password'}
+        {isSubmitting ? <><Spinner size={14} />Updating…</> : 'Set new password'}
       </motion.button>
     </form>
   )

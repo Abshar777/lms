@@ -2,12 +2,11 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Bell, Plus, ChevronDown, X, BookOpen, Users, GraduationCap, Menu, UserCog } from 'lucide-react'
+import { Search, Bell, Plus, ChevronDown, X, BookOpen, Users, GraduationCap, Menu, UserCog, LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { useUIStore } from '@/store/ui.store'
 import { useCurrentUser, logout } from '@/lib/api/user'
 import { useRouter } from 'next/navigation'
-import { LogOut } from 'lucide-react'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useImpersonationStore } from '@/store/impersonation.store'
 
@@ -16,12 +15,6 @@ const notifications = [
   { id: 2, type: 'review',     text: 'New 5★ review on TypeScript course',   time: '14m ago', unread: true },
   { id: 3, type: 'instructor', text: 'Alex Kim submitted new course draft',   time: '1h ago',  unread: false },
   { id: 4, type: 'enroll',     text: '25 new students this hour',             time: '2h ago',  unread: false },
-]
-
-const quickActions = [
-  { label: 'New Course',     href: '/courses/new',  icon: BookOpen },
-  { label: 'Add Student',    href: '/students/new', icon: Users },
-  { label: 'Add Instructor', href: '/instructors/new', icon: GraduationCap },
 ]
 
 export function AdminTopbar() {
@@ -142,17 +135,22 @@ export function AdminTopbar() {
                 exit={{ opacity: 0, y: -8, scale: 0.96 }} transition={{ type: 'spring', stiffness: 400, damping: 28 }}
                 className="absolute right-0 top-full mt-2 w-48 rounded-2xl p-1.5 z-50"
                 style={{ background: '#13162A', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
-                {quickActions.map(a => {
-                  const Icon = a.icon
-                  return (
-                    <Link key={a.href} href={a.href} onClick={() => setQuickOpen(false)}>
-                      <div className="flex items-center gap-2.5 rounded-xl px-3 py-2 transition-colors hover:bg-white/05 cursor-pointer">
-                        <Icon size={14} style={{ color: '#0057b8' }} />
-                        <span className="text-sm font-medium text-white">{a.label}</span>
-                      </div>
-                    </Link>
-                  )
-                })}
+                <Link href="/courses/new" onClick={() => setQuickOpen(false)}>
+                  <div className="flex items-center gap-2.5 rounded-xl px-3 py-2 transition-colors hover:bg-white/05 cursor-pointer">
+                    <BookOpen size={14} style={{ color: '#0057b8' }} />
+                    <span className="text-sm font-medium text-white">New Course</span>
+                  </div>
+                </Link>
+                <button type="button" className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 transition-colors hover:bg-white/05"
+                  onClick={() => { setQuickOpen(false); router.push('/students?add=1') }}>
+                  <Users size={14} style={{ color: '#0057b8' }} />
+                  <span className="text-sm font-medium text-white">Add Student</span>
+                </button>
+                <button type="button" className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 transition-colors hover:bg-white/05"
+                  onClick={() => { setQuickOpen(false); router.push('/instructors?add=1') }}>
+                  <GraduationCap size={14} style={{ color: '#0057b8' }} />
+                  <span className="text-sm font-medium text-white">Add Instructor</span>
+                </button>
               </motion.div>
             )}
           </AnimatePresence>
@@ -254,6 +252,7 @@ export function AdminTopbar() {
       {(notifOpen || quickOpen || avatarOpen) && (
         <div className="fixed inset-0 z-40" onClick={() => { setNotifOpen(false); setQuickOpen(false); setAvatarOpen(false) }} />
       )}
+
     </motion.header>
   )
 }

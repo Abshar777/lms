@@ -4,11 +4,12 @@ import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import {
-  BookOpen, Play, Search, Loader2, CheckCircle2,
+  BookOpen, Play, Search, CheckCircle2,
 } from 'lucide-react'
 import { useMyEnrollments, type MyEnrollment } from '@/lib/api/enrollments'
 import type { Course } from '@/types/index'
 import { StreakWidget } from '@/components/ui/StreakWidget'
+import Spinner from '@/components/ui/Spinner'
 
 const STATUS_TABS = ['All Status', 'Not Started', 'In Progress', 'Completed'] as const
 type StatusTab = typeof STATUS_TABS[number]
@@ -55,7 +56,7 @@ export default function MyLearningPage() {
   if (isLoading) {
     return (
       <div className="flex h-[60vh] items-center justify-center gap-3">
-        <Loader2 size={20} className="animate-spin" style={{ color: '#0057b8' }} />
+        <Spinner size={20} />
         <p className="text-sm" style={{ color: '#9CA3AF' }}>Loading your library…</p>
       </div>
     )

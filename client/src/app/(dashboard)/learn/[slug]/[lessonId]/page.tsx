@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
-  ArrowLeft, CheckCircle2, Lock, Loader2, AlertCircle,
+  ArrowLeft, CheckCircle2, Lock, AlertCircle,
   ChevronLeft, ChevronRight, ChevronDown, Play, Circle, Bookmark,
   List, MessageSquare, FileText, BookmarkIcon, AlignLeft, Video,
   RotateCcw, RotateCw,
@@ -25,6 +25,7 @@ import { DiscussionPanel } from '@/components/learn/DiscussionPanel'
 import { NotesPanel } from '@/components/learn/NotesPanel'
 import { BookmarksPanel } from '@/components/learn/BookmarksPanel'
 import { Button } from '@/components/ui/button'
+import Spinner from '@/components/ui/Spinner'
 
 type SidebarTab = 'curriculum' | 'transcript' | 'qa' | 'notes' | 'bookmarks'
 
@@ -59,7 +60,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
   if (isLoading) {
     return (
       <div className="flex h-[70vh] flex-col items-center justify-center gap-3">
-        <Loader2 size={30} className="animate-spin" style={{ color: '#0057b8' }} />
+        <Spinner size={30} />
         <p className="text-sm" style={{ color: '#9CA3AF' }}>Loading lesson…</p>
       </div>
     )
@@ -245,7 +246,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
           <div className="p-4">
             {transcriptLoading ? (
               <div className="flex items-center gap-2 text-sm" style={{ color: '#9CA3AF' }}>
-                <Loader2 size={14} className="animate-spin" />Loading transcript…
+                <Spinner size={14} />Loading transcript…
               </div>
             ) : transcriptText ? (
               <div>
@@ -323,7 +324,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ slug: s
                 className="flex items-center gap-1 rounded-xl px-4 py-2 text-xs font-bold disabled:opacity-60"
                 style={{ background: isCompleted ? '#22C55E' : '#0057b8' }}>
                 {markComplete.isPending
-                  ? <><Loader2 size={13} className="animate-spin" />Saving…</>
+                  ? <><Spinner size={13} />Saving…</>
                   : isCompleted
                     ? <><CheckCircle2 size={13} />Completed</>
                     : <>Mark complete{nextLesson ? ' & next' : ''}{nextLesson && <ChevronRight size={13} />}</>}

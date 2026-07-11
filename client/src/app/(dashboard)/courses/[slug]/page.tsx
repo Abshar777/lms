@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   ArrowLeft, Star, Users, Clock, Globe, BookOpen,
-  CheckCircle2, Play, Tag, Loader2, AlertCircle, Zap,
+  CheckCircle2, Play, Tag, AlertCircle, Zap,
   ShoppingCart, Tag as TagIcon, X, ChevronDown,
   Lock, Video, FileText, HelpCircle,
 } from 'lucide-react'
@@ -20,6 +20,7 @@ import { AINotesPanel } from '@/components/courses/AINotesPanel'
 import { LiveClassesPanel } from '@/components/courses/LiveClassesPanel'
 import { FavoriteButton } from '@/components/courses/FavoriteButton'
 import { CourseRecommendations } from '@/components/courses/CourseRecommendations'
+import Spinner from '@/components/ui/Spinner'
 
 function fmt(mins: number) {
   const h = Math.floor(mins / 60)
@@ -76,7 +77,7 @@ function CourseDetailInner({ slug }: { slug: string }) {
   if (isLoading) {
     return (
       <div className="flex h-[70vh] flex-col items-center justify-center gap-3">
-        <Loader2 size={30} className="animate-spin" style={{ color: '#0057b8' }} />
+        <Spinner size={30} />
         <p className="text-sm" style={{ color: '#9CA3AF' }}>Loading course…</p>
       </div>
     )
@@ -452,7 +453,7 @@ function CourseDetailInner({ slug }: { slug: string }) {
                     className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all disabled:opacity-70"
                     style={{ background: '#0057b8', boxShadow: '0 6px 24px rgba(0,87,184,0.30)' }}>
                     {checkout.isPending
-                      ? <><Loader2 size={15} className="animate-spin" />Redirecting…</>
+                      ? <><Spinner size={15} />Redirecting…</>
                       : <><ShoppingCart size={15} />Buy for {formatPrice(discountedPrice)}</>}
                   </motion.button>
 
@@ -515,7 +516,7 @@ function CourseDetailInner({ slug }: { slug: string }) {
                   className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all disabled:opacity-70"
                   style={{ background: '#0057b8', boxShadow: '0 6px 24px rgba(0,87,184,0.30)' }}>
                   {enroll.isPending
-                    ? <><Loader2 size={15} className="animate-spin" />Enrolling…</>
+                    ? <><Spinner size={15} />Enrolling…</>
                     : <><Zap size={15} fill="white" />Enroll for free</>}
                 </motion.button>
               )}
@@ -579,7 +580,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ slug: s
   return (
     <Suspense fallback={
       <div className="flex h-[70vh] flex-col items-center justify-center gap-3">
-        <Loader2 size={30} className="animate-spin" style={{ color: '#0057b8' }} />
+        <Spinner size={30} />
         <p className="text-sm" style={{ color: '#9CA3AF' }}>Loading course…</p>
       </div>
     }>

@@ -4,7 +4,7 @@ import { use } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import {
-  Radio, Clock, Loader2, AlertCircle, Calendar, ChevronLeft,
+  Radio, Clock, AlertCircle, Calendar, ChevronLeft,
   ExternalLink, BookOpen, Users, Tv2,
 } from 'lucide-react'
 import { useWatchAccess } from '@/lib/api/liveClasses'
@@ -12,6 +12,7 @@ import MuxPlayer from '@mux/mux-player-react'
 import { useCurrentUser } from '@/lib/api/user'
 import { SessionHomework } from '@/components/live-classes/SessionHomework'
 import { SessionFeedback } from '@/components/live-classes/SessionFeedback'
+import Spinner from '@/components/ui/Spinner'
 
 /* ── Helpers ─────────────────────────────────────────── */
 function StatusBadge({ status }: { status: string }) {
@@ -75,7 +76,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <Loader2 size={24} className="animate-spin" style={{ color: '#0057b8' }} />
+        <Spinner size={24} />
       </div>
     )
   }

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Shield, Smartphone, Monitor, Globe, X, AlertCircle, Loader2,
+  Shield, Smartphone, Monitor, Globe, X, AlertCircle,
   CheckCircle2, Trash2, UserX, Clock, LogOut, KeyRound, Copy, Check,
 } from 'lucide-react'
 import {
@@ -12,6 +12,7 @@ import {
   type ActiveSession,
 } from '@/lib/api/user'
 import { useTotpStatus, useTotpSetup, useTotpEnable, useTotpDisable } from '@/lib/api/totp'
+import Spinner from '@/components/ui/Spinner'
 
 function fmtRel(iso?: string): string {
   if (!iso) return '—'
@@ -149,7 +150,7 @@ function TwoFactorSection() {
         <button onClick={handleSetup} disabled={setup.isPending}
           className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-white transition-all disabled:opacity-60 hover:opacity-90"
           style={{ background: '#0057b8', boxShadow: '0 4px 14px rgba(0,87,184,0.25)' }}>
-          {setup.isPending ? <><Loader2 size={13} className="animate-spin" />Setting up…</> : <><KeyRound size={13} />Enable 2FA</>}
+          {setup.isPending ? <><Spinner size={13} />Setting up…</> : <><KeyRound size={13} />Enable 2FA</>}
         </button>
       )}
 
@@ -210,7 +211,7 @@ function TwoFactorSection() {
                 <button onClick={handleEnable} disabled={code.length !== 6 || enable.isPending}
                   className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all disabled:opacity-50"
                   style={{ background: '#22C55E' }}>
-                  {enable.isPending ? <><Loader2 size={13} className="animate-spin" />Verifying…</> : <><CheckCircle2 size={13} />Verify & enable</>}
+                  {enable.isPending ? <><Spinner size={13} />Verifying…</> : <><CheckCircle2 size={13} />Verify & enable</>}
                 </button>
                 <button onClick={() => { setSetupData(null); setCode(''); setError(null) }}
                   className="rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors hover:bg-gray-50"
@@ -251,7 +252,7 @@ function TwoFactorSection() {
               <button onClick={handleDisable} disabled={!disablePw || disable.isPending}
                 className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
                 style={{ background: '#EF4444' }}>
-                {disable.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
+                {disable.isPending ? <Spinner size={13} /> : null}
                 Disable
               </button>
               <button onClick={() => { setShowDisable(false); setDisablePw(''); setError(null) }}
@@ -289,7 +290,7 @@ export function PrivacySecuritySection() {
 
         {isLoading && (
           <div className="flex items-center gap-2 text-xs" style={{ color: '#9CA3AF' }}>
-            <Loader2 size={12} className="animate-spin" />Loading sessions…
+            <Spinner size={12} />Loading sessions…
           </div>
         )}
 
@@ -393,7 +394,7 @@ function SessionRow({ session, onRevoke, revoking }: {
           <button onClick={async () => { await onRevoke(); setConfirming(false) }}
             className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-white"
             style={{ background: '#EF4444' }}>
-            {revoking ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle2 size={10} />}
+            {revoking ? <Spinner size={10} /> : <CheckCircle2 size={10} />}
             Confirm
           </button>
         </div>
@@ -550,7 +551,7 @@ function DangerCard(p: DangerCardProps) {
                       className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold text-white transition-opacity disabled:opacity-50"
                       style={{ background: palette.bg }}>
                       {pending
-                        ? <><Loader2 size={13} className="animate-spin" />Working…</>
+                        ? <><Spinner size={13} />Working…</>
                         : p.confirmLabel}
                     </button>
                   </div>

@@ -5,12 +5,12 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Video, Radio, Calendar, Clock, Users, Loader2,
+  Video, Radio, Calendar, Clock, Users,
   AlertCircle, Tv2, ExternalLink, BookOpen, Star,
   ChevronRight, PlayCircle, CalendarDays, Pencil, Search, X, Plus,
   LayoutList, CalendarRange, ChevronLeft, GraduationCap,
   UserCheck, LayoutGrid, Building2, MapPin, UserPlus,
-  ChevronDown, User,
+  ChevronDown, User, Globe,
 } from 'lucide-react'
 import { useAllLiveClasses, useCreateLiveClass, type LiveClass, type LiveClassType } from '@/lib/api/liveClasses'
 import { datetimeLocalToISO } from '@/lib/timezone'
@@ -21,7 +21,9 @@ import { useCurrentUser } from '@/lib/api/user'
 import { EditLiveClassModal } from '@/components/live-classes/EditLiveClassModal'
 import { CreateOfflineClassModal } from '@/components/live-classes/CreateOfflineClassModal'
 import { BookForStudentModal } from '@/components/live-classes/BookForStudentModal'
+import { DarkSelect, DarkDateTimePicker } from '@/components/live-classes/FormWidgets'
 import { Button, MotionButton } from '@/components/ui/button'
+import Spinner from '@/components/ui/Spinner'
 
 /* ── Instructor dropdown (dark theme) ───────────────────── */
 function InstructorDropdown({ value, onChange, instructors }: {
@@ -104,6 +106,206 @@ function InstructorDropdown({ value, onChange, instructors }: {
                       {i.name[0]?.toUpperCase()}
                     </div>}
                 <span className="truncate">{i.name}</span>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+/* ── Course dropdown (dark theme) ───────────────────── */
+function CourseDropdown({ value, onChange, courses }: {
+  value: string
+  onChange: (v: string) => void
+  courses: { id: string; title: string }[]
+}) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const ref = useRef<HTMLDivElement>(null)
+  const active = !!value
+  const selected = courses.find(c => c.id === value)
+  const filtered = query.trim()
+    ? courses.filter(c => c.title.toLowerCase().includes(query.trim().toLowerCase()))
+    : courses
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setQuery('') }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-2 rounded-xl py-1.5 pl-2.5 pr-7 text-xs font-semibold outline-none cursor-pointer transition-all whitespace-nowrap"
+        style={{
+          background: active ? 'rgba(0,87,184,0.15)' : '#1e2035',
+          border:     active ? '1px solid rgba(0,87,184,0.35)' : '1px solid rgba(255,255,255,0.10)',
+          color:      active ? '#60a5fa' : 'rgba(255,255,255,0.65)',
+        }}
+      >
+        <BookOpen size={11} className="flex-shrink-0" style={{ opacity: 0.6 }} />
+        <span className="max-w-[130px] truncate">
+          {selected ? selected.title : 'All courses'}
+        </span>
+        <ChevronDown size={11} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 opacity-50" />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.12 }}
+            className="absolute left-0 top-full z-50 mt-1.5 w-64 overflow-hidden rounded-xl"
+            style={{ background: '#1a1d2e', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 20px 48px rgba(0,0,0,0.6)' }}
+          >
+            {/* Search — shown when there are more than 5 courses */}
+            {courses.length > 5 && (
+              <div className="p-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                <div className="relative">
+                  <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                  <input
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    placeholder="Search courses…"
+                    className="w-full rounded-lg py-1.5 pl-7 pr-3 text-xs text-white outline-none placeholder:text-white/25"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
+                    onClick={e => e.stopPropagation()}
+                  />
+                </div>
+              </div>
+            )}
+            <div className="max-h-52 overflow-y-auto py-1" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
+              {/* All courses option */}
+              <button
+                type="button"
+                onClick={() => { onChange(''); setOpen(false); setQuery('') }}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-colors hover:bg-white/[0.06]"
+                style={{ color: !value ? '#60a5fa' : 'rgba(255,255,255,0.7)' }}
+              >
+                <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                  <BookOpen size={10} style={{ color: 'rgba(255,255,255,0.4)' }} />
+                </div>
+                All courses
+                {!value && <span className="ml-auto text-[10px]" style={{ color: '#60a5fa' }}>✓</span>}
+              </button>
+              {filtered.map(c => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => { onChange(c.id); setOpen(false); setQuery('') }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-colors hover:bg-white/[0.06]"
+                  style={{ color: value === c.id ? '#60a5fa' : 'rgba(255,255,255,0.65)' }}
+                >
+                  <div
+                    className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-[10px] font-bold text-white"
+                    style={{ background: value === c.id ? '#0057b8' : 'rgba(255,255,255,0.07)' }}
+                  >
+                    {c.title.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="flex-1 truncate text-left">{c.title}</span>
+                  {value === c.id && <span className="ml-auto flex-shrink-0 text-[10px]" style={{ color: '#60a5fa' }}>✓</span>}
+                </button>
+              ))}
+              {filtered.length === 0 && (
+                <p className="px-3 py-4 text-center text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>No courses found</p>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+/* ── Language dropdown (dark theme) ─────────────────── */
+const LANG_OPTIONS = [
+  { value: 'English',   label: 'English',   flag: '🇬🇧' },
+  { value: 'Malayalam', label: 'Malayalam', flag: '🇮🇳' },
+  { value: 'Hindi',     label: 'Hindi',     flag: '🇮🇳' },
+  { value: 'Tamil',     label: 'Tamil',     flag: '🇮🇳' },
+]
+
+function LanguageDropdown({ value, onChange }: {
+  value: string
+  onChange: (v: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const active = !!value
+  const selected = LANG_OPTIONS.find(l => l.value === value)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-2 rounded-xl py-1.5 pl-2.5 pr-7 text-xs font-semibold outline-none cursor-pointer transition-all whitespace-nowrap"
+        style={{
+          background: active ? 'rgba(0,87,184,0.15)' : '#1e2035',
+          border:     active ? '1px solid rgba(0,87,184,0.35)' : '1px solid rgba(255,255,255,0.10)',
+          color:      active ? '#60a5fa' : 'rgba(255,255,255,0.65)',
+        }}
+      >
+        {selected
+          ? <span className="text-sm leading-none">{selected.flag}</span>
+          : <Globe size={11} className="flex-shrink-0 opacity-60" />
+        }
+        <span>{selected ? selected.label : 'All Languages'}</span>
+        <ChevronDown size={11} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 opacity-50" />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.12 }}
+            className="absolute right-0 top-full z-50 mt-1.5 w-44 overflow-hidden rounded-xl py-1"
+            style={{ background: '#1a1d2e', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 20px 48px rgba(0,0,0,0.6)' }}
+          >
+            <button
+              type="button"
+              onClick={() => { onChange(''); setOpen(false) }}
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-colors hover:bg-white/[0.06]"
+              style={{ color: !value ? '#60a5fa' : 'rgba(255,255,255,0.7)' }}
+            >
+              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                <Globe size={10} style={{ color: 'rgba(255,255,255,0.4)' }} />
+              </div>
+              All Languages
+              {!value && <span className="ml-auto text-[10px]" style={{ color: '#60a5fa' }}>✓</span>}
+            </button>
+            {LANG_OPTIONS.map(lang => (
+              <button
+                key={lang.value}
+                type="button"
+                onClick={() => { onChange(lang.value); setOpen(false) }}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-colors hover:bg-white/[0.06]"
+                style={{ color: value === lang.value ? '#60a5fa' : 'rgba(255,255,255,0.65)' }}
+              >
+                <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-sm" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                  {lang.flag}
+                </div>
+                <span>{lang.label}</span>
+                {value === lang.value && <span className="ml-auto text-[10px]" style={{ color: '#60a5fa' }}>✓</span>}
               </button>
             ))}
           </motion.div>
@@ -675,9 +877,8 @@ function QuickCreateModal({ onClose, onSuccess, categoryProgram }: { onClose: ()
 
   const handleCourseChange = (id: string) => { setCourseId(id); setSectionId('') }
 
-  const base    = 'w-full rounded-xl px-3 py-2 text-sm text-white outline-none placeholder:text-white/30'
-  const iStyle  = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' } as const
-  const selStyle = { background: '#1e2035', border: '1px solid rgba(255,255,255,0.12)', color: 'white' } as const
+  const base   = 'w-full rounded-xl px-3 py-2 text-sm text-white outline-none placeholder:text-white/30'
+  const iStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' } as const
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -733,12 +934,14 @@ function QuickCreateModal({ onClose, onSuccess, categoryProgram }: { onClose: ()
           <div>
             <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
               style={{ color: 'rgba(255,255,255,0.35)' }}>Course</label>
-            <select value={courseId} onChange={e => handleCourseChange(e.target.value)} required
-              disabled={loadingCourses}
-              className={base} style={{ ...selStyle, opacity: loadingCourses ? 0.5 : 1 }}>
-              <option value="">{loadingCourses ? 'Loading courses…' : 'Select a course…'}</option>
-              {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-            </select>
+            <DarkSelect
+              value={courseId}
+              onChange={handleCourseChange}
+              options={courses.map(c => ({ value: c.id, label: c.title }))}
+              placeholder="Select a course…"
+              loading={loadingCourses}
+              loadingText="Loading courses…"
+            />
           </div>
 
           {/* Type */}
@@ -779,8 +982,7 @@ function QuickCreateModal({ onClose, onSuccess, categoryProgram }: { onClose: ()
             <div>
               <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
                 style={{ color: 'rgba(255,255,255,0.35)' }}>Start time</label>
-              <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)} required
-                className={base} style={iStyle} />
+              <DarkDateTimePicker value={start} onChange={setStart} />
             </div>
             <div>
               <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
@@ -804,37 +1006,43 @@ function QuickCreateModal({ onClose, onSuccess, categoryProgram }: { onClose: ()
           <div>
             <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
               style={{ color: 'rgba(255,255,255,0.35)' }}>Module (optional)</label>
-            <select value={sectionId} onChange={e => setSectionId(e.target.value)}
-              className={base} style={{ ...selStyle }}>
-              <option value="">No specific module</option>
-              {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
-            </select>
+            <DarkSelect
+              value={sectionId}
+              onChange={setSectionId}
+              options={sections.map(s => ({ value: s.id, label: s.title }))}
+              placeholder="No specific module"
+            />
           </div>
 
           {/* Instructor */}
           <div>
             <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
               style={{ color: 'rgba(255,255,255,0.35)' }}>Instructor</label>
-            <select value={instructorId} onChange={e => setInstructorId(e.target.value)}
-              disabled={loadingInstructors}
-              className={base} style={{ ...selStyle, opacity: loadingInstructors ? 0.5 : 1 }}>
-              <option value="">{loadingInstructors ? 'Loading…' : 'Default (current user)'}</option>
-              {instructors.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-            </select>
+            <DarkSelect
+              value={instructorId}
+              onChange={setInstructorId}
+              options={instructors.map(i => ({ value: i.id, label: i.name }))}
+              placeholder="Default (current user)"
+              loading={loadingInstructors}
+              loadingText="Loading…"
+            />
           </div>
 
           {/* Language */}
           <div>
             <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
               style={{ color: 'rgba(255,255,255,0.35)' }}>Language</label>
-            <select value={language} onChange={e => setLanguage(e.target.value)}
-              className={base} style={selStyle}>
-              <option value="English">🇬🇧 English</option>
-              <option value="Arabic">🇦🇪 Arabic (عربي)</option>
-              <option value="Hindi">🇮🇳 Hindi (हिंदी)</option>
-              <option value="Malayalam">🇮🇳 Malayalam (മലയാളം)</option>
-              <option value="Urdu">🇵🇰 Urdu (اردو)</option>
-            </select>
+            <DarkSelect
+              value={language}
+              onChange={setLanguage}
+              options={[
+                { value: 'English',   label: '🇬🇧 English' },
+                { value: 'Arabic',    label: '🇦🇪 Arabic (عربي)' },
+                { value: 'Hindi',     label: '🇮🇳 Hindi (हिंदी)' },
+                { value: 'Malayalam', label: '🇮🇳 Malayalam (മലയാളം)' },
+                { value: 'Urdu',      label: '🇵🇰 Urdu (اردو)' },
+              ]}
+            />
           </div>
 
           {error && (
@@ -853,7 +1061,7 @@ function QuickCreateModal({ onClose, onSuccess, categoryProgram }: { onClose: ()
               className="flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold disabled:opacity-60"
               style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)', color: '#fff' }}>
               {createMutation.isPending
-                ? <><Loader2 size={14} className="animate-spin" />Creating…</>
+                ? <><Spinner size={14} />Creating…</>
                 : 'Create session'}
             </button>
           </div>
@@ -1348,21 +1556,11 @@ export default function LiveClassesPage() {
 
         {/* Course filter */}
         {courses.length > 0 && (
-          <select
+          <CourseDropdown
             value={courseFilter}
-            onChange={e => setCourseFilter(e.target.value)}
-            className="rounded-xl px-3 py-1.5 text-xs font-semibold outline-none transition-all"
-            style={{
-              /* Solid dark bg so the native dropdown popup renders dark (not white) */
-              background: courseFilter ? '#2a1a0a' : '#1e2035',
-              border: courseFilter ? '1px solid rgba(0,87,184,0.35)' : '1px solid rgba(255,255,255,0.10)',
-              color: courseFilter ? '#0057b8' : 'rgba(255,255,255,0.65)',
-            }}>
-            <option value="">All courses</option>
-            {courses.map(c => (
-              <option key={c.id} value={c.id}>{c.title}</option>
-            ))}
-          </select>
+            onChange={setCourseFilter}
+            courses={courses.map(c => ({ id: c.id, title: c.title }))}
+          />
         )}
 
         {/* Instructor filter */}
@@ -1394,20 +1592,7 @@ export default function LiveClassesPage() {
         </div>
 
         {/* Language filter */}
-        <select
-          value={languageFilter}
-          onChange={e => setLanguageFilter(e.target.value)}
-          className="rounded-xl px-3 py-1.5 text-xs font-semibold outline-none transition-all"
-          style={{
-            background: languageFilter ? '#0e1f3a' : '#1e2035',
-            border: languageFilter ? '1px solid rgba(0,87,184,0.35)' : '1px solid rgba(255,255,255,0.10)',
-            color: languageFilter ? '#0057b8' : 'rgba(255,255,255,0.65)',
-          }}>
-          <option value="">All Languages</option>
-          {['English','Malayalam','Hindi','Tamil'].map(lang => (
-            <option key={lang} value={lang}>{lang}</option>
-          ))}
-        </select>
+        <LanguageDropdown value={languageFilter} onChange={setLanguageFilter} />
       </div>
 
       {/* Search bar */}
@@ -1450,7 +1635,7 @@ export default function LiveClassesPage() {
             <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="flex items-center justify-center gap-2 py-20 text-sm"
               style={{ color: 'rgba(255,255,255,0.3)' }}>
-              <Loader2 size={16} className="animate-spin" />Loading sessions…
+              <Spinner size={16} />Loading sessions…
             </motion.div>
           )}
 

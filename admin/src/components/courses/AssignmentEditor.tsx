@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Save, Loader2 } from 'lucide-react'
+import { Save } from 'lucide-react'
 import { useAdminAssignment, useUpsertAssignment } from '@/lib/api/outline'
+import Spinner from '@/components/ui/Spinner'
 import { useToast } from '@/store/ui.store'
 
 interface Props {
@@ -49,7 +50,7 @@ export function AssignmentEditor({ lessonId, onClose }: Props) {
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 p-4 text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>
-        <Loader2 size={14} className="animate-spin" />Loading…
+        <Spinner size={14} />Loading…
       </div>
     )
   }
@@ -67,7 +68,7 @@ export function AssignmentEditor({ lessonId, onClose }: Props) {
           <button onClick={handleSave} disabled={upsert.isPending}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60"
             style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}>
-            {upsert.isPending ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+            {upsert.isPending ? <Spinner size={12} /> : <Save size={12} />}
             Save
           </button>
         </div>

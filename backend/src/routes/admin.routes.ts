@@ -142,19 +142,23 @@ const userUpdateSchema = z.object({
   name:       z.string().min(2).max(100).trim().optional(),
   email:      z.string().email().optional(),
   category:   z.enum(['4x-trading', 'digital-marketing', 'ai']).nullable().optional(),
+  categories: z.array(z.enum(['4x-trading', 'digital-marketing', 'ai'])).optional(),
   avatarUrl:  z.string().url().or(z.literal('')).optional(),
+  headline:   z.string().max(255).optional(),
+  bio:        z.string().max(2000).optional(),
 }).refine(d => Object.keys(d).length > 0, { message: 'Provide at least one field' })
 
 const userCreateSchema = z.object({
-  name:      z.string().min(2).max(100).trim(),
-  email:     z.string().email(),
-  password:  z.string().min(8, 'Password must be at least 8 characters'),
-  role:      z.enum(['student', 'instructor', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'super_admin']).default('instructor'),
-  bio:       z.string().max(2000).optional(),
-  headline:  z.string().max(255).optional(),
-  category:  z.enum(['4x-trading', 'digital-marketing', 'ai']).optional(),
-  avatarUrl: z.string().url().or(z.literal('')).optional(),
-  courses:   z.array(z.object({
+  name:       z.string().min(2).max(100).trim(),
+  email:      z.string().email(),
+  password:   z.string().min(8, 'Password must be at least 8 characters'),
+  role:       z.enum(['student', 'instructor', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'super_admin']).default('instructor'),
+  bio:        z.string().max(2000).optional(),
+  headline:   z.string().max(255).optional(),
+  category:   z.enum(['4x-trading', 'digital-marketing', 'ai']).optional(),
+  categories: z.array(z.enum(['4x-trading', 'digital-marketing', 'ai'])).optional(),
+  avatarUrl:  z.string().url().or(z.literal('')).optional(),
+  courses:    z.array(z.object({
     courseId:       z.string().min(1),
     blockedLessons: z.array(z.string()).default([]),
   })).optional(),
@@ -195,7 +199,7 @@ router.post ('/users',          validate(userCreateSchema), audit('user.create',
     try {
       /* Build DTO without the courses field (handled separately) */
       const { courses, ...userDto } = req.body as z.infer<typeof userCreateSchema>
-      const user = await userSvc.adminCreateUser(userDto)
+      const user = await userSvc.adminCreateUser({ ...userDto, approvedBy: req.user!.id })
 
       /* Enroll the new student into the requested courses */
       if (courses && courses.length > 0) {

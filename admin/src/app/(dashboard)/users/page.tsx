@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { AdminUsersPanel } from '@/components/users/AdminUsersPanel'
 import { useCurrentUser } from '@/lib/api/user'
+import Spinner from '@/components/ui/Spinner'
 
 export default function UsersPage() {
   const { data: me, isLoading } = useCurrentUser()
@@ -18,8 +19,7 @@ export default function UsersPage() {
   if (isLoading) {
     return (
       <div className="flex h-48 items-center justify-center">
-        <div className="h-6 w-6 animate-spin rounded-full border-2"
-          style={{ borderColor: '#0057b8', borderTopColor: 'transparent' }} />
+        <Spinner size={24} />
       </div>
     )
   }

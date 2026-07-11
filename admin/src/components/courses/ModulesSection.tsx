@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus, Edit2, Trash2, ChevronDown, ChevronUp,
   Video, FileText, HelpCircle, ClipboardList,
-  Clock, Lock, Eye, Loader2, X, Check,
+  Clock, Lock, Eye, X, Check,
   BookOpen, Layers, GripVertical, MoreVertical,
   AlignLeft, Zap,
 } from 'lucide-react'
@@ -20,6 +20,7 @@ import { QuizEditor } from './QuizEditor'
 import { AssignmentEditor } from './AssignmentEditor'
 import { MediaUploadField } from '@/components/ui/MediaUploadField'
 import { TranscriptEditor } from './TranscriptEditor'
+import Spinner from '@/components/ui/Spinner'
 
 /* ── Lesson type config ───────────────────────────────────────── */
 const TYPE_META: Record<AdminLesson['type'], {
@@ -191,7 +192,7 @@ function ModuleModal({
                 disabled={!title.trim() || saving}
                 className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)', boxShadow: '0 4px 14px rgba(0,87,184,0.3)' }}>
-                {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                {saving ? <Spinner size={12} /> : <Check size={12} />}
                 {isEdit ? 'Save changes' : 'Add module'}
               </button>
             </div>
@@ -287,7 +288,7 @@ function AddLessonForm({ courseId, sectionId, onClose }: { courseId: string; sec
           <button type="submit" disabled={!title.trim() || createLesson.isPending}
             className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
             style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)', boxShadow: '0 4px 12px rgba(0,87,184,0.25)' }}>
-            {createLesson.isPending ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
+            {createLesson.isPending ? <Spinner size={11} /> : <Check size={11} />}
             Add lesson
           </button>
         </div>
@@ -375,7 +376,7 @@ function LessonEditForm({
           <button type="submit" disabled={pending}
             className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
             style={{ background: 'linear-gradient(135deg,#3B82F6,#60A5FA)', boxShadow: '0 4px 12px rgba(59,130,246,0.25)' }}>
-            {pending ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
+            {pending ? <Spinner size={11} /> : <Check size={11} />}
             Save changes
           </button>
         </div>

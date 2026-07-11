@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mail, X, Loader2, CheckCircle2 } from 'lucide-react'
+import { Mail, X, CheckCircle2 } from 'lucide-react'
 import { useCurrentUser, resendVerification } from '@/lib/api/user'
+import Spinner from '@/components/ui/Spinner'
 
 const STORAGE_KEY = 'lms-verify-banner-dismissed-at'
 
@@ -71,7 +72,7 @@ export function VerifyEmailBanner() {
           className="flex-shrink-0 flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold text-white transition-all disabled:opacity-60"
           style={{ background: '#0057b8' }}>
           {sending
-            ? <><Loader2 size={11} className="animate-spin" /><span className="hidden sm:inline">Sending…</span></>
+            ? <><Spinner size={11} /><span className="hidden sm:inline">Sending…</span></>
             : sent
               ? <><CheckCircle2 size={11} /><span className="hidden sm:inline">Sent</span></>
               : <><Mail size={11} /><span className="hidden sm:inline">Resend</span><span className="sm:hidden">Resend</span></>}

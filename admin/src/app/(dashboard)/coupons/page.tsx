@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Tag, Plus, Loader2, Pencil, Trash2, ChevronLeft, ChevronRight, X, Check } from 'lucide-react'
+import { Tag, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, X, Check } from 'lucide-react'
 import { useAdminCoupons, type AdminCoupon } from '@/lib/api/stats'
 import { api } from '@/lib/axios'
 import { useQueryClient } from '@tanstack/react-query'
+import Spinner from '@/components/ui/Spinner'
 
 /* ─── Create / Edit form ──────────────────────────── */
 interface CouponFormState {
@@ -139,7 +140,7 @@ function CouponFormModal({
           <button onClick={handleSave} disabled={saving}
             className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold text-white transition-all disabled:opacity-60"
             style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}>
-            {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+            {saving ? <Spinner size={13} /> : <Check size={13} />}
             {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
@@ -210,7 +211,7 @@ export default function AdminCouponsPage() {
           <tbody>
             {isLoading ? (
               <tr><td colSpan={6} className="py-16 text-center">
-                <Loader2 size={18} className="inline animate-spin" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                <Spinner size={18} variant="muted" />
               </td></tr>
             ) : !data?.coupons.length ? (
               <tr><td colSpan={6} className="py-16 text-center text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>
@@ -254,7 +255,7 @@ export default function AdminCouponsPage() {
                       disabled={deleting === c.id}
                       className="rounded-lg p-1.5 transition-colors hover:bg-white/08 disabled:opacity-40">
                       {deleting === c.id
-                        ? <Loader2 size={12} className="animate-spin" style={{ color: '#F87171' }} />
+                        ? <Spinner size={12} />
                         : <Trash2 size={12} style={{ color: '#F87171' }} />}
                     </button>
                   </div>

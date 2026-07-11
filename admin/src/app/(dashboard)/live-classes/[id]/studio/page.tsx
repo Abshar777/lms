@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  ChevronLeft, Radio, Square, Loader2, AlertCircle,
+  ChevronLeft, Radio, Square, AlertCircle,
   Camera, Mic, MicOff, VideoOff, Monitor, Wifi, WifiOff,
   Activity, BarChart2, CheckCircle2, Settings2,
 } from 'lucide-react'
@@ -13,6 +13,7 @@ import {
   useLiveClassById, useStartLiveStreamById, useEndLiveStreamById,
   useStreamCredentials,
 } from '@/lib/api/liveClasses'
+import Spinner from '@/components/ui/Spinner'
 
 /* ── WebRTC quality stats ─────────────────────────────── */
 interface StreamStats {
@@ -286,7 +287,7 @@ export default function StudioPage({ params }: { params: Promise<{ id: string }>
   if (liveLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 size={28} className="animate-spin" style={{ color: '#0057b8' }} />
+        <Spinner size={28} />
       </div>
     )
   }
@@ -410,7 +411,7 @@ export default function StudioPage({ params }: { params: Promise<{ id: string }>
             {isBusy && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3"
                 style={{ background: 'rgba(0,0,0,0.65)' }}>
-                <Loader2 size={28} className="animate-spin" style={{ color: '#0057b8' }} />
+                <Spinner size={28} />
                 <p className="text-sm font-semibold text-white">{busyLabel[state] ?? 'Please wait…'}</p>
               </div>
             )}
@@ -515,7 +516,7 @@ export default function StudioPage({ params }: { params: Promise<{ id: string }>
                 className="flex w-full items-center justify-center gap-2.5 rounded-2xl py-4 text-sm font-bold text-white disabled:opacity-50 transition-all hover:brightness-110"
                 style={{ background: 'linear-gradient(135deg, #EF4444, #DC2626)', boxShadow: '0 4px 20px rgba(239,68,68,0.3)' }}>
                 {isBusy
-                  ? <><Loader2 size={16} className="animate-spin" />{busyLabel[state]}</>
+                  ? <><Spinner size={16} />{busyLabel[state]}</>
                   : <><Radio size={16} />Go Live Now</>}
               </motion.button>
             ) : (
@@ -585,12 +586,12 @@ function DeviceSelect({
 /* ── Connection status indicator ─────────────────────── */
 function ConnectionStatus({ state }: { state: StudioState }) {
   const cfg: Record<StudioState, { icon: React.ReactNode; label: string; color: string }> = {
-    'loading-devices': { icon: <Loader2 size={13} className="animate-spin" />, label: 'Loading devices…', color: 'rgba(255,255,255,0.4)' },
+    'loading-devices': { icon: <Spinner size={13} />, label: 'Loading devices…', color: 'rgba(255,255,255,0.4)' },
     ready:             { icon: <WifiOff size={13} />, label: 'Ready — not streaming', color: 'rgba(255,255,255,0.5)' },
-    starting:          { icon: <Loader2 size={13} className="animate-spin" />, label: 'Enabling Mux stream…', color: '#F59E0B' },
-    connecting:        { icon: <Loader2 size={13} className="animate-spin" />, label: 'Negotiating WHIP…', color: '#F59E0B' },
+    starting:          { icon: <Spinner size={13} />, label: 'Enabling Mux stream…', color: '#F59E0B' },
+    connecting:        { icon: <Spinner size={13} />, label: 'Negotiating WHIP…', color: '#F59E0B' },
     live:              { icon: <Wifi size={13} />, label: 'Connected — you are live', color: '#22C55E' },
-    ending:            { icon: <Loader2 size={13} className="animate-spin" />, label: 'Ending stream…', color: '#F59E0B' },
+    ending:            { icon: <Spinner size={13} />, label: 'Ending stream…', color: '#F59E0B' },
     ended:             { icon: <CheckCircle2 size={13} />, label: 'Stream ended', color: '#22C55E' },
     error:             { icon: <AlertCircle size={13} />, label: 'Connection error', color: '#EF4444' },
     idle:              { icon: <WifiOff size={13} />, label: 'Idle', color: 'rgba(255,255,255,0.4)' },

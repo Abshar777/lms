@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Clock, Plus, Trash2, Save, Loader2, CheckCircle, CalendarDays } from 'lucide-react'
+import { Clock, Plus, Trash2, Save, CheckCircle, CalendarDays } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { useMyAvailability, useUpdateMyAvailability, type AvailabilitySlot } from '@/lib/api/liveClasses'
 import { useCurrentUser } from '@/lib/api/user'
+import Spinner from '@/components/ui/Spinner'
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -151,7 +152,7 @@ export default function AvailabilityPage() {
   if (isLoading) {
     return (
       <div className="flex h-48 items-center justify-center gap-2 text-sm" style={{ color: '#9CA3AF' }}>
-        <Loader2 size={16} className="animate-spin" />Loading availability…
+        <Spinner size={16} />Loading availability…
       </div>
     )
   }
@@ -173,7 +174,7 @@ export default function AvailabilityPage() {
           className="mt-1 flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white flex-shrink-0 disabled:opacity-60"
           style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)' }}>
           {updateMutation.isPending
-            ? <><Loader2 size={15} className="animate-spin" />Saving…</>
+            ? <><Spinner size={15} />Saving…</>
             : saved
             ? <><CheckCircle size={15} />Saved!</>
             : <><Save size={15} />Save</>}

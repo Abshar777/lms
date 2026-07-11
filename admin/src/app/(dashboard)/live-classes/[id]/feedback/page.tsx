@@ -2,10 +2,11 @@
 
 import { use } from 'react'
 import { motion } from 'framer-motion'
-import { Star, MessageSquare, Loader2, ArrowLeft, Users } from 'lucide-react'
+import { Star, MessageSquare, ArrowLeft, Users } from 'lucide-react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { apiGet } from '@/lib/axios'
+import Spinner from '@/components/ui/Spinner'
 
 interface FeedbackItem {
   _id:    string
@@ -82,7 +83,7 @@ export default function FeedbackPage({ params }: { params: Promise<{ id: string 
       {/* Feedback list */}
       {isLoading ? (
         <div className="flex h-40 items-center justify-center gap-2 text-sm" style={{ color: '#9CA3AF' }}>
-          <Loader2 size={16} className="animate-spin" /><span>Loading feedback…</span>
+          <Spinner size={16} /><span>Loading feedback…</span>
         </div>
       ) : feedbacks.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16">

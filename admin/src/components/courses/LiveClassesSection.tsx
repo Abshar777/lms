@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Video, Plus, Trash2, Calendar, Clock, Link as LinkIcon,
-  Loader2, X, AlertCircle, CheckCircle2, Radio, Zap,
+  X, AlertCircle, CheckCircle2, Radio, Zap,
   ExternalLink, Tv2, Copy, Eye, EyeOff, PlayCircle, Square,
   BookOpen, Monitor, Pencil, Search, ChevronLeft, ChevronRight,
 } from 'lucide-react'
@@ -18,6 +18,7 @@ import { useCourseOutline } from '@/lib/api/outline'
 import { datetimeLocalToISO } from '@/lib/timezone'
 import { useUsers } from '@/lib/api/users'
 import { EditLiveClassModal } from '@/components/live-classes/EditLiveClassModal'
+import Spinner from '@/components/ui/Spinner'
 
 /* ── Helpers ──────────────────────────────────────────── */
 function fmtDateTime(iso: string): string {
@@ -108,7 +109,7 @@ function CredentialsPanel({ liveId }: { liveId: string }) {
           <button onClick={handleReveal} className="flex-shrink-0 rounded-lg p-1.5 transition-colors hover:bg-white/10"
             title={revealed ? 'Hide key' : 'Show key'}>
             {isFetching
-              ? <Loader2 size={11} className="animate-spin" style={{ color: 'rgba(255,255,255,0.5)' }} />
+              ? <Spinner size={11} variant="muted" />
               : revealed
               ? <EyeOff size={11} style={{ color: 'rgba(255,255,255,0.5)' }} />
               : <Eye size={11} style={{ color: 'rgba(255,255,255,0.5)' }} />}
@@ -241,7 +242,7 @@ function LiveRow({
               title="Start with OBS"
               className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-bold text-white disabled:opacity-50 hover:brightness-110 transition-all"
               style={{ background: 'linear-gradient(135deg, #0057b8, #EF4444)' }}>
-              {startMutation.isPending ? <Loader2 size={9} className="animate-spin" /> : <PlayCircle size={9} />}
+              {startMutation.isPending ? <Spinner size={9} /> : <PlayCircle size={9} />}
               OBS
             </button>
           )}
@@ -282,7 +283,7 @@ function LiveRow({
                 disabled={endMutation.isPending}
                 className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-bold text-white disabled:opacity-50 hover:brightness-110 transition-all"
                 style={{ background: 'rgba(239,68,68,0.80)' }}>
-                {endMutation.isPending ? <Loader2 size={9} className="animate-spin" /> : <Square size={9} />}
+                {endMutation.isPending ? <Spinner size={9} /> : <Square size={9} />}
                 End stream
               </button>
             )
@@ -315,7 +316,7 @@ function LiveRow({
               title="Mark as live now"
               className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-bold text-white disabled:opacity-50 hover:brightness-110 transition-all"
               style={{ background: 'linear-gradient(135deg, #0057b8, #EF4444)' }}>
-              {updateMutation.isPending ? <Loader2 size={9} className="animate-spin" /> : <Zap size={9} />}
+              {updateMutation.isPending ? <Spinner size={9} /> : <Zap size={9} />}
               Go Live
             </button>
           )}
@@ -344,7 +345,7 @@ function LiveRow({
                 disabled={updateMutation.isPending}
                 className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-bold text-white disabled:opacity-50 hover:brightness-110 transition-all"
                 style={{ background: 'rgba(239,68,68,0.80)' }}>
-                {updateMutation.isPending ? <Loader2 size={9} className="animate-spin" /> : <Square size={9} />}
+                {updateMutation.isPending ? <Spinner size={9} /> : <Square size={9} />}
                 End session
               </button>
             )
@@ -592,7 +593,7 @@ function CreateForm({
             className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
             style={{ background: 'linear-gradient(135deg, #0057b8, #003d80)' }}>
             {pending
-              ? <><Loader2 size={11} className="animate-spin" />Scheduling…</>
+              ? <><Spinner size={11} />Scheduling…</>
               : <>Schedule session</>}
           </button>
         </div>
@@ -727,7 +728,7 @@ export function LiveClassesSection({ courseId }: Props) {
 
       {isLoading && (
         <div className="flex items-center gap-2 text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
-          <Loader2 size={12} className="animate-spin" />Loading…
+          <Spinner size={12} />Loading…
         </div>
       )}
 

@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle2, XCircle, Clock, Trophy, RotateCcw, ChevronRight, Loader2 } from 'lucide-react'
+import { CheckCircle2, XCircle, Clock, Trophy, RotateCcw, ChevronRight } from 'lucide-react'
 import { useStudentQuiz, useQuizSummary, useSubmitQuiz, type QuizQuestion, type SubmitQuizResult } from '@/lib/api/quizzes'
+import Spinner from '@/components/ui/Spinner'
 
 interface Props {
   lessonId: string
@@ -63,7 +64,7 @@ export function QuizPlayer({ lessonId, onPassed }: Props) {
   if (quizLoading || summaryLoading) {
     return (
       <div className="flex aspect-video items-center justify-center rounded-2xl bg-gray-50">
-        <Loader2 size={24} className="animate-spin text-[#0057b8]" />
+        <Spinner size={24} />
       </div>
     )
   }
@@ -198,7 +199,7 @@ function TakingPanel({ quiz, answers, timeLeft, onAnswer, onSubmit, isPending }:
         <button onClick={onSubmit} disabled={isPending}
           className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white disabled:opacity-60"
           style={{ background: '#0057b8' }}>
-          {isPending ? <Loader2 size={14} className="animate-spin" /> : null}
+          {isPending ? <Spinner size={14} /> : null}
           Submit quiz ({answered}/{quiz.questions.length} answered)
         </button>
       </div>

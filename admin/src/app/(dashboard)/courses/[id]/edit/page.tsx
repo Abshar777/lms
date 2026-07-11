@@ -2,12 +2,13 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { ArrowLeft, Edit2, Loader2, AlertCircle, Radio, Users } from 'lucide-react'
+import { ArrowLeft, Edit2, AlertCircle, Radio, Users } from 'lucide-react'
 import { use } from 'react'
 import { useCourse } from '@/lib/api/courses'
 import { CourseForm } from '@/components/courses/CourseForm'
 import { LiveClassesSection } from '@/components/courses/LiveClassesSection'
 import { useLiveClassesForCourse } from '@/lib/api/liveClasses'
+import Spinner from '@/components/ui/Spinner'
 
 /* ── Live alert banner ───────────────────────────────── */
 function LiveAlertBanner({ courseId }: { courseId: string }) {
@@ -56,7 +57,7 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
     return (
       <div className="flex h-[60vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 size={28} className="animate-spin" style={{ color: '#0057b8' }} />
+          <Spinner size={28} />
           <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>Loading course…</p>
         </div>
       </div>

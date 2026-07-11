@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { ShoppingBag, Loader2, RotateCcw, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react'
+import { ShoppingBag, RotateCcw, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react'
 import { useAdminOrders, type AdminOrder } from '@/lib/api/stats'
 import { api } from '@/lib/axios'
 import { useQueryClient } from '@tanstack/react-query'
+import Spinner from '@/components/ui/Spinner'
 
 const STATUS_TABS = ['all', 'pending', 'paid', 'refunded'] as const
 type StatusTab = typeof STATUS_TABS[number]
@@ -91,7 +92,7 @@ export default function AdminOrdersPage() {
               {isLoading ? (
                 <tr>
                   <td colSpan={7} className="py-16 text-center">
-                    <Loader2 size={18} className="inline animate-spin" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                    <Spinner size={18} variant="muted" />
                   </td>
                 </tr>
               ) : !data?.orders.length ? (
@@ -151,7 +152,7 @@ export default function AdminOrdersPage() {
                             className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors hover:bg-white/05 disabled:opacity-40"
                             style={{ color: '#F87171' }}>
                             {refunding === order.id
-                              ? <Loader2 size={11} className="animate-spin" />
+                              ? <Spinner size={11} />
                               : <RotateCcw size={11} />}
                             Refund
                           </button>

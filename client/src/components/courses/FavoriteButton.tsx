@@ -1,9 +1,10 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Heart, Loader2 } from 'lucide-react'
+import { Heart } from 'lucide-react'
 import { useIsFavorited, useToggleFavorite } from '@/lib/api/favorites'
 import { MotionButton } from '@/components/ui/button'
+import Spinner from '@/components/ui/Spinner'
 
 interface Props {
   courseId: string
@@ -34,7 +35,7 @@ export function FavoriteButton({ courseId, variant = 'pill' }: Props) {
         className="h-9 w-9 rounded-full transition-all"
         style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)', boxShadow: '0 4px 12px rgba(13,15,26,0.10)' }}>
         {toggle.isPending
-          ? <Loader2 size={14} className="animate-spin" style={{ color: '#9CA3AF' }} />
+          ? <Spinner size={14} variant="gray" />
           : <Heart size={14} fill={isFav ? '#EF4444' : 'none'} style={{ color: isFav ? '#EF4444' : '#9CA3AF' }} />}
       </MotionButton>
     )
@@ -53,7 +54,7 @@ export function FavoriteButton({ courseId, variant = 'pill' }: Props) {
         ? { background: 'rgba(239,68,68,0.10)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.22)' }
         : { background: 'white', color: '#374151', border: '1px solid #E5E7EB' }}>
       {toggle.isPending
-        ? <Loader2 size={12} className="animate-spin" />
+        ? <Spinner size={12} />
         : <Heart size={12} fill={isFav ? '#EF4444' : 'none'} />}
       {isFav ? 'Saved' : 'Save'}
     </MotionButton>

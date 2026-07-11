@@ -10,8 +10,9 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlignLeft, Sparkles, Check, Loader2, ChevronDown } from 'lucide-react'
+import { AlignLeft, Sparkles, Check, ChevronDown } from 'lucide-react'
 import { useSaveTranscript, useGenerateTranscript } from '@/lib/api/outline'
+import Spinner from '@/components/ui/Spinner'
 
 interface Props {
   lessonId:    string
@@ -117,7 +118,7 @@ export function TranscriptEditor({ lessonId, initialText }: Props) {
                       color: '#818CF8',
                     }}>
                     {generate.isPending
-                      ? <><Loader2 size={10} className="animate-spin" />Generating…</>
+                      ? <><Spinner size={10} />Generating…</>
                       : <><Sparkles size={10} />Generate with AI</>}
                   </button>
 
@@ -135,7 +136,7 @@ export function TranscriptEditor({ lessonId, initialText }: Props) {
                       color: saved ? '#4ADE80' : 'white',
                     }}>
                     {save.isPending
-                      ? <><Loader2 size={10} className="animate-spin" />Saving…</>
+                      ? <><Spinner size={10} />Saving…</>
                       : saved
                         ? <><Check size={10} />Saved</>
                         : 'Save'}

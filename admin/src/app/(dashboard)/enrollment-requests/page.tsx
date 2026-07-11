@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Clock, CheckCircle2, XCircle, Loader2, AlertCircle, Search,
+  Clock, CheckCircle2, XCircle, AlertCircle, Search,
   TrendingUp, Megaphone, Cpu, LayoutGrid, ChevronDown, Check,
   ShieldCheck, Mail, X, Plus, Eye, RotateCcw, ShieldOff,
   FileText, User, Phone, MapPin, BookOpen, CreditCard, ExternalLink,
@@ -19,6 +19,7 @@ import { useToast } from '@/store/ui.store'
 import { api } from '@/lib/axios'
 import { useQueryClient } from '@tanstack/react-query'
 import { useDeleteUser } from '@/lib/api/users'
+import Spinner from '@/components/ui/Spinner'
 
 /* ── Constants ─────────────────────────────────────── */
 const CATEGORY_META: Record<ProgramCategory, { label: string; color: string; bg: string; Icon: React.ComponentType<{ size?: number }> }> = {
@@ -74,7 +75,7 @@ function RemovableCategoryBadge({ cat, canRemove, removing, onRemove }: {
           title={`Remove from ${m.label}`}
           className="ml-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full transition-all hover:bg-black/20 disabled:opacity-30"
         >
-          {removing ? <Loader2 size={8} className="animate-spin" /> : <X size={8} />}
+          {removing ? <Spinner size={8} /> : <X size={8} />}
         </button>
       )}
     </span>
@@ -101,7 +102,7 @@ function AddCategoryDropdown({ existingCats, loading, onAdd }: {
         style={{ color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.12)' }}
         title="Add to another program"
       >
-        {loading ? <Loader2 size={10} className="animate-spin" /> : <Plus size={10} />}
+        {loading ? <Spinner size={10} /> : <Plus size={10} />}
         Add Program
       </button>
       <AnimatePresence>
@@ -264,7 +265,7 @@ function ApproveDialog({ user, scopeCategory, onClose, onConfirm, loading }: {
               disabled={loading || cats.length === 0}
               className="flex items-center gap-1.5 rounded-xl px-5 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40"
               style={{ background: 'linear-gradient(135deg,#4ADE80,#22c55e)', boxShadow: '0 4px 14px rgba(74,222,128,0.3)' }}>
-              {loading && <Loader2 size={13} className="animate-spin" />}
+              {loading && <Spinner size={13} />}
               <CheckCircle2 size={13} />
               Approve
             </button>
@@ -338,7 +339,7 @@ function RejectDialog({ user, isRevoke, onClose, onConfirm, loading }: {
               disabled={loading || reason.trim().length < 5}
               className="flex items-center gap-1.5 rounded-xl px-5 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40"
               style={{ background: 'linear-gradient(135deg,#EF4444,#DC2626)' }}>
-              {loading && <Loader2 size={13} className="animate-spin" />}
+              {loading && <Spinner size={13} />}
               {isRevoke ? 'Revoke All Access' : 'Confirm rejection'}
             </button>
           </div>
@@ -414,7 +415,7 @@ function DocumentsSection({ passportUrl, idDocUrl, photoUrl, userId, idType }: {
             className="flex h-36 flex-col items-center justify-center gap-2 rounded-xl transition-all hover:brightness-110 disabled:opacity-50"
             style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.15)', cursor: 'pointer' }}>
             {isLoading ? (
-              <Loader2 size={18} className="animate-spin" style={{ color: 'rgba(255,255,255,0.4)' }} />
+              <Spinner size={18} variant="muted" />
             ) : (
               <Upload size={18} style={{ color: 'rgba(255,255,255,0.3)' }} />
             )}
@@ -458,7 +459,7 @@ function DocumentsSection({ passportUrl, idDocUrl, photoUrl, userId, idType }: {
               disabled={isLoading}
               className="flex items-center gap-1 text-[11px] transition-colors hover:opacity-80 disabled:opacity-40"
               style={{ color: 'rgba(255,255,255,0.35)' }}>
-              {isLoading ? <Loader2 size={9} className="animate-spin" /> : <Upload size={9} />}
+              {isLoading ? <Spinner size={9} /> : <Upload size={9} />}
               Replace
             </button>
             <input
@@ -507,7 +508,7 @@ function DocumentsSection({ passportUrl, idDocUrl, photoUrl, userId, idType }: {
             disabled={isLoading}
             className="flex items-center gap-1 text-[11px] transition-colors hover:opacity-80 disabled:opacity-40"
             style={{ color: 'rgba(255,255,255,0.35)' }}>
-            {isLoading ? <Loader2 size={9} className="animate-spin" /> : <Upload size={9} />}
+            {isLoading ? <Spinner size={9} /> : <Upload size={9} />}
             Replace
           </button>
           <input
@@ -702,13 +703,13 @@ function ApplicationDetailModal({ user, scopeCategory, onClose, onApprove, onRej
                 <button onClick={onReject} disabled={rejectLoading}
                   className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40"
                   style={{ background: 'rgba(239,68,68,0.85)' }}>
-                  {rejectLoading && <Loader2 size={13} className="animate-spin" />}
+                  {rejectLoading && <Spinner size={13} />}
                   <XCircle size={13} />Reject
                 </button>
                 <button onClick={onApprove} disabled={approveLoading}
                   className="flex items-center gap-1.5 rounded-xl px-5 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40"
                   style={{ background: 'linear-gradient(135deg,#4ADE80,#22c55e)', boxShadow: '0 4px 14px rgba(74,222,128,0.3)' }}>
-                  {approveLoading && <Loader2 size={13} className="animate-spin" />}
+                  {approveLoading && <Spinner size={13} />}
                   <CheckCircle2 size={13} />Approve
                 </button>
               </>
@@ -717,7 +718,7 @@ function ApplicationDetailModal({ user, scopeCategory, onClose, onApprove, onRej
               <button onClick={onApprove} disabled={approveLoading}
                 className="flex items-center gap-1.5 rounded-xl px-5 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40"
                 style={{ background: 'linear-gradient(135deg,#4ADE80,#22c55e)', boxShadow: '0 4px 14px rgba(74,222,128,0.3)' }}>
-                {approveLoading && <Loader2 size={13} className="animate-spin" />}
+                {approveLoading && <Spinner size={13} />}
                 <CheckCircle2 size={13} />Re-approve
               </button>
             )}
@@ -731,7 +732,7 @@ function ApplicationDetailModal({ user, scopeCategory, onClose, onApprove, onRej
             <button onClick={onReject} disabled={rejectLoading}
               className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40"
               style={{ background: 'rgba(239,68,68,0.85)' }}>
-              {rejectLoading && <Loader2 size={12} className="animate-spin" />}
+              {rejectLoading && <Spinner size={12} />}
               <XCircle size={11} />Reject Student
             </button>
           </div>
@@ -755,7 +756,7 @@ function DeleteConfirm({ onConfirm, onCancel, loading }: {
         disabled={loading}
         className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold transition-all disabled:opacity-50"
         style={{ background: 'rgba(239,68,68,0.15)', color: '#F87171', border: '1px solid rgba(239,68,68,0.3)' }}>
-        {loading ? <Loader2 size={8} className="animate-spin" /> : 'Yes'}
+        {loading ? <Spinner size={8} /> : 'Yes'}
       </button>
       <button
         onClick={onCancel}
@@ -1014,7 +1015,7 @@ export default function EnrollmentRequestsPage() {
               {isLoading && (
                 <tr><td colSpan={5} className="px-4 py-14 text-center">
                   <div className="inline-flex items-center gap-2 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                    <Loader2 size={14} className="animate-spin" />Loading requests…
+                    <Spinner size={14} />Loading requests…
                   </div>
                 </td></tr>
               )}
@@ -1200,7 +1201,7 @@ export default function EnrollmentRequestsPage() {
                                   ? { color: '#F87171', border: '1px solid rgba(248,113,113,0.3)' }
                                   : { color: '#4ADE80', border: '1px solid rgba(74,222,128,0.3)' }}>
                                 {toggleBlock.isPending
-                                  ? <Loader2 size={10} className="animate-spin" />
+                                  ? <Spinner size={10} />
                                   : r.isActive ? <ShieldOff size={10} /> : <ShieldCheck size={10} />}
                                 {r.isActive ? 'Block' : 'Unblock'}
                               </button>
@@ -1231,7 +1232,7 @@ export default function EnrollmentRequestsPage() {
                                 color: CATEGORY_META[scopeCategory!].color,
                                 border: `1px solid ${CATEGORY_META[scopeCategory!].color}40`,
                               }}>
-                              {approve.isPending ? <Loader2 size={10} className="animate-spin" /> : <Plus size={10} />}
+                              {approve.isPending ? <Spinner size={10} /> : <Plus size={10} />}
                               Add to {CATEGORY_META[scopeCategory!].label}
                             </button>
                           )}
@@ -1252,7 +1253,7 @@ export default function EnrollmentRequestsPage() {
                               disabled={revokeToViewer.isPending}
                               className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all hover:bg-indigo-500/10 disabled:opacity-40"
                               style={{ color: 'rgba(129,140,248,0.9)', border: '1px solid rgba(129,140,248,0.2)' }}>
-                              {revokeToViewer.isPending ? <Loader2 size={10} className="animate-spin" /> : <RotateCcw size={10} />}
+                              {revokeToViewer.isPending ? <Spinner size={10} /> : <RotateCcw size={10} />}
                               Revoke to Viewer
                             </button>
                           )}
@@ -1290,7 +1291,7 @@ export default function EnrollmentRequestsPage() {
                                   ? { color: '#F87171', border: '1px solid rgba(248,113,113,0.3)' }
                                   : { color: '#4ADE80', border: '1px solid rgba(74,222,128,0.3)' }}>
                                 {toggleBlock.isPending
-                                  ? <Loader2 size={10} className="animate-spin" />
+                                  ? <Spinner size={10} />
                                   : r.isActive ? <ShieldOff size={10} /> : <ShieldCheck size={10} />}
                                 {r.isActive ? 'Block' : 'Unblock'}
                               </button>

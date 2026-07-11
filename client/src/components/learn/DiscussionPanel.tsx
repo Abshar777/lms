@@ -1,13 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { MessageSquare, ChevronDown, ChevronRight, ThumbsUp, CheckCircle2, Trash2, Loader2, Send, PlusCircle } from 'lucide-react'
+import { MessageSquare, ChevronDown, ChevronRight, ThumbsUp, CheckCircle2, Trash2, Send, PlusCircle } from 'lucide-react'
 import {
   useThreads, useCreateThread, useUpvoteThread, useResolveThread, useDeleteThread,
   useComments, useCreateComment, useUpvoteComment, useDeleteComment,
   type DiscussionThread, type DiscussionComment, type DiscussionAuthor,
 } from '@/lib/api/discussion'
 import { useCurrentUser } from '@/lib/api/user'
+import Spinner from '@/components/ui/Spinner'
 
 function authorInfo(a: DiscussionAuthor | string): { id?: string; name: string; avatarUrl?: string; role: string } {
   if (typeof a === 'string') return { id: a, name: 'User', avatarUrl: undefined, role: 'student' }
@@ -52,7 +53,7 @@ function CommentList({ thread, lessonId }: { thread: DiscussionThread; lessonId:
 
   return (
     <div className="border-t pt-3 mt-3" style={{ borderColor: '#F0F1F5' }}>
-      {isLoading && <div className="flex justify-center py-3"><Loader2 size={14} className="animate-spin" style={{ color: '#9CA3AF' }} /></div>}
+      {isLoading && <div className="flex justify-center py-3"><Spinner size={14} variant="gray" /></div>}
       <div className="space-y-3">
         {comments?.map(c => {
           const auth = authorInfo(c.authorId)
@@ -112,7 +113,7 @@ function CommentList({ thread, lessonId }: { thread: DiscussionThread; lessonId:
           className="flex h-8 w-8 items-center justify-center rounded-xl transition-opacity disabled:opacity-40"
           style={{ background: '#0057b8' }}>
           {createComment.isPending
-            ? <Loader2 size={12} className="animate-spin text-white" />
+            ? <Spinner size={12} variant="white" />
             : <Send size={12} className="text-white" />}
         </button>
       </div>
@@ -228,7 +229,7 @@ export function DiscussionPanel({ lessonId }: { lessonId: string }) {
       )}
 
       {isLoading
-        ? <div className="flex justify-center py-8"><Loader2 size={18} className="animate-spin" style={{ color: '#D1D5DB' }} /></div>
+        ? <div className="flex justify-center py-8"><Spinner size={18} variant="gray" /></div>
         : threads?.length === 0
           ? (
             <div className="py-8 text-center">

@@ -1,7 +1,8 @@
 'use client'
 
-import { Bookmark, Trash2, Loader2, Clock } from 'lucide-react'
+import { Bookmark, Trash2, Clock } from 'lucide-react'
 import { useLessonBookmarks, useDeleteBookmark } from '@/lib/api/bookmarks'
+import Spinner from '@/components/ui/Spinner'
 
 function fmtTime(secs: number) {
   const h = Math.floor(secs / 3600)
@@ -23,7 +24,7 @@ export function BookmarksPanel({ lessonId, onSeek }: Props) {
   if (isLoading) {
     return (
       <div className="flex justify-center py-8">
-        <Loader2 size={18} className="animate-spin" style={{ color: '#D1D5DB' }} />
+        <Spinner size={18} variant="gray" />
       </div>
     )
   }

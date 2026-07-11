@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  X, Loader2, AlertCircle, ExternalLink, Tv2,
+  X, AlertCircle, ExternalLink, Tv2,
   Link as LinkIcon, Trash2, CheckCircle2, Video,
   MapPin, Building2, Wifi, Info,
 } from 'lucide-react'
@@ -15,6 +15,7 @@ import { useCourses } from '@/lib/api/courses'
 import { useCourseOutline } from '@/lib/api/outline'
 import { useUsers } from '@/lib/api/users'
 import { isoToDatetimeLocal, datetimeLocalToISO } from '@/lib/timezone'
+import Spinner from '@/components/ui/Spinner'
 
 /* ── Helpers ──────────────────────────────────────────── */
 const toLocalDatetime = isoToDatetimeLocal
@@ -179,7 +180,7 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
                   className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60"
                   style={{ background: '#EF4444' }}>
                   {deleteMutation.isPending
-                    ? <Loader2 size={11} className="animate-spin" />
+                    ? <Spinner size={11} />
                     : <CheckCircle2 size={11} />}
                   Confirm delete
                 </motion.button>
@@ -504,7 +505,7 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
               className="flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold text-white disabled:opacity-60 transition-all hover:brightness-110"
               style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)' }}>
               {updateMutation.isPending
-                ? <><Loader2 size={14} className="animate-spin" />Saving…</>
+                ? <><Spinner size={14} />Saving…</>
                 : 'Save changes'}
             </button>
           </div>

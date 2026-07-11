@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Loader2, ChevronDown, Check, Eye, EyeOff } from 'lucide-react'
+import { X, ChevronDown, Check, Eye, EyeOff } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
+import Spinner from '@/components/ui/Spinner'
 import { api } from '@/lib/axios'
 import { useToast } from '@/store/ui.store'
 import type { CurrentAdmin } from '@/lib/api/user'
@@ -332,7 +333,7 @@ export function AddUserModal({ me, open, onClose }: Props) {
             <button type="submit" disabled={loading}
               className="flex items-center gap-1.5 rounded-xl px-5 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
               style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)', boxShadow: '0 4px 14px rgba(0,87,184,0.3)' }}>
-              {loading && <Loader2 size={13} className="animate-spin" />}
+              {loading && <Spinner size={13} />}
               Create User
             </button>
           </div>

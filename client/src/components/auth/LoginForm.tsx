@@ -5,8 +5,9 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader2, AlertCircle } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react'
 import { api } from '@/lib/axios'
+import Spinner from '@/components/ui/Spinner'
 
 /* ─── Validation schema ─────────────────────────── */
 const loginSchema = z.object({
@@ -276,7 +277,7 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
           >
             {isSubmitting ? (
               <>
-                <Loader2 size={16} className="animate-spin" />
+                <Spinner size={16} />
                 Signing in…
               </>
             ) : (

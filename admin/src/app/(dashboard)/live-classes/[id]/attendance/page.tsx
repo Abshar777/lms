@@ -3,7 +3,7 @@
 import { use } from 'react'
 import { motion } from 'framer-motion'
 import {
-  CheckCircle, XCircle, Loader2, Users, ArrowLeft, Clock,
+  CheckCircle, XCircle, Users, ArrowLeft, Clock,
   BookOpen, GraduationCap, Download,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -11,6 +11,7 @@ import {
   useAdminBookings, useUpdateAttendance, type BookingStatus,
 } from '@/lib/api/liveClasses'
 import { useLiveClassById } from '@/lib/api/liveClasses'
+import Spinner from '@/components/ui/Spinner'
 
 const STATUS_OPTIONS: { value: 'attended' | 'missed'; label: string; color: string; bg: string; border: string }[] = [
   { value: 'attended', label: 'Present', color: '#10B981', bg: 'rgba(16,185,129,0.15)',  border: 'rgba(16,185,129,0.35)' },
@@ -182,7 +183,7 @@ export default function AttendancePage({ params }: { params: Promise<{ id: strin
       {/* Attendance sheet */}
       {isLoading ? (
         <div className="flex h-48 items-center justify-center gap-2 text-sm" style={{ color: dim }}>
-          <Loader2 size={16} className="animate-spin" />Loading attendance…
+          <Spinner size={16} />Loading attendance…
         </div>
       ) : rows.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16">
@@ -264,7 +265,7 @@ export default function AttendancePage({ params }: { params: Promise<{ id: strin
                                   border:     `1px solid ${isActive ? opt.border : 'rgba(255,255,255,0.08)'}`,
                                 }}>
                                 {isPending
-                                  ? <Loader2 size={10} className="animate-spin" />
+                                  ? <Spinner size={10} />
                                   : opt.value === 'attended' ? <CheckCircle size={10} /> : <XCircle size={10} />}
                                 {opt.label}
                               </button>

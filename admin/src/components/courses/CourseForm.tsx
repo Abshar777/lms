@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import {
   BookOpen, DollarSign, Settings, Tag, Image, Link as LinkIcon,
-  Loader2, ArrowLeft, Check, AlertCircle, ChevronDown, Layers,
+  ArrowLeft, Check, AlertCircle, ChevronDown, Layers,
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useCreateCourse, useUpdateCourse } from '@/lib/api/courses'
@@ -16,6 +16,7 @@ import { useCategories } from '@/lib/api/categories'
 import { useToast } from '@/store/ui.store'
 import { MediaUploadField } from '@/components/ui/MediaUploadField'
 import type { Course, CourseFormValues } from '@/types/index'
+import Spinner from '@/components/ui/Spinner'
 
 /* Lazy-loaded so it gets its own webpack chunk and doesn't bloat the form chunk */
 const ModulesSection = dynamic(
@@ -555,7 +556,7 @@ export function CourseForm({ course }: CourseFormProps) {
             className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-70"
             style={{ background: savedSuccess ? 'linear-gradient(135deg, #22C55E, #16A34A)' : 'linear-gradient(135deg, #0057b8, #003d80)', boxShadow: '0 4px 20px rgba(0,87,184,0.28)' }}>
             {isSubmitting
-              ? <><Loader2 size={14} className="animate-spin" />{isEditing ? 'Saving…' : 'Creating…'}</>
+              ? <><Spinner size={14} />{isEditing ? 'Saving…' : 'Creating…'}</>
               : savedSuccess
               ? <><Check size={14} />Saved!</>
               : isEditing ? 'Save changes' : 'Create course'}

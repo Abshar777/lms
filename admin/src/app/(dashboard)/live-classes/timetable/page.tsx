@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ChevronLeft, ChevronRight, Calendar, Clock, Users,
-  Plus, X, Radio, Tv2, ExternalLink, Loader2,
+  Plus, X, Radio, Tv2, ExternalLink,
   AlertCircle, CalendarDays, Monitor, Pencil, Video,
   Building2, MapPin,
 } from 'lucide-react'
@@ -18,6 +18,7 @@ import { useCurrentUser } from '@/lib/api/user'
 import { EditLiveClassModal } from '@/components/live-classes/EditLiveClassModal'
 import { CreateOfflineClassModal } from '@/components/live-classes/CreateOfflineClassModal'
 import { Button } from '@/components/ui/button'
+import Spinner from '@/components/ui/Spinner'
 
 /* ── Helpers ─────────────────────────────────────────── */
 function sameDay(a: Date, b: Date): boolean {
@@ -275,7 +276,7 @@ function QuickCreateModal({
             {cLoading ? (
               <div className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs"
                 style={{ ...iStyle, color: 'rgba(255,255,255,0.4)' }}>
-                <Loader2 size={11} className="animate-spin" />Loading courses…
+                <Spinner size={11} />Loading courses…
               </div>
             ) : (
               <select value={courseId}
@@ -395,7 +396,7 @@ function QuickCreateModal({
             className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-60 transition-all hover:brightness-110"
             style={{ background: 'linear-gradient(135deg,#0057b8,#003d80)' }}>
             {createMutation.isPending
-              ? <><Loader2 size={14} className="animate-spin" />Scheduling…</>
+              ? <><Spinner size={14} />Scheduling…</>
               : <><Plus size={14} />Schedule Session</>}
           </button>
         </form>

@@ -3,12 +3,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  X, Loader2, AlertCircle, User, Mail,
+  X, AlertCircle, User, Mail,
   Lock, Unlock, BookOpen, Plus, Trash2,
   ChevronDown, ChevronUp, FileText, ExternalLink,
   Phone, MapPin, CreditCard, ClipboardList, Camera,
+  TrendingUp, Cpu, BarChart2,
 } from 'lucide-react'
 import { api } from '@/lib/axios'
+import Spinner from '@/components/ui/Spinner'
 import {
   useUpdateUser, useStudentEnrollments, useUpdateEnrollmentAccess,
   useEnrollStudent, useRemoveEnrollment, type AdminUser,
@@ -103,7 +105,7 @@ function ModuleAccessPanel({
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 px-4 py-3 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
-        <Loader2 size={11} className="animate-spin" />Loading modules…
+        <Spinner size={11} />Loading modules…
       </div>
     )
   }
@@ -200,6 +202,16 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
   const [name,  setName]  = useState(user.name)
   const [email, setEmail] = useState(user.email)
   const [error, setError] = useState<string | null>(null)
+
+  /* Categories — multi-select for students */
+  const initCats = () => {
+    const arr = user.categories && user.categories.length > 0
+      ? user.categories
+      : user.category ? [user.category] : []
+    return new Set(arr)
+  }
+  const [categories,    setCategories]    = useState<Set<string>>(initCats)
+  const [categoryError, setCategoryError] = useState<string | null>(null)
 
   /* Photo upload */
   const [avatarFile,    setAvatarFile]    = useState<File | null>(null)
@@ -299,6 +311,8 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    if (categories.size === 0) { setCategoryError('Please select at least one program category'); return }
+    setCategoryError(null)
 
     let newAvatarUrl: string | undefined
     if (avatarFile) {
@@ -319,10 +333,14 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
 
     const promises: Promise<unknown>[] = []
 
-    const dto: { name?: string; email?: string; avatarUrl?: string } = {}
+    const dto: { name?: string; email?: string; avatarUrl?: string; categories?: ('4x-trading' | 'digital-marketing' | 'ai')[] } = {}
     if (name.trim()  !== user.name)  dto.name  = name.trim()
     if (email.trim() !== user.email) dto.email = email.trim().toLowerCase()
     if (newAvatarUrl)                dto.avatarUrl = newAvatarUrl
+    /* Compare categories */
+    const origCats: Set<string> = initCats()
+    const catsChanged = categories.size !== origCats.size || [...categories].some(c => !origCats.has(c))
+    if (catsChanged) dto.categories = Array.from(categories) as ('4x-trading' | 'digital-marketing' | 'ai')[]
     if (Object.keys(dto).length > 0) promises.push(update.mutateAsync({ id: user.id, ...dto }))
 
     enrollments?.forEach(e => {
@@ -449,6 +467,47 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
                     type="email" required placeholder="email@example.com"
                     className={base} style={iStyle} onFocus={iFocus} onBlur={iBlur} />
                 </div>
+              </div>
+
+              {/* Categories — multi-select */}
+              <div>
+                <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest"
+                  style={{ color: 'rgba(255,255,255,0.35)' }}>Program Categories *</label>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    { value: '4x-trading',        label: 'FOREX Trading',     color: '#fb923c', Icon: TrendingUp },
+                    { value: 'digital-marketing', label: 'Digital Marketing', color: '#60a5fa', Icon: BarChart2 },
+                    { value: 'ai',                label: 'AI',                color: '#c084fc', Icon: Cpu },
+                  ] as const).map(({ value, label, color, Icon }) => {
+                    const active = categories.has(value)
+                    return (
+                      <button key={value} type="button"
+                        onClick={() => {
+                          setCategoryError(null)
+                          setCategories(prev => {
+                            const next = new Set(prev)
+                            if (next.has(value)) next.delete(value)
+                            else next.add(value)
+                            return next
+                          })
+                        }}
+                        className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
+                        style={active
+                          ? { background: `${color}18`, border: `1px solid ${color}45`, color }
+                          : categoryError
+                          ? { background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.25)', color: 'rgba(255,255,255,0.32)' }
+                          : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.32)' }
+                        }>
+                        <Icon size={11} />{label}
+                      </button>
+                    )
+                  })}
+                </div>
+                {categoryError && (
+                  <p className="mt-1.5 flex items-center gap-1 text-xs" style={{ color: '#f87171' }}>
+                    <AlertCircle size={11} />{categoryError}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -654,7 +713,7 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
                     style={{ whiteSpace: 'nowrap' }}
                   >
                     {enrollStudent.isPending
-                      ? <Loader2 size={11} className="animate-spin" />
+                      ? <Spinner size={11} />
                       : <Plus size={11} />}
                     Enroll
                   </Button>
@@ -664,7 +723,7 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
               {/* Enrollment list */}
               {enrollmentsLoading ? (
                 <div className="flex items-center gap-2 py-4 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                  <Loader2 size={13} className="animate-spin" />Loading enrollments…
+                  <Spinner size={13} />Loading enrollments…
                 </div>
               ) : !enrollments || enrollments.length === 0 ? (
                 <p className="py-3 text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>
@@ -735,7 +794,7 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
                             title="Remove enrollment"
                           >
                             {removeEnroll.isPending
-                              ? <Loader2 size={11} className="animate-spin" />
+                              ? <Spinner size={11} />
                               : <Trash2 size={11} />}
                           </Button>
                         </div>
@@ -787,9 +846,9 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
                   whileTap={{ scale: 0.98 }}
                 >
                   {uploading
-                    ? <><Loader2 size={14} className="animate-spin" />Uploading…</>
+                    ? <><Spinner size={14} />Uploading…</>
                     : isPending
-                    ? <><Loader2 size={14} className="animate-spin" />Saving…</>
+                    ? <><Spinner size={14} />Saving…</>
                     : 'Save changes'}
                 </MotionButton>
               </div>

@@ -5,11 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import {
   ShoppingCart, Trash2, ArrowRight, BookOpen,
-  Sparkles, X, Tag, Loader2, AlertCircle,
+  Sparkles, X, Tag, AlertCircle,
   CheckCircle2, GraduationCap,
 } from 'lucide-react'
 import { useCartStore, type CartItem } from '@/store/cart.store'
 import { useRazorpayCheckout, useValidateCoupon } from '@/lib/api/checkout'
+import Spinner from '@/components/ui/Spinner'
 
 /* ── helpers ─────────────────────────────────────────── */
 function fmt(cents: number, currency = 'USD') {
@@ -55,7 +56,7 @@ function CouponRow({
         className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all disabled:opacity-50"
         style={{ background: applied ? '#F0FDF4' : 'rgba(0,87,184,0.10)', color: applied ? '#16A34A' : '#0057b8' }}>
         {isLoading
-          ? <Loader2 size={10} className="animate-spin" />
+          ? <Spinner size={10} />
           : applied
             ? <><CheckCircle2 size={10} />Applied</>
             : 'Apply'}
@@ -162,7 +163,7 @@ function CartItemCard({ item, onRemove }: { item: CartItem; onRemove: () => void
                 className="flex items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-bold text-white disabled:opacity-60 transition-all"
                 style={{ background: '#0057b8', boxShadow: '0 2px 8px rgba(0,87,184,0.25)' }}>
                 {buying || checkout.isPending
-                  ? <><Loader2 size={11} className="animate-spin" />Processing…</>
+                  ? <><Spinner size={11} />Processing…</>
                   : <><ArrowRight size={11} />Checkout</>}
               </motion.button>
             )}

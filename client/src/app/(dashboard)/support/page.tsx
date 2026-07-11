@@ -3,13 +3,14 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  LifeBuoy, Send, Loader2, CheckCircle2, Clock,
+  LifeBuoy, Send, CheckCircle2, Clock,
   XCircle, Plus, ChevronLeft, Circle, AlertCircle,
 } from 'lucide-react'
 import {
   useMyTickets, useTicket, useReplyTicket, useCreateTicket,
   type SupportTicket, type SupportStatus, type SupportCategory,
 } from '@/lib/api/support'
+import Spinner from '@/components/ui/Spinner'
 
 /* ─── helpers ──────────────────────────────────────── */
 const fmtDate = (iso: string) => {
@@ -115,7 +116,7 @@ function NewTicketForm({ onDone }: { onDone: () => void }) {
         <button type="submit" disabled={createMut.isPending}
           className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold text-white transition-all disabled:opacity-60"
           style={{ background: '#0057b8' }}>
-          {createMut.isPending ? <><Loader2 size={14} className="animate-spin" />Submitting…</> : 'Submit Request'}
+          {createMut.isPending ? <><Spinner size={14} />Submitting…</> : 'Submit Request'}
         </button>
       </form>
     </motion.div>
@@ -139,7 +140,7 @@ function ThreadView({ ticketId, onBack }: { ticketId: string; onBack: () => void
 
   if (isLoading) return (
     <div className="flex h-48 items-center justify-center gap-2">
-      <Loader2 size={16} className="animate-spin" style={{ color: '#0057b8' }} />
+      <Spinner size={16} />
     </div>
   )
   if (!ticket) return null
@@ -212,7 +213,7 @@ function ThreadView({ ticketId, onBack }: { ticketId: string; onBack: () => void
               className="flex h-10 w-10 flex-shrink-0 items-center justify-center self-end rounded-xl transition-all disabled:opacity-40"
               style={{ background: '#0057b8' }}>
               {replyMut.isPending
-                ? <Loader2 size={14} className="animate-spin text-white" />
+                ? <Spinner size={14} variant="white" />
                 : <Send size={14} color="white" />}
             </button>
           </div>
@@ -237,7 +238,7 @@ function TicketList({ onSelect }: { onSelect: (id: string) => void }) {
 
   if (isLoading) return (
     <div className="flex h-32 items-center justify-center gap-2">
-      <Loader2 size={16} className="animate-spin" style={{ color: '#0057b8' }} />
+      <Spinner size={16} />
     </div>
   )
 

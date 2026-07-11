@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Video, Calendar, Clock, CheckCircle, XCircle, Loader2,
+  Video, Calendar, Clock, CheckCircle, XCircle,
   X as XIcon, AlertCircle, ExternalLink, Tv2, BookOpen, FileText,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useMyBookings, useCancelBooking, type BookingStatus, type MyBooking } from '@/lib/api/bookings'
+import Spinner from '@/components/ui/Spinner'
 
 /* ── Helpers ─────────────────────────────────────────── */
 function fmtDate(iso: string) {
@@ -141,7 +142,7 @@ function BookingCard({ booking }: { booking: MyBooking }) {
                 <button onClick={handleCancel} disabled={cancelMutation.isPending}
                   className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold text-white disabled:opacity-60"
                   style={{ background: '#EF4444' }}>
-                  {cancelMutation.isPending ? <Loader2 size={9} className="animate-spin" /> : null}
+                  {cancelMutation.isPending ? <Spinner size={9} /> : null}
                   Cancel booking
                 </button>
               </div>
@@ -210,7 +211,7 @@ export default function MyBookingsPage() {
       {/* Content */}
       {isLoading ? (
         <div className="flex h-48 items-center justify-center gap-2 text-sm" style={{ color: '#9CA3AF' }}>
-          <Loader2 size={16} className="animate-spin" />Loading…
+          <Spinner size={16} />Loading…
         </div>
       ) : filtered.length === 0 ? (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}

@@ -3,13 +3,14 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import {
-  BarChart3, Users, CheckCircle, XCircle, Loader2, Download, Calendar,
+  BarChart3, Users, CheckCircle, XCircle, Download, Calendar,
   TrendingUp, UserCheck,
 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { useCurrentUser } from '@/lib/api/user'
 import { useQuery } from '@tanstack/react-query'
 import { apiGet } from '@/lib/axios'
+import Spinner from '@/components/ui/Spinner'
 
 /* ── Types ─────────────────────────────────────────────── */
 interface AttendanceRow {
@@ -176,7 +177,7 @@ export default function ReportsPage() {
 
         {mentorSchedule.isLoading ? (
           <div className="flex h-24 items-center justify-center gap-2 text-sm" style={{ color: '#9CA3AF' }}>
-            <Loader2 size={15} className="animate-spin" /><span>Loading…</span>
+            <Spinner size={15} /><span>Loading…</span>
           </div>
         ) : mentorScheduleRows.length === 0 ? (
           <p className="text-sm py-8 text-center" style={{ color: '#9CA3AF' }}>No mentor schedule data yet</p>
@@ -260,7 +261,7 @@ export default function ReportsPage() {
 
         {attendance.isLoading ? (
           <div className="flex h-24 items-center justify-center gap-2 text-sm" style={{ color: '#9CA3AF' }}>
-            <Loader2 size={15} className="animate-spin" /><span>Loading…</span>
+            <Spinner size={15} /><span>Loading…</span>
           </div>
         ) : attendanceRows.length === 0 ? (
           <p className="text-sm py-8 text-center" style={{ color: '#9CA3AF' }}>No attendance data for the selected filters</p>

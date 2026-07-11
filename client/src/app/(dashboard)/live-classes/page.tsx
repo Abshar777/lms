@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Video, Radio, Calendar, Clock, Users, Loader2,
+  Video, Radio, Calendar, Clock, Users,
   AlertCircle, Tv2, ExternalLink, BookOpen, ChevronRight,
   GraduationCap, X as XIcon, Phone, Search,
 } from 'lucide-react'
@@ -12,6 +12,7 @@ import {
   useUpcomingLiveClasses, isLive, isUpcoming, isEnded, hasRecording,
   fmtCountdown, type LiveClass,
 } from '@/lib/api/liveClasses'
+import Spinner from '@/components/ui/Spinner'
 
 /* ── Helpers ─────────────────────────────────────────── */
 function fmtTime(iso: string) {
@@ -547,7 +548,7 @@ export default function LiveClassesPage() {
       {/* Loading */}
       {isLoading && (
         <div className="flex items-center justify-center gap-2 py-20 text-sm" style={{ color: '#9CA3AF' }}>
-          <Loader2 size={16} className="animate-spin" />Loading your schedule…
+          <Spinner size={16} />Loading your schedule…
         </div>
       )}
 

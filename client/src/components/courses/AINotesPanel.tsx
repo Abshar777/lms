@@ -2,10 +2,11 @@
 
 import { motion } from 'framer-motion'
 import {
-  Sparkles, Clock, Target, ListChecks, AlertCircle, Loader2,
+  Sparkles, Clock, Target, ListChecks, AlertCircle,
   BookOpen, Lightbulb,
 } from 'lucide-react'
 import { useAINotes } from '@/lib/api/aiNotes'
+import Spinner from '@/components/ui/Spinner'
 
 function fmtMins(mins: number): string {
   if (mins < 60) return `${mins}m`
@@ -67,7 +68,7 @@ export function AINotesPanel({ slug }: { slug: string }) {
       <div className="p-5">
         {isLoading && (
           <div className="flex items-center gap-2 text-sm" style={{ color: '#9CA3AF' }}>
-            <Loader2 size={14} className="animate-spin" style={{ color: '#0057b8' }} />
+            <Spinner size={14} />
             Crafting your study notes…
           </div>
         )}

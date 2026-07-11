@@ -3,10 +3,11 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { Star, Loader2, MessageSquare, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
+import { Star, MessageSquare, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { useAdminReviews, useDeleteReview, type AdminReview } from '@/lib/api/reviews'
 import { useToast } from '@/store/ui.store'
+import Spinner from '@/components/ui/Spinner'
 
 function reviewer(r: AdminReview) {
   return typeof r.userId === 'object' && r.userId !== null ? r.userId : null
@@ -45,7 +46,7 @@ export default function ReviewsPage() {
 
       {isLoading && (
         <div className="flex items-center justify-center gap-2 py-16 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
-          <Loader2 size={14} className="animate-spin" />Loading…
+          <Spinner size={14} />Loading…
         </div>
       )}
 

@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Award, Loader2 } from 'lucide-react'
+import { Award } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
+import Spinner from '@/components/ui/Spinner'
 
 interface Props {
   enrollmentId: string
@@ -45,7 +46,7 @@ export function CertificateButton({ enrollmentId, courseTitle }: Props) {
         className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold"
       >
         {loading
-          ? <Loader2 size={15} className="animate-spin" />
+          ? <Spinner size={15} />
           : <Award size={15} />}
         {loading ? 'Generating…' : 'Download certificate'}
       </Button>

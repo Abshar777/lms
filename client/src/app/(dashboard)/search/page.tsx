@@ -4,9 +4,10 @@ import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Loader2, BookOpen, Star, Users, Clock } from 'lucide-react'
+import { Search, BookOpen, Star, Users, Clock } from 'lucide-react'
 import { useCourses } from '@/lib/api/courses'
 import type { Course } from '@/types/index'
+import Spinner from '@/components/ui/Spinner'
 
 function fmtMins(mins: number) {
   if (mins < 60) return `${mins}m`
@@ -96,7 +97,7 @@ function SearchInner() {
           <motion.div key="loading"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className="flex items-center justify-center gap-2 py-16 text-sm" style={{ color: '#9CA3AF' }}>
-            <Loader2 size={16} className="animate-spin" />Searching…
+            <Spinner size={16} />Searching…
           </motion.div>
         ) : data?.docs.length === 0 ? (
           <motion.div key="none"
@@ -125,7 +126,7 @@ export default function SearchPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center py-16">
-        <Loader2 size={18} className="animate-spin" style={{ color: '#0057b8' }} />
+        <Spinner size={18} />
       </div>
     }>
       <SearchInner />

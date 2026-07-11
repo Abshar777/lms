@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import {
   Search, BookOpen, Star, Users, Clock, X,
   ChevronDown, SlidersHorizontal, Sparkles,
-  Play, ShoppingCart, Check, Loader2,
+  Play, ShoppingCart, Check,
   LayoutGrid, TrendingUp, Megaphone, Cpu,
 } from 'lucide-react'
 import { useCourses } from '@/lib/api/courses'
@@ -19,6 +19,7 @@ import { FavoriteButton } from '@/components/courses/FavoriteButton'
 import { useCartStore } from '@/store/cart.store'
 import { Button, MotionButton } from '@/components/ui/button'
 import type { Course } from '@/types/index'
+import Spinner from '@/components/ui/Spinner'
 
 const STATUS_TABS = ['All Status', 'Not Started', 'In Progress', 'Completed']
 const SORTS = [
@@ -728,7 +729,7 @@ function MaterialCard({ course }: { course: Course }) {
               {isEnrolled
                 ? <><Check size={10} />Enrolled</>
                 : enroll.isPending
-                  ? <><Loader2 size={10} className="animate-spin" />Enrolling…</>
+                  ? <><Spinner size={10} />Enrolling…</>
                   : isFree
                     ? <><Play size={10} fill="white" />Enroll Free</>
                     : inCart

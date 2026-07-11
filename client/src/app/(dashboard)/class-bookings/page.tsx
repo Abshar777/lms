@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ChevronLeft, ChevronRight, Calendar, Clock,
-  Radio, CheckCircle2, Loader2, Video, BookOpen,
+  Radio, CheckCircle2, Video, BookOpen, Globe,
   AlertCircle, User, Users, X, CalendarDays, Search,
   Building2, Lock, MapPin, Wifi, Flame, TrendingUp,
   GraduationCap, UserCircle2, SlidersHorizontal, Zap, ChevronDown,
@@ -14,6 +14,7 @@ import { useAllLiveClasses, type LiveClass } from '@/lib/api/liveClasses'
 import { useMyBookings, useCreateBooking, useCancelBooking, type MyBooking } from '@/lib/api/bookings'
 import { APP_TIMEZONE } from '@/lib/timezone'
 import { useServerNow } from '@/hooks/useServerNow'
+import Spinner from '@/components/ui/Spinner'
 
 /* ── Google Fonts ──────────────────────────────────────────── */
 const FONT_CSS = `@import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');.syne{font-family:'Syne',sans-serif}.dm{font-family:'DM Sans',sans-serif}`
@@ -590,7 +591,7 @@ function SlotModal({group,bookingMap,onBook,onCancel,bookPending,cancelPending,o
                       className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white disabled:opacity-60"
                       style={{background:'#0057b8'}}>
                       {bookPending.has(sel.id)
-                        ?<><Loader2 size={14} className="animate-spin"/>Booking…</>
+                        ?<><Spinner size={14}/>Booking…</>
                         :<><BookOpen size={14}/>Reserve Seat · {fmtShortSlot(sel.scheduledStart)}</>}
                     </motion.button>
                   ):(
@@ -622,7 +623,7 @@ function SlotModal({group,bookingMap,onBook,onCancel,bookPending,cancelPending,o
                         <button type="button" onClick={()=>onCancel(selBk.id,fmtShortSlot(sel.scheduledStart))} disabled={cancelPending.has(selBk.id)}
                           className="flex w-full items-center justify-center gap-1.5 rounded-2xl py-2 text-xs font-medium disabled:opacity-50"
                           style={{color:'#EF4444',border:'1px solid rgba(239,68,68,0.18)'}}>
-                          {cancelPending.has(selBk.id)?<Loader2 size={11} className="animate-spin"/>:<X size={11}/>}Cancel reservation
+                          {cancelPending.has(selBk.id)?<Spinner size={11}/>:<X size={11}/>}Cancel reservation
                         </button>
                       )}
                     </div>
@@ -686,31 +687,247 @@ function SlotModal({group,bookingMap,onBook,onCancel,bookPending,cancelPending,o
   )
 }
 
-/* ── Filter dropdown ───────────────────────────────────────── */
-function FilterSelect({ placeholder, value, onChange, options }: {
-  placeholder: string
-  value: string
-  onChange: (v: string) => void
+/* ── Course dropdown ───────────────────────────────────────── */
+function CourseDropdown({ value, onChange, options }: {
+  value: string; onChange: (v: string) => void
   options: { value: string; label: string }[]
 }) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const dropRef = useRef<HTMLDivElement>(null)
   const active = value !== 'all'
+  const selected = options.find(o => o.value === value)
+  const filtered = query
+    ? options.filter(o => o.label.toLowerCase().includes(query.toLowerCase()))
+    : options
+
+  const toggleOpen = () => {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setPos({ top: r.bottom + 6, left: r.left })
+    }
+    setOpen(v => !v)
+  }
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (
+        btnRef.current && !btnRef.current.contains(e.target as Node) &&
+        dropRef.current && !dropRef.current.contains(e.target as Node)
+      ) { setOpen(false); setQuery('') }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
   return (
     <div className="relative">
-      <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className="dm appearance-none rounded-2xl py-2 pl-3.5 pr-7 text-[12px] font-semibold outline-none cursor-pointer transition-all"
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={toggleOpen}
+        className="dm flex items-center gap-1.5 rounded-2xl py-2 pl-3 pr-8 text-[12px] font-semibold outline-none cursor-pointer transition-all whitespace-nowrap"
         style={{
           background: active ? 'rgba(0,87,184,0.08)' : 'white',
-          color:      active ? '#EA6010'                : '#475569',
+          color:      active ? '#EA6010' : '#475569',
           border:     active ? '1.5px solid rgba(0,87,184,0.30)' : '1px solid #E2EAF4',
           boxShadow:  active ? '0 0 0 3px rgba(0,87,184,0.07)' : '0 1px 4px rgba(15,23,42,0.04)',
-        }}>
-        <option value="all">{placeholder}</option>
-        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-      <ChevronDown size={11} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2"
-        style={{ color: active ? '#0057b8' : '#94A3B8' }} />
+        }}
+      >
+        <BookOpen size={12} style={{ color: active ? '#0057b8' : '#94A3B8', flexShrink: 0 }} />
+        <span className="max-w-[130px] truncate">{selected ? selected.label : 'All Courses'}</span>
+        <ChevronDown size={11} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2"
+          style={{ color: active ? '#0057b8' : '#94A3B8' }} />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            ref={dropRef}
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.12 }}
+            style={{
+              position: 'fixed',
+              top: pos.top,
+              left: pos.left,
+              zIndex: 9999,
+              minWidth: 210,
+              background: 'white',
+              border: '1px solid #E2EAF4',
+              boxShadow: '0 8px 32px rgba(15,23,42,0.12)',
+              borderRadius: 16,
+              overflow: 'hidden',
+            }}
+          >
+            {options.length > 5 && (
+              <div className="p-2 border-b border-slate-100">
+                <div className="flex items-center gap-2 rounded-xl px-2.5 py-1.5 bg-slate-50 border border-slate-100">
+                  <Search size={11} style={{ color: '#94A3B8' }} />
+                  <input
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    placeholder="Search courses…"
+                    autoFocus
+                    className="dm flex-1 bg-transparent text-[12px] outline-none placeholder:text-slate-400"
+                    style={{ color: '#0F172A' }}
+                  />
+                </div>
+              </div>
+            )}
+            <div className="py-1.5 max-h-52 overflow-y-auto">
+              <button
+                type="button"
+                onClick={() => { onChange('all'); setOpen(false); setQuery('') }}
+                className="dm flex w-full items-center gap-2.5 px-3 py-2 text-[12px] font-semibold transition-colors hover:bg-blue-50"
+                style={{ color: value === 'all' ? '#0057b8' : '#475569' }}
+              >
+                <div className="h-5 w-5 rounded-lg flex-shrink-0 flex items-center justify-center" style={{ background: '#F1F5F9' }}>
+                  <BookOpen size={10} style={{ color: '#94A3B8' }} />
+                </div>
+                <span>All Courses</span>
+                {value === 'all' && <span className="ml-auto text-blue-500 text-[10px]">✓</span>}
+              </button>
+              {filtered.map(o => (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => { onChange(o.value); setOpen(false); setQuery('') }}
+                  className="dm flex w-full items-center gap-2.5 px-3 py-2 text-[12px] font-semibold transition-colors hover:bg-blue-50"
+                  style={{ color: value === o.value ? '#0057b8' : '#475569' }}
+                >
+                  <div className="h-5 w-5 rounded-lg flex-shrink-0 flex items-center justify-center text-[9px] font-bold text-white"
+                    style={{ background: '#0057b8' }}>
+                    {o.label[0]?.toUpperCase()}
+                  </div>
+                  <span className="truncate">{o.label}</span>
+                  {value === o.value && <span className="ml-auto text-blue-500 text-[10px] flex-shrink-0">✓</span>}
+                </button>
+              ))}
+              {filtered.length === 0 && (
+                <p className="dm px-3 py-3 text-center text-[11px] text-slate-400">No results</p>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+/* ── Language dropdown ─────────────────────────────────────── */
+const LANG_OPTIONS = [
+  { value: 'English',   label: 'English',   flag: '🇬🇧' },
+  { value: 'Malayalam', label: 'Malayalam', flag: '🇮🇳' },
+  { value: 'Hindi',     label: 'Hindi',     flag: '🇮🇳' },
+  { value: 'Tamil',     label: 'Tamil',     flag: '🇮🇳' },
+]
+
+function LanguageDropdown({ value, onChange }: {
+  value: string; onChange: (v: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const dropRef = useRef<HTMLDivElement>(null)
+  const active = value !== 'all'
+  const selected = LANG_OPTIONS.find(o => o.value === value)
+
+  const toggleOpen = () => {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setPos({ top: r.bottom + 6, left: r.left })
+    }
+    setOpen(v => !v)
+  }
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (
+        btnRef.current && !btnRef.current.contains(e.target as Node) &&
+        dropRef.current && !dropRef.current.contains(e.target as Node)
+      ) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div className="relative">
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={toggleOpen}
+        className="dm flex items-center gap-1.5 rounded-2xl py-2 pl-3 pr-8 text-[12px] font-semibold outline-none cursor-pointer transition-all whitespace-nowrap"
+        style={{
+          background: active ? 'rgba(0,87,184,0.08)' : 'white',
+          color:      active ? '#EA6010' : '#475569',
+          border:     active ? '1.5px solid rgba(0,87,184,0.30)' : '1px solid #E2EAF4',
+          boxShadow:  active ? '0 0 0 3px rgba(0,87,184,0.07)' : '0 1px 4px rgba(15,23,42,0.04)',
+        }}
+      >
+        {selected
+          ? <span className="text-sm leading-none flex-shrink-0">{selected.flag}</span>
+          : <Globe size={12} style={{ color: '#94A3B8', flexShrink: 0 }} />}
+        <span>{selected ? selected.label : 'All Languages'}</span>
+        <ChevronDown size={11} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2"
+          style={{ color: active ? '#0057b8' : '#94A3B8' }} />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            ref={dropRef}
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.12 }}
+            style={{
+              position: 'fixed',
+              top: pos.top,
+              left: pos.left,
+              zIndex: 9999,
+              minWidth: 170,
+              background: 'white',
+              border: '1px solid #E2EAF4',
+              boxShadow: '0 8px 32px rgba(15,23,42,0.12)',
+              borderRadius: 16,
+              overflow: 'hidden',
+              paddingTop: 6,
+              paddingBottom: 6,
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => { onChange('all'); setOpen(false) }}
+              className="dm flex w-full items-center gap-2.5 px-3 py-2 text-[12px] font-semibold transition-colors hover:bg-blue-50"
+              style={{ color: value === 'all' ? '#0057b8' : '#475569' }}
+            >
+              <div className="h-5 w-5 rounded-lg flex-shrink-0 flex items-center justify-center" style={{ background: '#F1F5F9' }}>
+                <Globe size={10} style={{ color: '#94A3B8' }} />
+              </div>
+              <span>All Languages</span>
+              {value === 'all' && <span className="ml-auto text-blue-500 text-[10px]">✓</span>}
+            </button>
+            {LANG_OPTIONS.map(o => (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => { onChange(o.value); setOpen(false) }}
+                className="dm flex w-full items-center gap-2.5 px-3 py-2 text-[12px] font-semibold transition-colors hover:bg-blue-50"
+                style={{ color: value === o.value ? '#0057b8' : '#475569' }}
+              >
+                <span className="text-sm leading-none w-5 text-center flex-shrink-0">{o.flag}</span>
+                <span>{o.label}</span>
+                {value === o.value && <span className="ml-auto text-blue-500 text-[10px]">✓</span>}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -1451,8 +1668,7 @@ export default function ClassBookingsPage() {
                 <ChevronRight size={12} style={{color:'#CBD5E1'}}/>
                 {/* Course dropdown */}
                 {programCourses.length>0&&(
-                  <FilterSelect
-                    placeholder="All Courses"
+                  <CourseDropdown
                     value={filterCourse}
                     onChange={v=>{setFilterCourse(v)}}
                     options={programCourses.map(c=>({value:c.id,label:c.title.length>32?c.title.slice(0,30)+'…':c.title}))}
@@ -1467,16 +1683,9 @@ export default function ClassBookingsPage() {
                   />
                 )}
                 {/* Language dropdown */}
-                <FilterSelect
-                  placeholder="All Languages"
+                <LanguageDropdown
                   value={filterLanguage}
                   onChange={v=>{setFilterLanguage(v)}}
-                  options={[
-                    {value:'English',   label:'English'},
-                    {value:'Malayalam', label:'Malayalam'},
-                    {value:'Hindi',     label:'Hindi'},
-                    {value:'Tamil',     label:'Tamil'},
-                  ]}
                 />
                 {/* Reset scoped filters */}
                 {(filterCourse!=='all'||filterInstructor!=='all'||filterLanguage!=='all')&&(

@@ -3,10 +3,11 @@
 import { use, useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { ArrowLeft, BookOpen, Star, Users, Play, Sparkles, Loader2 } from 'lucide-react'
+import { ArrowLeft, BookOpen, Star, Users, Play, Sparkles } from 'lucide-react'
 import { useCourses } from '@/lib/api/courses'
 import { useCategories } from '@/lib/api/categories'
 import type { Course } from '@/types/index'
+import Spinner from '@/components/ui/Spinner'
 
 const stagger  = { hidden: {}, show: { transition: { staggerChildren: 0.05 } } }
 const cardAnim = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 280, damping: 26 } } }
@@ -104,7 +105,7 @@ export default function CategoryLandingPage({ params }: { params: Promise<{ slug
       {/* Grid */}
       {isLoading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-sm" style={{ color: '#9CA3AF' }}>
-          <Loader2 size={14} className="animate-spin" />Loading courses…
+          <Spinner size={14} />Loading courses…
         </div>
       ) : data && data.docs.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-4 py-24">

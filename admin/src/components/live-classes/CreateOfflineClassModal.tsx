@@ -3,14 +3,16 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  X, Plus, Loader2, AlertCircle, MapPin, Building2,
+  X, Plus, AlertCircle, MapPin, Building2,
   Users, Calendar, Clock, BookOpen, Globe, User, FileText,
 } from 'lucide-react'
 import { useCreateLiveClass } from '@/lib/api/liveClasses'
+import Spinner from '@/components/ui/Spinner'
 import { useCourses } from '@/lib/api/courses'
 import { useCourseOutline } from '@/lib/api/outline'
 import { useUsers } from '@/lib/api/users'
 import { Button } from '@/components/ui/button'
+import { DarkSelect, DarkDateTimePicker } from './FormWidgets'
 
 interface Props {
   onClose:          () => void
@@ -19,7 +21,16 @@ interface Props {
   prefillDate?:     string   // YYYY-MM-DDTHH:MM — from timetable slot click
 }
 
-const LANGUAGES = ['English', 'Arabic', 'Hindi', 'Malayalam', 'Tamil', 'Urdu', 'French', 'Spanish']
+const LANGUAGE_OPTIONS = [
+  { value: 'English',   label: '🇬🇧 English' },
+  { value: 'Arabic',    label: '🇦🇪 Arabic' },
+  { value: 'Hindi',     label: '🇮🇳 Hindi' },
+  { value: 'Malayalam', label: '🇮🇳 Malayalam' },
+  { value: 'Tamil',     label: '🇮🇳 Tamil' },
+  { value: 'Urdu',      label: '🇵🇰 Urdu' },
+  { value: 'French',    label: '🇫🇷 French' },
+  { value: 'Spanish',   label: '🇪🇸 Spanish' },
+]
 
 export function CreateOfflineClassModal({ onClose, onSuccess, categoryProgram, prefillDate }: Props) {
   const createMutation = useCreateLiveClass()
@@ -45,9 +56,8 @@ export function CreateOfflineClassModal({ onClose, onSuccess, categoryProgram, p
   const { data: outline } = useCourseOutline(courseId)
   const sections = outline?.sections ?? []
 
-  const base     = 'w-full rounded-xl px-3 py-2 text-sm text-white outline-none placeholder:text-white/30'
-  const iStyle   = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' } as const
-  const selStyle = { background: '#1e2035', border: '1px solid rgba(255,255,255,0.12)', color: 'white' } as const
+  const base   = 'w-full rounded-xl px-3 py-2 text-sm text-white outline-none placeholder:text-white/30'
+  const iStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' } as const
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -125,12 +135,14 @@ export function CreateOfflineClassModal({ onClose, onSuccess, categoryProgram, p
               style={{ color: 'rgba(255,255,255,0.35)' }}>
               <BookOpen size={9} /> Course
             </label>
-            <select value={courseId} onChange={e => { setCourseId(e.target.value); setSectionId('') }}
-              required disabled={loadingCourses}
-              className={base} style={{ ...selStyle, opacity: loadingCourses ? 0.5 : 1 }}>
-              <option value="">{loadingCourses ? 'Loading courses…' : 'Select a course…'}</option>
-              {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-            </select>
+            <DarkSelect
+              value={courseId}
+              onChange={v => { setCourseId(v); setSectionId('') }}
+              options={courses.map(c => ({ value: c.id, label: c.title }))}
+              placeholder="Select a course…"
+              loading={loadingCourses}
+              loadingText="Loading courses…"
+            />
           </div>
 
           {/* Module (optional) */}
@@ -139,11 +151,12 @@ export function CreateOfflineClassModal({ onClose, onSuccess, categoryProgram, p
               style={{ color: 'rgba(255,255,255,0.35)' }}>
               <BookOpen size={9} /> Module / Session (optional)
             </label>
-            <select value={sectionId} onChange={e => setSectionId(e.target.value)}
-              className={base} style={selStyle}>
-              <option value="">No specific module</option>
-              {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
-            </select>
+            <DarkSelect
+              value={sectionId}
+              onChange={setSectionId}
+              options={sections.map(s => ({ value: s.id, label: s.title }))}
+              placeholder="No specific module"
+            />
           </div>
 
           {/* Title */}
@@ -165,8 +178,7 @@ export function CreateOfflineClassModal({ onClose, onSuccess, categoryProgram, p
                 style={{ color: 'rgba(255,255,255,0.35)' }}>
                 <Calendar size={9} /> Date & Time
               </label>
-              <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)}
-                required className={base} style={iStyle} />
+              <DarkDateTimePicker value={start} onChange={setStart} />
             </div>
             <div>
               <label className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest"
@@ -227,22 +239,25 @@ export function CreateOfflineClassModal({ onClose, onSuccess, categoryProgram, p
                 style={{ color: 'rgba(255,255,255,0.35)' }}>
                 <User size={9} /> Mentor / Instructor
               </label>
-              <select value={instructorId} onChange={e => setInstructorId(e.target.value)}
-                disabled={loadingInstructors}
-                className={base} style={{ ...selStyle, opacity: loadingInstructors ? 0.5 : 1 }}>
-                <option value="">{loadingInstructors ? 'Loading…' : 'Default (current user)'}</option>
-                {instructors.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-              </select>
+              <DarkSelect
+                value={instructorId}
+                onChange={setInstructorId}
+                options={instructors.map(i => ({ value: i.id, label: i.name }))}
+                placeholder="Default (current user)"
+                loading={loadingInstructors}
+                loadingText="Loading…"
+              />
             </div>
             <div>
               <label className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest"
                 style={{ color: 'rgba(255,255,255,0.35)' }}>
                 <Globe size={9} /> Language
               </label>
-              <select value={language} onChange={e => setLanguage(e.target.value)}
-                className={base} style={selStyle}>
-                {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
-              </select>
+              <DarkSelect
+                value={language}
+                onChange={setLanguage}
+                options={LANGUAGE_OPTIONS}
+              />
             </div>
           </div>
 
@@ -283,7 +298,7 @@ export function CreateOfflineClassModal({ onClose, onSuccess, categoryProgram, p
               className="flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold disabled:opacity-60"
               style={{ background: 'linear-gradient(135deg,#059669,#34D399)', color: '#fff' }}>
               {createMutation.isPending
-                ? <><Loader2 size={14} className="animate-spin" />Creating…</>
+                ? <><Spinner size={14} />Creating…</>
                 : <><Plus size={14} />Create Offline Class</>}
             </Button>
           </div>

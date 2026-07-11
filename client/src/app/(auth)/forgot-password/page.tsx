@@ -6,8 +6,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Mail, ArrowLeft, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Mail, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react'
 import { forgotPassword } from '@/lib/api/user'
+import Spinner from '@/components/ui/Spinner'
 
 const schema = z.object({
   email: z.string().min(1, 'Email is required').email('Enter a valid email'),
@@ -111,7 +112,7 @@ export default function ForgotPasswordPage() {
                 className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white transition-all disabled:opacity-60"
                 style={{ background: '#0057b8', boxShadow: '0 4px 18px rgba(0,87,184,0.30)' }}>
                 {isSubmitting
-                  ? <><Loader2 size={14} className="animate-spin" />Sending…</>
+                  ? <><Spinner size={14} />Sending…</>
                   : 'Send reset link'}
               </motion.button>
             </motion.form>

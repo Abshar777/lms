@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Calendar, Video, Loader2, Radio, Clock, AlertCircle, Lock } from 'lucide-react'
+import { Calendar, Video, Radio, Clock, AlertCircle, Lock } from 'lucide-react'
 import Link from 'next/link'
 import { Tv2 } from 'lucide-react'
 import { useLiveClassesForCourse, isLive, isUpcoming, fmtCountdown, type LiveClass } from '@/lib/api/liveClasses'
+import Spinner from '@/components/ui/Spinner'
 
 function fmtDateTime(iso: string): string {
   return new Date(iso).toLocaleString('en-US', {
@@ -82,7 +83,7 @@ export function LiveClassesPanel({ slug, isEnrolled }: { slug: string; isEnrolle
       <div className="p-5">
         {isLoading && (
           <div className="flex items-center gap-2 text-sm" style={{ color: '#9CA3AF' }}>
-            <Loader2 size={14} className="animate-spin" />Loading…
+            <Spinner size={14} />Loading…
           </div>
         )}
 

@@ -2,9 +2,10 @@
 
 import { motion } from 'framer-motion'
 import {
-  Trophy, Star, Flame, Award, Target, Crown, Heart, GraduationCap, Rocket, Medal, Loader2,
+  Trophy, Star, Flame, Award, Target, Crown, Heart, GraduationCap, Rocket, Medal,
 } from 'lucide-react'
 import { useMyAchievements, type Achievement } from '@/lib/api/achievements'
+import Spinner from '@/components/ui/Spinner'
 
 const ICON_MAP: Record<Achievement['iconKey'], React.ElementType> = {
   rocket: Rocket,
@@ -59,7 +60,7 @@ export default function AchievementsPage() {
 
       {isLoading && (
         <div className="flex items-center justify-center gap-2 py-16 text-sm" style={{ color: '#9CA3AF' }}>
-          <Loader2 size={14} className="animate-spin" />Loading achievements…
+          <Spinner size={14} />Loading achievements…
         </div>
       )}
 

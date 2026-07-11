@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Search, UserPlus, Check, Loader2, AlertCircle, Building2 } from 'lucide-react'
+import { X, Search, UserPlus, Check, AlertCircle, Building2 } from 'lucide-react'
 import { useUsers } from '@/lib/api/users'
+import Spinner from '@/components/ui/Spinner'
 import { useAdminBookForStudent } from '@/lib/api/adminBookings'
 import type { LiveClass } from '@/lib/api/liveClasses'
 import type { AdminUser } from '@/lib/api/users'
@@ -128,7 +129,7 @@ export function BookForStudentModal({ live, onClose, onSuccess }: Props) {
                 style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.1)' }}
               />
               {searching && (
-                <Loader2 size={12} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                <Spinner size={12} variant="muted" className="absolute right-3 top-1/2 -translate-y-1/2" />
               )}
             </div>
           </div>
@@ -204,7 +205,7 @@ export function BookForStudentModal({ live, onClose, onSuccess }: Props) {
             disabled={!selectedStudent || isPending || live.bookedCount >= live.sessionCapacity}
             className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ background: selectedStudent ? '#34D399' : 'rgba(52,211,153,0.3)', color: '#0a2a1e' }}>
-            {isPending ? <Loader2 size={12} className="animate-spin" /> : <UserPlus size={12} />}
+            {isPending ? <Spinner size={12} /> : <UserPlus size={12} />}
             {isPending ? 'Booking…' : 'Book Seat'}
           </button>
         </div>
