@@ -46,6 +46,10 @@ router.get('/health', (_req: Request, res: Response) => {
       env:       process.env.NODE_ENV,
       timestamp: new Date().toISOString(),
       uptime:    Math.floor(process.uptime()),
+      /* Load-balancer visibility: which PM2 instance served this request */
+      pid:       process.pid,
+      instance:  process.env.NODE_APP_INSTANCE ?? '0',
+      port:      Number(process.env.PORT ?? 0),
     },
   })
 })
