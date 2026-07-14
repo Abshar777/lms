@@ -30,7 +30,6 @@
 set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://localhost:4000}"
-ENDPOINT="${ENDPOINT:-/api/v1/auth/me}"
 EMAIL="${EMAIL:-}"
 PASSWORD="${PASSWORD:-}"
 CONNECTIONS="${CONNECTIONS:-50}"
@@ -40,28 +39,31 @@ REQ_PER_USER="${REQ_PER_USER:-0.2}"
 
 command -v curl >/dev/null || { echo "❌ curl required"; exit 1; }
 command -v jq   >/dev/null || { echo "❌ jq required";   exit 1; }
-[ -n "$EMAIL" ] && [ -n "$PASSWORD" ] || {
-  echo "❌ Set EMAIL and PASSWORD, e.g.:"
-  echo "     EMAIL=student@x.com PASSWORD='secret' $0"
-  exit 1
-}
 
-echo "▶ Logging in as $EMAIL at $BASE_URL …"
-COOKIE=$(curl -s -i -X POST "$BASE_URL/api/v1/auth/login" \
-  -H 'content-type: application/json' \
-  -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}" \
-  | tr -d '\r' | grep -i '^set-cookie: *lms_at=' \
-  | sed -E 's/^[Ss]et-[Cc]ookie: *(lms_at=[^;]+).*/\1/' | head -1)
+COOKIE=""
+if [ -n "$EMAIL" ] && [ -n "$PASSWORD" ]; then
+  # ── Authenticated mode: log in once, reuse the cookie ──
+  ENDPOINT="${ENDPOINT:-/api/v1/auth/me}"
+  echo "▶ Logging in as $EMAIL at $BASE_URL …"
+  COOKIE=$(curl -s -i -X POST "$BASE_URL/api/v1/auth/login" \
+    -H 'content-type: application/json' \
+    -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}" \
+    | tr -d '\r' | grep -i '^set-cookie: *lms_at=' \
+    | sed -E 's/^[Ss]et-[Cc]ookie: *(lms_at=[^;]+).*/\1/' | head -1)
+  [ -n "$COOKIE" ] || { echo "❌ Login failed — check the EMAIL/PASSWORD are a REAL account, and that $BASE_URL is up."; exit 1; }
+else
+  # ── Anonymous mode: no creds → test a public DB-backed endpoint ──
+  ENDPOINT="${ENDPOINT:-/api/v1/courses/?per_page=12}"
+  echo "▶ No EMAIL/PASSWORD given — testing PUBLIC endpoint anonymously: $ENDPOINT"
+fi
 
-[ -n "$COOKIE" ] || { echo "❌ Login failed — check credentials, and that $BASE_URL is up."; exit 1; }
-
-# Sanity: the cookie must actually authenticate before we load-test
-CODE=$(curl -s -o /dev/null -w '%{http_code}' -H "cookie: $COOKIE" "$BASE_URL$ENDPOINT")
-[ "$CODE" = "200" ] || { echo "❌ $ENDPOINT returned $CODE with the session cookie (expected 200)."; exit 1; }
-echo "✅ Authenticated — $ENDPOINT responds 200."
+# Sanity: endpoint must return 200 before we load-test
+CODE=$(curl -s -o /dev/null -w '%{http_code}' ${COOKIE:+-H "cookie: $COOKIE"} "$BASE_URL$ENDPOINT")
+[ "$CODE" = "200" ] || { echo "❌ $ENDPOINT returned $CODE (expected 200). Wrong endpoint, or auth needed?"; exit 1; }
+echo "✅ $ENDPOINT responds 200 — starting load test."
 
 echo "▶ Load testing $ENDPOINT  ($CONNECTIONS connections, ${DURATION}s, one instance)…"
-JSON=$(npx --yes autocannon -c "$CONNECTIONS" -d "$DURATION" -H "cookie: $COOKIE" --json "$BASE_URL$ENDPOINT")
+JSON=$(npx --yes autocannon -c "$CONNECTIONS" -d "$DURATION" ${COOKIE:+-H "cookie: $COOKIE"} --json "$BASE_URL$ENDPOINT")
 
 RPS=$(echo "$JSON"   | jq -r '.requests.mean')
 OK=$(echo "$JSON"    | jq -r '.["2xx"]')
