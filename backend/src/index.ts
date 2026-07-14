@@ -44,8 +44,17 @@ async function bootstrap() {
     logger.info(`🌍  Environment: ${env.NODE_ENV}`)
   })
 
-  /* 3. Start cron jobs */
-  startReminderJobs()
+  /* 3. Start cron jobs — ONLY on the primary instance.
+     Under PM2 multi-instance load balancing, PM2 sets NODE_APP_INSTANCE
+     (0,1,2,…) per fork. Running the scheduler on every instance would fire
+     each reminder N times, so we pin it to instance 0. When unset (single
+     process / dev), it defaults to '0' and jobs run normally. */
+  if ((process.env.NODE_APP_INSTANCE ?? '0') === '0') {
+    startReminderJobs()
+    logger.info('⏰  Reminder cron jobs started (primary instance)')
+  } else {
+    logger.info(`⏸️   Reminder cron jobs skipped (instance ${process.env.NODE_APP_INSTANCE})`)
+  }
 
   /* 4. Graceful shutdown */
   const shutdown = (signal: string) => {

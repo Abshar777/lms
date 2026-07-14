@@ -1,21 +1,25 @@
 /**
- * PM2 ecosystem for Delta LMS — backend API only
+ * PM2 ecosystem for Delta LMS — backend API (load-balanced)
  * ---------------------------------------------------------------------------
- * lms-backend → Express + Bun API (proxied by nginx → localhost:4000)
+ * Runs N Bun fork instances on consecutive ports starting at 4000:
+ *   instance 0 → :4000   (also runs the reminder cron jobs)
+ *   instance 1 → :4001
+ *   instance 2 → :4002
+ *   instance 3 → :4003
  *
- * Install deps first:
- *   cd backend && bun install
+ * nginx `upstream` (see nginx.lms.conf) round-robins across those ports.
+ * Bun does NOT support PM2 cluster mode, so we use `fork` + `increment_var`.
+ *
+ * Install deps first:  cd backend && bun install
  *
  * Start / manage:
  *   pm2 start ecosystem.config.js
- *   pm2 save                 # persist across reboots
- *   pm2 startup              # generate the boot script (run once, follow its output)
+ *   pm2 save && pm2 startup
+ *   pm2 reload ecosystem.config.js   # zero-downtime rolling reload
  *   pm2 logs lms-backend
- *   pm2 reload ecosystem.config.js   # zero-downtime reload
  *
- * NOTE on Bun: PM2 runs the backend through the Bun interpreter. If PM2 can't
- * find `bun` on PATH, replace "bun" below with the absolute path from
- * `which bun` (commonly /root/.bun/bin/bun or ~/.bun/bin/bun).
+ * Tune `instances` to your CPU core count (leave 1 core for nginx + mongo).
+ * If PM2 can't find `bun`, set interpreter to the absolute path (`which bun`).
  */
 module.exports = {
   apps: [
@@ -25,13 +29,15 @@ module.exports = {
       script: 'src/index.ts',
       interpreter: 'bun', // ← absolute path if not on PATH, e.g. '/root/.bun/bin/bun'
       exec_mode: 'fork', // cluster mode is NOT supported with the Bun interpreter
-      instances: 1,
+      instances: 4, // ← set to (CPU cores - 1)
+      increment_var: 'PORT', // each instance gets PORT = 4000, 4001, 4002, …
       autorestart: true,
       watch: false,
       max_memory_restart: '500M',
+      kill_timeout: 10000, // give in-flight requests 10s to drain on reload (matches graceful shutdown)
       env: {
         NODE_ENV: 'production',
-        PORT: 4000, // must match `proxy_pass http://localhost:4000` in nginx
+        PORT: 4000, // base port; incremented per instance
       },
       out_file: './logs/backend-out.log',
       error_file: './logs/backend-error.log',
