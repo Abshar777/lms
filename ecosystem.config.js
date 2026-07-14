@@ -30,7 +30,9 @@ module.exports = {
       interpreter: 'bun', // ← absolute path if not on PATH, e.g. '/root/.bun/bin/bun'
       exec_mode: 'fork', // cluster mode is NOT supported with the Bun interpreter
       instances: 4, // ← set to (CPU cores - 1)
-      increment_var: 'PORT', // each instance gets PORT = 4000, 4001, 4002, …
+      // NOTE: no `increment_var` — the app derives its listen port from
+      // NODE_APP_INSTANCE (see backend/src/index.ts). All forks share PORT=4000
+      // as the BASE; instance N listens on 4000+N (4000..4003). Matches nginx upstream.
       autorestart: true,
       watch: false,
       max_memory_restart: '500M',

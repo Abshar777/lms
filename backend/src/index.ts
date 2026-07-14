@@ -37,9 +37,18 @@ async function bootstrap() {
     logger.info(`✅  Migrated ${migrated.modifiedCount} legacy student(s) → enrollmentStatus: approved`)
   }
 
-  /* 2. Start HTTP server */
-  const server = app.listen(env.PORT, () => {
-    logger.info(`🚀  Server running on http://localhost:${env.PORT}`)
+  /* 2. Start HTTP server.
+     Under PM2 multi-instance load balancing, every fork inherits the SAME
+     env PORT (base), so we derive a unique listen port per instance from
+     NODE_APP_INSTANCE (0,1,2,…). This is deterministic and does NOT rely on
+     PM2's `increment_var`, which is unreliable in fork mode.
+       instance 0 → base+0 (4000), instance 1 → 4001, … matching nginx upstream.
+     Single process / dev: NODE_APP_INSTANCE is unset → 0 → listens on base. */
+  const instanceId = Number(process.env.NODE_APP_INSTANCE ?? 0)
+  const listenPort = env.PORT + instanceId
+  process.env.PORT = String(listenPort) // so /health reports the real port
+  const server = app.listen(listenPort, () => {
+    logger.info(`🚀  Server running on http://localhost:${listenPort} (instance ${instanceId})`)
     logger.info(`📡  API prefix: /api/v1`)
     logger.info(`🌍  Environment: ${env.NODE_ENV}`)
   })
