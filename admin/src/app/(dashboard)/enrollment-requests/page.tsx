@@ -7,8 +7,13 @@ import {
   TrendingUp, Megaphone, Cpu, LayoutGrid, ChevronDown, Check,
   ShieldCheck, Mail, X, Plus, Eye, RotateCcw, ShieldOff,
   FileText, User, Phone, MapPin, BookOpen, CreditCard, ExternalLink,
-  ImageIcon, ZoomIn, AlertTriangle, Upload, Trash2,
+  ImageIcon, ZoomIn, AlertTriangle, Upload, Trash2, Zap, Globe, Users,
 } from 'lucide-react'
+import {
+  useExpressMembers, useExpressMembersStats, useExpressMembersCount,
+  useToggleExpressMember, useDeleteExpressMember,
+  type ExpressMember,
+} from '@/lib/api/expressMembers'
 import {
   useEnrollmentRequests, useApproveEnrollment, useRejectEnrollment, useRemoveEnrollmentCategory,
   useRevokeToViewer, useToggleBlock,
@@ -781,6 +786,8 @@ export default function EnrollmentRequestsPage() {
   const [detailTarget,   setDetailTarget]   = useState<EnrollmentRequest | null>(null)
   const [deleteTarget,   setDeleteTarget]   = useState<string | null>(null)
   const [blockFilter,    setBlockFilter]    = useState<'all' | 'blocked' | 'unblocked'>('all')
+  const [accountType,    setAccountType]    = useState<'full' | 'express'>('full')
+  const [expressDelete,  setExpressDelete]  = useState<ExpressMember | null>(null)
 
   const approve         = useApproveEnrollment()
   const reject          = useRejectEnrollment()
@@ -802,6 +809,43 @@ export default function EnrollmentRequestsPage() {
     isFullAdmin || (!!scopeCategory && displayCats.length === 1 && displayCats[0] === scopeCategory)
 
   const { data, isLoading } = useEnrollmentRequests(statusFilter)
+
+  // Dashboard stat counts for Full Registration
+  const { data: pendingCountData  } = useEnrollmentRequests('pending')
+  const { data: approvedCountData } = useEnrollmentRequests('approved')
+  const { data: rejectedCountData } = useEnrollmentRequests('rejected')
+  const { data: allCountData      } = useEnrollmentRequests('all')
+
+  // Express members — only fetched when that tab is active (avoids stale-cache misses)
+  const expressStatus = blockFilter === 'blocked' ? 'blocked' : blockFilter === 'unblocked' ? 'active' : 'all'
+  const { data: expressData, isLoading: expressLoading } = useExpressMembers(
+    expressStatus, search, 1, 200, accountType === 'express',
+  )
+  const expressMembers = expressData?.data ?? []
+  const { data: expressStats } = useExpressMembersStats(accountType === 'express')
+  const { data: expressTotalCount = 0 } = useExpressMembersCount()
+  const toggleExpressMember = useToggleExpressMember()
+  const deleteExpressMember = useDeleteExpressMember()
+
+  const handleToggleExpress = async (m: ExpressMember) => {
+    try {
+      await toggleExpressMember.mutateAsync(m.id)
+      toast.success(m.isActive ? `${m.name} blocked` : `${m.name} unblocked`, '')
+    } catch (err: any) {
+      toast.error('Action failed', err?.response?.data?.error?.message)
+    }
+  }
+
+  const handleDeleteExpress = async () => {
+    if (!expressDelete) return
+    try {
+      await deleteExpressMember.mutateAsync(expressDelete.id)
+      toast.success('Member deleted', `${expressDelete.name}'s account has been removed.`)
+      setExpressDelete(null)
+    } catch (err: any) {
+      toast.error('Delete failed', err?.response?.data?.error?.message)
+    }
+  }
 
   const requests = (data?.data ?? []).filter(r => {
     if (search) {
@@ -912,49 +956,155 @@ export default function EnrollmentRequestsPage() {
     { value: 'all',      label: 'All',      color: 'rgba(255,255,255,0.4)' },
   ]
 
-  const pendingCount = statusFilter !== 'pending' ? (data?.meta?.total_count ?? 0) : 0
+  const pendingCount = pendingCountData?.meta?.total_count ?? 0
+
+  // Stat values
+  const fullStats = {
+    pending:  pendingCountData?.meta?.total_count  ?? 0,
+    approved: approvedCountData?.meta?.total_count ?? 0,
+    rejected: rejectedCountData?.meta?.total_count ?? 0,
+    total:    allCountData?.meta?.total_count      ?? 0,
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-          Student Requests
-        </h1>
-        <p className="mt-1 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
-          {scopeCategory
-            ? `Review student signup requests — your approvals assign them to ${CATEGORY_META[scopeCategory].label}.`
-            : 'Review and approve student signup requests across all programs.'}
-        </p>
+      {/* Header row — title on left, account-type switcher on right */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+            Student Requests
+          </h1>
+          <p className="mt-1 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
+            {scopeCategory
+              ? `Review student signup requests — your approvals assign them to ${CATEGORY_META[scopeCategory].label}.`
+              : 'Review and approve student signup requests across all programs.'}
+          </p>
+        </div>
+
+        {/* Account-type switcher — TOP RIGHT */}
+        <div className="flex overflow-hidden rounded-xl flex-shrink-0" style={{ border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.03)' }}>
+          <button
+            onClick={() => { setAccountType('full'); setBlockFilter('all') }}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all"
+            style={{
+              color:      accountType === 'full' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)',
+              background: accountType === 'full' ? 'rgba(255,255,255,0.09)' : 'transparent',
+              borderRight: '1px solid rgba(255,255,255,0.07)',
+            }}
+          >
+            Full Registration
+            {pendingCount > 0 && (
+              <span className="flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
+                style={{ background: '#F59E0B' }}>
+                {pendingCount > 99 ? '99+' : pendingCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => { setAccountType('express'); setBlockFilter('all') }}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all"
+            style={{
+              color:      accountType === 'express' ? '#A78BFA' : 'rgba(255,255,255,0.35)',
+              background: accountType === 'express' ? 'rgba(139,92,246,0.12)' : 'transparent',
+            }}
+          >
+            <Zap size={12} />Express Account
+            {expressTotalCount > 0 && (
+              <span className="flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
+                style={{ background: '#7C3AED' }}>
+                {expressTotalCount > 99 ? '99+' : expressTotalCount}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
+
+      {/* ── Dashboard stat cards ── */}
+      {accountType === 'full' && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { label: 'Pending',  value: fullStats.pending,  icon: Clock,         color: '#FBBF24', bg: 'rgba(251,191,36,0.10)',  border: 'rgba(251,191,36,0.18)' },
+            { label: 'Approved', value: fullStats.approved, icon: CheckCircle2,  color: '#4ADE80', bg: 'rgba(74,222,128,0.10)',  border: 'rgba(74,222,128,0.18)' },
+            { label: 'Rejected', value: fullStats.rejected, icon: XCircle,       color: '#F87171', bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.18)' },
+            { label: 'Total',    value: fullStats.total,    icon: LayoutGrid,    color: 'rgba(255,255,255,0.6)', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)' },
+          ].map(s => {
+            const Icon = s.icon
+            return (
+              <motion.div
+                key={s.label}
+                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="rounded-2xl p-4"
+                style={{ background: s.bg, border: `1px solid ${s.border}` }}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: s.color }}>{s.label}</span>
+                  <Icon size={14} style={{ color: s.color, opacity: 0.7 }} />
+                </div>
+                <p className="text-2xl font-bold text-white tabular-nums">{s.value}</p>
+              </motion.div>
+            )
+          })}
+        </div>
+      )}
+
+      {accountType === 'express' && (
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: 'Total',   value: expressStats?.total   ?? 0, icon: Users,      color: '#A78BFA', bg: 'rgba(139,92,246,0.10)', border: 'rgba(139,92,246,0.18)' },
+            { label: 'Active',  value: expressStats?.active  ?? 0, icon: ShieldCheck, color: '#4ADE80', bg: 'rgba(74,222,128,0.10)',  border: 'rgba(74,222,128,0.18)' },
+            { label: 'Blocked', value: expressStats?.blocked ?? 0, icon: ShieldOff,   color: '#F87171', bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.18)' },
+          ].map(s => {
+            const Icon = s.icon
+            return (
+              <motion.div
+                key={s.label}
+                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="rounded-2xl p-4"
+                style={{ background: s.bg, border: `1px solid ${s.border}` }}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: s.color }}>{s.label}</span>
+                  <Icon size={14} style={{ color: s.color, opacity: 0.7 }} />
+                </div>
+                <p className="text-2xl font-bold text-white tabular-nums">{s.value}</p>
+              </motion.div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex overflow-hidden rounded-xl" style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
-          {STATUS_TABS.map(t => (
-            <button
-              key={t.value}
-              onClick={() => { setStatusFilter(t.value); setBlockFilter('all') }}
-              className="relative px-4 py-2 text-sm font-medium transition-all"
-              style={{
-                color:      statusFilter === t.value ? t.color : 'rgba(255,255,255,0.45)',
-                background: statusFilter === t.value ? `${t.color}18` : 'transparent',
-                borderRight: '1px solid rgba(255,255,255,0.06)',
-              }}
-            >
-              {t.label}
-              {t.value === 'pending' && statusFilter !== 'pending' && pendingCount > 0 && (
-                <span className="ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold"
-                  style={{ background: 'rgba(251,191,36,0.2)', color: '#FBBF24' }}>
-                  {pendingCount}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+        {/* Status tabs — only for full-registration view */}
+        {accountType === 'full' && (
+          <div className="flex overflow-hidden rounded-xl" style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
+            {STATUS_TABS.map(t => (
+              <button
+                key={t.value}
+                onClick={() => { setStatusFilter(t.value); setBlockFilter('all') }}
+                className="relative px-4 py-2 text-sm font-medium transition-all"
+                style={{
+                  color:      statusFilter === t.value ? t.color : 'rgba(255,255,255,0.45)',
+                  background: statusFilter === t.value ? `${t.color}18` : 'transparent',
+                  borderRight: '1px solid rgba(255,255,255,0.06)',
+                }}
+              >
+                {t.label}
+                {t.value === 'pending' && statusFilter !== 'pending' && pendingCount > 0 && (
+                  <span className="ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+                    style={{ background: 'rgba(251,191,36,0.2)', color: '#FBBF24' }}>
+                    {pendingCount}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
 
-        {/* Block filter — shown only for pending / rejected */}
-        {(statusFilter === 'pending' || statusFilter === 'rejected') && (
+        {/* Block filter — shown for pending/rejected (full) or always for express */}
+        {(accountType === 'express' || statusFilter === 'pending' || statusFilter === 'rejected') && (
           <div className="flex overflow-hidden rounded-xl" style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
             {(['all', 'unblocked', 'blocked'] as const).map(f => (
               <button
@@ -989,21 +1139,167 @@ export default function EnrollmentRequestsPage() {
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
           />
         </div>
-
-        {data && (
-          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>
-            {data.meta.total_count} {statusFilter === 'all' ? 'total' : statusFilter}
-          </p>
-        )}
       </div>
+
+      {/* ── Express Account delete confirm dialog ── */}
+      <AnimatePresence>
+        {expressDelete && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          >
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setExpressDelete(null)} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-sm rounded-2xl p-6 text-center"
+              style={{ background: '#131525', border: '1px solid rgba(255,255,255,0.1)' }}
+            >
+              <AlertTriangle size={28} className="mx-auto mb-3" style={{ color: '#F87171' }} />
+              <p className="text-base font-semibold text-white mb-1">Delete member?</p>
+              <p className="text-xs mb-5" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                <span className="font-medium text-white">{expressDelete.name}</span>&apos;s account will be permanently removed.
+              </p>
+              <div className="flex gap-2">
+                <button onClick={() => setExpressDelete(null)}
+                  className="flex-1 rounded-xl py-2 text-sm font-medium transition-all"
+                  style={{ border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.6)' }}>
+                  Cancel
+                </button>
+                <button onClick={handleDeleteExpress} disabled={deleteExpressMember.isPending}
+                  className="flex-1 rounded-xl py-2 text-sm font-semibold text-white transition-all disabled:opacity-40"
+                  style={{ background: 'rgba(239,68,68,0.85)' }}>
+                  {deleteExpressMember.isPending ? 'Deleting…' : 'Delete'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Table */}
       <div className="overflow-hidden rounded-2xl" style={{ border: '1px solid rgba(255,255,255,0.07)' }}>
         <div className="overflow-x-auto">
+
+          {/* ── Express Account table ── */}
+          {accountType === 'express' && (
+            <table className="w-full min-w-[600px] border-collapse">
+              <thead>
+                <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                  {['Member', 'Country of Residence', 'Signed up', 'Status', ''].map(h => (
+                    <th key={h} className="px-4 py-3 text-left"
+                      style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {expressLoading && (
+                  <tr><td colSpan={5} className="px-4 py-14 text-center">
+                    <div className="inline-flex items-center gap-2 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                      <Spinner size={14} />Loading express members…
+                    </div>
+                  </td></tr>
+                )}
+                {!expressLoading && expressMembers.length === 0 && (
+                  <tr><td colSpan={5} className="px-4 py-16 text-center">
+                    <div style={{ color: 'rgba(255,255,255,0.3)' }}>
+                      <Zap size={28} className="mx-auto mb-3 opacity-40" />
+                      <p className="text-sm font-medium">No express account members</p>
+                    </div>
+                  </td></tr>
+                )}
+                {!expressLoading && expressMembers.map((m, i) => (
+                  <motion.tr
+                    key={m.id}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.025 }}
+                    style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                    className="group transition-colors hover:bg-white/[0.02]"
+                  >
+                    {/* Member */}
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
+                          style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.25)' }}>
+                          <span className="text-xs font-bold" style={{ color: '#A78BFA' }}>
+                            {m.name[0]?.toUpperCase() ?? '?'}
+                          </span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-white" style={{ maxWidth: 180 }}>{m.name}</p>
+                          <p className="truncate text-xs" style={{ color: 'rgba(255,255,255,0.4)', maxWidth: 200 }}>{m.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    {/* Country */}
+                    <td className="px-4 py-3.5">
+                      {m.country ? (
+                        <div className="flex items-center gap-1.5 text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                          <Globe size={11} style={{ color: 'rgba(255,255,255,0.3)' }} />{m.country}
+                        </div>
+                      ) : (
+                        <span className="text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>—</span>
+                      )}
+                    </td>
+                    {/* Signed up */}
+                    <td className="px-4 py-3.5">
+                      <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                        {new Date(m.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    </td>
+                    {/* Status */}
+                    <td className="px-4 py-3.5">
+                      {m.isActive ? (
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                          style={{ background: 'rgba(74,222,128,0.12)', color: '#4ADE80' }}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                          style={{ background: 'rgba(248,113,113,0.12)', color: '#F87171' }}>
+                          <ShieldOff size={10} />Blocked
+                        </span>
+                      )}
+                    </td>
+                    {/* Actions */}
+                    <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                        <button
+                          onClick={() => handleToggleExpress(m)}
+                          disabled={toggleExpressMember.isPending}
+                          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all disabled:opacity-40"
+                          style={m.isActive
+                            ? { color: '#F87171', border: '1px solid rgba(248,113,113,0.3)' }
+                            : { color: '#4ADE80', border: '1px solid rgba(74,222,128,0.3)' }}>
+                          {m.isActive ? <ShieldOff size={10} /> : <ShieldCheck size={10} />}
+                          {m.isActive ? 'Block' : 'Unblock'}
+                        </button>
+                        {isFullAdmin && (
+                          <button
+                            onClick={() => setExpressDelete(m)}
+                            className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium transition-all"
+                            style={{ color: 'rgba(239,68,68,0.6)', border: '1px solid rgba(239,68,68,0.2)' }}
+                            title="Delete this account">
+                            <Trash2 size={10} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {/* ── Full Registration table ── */}
+          {accountType === 'full' && (
           <table className="w-full min-w-[700px] border-collapse">
             <thead>
               <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                {['Student', 'Programs', statusFilter === 'approved' ? 'Approved by' : statusFilter === 'rejected' ? 'Rejected by' : 'Status', 'Signed up', ''].map(h => (
+                {['Student', 'Country of Residence', 'Programs', statusFilter === 'approved' ? 'Approved by' : statusFilter === 'rejected' ? 'Rejected by' : 'Status', 'Signed up', ''].map(h => (
                   <th key={h} className="px-4 py-3 text-left"
                     style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                     {h}
@@ -1013,14 +1309,14 @@ export default function EnrollmentRequestsPage() {
             </thead>
             <tbody>
               {isLoading && (
-                <tr><td colSpan={5} className="px-4 py-14 text-center">
+                <tr><td colSpan={6} className="px-4 py-14 text-center">
                   <div className="inline-flex items-center gap-2 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
                     <Spinner size={14} />Loading requests…
                   </div>
                 </td></tr>
               )}
               {!isLoading && requests.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-16 text-center">
+                <tr><td colSpan={6} className="px-4 py-16 text-center">
                   <div style={{ color: 'rgba(255,255,255,0.3)' }}>
                     <CheckCircle2 size={28} className="mx-auto mb-3 opacity-40" />
                     <p className="text-sm font-medium">
@@ -1067,6 +1363,18 @@ export default function EnrollmentRequestsPage() {
                           <p className="truncate text-xs" style={{ color: 'rgba(255,255,255,0.4)', maxWidth: 200 }}>{r.email}</p>
                         </div>
                       </div>
+                    </td>
+
+                    {/* Country of Residence */}
+                    <td className="px-4 py-3.5">
+                      {r.enrollmentApplication?.homeCountry ? (
+                        <div className="flex items-center gap-1.5 text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                          <Globe size={11} style={{ color: 'rgba(255,255,255,0.3)' }} />
+                          {r.enrollmentApplication.homeCountry}
+                        </div>
+                      ) : (
+                        <span className="text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>—</span>
+                      )}
                     </td>
 
                     {/* Programs */}
@@ -1314,6 +1622,8 @@ export default function EnrollmentRequestsPage() {
               })}
             </tbody>
           </table>
+          )} {/* end accountType === 'full' */}
+
         </div>
       </div>
 

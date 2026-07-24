@@ -3,12 +3,19 @@ import { OrderRepository } from '@/repositories/order.repository.ts'
 import { CouponService } from '@/services/coupon.service.ts'
 import { StripeService } from '@/services/stripe.service.ts'
 import { RazorpayService } from '@/services/razorpay.service.ts'
+import { TabbyService } from '@/services/tabby.service.ts'
+import { AbzerService } from '@/services/abzer.service.ts'
 import { EnrollmentService } from '@/services/enrollment.service.ts'
 import { NotificationService } from '@/services/notification.service.ts'
 import { sendEnrollmentConfirmation } from '@/services/email.service.ts'
 import { CourseModel, UserModel } from '@/models/schema.ts'
 import { env } from '@/config/env.ts'
 import { logger } from '@/utils/logger.ts'
+
+export type GatewayConfig =
+  | { gateways: ('tabby' | 'abzer')[]; currency: 'AED' }
+  | { gateways: ['razorpay'];          currency: 'INR' }
+  | { gateways: [];                    currency: 'USD' }
 
 export class OrderError extends Error {
   constructor(
@@ -26,8 +33,29 @@ export class OrderService {
   private readonly couponSvc     = new CouponService()
   private readonly stripeSvc     = new StripeService()
   private readonly razorpaySvc   = new RazorpayService()
+  private readonly tabbySvc      = new TabbyService()
+  private readonly abzerSvc      = new AbzerService()
   private readonly enrollSvc     = new EnrollmentService()
   private readonly notifications = new NotificationService()
+
+  /* ─── Gateway config for current user ────────────────────────
+     UAE users (homeCountry === 'United Arab Emirates') get Tabby + Abzer
+     when those credentials are configured. Everyone else gets Razorpay. */
+  async getGatewayConfig(userId: string): Promise<GatewayConfig> {
+    const user = await UserModel.findById(userId).select('enrollmentApplication.homeCountry').lean()
+    const isUAE = (user as any)?.enrollmentApplication?.homeCountry === 'United Arab Emirates'
+
+    if (isUAE) {
+      const gateways: ('tabby' | 'abzer')[] = []
+      if (env.TABBY_SECRET_KEY)  gateways.push('tabby')
+      if (env.ABZER_ACCESS_KEY)  gateways.push('abzer')
+      if (gateways.length > 0)   return { gateways, currency: 'AED' }
+    }
+    if (env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET) {
+      return { gateways: ['razorpay'], currency: 'INR' }
+    }
+    return { gateways: [], currency: 'USD' }
+  }
 
   /* ─── Create Stripe checkout session ──────────────── */
   async createCheckoutSession(userId: string, courseId: string, couponCode?: string): Promise<{ url: string }> {
@@ -267,6 +295,207 @@ export class OrderService {
     void this._sendPostPaymentNotifications(order.userId.toString(), order.courseId.toString(), order.id)
   }
 
+  /* ─── Create Tabby checkout (UAE) ───────────────────── */
+  async createTabbyOrder(
+    userId:      string,
+    courseId:    string,
+    slug:        string,
+    couponCode?: string,
+  ): Promise<{ checkoutUrl: string; checkoutId: string }> {
+    if (!env.TABBY_SECRET_KEY || !env.TABBY_MERCHANT_CODE) {
+      throw new OrderError('TABBY_NOT_CONFIGURED', 'Tabby is not configured on this server.', 503)
+    }
+    if (!Types.ObjectId.isValid(courseId)) {
+      throw new OrderError('INVALID_COURSE_ID', 'Invalid course id', 400)
+    }
+
+    const course = await CourseModel.findById(courseId).exec()
+    if (!course || course.status !== 'published') {
+      throw new OrderError('COURSE_NOT_FOUND', 'Course not found', 404)
+    }
+    if (course.isFree || course.price <= 0) {
+      throw new OrderError('COURSE_IS_FREE', 'This course is free — use the enroll endpoint instead', 400)
+    }
+
+    const { EnrollmentModel } = await import('@/models/schema.ts')
+    const existing = await EnrollmentModel.findOne({ userId, courseId }).exec()
+    if (existing) {
+      throw new OrderError('ALREADY_ENROLLED', 'You are already enrolled in this course', 409)
+    }
+
+    /* Convert USD price to AED */
+    const priceAED      = (course as any).priceAED ?? Math.round(course.price * env.UAE_EXCHANGE_RATE * 100) / 100
+    const originalFils  = Math.round(priceAED * 100)
+    let   finalFils     = originalFils
+    let   discountFils  = 0
+    let   couponId: string | undefined
+
+    if (couponCode) {
+      const coupon   = await this.couponSvc.validate(couponCode, courseId)
+      const applied  = this.couponSvc.applyDiscount(originalFils, coupon)
+      finalFils      = applied.finalCents
+      discountFils   = applied.discountCents
+      couponId       = coupon.id
+    }
+
+    const finalAED = finalFils / 100
+
+    const order = await this.orderRepo.create({
+      userId,
+      courseId,
+      gateway:  'tabby',
+      amount:   finalFils,
+      currency: env.TABBY_CURRENCY,
+      ...(couponId     && { couponId }),
+      ...(discountFils && { discountAmount: discountFils }),
+    })
+
+    const user = await UserModel.findById(userId).select('name email phone').exec()
+    const successUrl = `${env.CLIENT_URL}/courses/${slug}?checkout=success`
+    const cancelUrl  = `${env.CLIENT_URL}/courses/${slug}?checkout=cancel`
+    const failureUrl = `${env.CLIENT_URL}/courses/${slug}?checkout=cancel`
+
+    const result = await this.tabbySvc.createCheckout({
+      amountAED:   finalAED,
+      orderId:     order.id,
+      courseTitle: course.title,
+      courseId:    course.id,
+      buyerEmail:  user?.email ?? '',
+      buyerName:   user?.name  ?? '',
+      buyerPhone:  (user as any)?.phone ?? '',
+      successUrl,
+      cancelUrl,
+      failureUrl,
+    })
+
+    await patchTabbyCheckoutId(order.id, result.checkoutId, result.paymentId)
+
+    return { checkoutUrl: result.checkoutUrl, checkoutId: result.checkoutId }
+  }
+
+  /* ─── Tabby webhook fulfillment (idempotent) ─────────── */
+  async fulfillTabbyFromWebhook(tabbyCheckoutId: string, tabbyPaymentId: string): Promise<void> {
+    const order = await this.orderRepo.findByTabbyCheckoutId(tabbyCheckoutId)
+    if (!order) {
+      logger.warn({ tabbyCheckoutId }, 'Tabby webhook: no matching order')
+      return
+    }
+    if (order.status === 'paid') {
+      logger.info({ orderId: order.id }, 'Tabby webhook: already fulfilled')
+      return
+    }
+
+    await this.orderRepo.fulfillTabby(order.id, tabbyPaymentId)
+
+    if (order.couponId) {
+      void this.couponSvc.redeem(order.couponId.toString()).catch(err =>
+        logger.warn({ err }, 'Failed to increment coupon usage'),
+      )
+    }
+
+    await this._createEnrollment(order.userId.toString(), order.courseId.toString())
+    await this._autoApproveViaPayment(order.userId.toString(), order.courseId.toString())
+    void this._sendPostPaymentNotifications(order.userId.toString(), order.courseId.toString(), order.id)
+  }
+
+  /* ─── Create Abzer checkout (UAE) ───────────────────── */
+  async createAbzerOrder(
+    userId:      string,
+    courseId:    string,
+    slug:        string,
+    couponCode?: string,
+  ): Promise<{ checkoutUrl: string; abzerOrderId: string }> {
+    if (!env.ABZER_ACCESS_KEY || !env.ABZER_SECRET_KEY) {
+      throw new OrderError('ABZER_NOT_CONFIGURED', 'Abzer is not configured on this server.', 503)
+    }
+    if (!Types.ObjectId.isValid(courseId)) {
+      throw new OrderError('INVALID_COURSE_ID', 'Invalid course id', 400)
+    }
+
+    const course = await CourseModel.findById(courseId).exec()
+    if (!course || course.status !== 'published') {
+      throw new OrderError('COURSE_NOT_FOUND', 'Course not found', 404)
+    }
+    if (course.isFree || course.price <= 0) {
+      throw new OrderError('COURSE_IS_FREE', 'This course is free — use the enroll endpoint instead', 400)
+    }
+
+    const { EnrollmentModel } = await import('@/models/schema.ts')
+    const existing = await EnrollmentModel.findOne({ userId, courseId }).exec()
+    if (existing) {
+      throw new OrderError('ALREADY_ENROLLED', 'You are already enrolled in this course', 409)
+    }
+
+    const priceAED     = (course as any).priceAED ?? Math.round(course.price * env.UAE_EXCHANGE_RATE * 100) / 100
+    const originalFils = Math.round(priceAED * 100)
+    let   finalFils    = originalFils
+    let   discountFils = 0
+    let   couponId: string | undefined
+
+    if (couponCode) {
+      const coupon   = await this.couponSvc.validate(couponCode, courseId)
+      const applied  = this.couponSvc.applyDiscount(originalFils, coupon)
+      finalFils      = applied.finalCents
+      discountFils   = applied.discountCents
+      couponId       = coupon.id
+    }
+
+    const order = await this.orderRepo.create({
+      userId,
+      courseId,
+      gateway:  'abzer',
+      amount:   finalFils,
+      currency: env.ABZER_CURRENCY,
+      ...(couponId     && { couponId }),
+      ...(discountFils && { discountAmount: discountFils }),
+    })
+
+    const user = await UserModel.findById(userId).select('name email').exec()
+    const successUrl = `${env.CLIENT_URL}/courses/${slug}?checkout=success`
+    const cancelUrl  = `${env.CLIENT_URL}/courses/${slug}?checkout=cancel`
+    const failureUrl = `${env.CLIENT_URL}/courses/${slug}?checkout=cancel`
+
+    const result = await this.abzerSvc.createOrder({
+      amountAED:   finalFils / 100,
+      orderId:     order.id,
+      courseTitle: course.title,
+      buyerEmail:  user?.email ?? '',
+      buyerName:   user?.name  ?? '',
+      buyerPhone:  (user as any)?.phone ?? '',
+    })
+
+    await patchAbzerOrderId(order.id, result.abzerRequestId)
+
+    return { checkoutUrl: result.checkoutUrl, abzerOrderId: result.abzerRequestId }
+  }
+
+  /* ─── Abzer webhook fulfillment (idempotent) ─────────── */
+  /* orderId = the invoiceNumber from the webhook payload, which Abzer sets to our referenceNumber */
+  async fulfillAbzerFromWebhook(orderId: string, receiptId: string): Promise<void> {
+    const order = await this.orderRepo.findById(orderId)
+    if (!order) {
+      logger.warn({ orderId }, 'Abzer webhook: no matching order')
+      return
+    }
+    if (order.status === 'paid') {
+      logger.info({ orderId: order.id }, 'Abzer webhook: already fulfilled')
+      return
+    }
+
+    await this.orderRepo.fulfillAbzer(order.id, receiptId)
+
+    if (order.couponId) {
+      void this.couponSvc.redeem(order.couponId.toString()).catch(err =>
+        logger.warn({ err }, 'Failed to increment coupon usage'),
+      )
+    }
+
+    await this._createEnrollment(order.userId.toString(), order.courseId.toString())
+    await this._autoApproveViaPayment(order.userId.toString(), order.courseId.toString())
+    void this._sendPostPaymentNotifications(order.userId.toString(), order.courseId.toString(), order.id)
+    logger.info({ orderId, receiptId }, 'Abzer: order fulfilled via webhook')
+  }
+
   /* ─── Refund (gateway-aware) ────────────────────────── */
   async refund(orderId: string): Promise<void> {
     const order = await this.orderRepo.findById(orderId)
@@ -280,6 +509,14 @@ export class OrderService {
         throw new OrderError('NO_PAYMENT_ID', 'Cannot refund — no Razorpay payment id on record', 400)
       }
       await this.razorpaySvc.refundPayment(order.razorpayPaymentId)
+    } else if (order.gateway === 'tabby' || order.gateway === 'abzer') {
+      /* Tabby and Abzer refunds must be processed manually via their dashboards
+         until API-based refund endpoints are confirmed with the providers. */
+      throw new OrderError(
+        'MANUAL_REFUND_REQUIRED',
+        `${order.gateway === 'tabby' ? 'Tabby' : 'Abzer'} refunds must be processed via the gateway dashboard.`,
+        422,
+      )
     } else {
       if (!order.stripePaymentIntentId) {
         throw new OrderError('NO_PAYMENT_ID', 'Cannot refund — no payment intent on record', 400)
@@ -385,4 +622,14 @@ async function patchStripeSession(orderId: string, sessionId: string): Promise<v
 async function patchRazorpayOrderId(orderId: string, razorpayOrderId: string): Promise<void> {
   const { OrderModel } = await import('@/models/schema.ts')
   await OrderModel.findByIdAndUpdate(orderId, { $set: { razorpayOrderId } }).exec()
+}
+
+async function patchTabbyCheckoutId(orderId: string, tabbyCheckoutId: string, tabbyPaymentId: string): Promise<void> {
+  const { OrderModel } = await import('@/models/schema.ts')
+  await OrderModel.findByIdAndUpdate(orderId, { $set: { tabbyCheckoutId, tabbyPaymentId } }).exec()
+}
+
+async function patchAbzerOrderId(orderId: string, abzerOrderId: string): Promise<void> {
+  const { OrderModel } = await import('@/models/schema.ts')
+  await OrderModel.findByIdAndUpdate(orderId, { $set: { abzerOrderId } }).exec()
 }

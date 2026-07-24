@@ -103,9 +103,10 @@ export interface RefreshTokenPayload {
    Auth DTOs
 ───────────────────────────────────────────────────── */
 export interface RegisterDto {
-  name:     string
-  email:    string
-  password: string
+  name:        string
+  email:       string
+  password:    string
+  signupType?: 'express' | 'full'
   enrollmentApplication?: {
     phone?:              string
     emergencyContact?:   string

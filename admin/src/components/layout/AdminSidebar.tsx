@@ -19,8 +19,8 @@ import { useRouter } from 'next/navigation'
 /* ── All nav items (admin sees all) ──────────────────── */
 const adminNavItems = [
   { label: 'Dashboard',      href: '/',                       icon: LayoutDashboard },
-  { label: 'Users',          href: '/users',                  icon: UserCog },
-  { label: 'Requests',       href: '/enrollment-requests',    icon: ClipboardCheck },
+  { label: 'Users',      href: '/users',                  icon: UserCog },
+  { label: 'Requests',   href: '/enrollment-requests',    icon: ClipboardCheck },
   { label: 'Courses',        href: '/courses',                icon: BookOpen },
   { label: 'Learning Paths', href: '/learning-paths',   icon: Map },
   { label: 'Live Classes',   href: '/live-classes',     icon: Video },
@@ -40,8 +40,8 @@ const adminNavItems = [
 /* ── Scoped-admin nav (4x_admin, digital_marketing_admin) ─ */
 const scopedAdminNavItems = [
   { label: 'Dashboard',        href: '/',                       icon: LayoutDashboard },
-  { label: 'Requests',         href: '/enrollment-requests',    icon: ClipboardCheck },
-  { label: 'Users',            href: '/users',                  icon: UserCog },
+  { label: 'Requests',   href: '/enrollment-requests',    icon: ClipboardCheck },
+  { label: 'Users',      href: '/users',                  icon: UserCog },
   { label: 'Courses',          href: '/courses',                icon: BookOpen },
   { label: 'Live Classes',     href: '/live-classes',           icon: Video },
   { label: 'Bookings',         href: '/bookings',               icon: CalendarDays },

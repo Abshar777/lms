@@ -6,11 +6,10 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 
-const BACKEND = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
-
 type Context = { params: Promise<{ path: string[] }> }
 
 async function proxy(req: NextRequest, ctx: Context): Promise<NextResponse> {
+  const BACKEND = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
   const { path } = await ctx.params
   const pathStr   = path.join('/')
   const search    = req.nextUrl.search

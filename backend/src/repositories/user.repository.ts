@@ -39,6 +39,7 @@ export class UserRepository extends BaseRepository<IUser> {
     categories?:            IUser['categories']
     category?:              IUser['category']
     enrollmentApplication?: IUser['enrollmentApplication']
+    signupType?:            IUser['signupType']
   }): Promise<IUser> {
     return this.create({
       ...data,

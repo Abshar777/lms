@@ -40,16 +40,30 @@ export class AuthService {
     dto: RegisterDto,
     meta?: { userAgent?: string; ip?: string },
   ): Promise<{ user: SafeUser; tokens: TokenPair }> {
-    /* 1. Ensure email is unique */
-    const exists = await this.userRepo.emailExists(dto.email)
-    if (exists) {
-      throw new AuthError('EMAIL_TAKEN', 'An account with this email already exists.', 409)
+    /* 1. Ensure email is unique — return signupType so client can show contextual message */
+    if (await this.userRepo.emailExists(dto.email)) {
+      const { UserModel } = await import('@/models/schema.ts')
+      const existing = await UserModel.findOne({ email: dto.email.toLowerCase().trim() }).select('signupType').lean()
+      const existingType: string = existing?.signupType ?? 'full'
+      const message = existingType === 'express'
+        ? 'You already have an Express Account with this email. Sign in and go to Settings → Request to complete your registration.'
+        : 'An account with this email already exists. Please sign in.'
+      throw Object.assign(
+        new AuthError('EMAIL_TAKEN', message, 409),
+        { meta: { signupType: existingType } },
+      )
     }
 
     /* 2. Hash password */
     const passwordHash = await hashPassword(dto.password)
 
-    /* 3. Create user with pending enrollment status */
+    /* 3. Determine signup type:
+          - explicit flag from client takes priority
+          - fallback: detect express if only homeCountry provided */
+    const appFields = dto.enrollmentApplication ? Object.keys(dto.enrollmentApplication).filter(k => (dto.enrollmentApplication as Record<string, unknown>)[k] != null) : []
+    const signupType: 'express' | 'full' = dto.signupType ?? (appFields.length <= 1 ? 'express' : 'full')
+
+    /* 4. Create user with pending enrollment status */
     const user = await this.userRepo.createUser({
       name:                   dto.name.trim(),
       email:                  dto.email,
@@ -58,17 +72,18 @@ export class AuthService {
       enrollmentStatus:       'pending',
       categories:             [],
       enrollmentApplication:  dto.enrollmentApplication,
+      signupType,
     })
 
-    /* 4. Issue tokens (student gets tokens but stays pending) */
+    /* 5. Issue tokens (student gets tokens but stays pending) */
     const tokens = await this.#issueTokens(user.id, user.email, user.role, meta)
 
-    /* 5. Notify all admins of the new signup request */
+    /* 6. Notify all admins of the new signup request */
     void this.#notifyAllAdmins(user.name, user.email).catch(err =>
       logger.warn({ err, userId: user.id }, 'admin notification failed'),
     )
 
-    /* 6. Fire-and-forget verification email */
+    /* 7. Fire-and-forget verification email */
     void this.#sendVerificationEmail(user.id, user.email, user.name).catch(err =>
       logger.warn({ err, userId: user.id }, 'verification email failed'),
     )
@@ -330,6 +345,50 @@ export class AuthService {
     if (input.photoUrl    !== undefined) update['enrollmentApplication.photoUrl']    = input.photoUrl
     const updated = await UserModel.findByIdAndUpdate(userId, { $set: update }, { new: true }).exec()
     if (!updated) throw new AuthError('USER_NOT_FOUND', 'Account not found.', 404)
+    return toSafeUser(updated)
+  }
+
+  /* ── Complete full registration (express → full) ─── */
+  async completeRegistration(
+    userId: string,
+    input: Record<string, unknown>,
+  ): Promise<SafeUser> {
+    const { UserModel } = await import('@/models/schema.ts')
+
+    const user = await UserModel.findById(userId)
+    if (!user || !user.isActive) {
+      throw new AuthError('USER_NOT_FOUND', 'Account not found.', 404)
+    }
+
+    const appFields = [
+      'phone', 'emergencyContact', 'gender', 'dateOfBirth', 'nationality', 'homeCountry',
+      'occupation', 'idType', 'idNumber', 'emiratesId', 'countryAttendance', 'villa', 'city',
+      'addressCountry', 'passportUrl', 'idDocUrl', 'photoUrl', 'experienceLevel',
+      'preferredStartDate', 'hearAboutUs', 'referralName', 'programs', 'paymentMethod',
+    ]
+
+    const $set: Record<string, unknown> = {
+      fullRegistrationSubmittedAt: new Date(),
+      signupType: 'full',
+    }
+
+    /* If user was previously rejected, reset to pending so admin queue picks them up */
+    if (user.enrollmentStatus === 'rejected' || user.enrollmentStatus === 'cancelled') {
+      $set['enrollmentStatus'] = 'pending'
+    }
+
+    for (const field of appFields) {
+      if (input[field] !== undefined) $set[`enrollmentApplication.${field}`] = input[field]
+    }
+
+    if (input['avatarUrl'] !== undefined && input['avatarUrl'] !== '') {
+      $set['avatarUrl'] = input['avatarUrl']
+    }
+
+    const updated = await UserModel.findByIdAndUpdate(userId, { $set }, { new: true }).exec()
+    if (!updated) throw new AuthError('USER_NOT_FOUND', 'Account not found.', 404)
+
+    logger.info({ userId }, 'express user completed full registration')
     return toSafeUser(updated)
   }
 

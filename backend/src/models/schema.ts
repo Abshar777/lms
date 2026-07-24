@@ -78,6 +78,8 @@ export interface IUser extends Document {
   /* Student program categories (multi) */
   category?:     ProgramCategory     // legacy single
   categories:    ProgramCategory[]   // multi-category
+  /* Signup type — express (fast) or full (complete form) */
+  signupType?:         'express' | 'full'
   /* Student enrollment approval */
   enrollmentStatus?:   StudentEnrollmentStatus
   approvedBy?:         Types.ObjectId
@@ -90,6 +92,8 @@ export interface IUser extends Document {
   rejectedByName?:     string
   rejectedAt?:         Date
   rejectionReason?:    string
+  /* Tracks when an express user completes the full 4-step registration form */
+  fullRegistrationSubmittedAt?: Date
   /* Enrollment application form data */
   enrollmentApplication?: IEnrollmentApplication
   /* Meta */
@@ -120,6 +124,7 @@ const UserSchema = new Schema<IUser>(
     lastLoginAt:  { type: Date },
     category:         { type: String, enum: ['4x-trading', 'digital-marketing', 'ai'] },
     categories:       [{ type: String, enum: ['4x-trading', 'digital-marketing', 'ai'] }],
+    signupType:       { type: String, enum: ['express', 'full'], default: 'full' },
     enrollmentStatus: { type: String, enum: ['pending', 'approved', 'rejected', 'cancelled'] },
     approvedBy:       { type: Schema.Types.ObjectId, ref: 'User' },
     approvedByEmail:  { type: String },
@@ -130,7 +135,8 @@ const UserSchema = new Schema<IUser>(
     rejectedByEmail:  { type: String },
     rejectedByName:   { type: String },
     rejectedAt:       { type: Date },
-    rejectionReason:  { type: String },
+    rejectionReason:              { type: String },
+    fullRegistrationSubmittedAt:  { type: Date },
     enrollmentApplication: {
       type: new Schema<IEnrollmentApplication>({
         phone:              { type: String },
@@ -1038,7 +1044,7 @@ export const CouponModel = mongoose.model<ICoupon>('Coupon', CouponSchema)
 ───────────────────────────────────────────────────── */
 export type OrderStatus = 'pending' | 'paid' | 'refunded'
 
-export type OrderGateway = 'stripe' | 'razorpay'
+export type OrderGateway = 'stripe' | 'razorpay' | 'tabby' | 'abzer'
 
 export interface IOrder extends Document {
   id:                       string
@@ -1050,11 +1056,15 @@ export interface IOrder extends Document {
   razorpayOrderId?:         string
   razorpayPaymentId?:       string
   razorpaySignature?:       string
-  amount:                   number    // charged amount in cents
+  tabbyCheckoutId?:         string
+  tabbyPaymentId?:          string
+  abzerOrderId?:            string
+  abzerPaymentId?:          string
+  amount:                   number    // charged amount in smallest unit (cents / fils)
   currency:                 string
   status:                   OrderStatus
   couponId?:                Types.ObjectId
-  discountAmount:           number    // cents saved by coupon (0 if none)
+  discountAmount:           number    // smallest-unit saving by coupon (0 if none)
   stripeInvoiceUrl?:        string
   refundedAt?:              Date
   createdAt:                Date
@@ -1065,12 +1075,16 @@ const OrderSchema = new Schema<IOrder>(
   {
     userId:                  { type: Schema.Types.ObjectId, ref: 'User',   required: true },
     courseId:                { type: Schema.Types.ObjectId, ref: 'Course', required: true },
-    gateway:                 { type: String, enum: ['stripe', 'razorpay'], required: true, default: 'stripe' },
+    gateway:                 { type: String, enum: ['stripe', 'razorpay', 'tabby', 'abzer'], required: true, default: 'stripe' },
     stripeCheckoutSessionId: { type: String },
     stripePaymentIntentId:   { type: String },
     razorpayOrderId:         { type: String },
     razorpayPaymentId:       { type: String },
     razorpaySignature:       { type: String },
+    tabbyCheckoutId:         { type: String },
+    tabbyPaymentId:          { type: String },
+    abzerOrderId:            { type: String },
+    abzerPaymentId:          { type: String },
     amount:                  { type: Number, required: true, min: 0 },
     currency:                { type: String, required: true, default: 'usd', maxlength: 3 },
     status:                  { type: String, enum: ['pending', 'paid', 'refunded'], default: 'pending' },

@@ -1,7 +1,8 @@
 'use client'
 
+import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Clock, XCircle, ChevronRight, Eye } from 'lucide-react'
+import { XCircle, ChevronRight, Eye, Zap, ArrowRight } from 'lucide-react'
 import { useCurrentUser } from '@/lib/api/user'
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -17,8 +18,51 @@ export function EnrollmentStatusBanner() {
   if (user.enrollmentStatus === 'approved' || !user.enrollmentStatus) return null
 
   const prog = user.category ? (CATEGORY_LABEL[user.category] ?? user.category) : null
+  const isExpress = user.signupType === 'express'
 
+  /* ── Pending ──────────────────────────────────────── */
   if (user.enrollmentStatus === 'pending') {
+    /* Express account — nudge to complete full registration */
+    if (isExpress) {
+      return (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+          className="mb-4 rounded-xl px-3.5 py-3"
+          style={{
+            background: 'linear-gradient(135deg, rgba(109,40,217,0.07), rgba(139,92,246,0.05))',
+            border: '1px solid rgba(139,92,246,0.25)',
+          }}
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full"
+              style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)' }}>
+              <Zap size={13} style={{ color: '#7C3AED' }} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold" style={{ color: '#5B21B6' }}>
+                Express account — unlock full access
+              </p>
+              <p className="mt-0.5 text-xs" style={{ color: '#6D28D9', opacity: 0.8 }}>
+                <span className="hidden sm:inline">
+                  Complete your enrollment profile to get approved for courses, live classes, and bookings.
+                </span>
+                <span className="sm:hidden">Complete your profile to get full access.</span>
+              </p>
+            </div>
+            <Link
+              href="/complete-registration"
+              className="flex flex-shrink-0 items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
+              style={{ background: 'linear-gradient(135deg, #7C3AED, #6D28D9)', whiteSpace: 'nowrap' }}
+            >
+              Complete registration
+              <ArrowRight size={11} />
+            </Link>
+          </div>
+        </motion.div>
+      )
+    }
+
+    /* Full registration — existing amber "Viewer mode" banner */
     return (
       <motion.div
         initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
@@ -40,12 +84,13 @@ export function EnrollmentStatusBanner() {
     )
   }
 
+  /* ── Cancelled / Rejected ─────────────────────────── */
   if (user.enrollmentStatus === 'cancelled' || (user.enrollmentStatus as string) === 'rejected') {
     const reason = user.enrollmentCancellationReason ?? (user as any).rejectionReason
     return (
       <motion.div
         initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-        className="mb-4 rounded-xl px-3.5 py-2.5"
+        className="mb-4 rounded-xl px-3.5 py-3"
         style={{
           background: 'rgba(239,68,68,0.06)',
           border: '1px solid rgba(239,68,68,0.20)',
@@ -53,11 +98,19 @@ export function EnrollmentStatusBanner() {
         <div className="flex items-center gap-2.5">
           <XCircle size={13} className="flex-shrink-0" style={{ color: '#EF4444' }} />
           <p className="min-w-0 flex-1 text-xs font-medium" style={{ color: '#991B1B' }}>
-            <span className="font-semibold">Access not approved</span>
+            <span className="font-semibold">Application not approved</span>
             <span className="hidden sm:inline">
-              {prog ? `: ${prog} request was not approved` : ''}. Content and bookings restricted.
+              {prog ? ` — ${prog} request was rejected` : ''}. Reapply to regain access.
             </span>
           </p>
+          <Link
+            href="/complete-registration"
+            className="flex flex-shrink-0 items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
+            style={{ background: 'linear-gradient(135deg, #EF4444, #DC2626)', whiteSpace: 'nowrap' }}
+          >
+            Reapply
+            <ArrowRight size={11} />
+          </Link>
         </div>
         {reason && (
           <p className="mt-2 text-xs" style={{ color: '#374151' }}>

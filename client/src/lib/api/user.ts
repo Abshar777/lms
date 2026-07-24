@@ -2,6 +2,32 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPatch, api } from '@/lib/axios'
 
+export interface EnrollmentApplication {
+  phone?:             string
+  emergencyContact?:  string
+  gender?:            string
+  dateOfBirth?:       string
+  nationality?:       string
+  homeCountry?:       string
+  occupation?:        string
+  idType?:            string
+  idNumber?:          string
+  emiratesId?:        string
+  countryAttendance?: string
+  villa?:             string
+  city?:              string
+  addressCountry?:    string
+  passportUrl?:       string
+  idDocUrl?:          string
+  photoUrl?:          string
+  experienceLevel?:   string
+  preferredStartDate?: string
+  hearAboutUs?:       string
+  referralName?:      string
+  programs?:          string[]
+  paymentMethod?:     string
+}
+
 export interface CurrentUser {
   id:          string
   name:        string
@@ -13,9 +39,13 @@ export interface CurrentUser {
   websiteUrl?: string
   isVerified:  boolean
   isActive:    boolean
+  signupType?:  'express' | 'full'
   category?:   '4x-trading' | 'digital-marketing' | 'ai'
   enrollmentStatus?:            'pending' | 'approved' | 'cancelled' | 'rejected'
   enrollmentCancellationReason?: string
+  rejectionReason?:             string
+  fullRegistrationSubmittedAt?: string
+  enrollmentApplication?:       EnrollmentApplication
   createdAt:   string
   updatedAt:   string
 }
@@ -47,6 +77,20 @@ export function useUpdateProfile() {
     },
     onSuccess: (user) => {
       /* Update the cache directly so the UI reflects the change instantly. */
+      qc.setQueryData<CurrentUser>(userKeys.me, user)
+    },
+  })
+}
+
+/* PATCH /auth/me/complete-registration — express users submit full enrollment form. */
+export function useCompleteRegistration() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: EnrollmentApplication & { avatarUrl?: string }) => {
+      const data = await apiPatch<{ user: CurrentUser }>('/auth/me/complete-registration', input)
+      return data.user
+    },
+    onSuccess: (user) => {
       qc.setQueryData<CurrentUser>(userKeys.me, user)
     },
   })

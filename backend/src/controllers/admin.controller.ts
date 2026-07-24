@@ -277,6 +277,7 @@ export class AdminController {
       const filter: Record<string, unknown> = {
         role:             'student',
         enrollmentStatus: { $exists: true },
+        signupType:       { $ne: 'express' },   // express-only users go to the Express Members section
       }
 
       // For approved tab: scoped admins only see students in their category
@@ -309,6 +310,90 @@ export class AdminController {
         rejectionReason: d.rejectionReason ?? d.enrollmentCancellationReason,
       }))
       sendSuccess(res, mapped, undefined, 200, buildPaginationMeta(totalCount, page, per_page))
+    } catch (err) { next(err) }
+  }
+
+  /* ─── Express Members ────────────────────────── */
+
+  listExpressMembers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { UserModel } = await import('@/models/schema.ts')
+      const { page, per_page } = parsePagination(req.query as Record<string, unknown>)
+      const q       = req.query as Record<string, string | undefined>
+      const status  = q['status'] ?? 'all'
+      const search  = q['search']?.trim()
+
+      const filter: Record<string, unknown> = {
+        role:       'student',
+        signupType: 'express',
+      }
+
+      if (status === 'active')  filter['isActive'] = true
+      if (status === 'blocked') filter['isActive'] = false
+
+      if (search) {
+        const re = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+        filter['$or'] = [{ name: re }, { email: re }]
+      }
+
+      const projection = 'id name email avatarUrl enrollmentApplication isActive createdAt signupType'
+      const [docs, totalCount] = await Promise.all([
+        UserModel.find(filter).select(projection).sort({ createdAt: -1 })
+          .skip((page - 1) * per_page).limit(per_page).lean({ virtuals: true }),
+        UserModel.countDocuments(filter),
+      ])
+
+      const mapped = (docs as any[]).map(d => ({
+        id:        d.id ?? String(d._id),
+        name:      d.name,
+        email:     d.email,
+        avatarUrl: d.avatarUrl,
+        country:   d.enrollmentApplication?.homeCountry ?? null,
+        isActive:  d.isActive,
+        createdAt: d.createdAt,
+      }))
+      sendSuccess(res, mapped, undefined, 200, buildPaginationMeta(totalCount, page, per_page))
+    } catch (err) { next(err) }
+  }
+
+  blockExpressMember = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { UserModel } = await import('@/models/schema.ts')
+      const { Types }     = await import('mongoose')
+      const userId = String(req.params['userId'] ?? '')
+
+      if (!Types.ObjectId.isValid(userId)) {
+        res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid user ID' } }); return
+      }
+
+      const user = await UserModel.findOne({ _id: userId, signupType: 'express' }).select('isActive').lean()
+      if (!user) {
+        res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Express member not found' } }); return
+      }
+
+      const newActive = !user.isActive
+      await UserModel.findByIdAndUpdate(userId, { $set: { isActive: newActive } })
+      sendSuccess(res, { id: userId, isActive: newActive }, newActive ? 'Member unblocked' : 'Member blocked')
+    } catch (err) { next(err) }
+  }
+
+  deleteExpressMember = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { UserModel } = await import('@/models/schema.ts')
+      const { Types }     = await import('mongoose')
+      const userId = String(req.params['userId'] ?? '')
+
+      if (!Types.ObjectId.isValid(userId)) {
+        res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid user ID' } }); return
+      }
+
+      const user = await UserModel.findOne({ _id: userId, signupType: 'express' }).select('id').lean()
+      if (!user) {
+        res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Express member not found' } }); return
+      }
+
+      await UserModel.findByIdAndDelete(userId)
+      sendSuccess(res, { id: userId }, 'Express member deleted')
     } catch (err) { next(err) }
   }
 
@@ -406,6 +491,7 @@ export class AdminController {
       await UserModel.findByIdAndUpdate(userId, {
         $set: {
           enrollmentStatus:  'rejected',
+          signupType:        'express',
           rejectionReason:   reason,
           rejectedBy:        admin.id,
           rejectedByEmail:   adminUser?.email ?? '',
@@ -414,7 +500,8 @@ export class AdminController {
           categories:        [],
         },
         $unset: {
-          category:        '',
+          category:                    '',
+          fullRegistrationSubmittedAt: '',
           approvedBy:      '', approvedByEmail: '', approvedByName: '', approvedByRole: '', approvedAt: '',
         },
       })

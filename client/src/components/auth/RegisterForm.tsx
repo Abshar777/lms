@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   User, Mail, Lock, Phone, AlertCircle, Eye, EyeOff,
   Upload, ChevronRight, ChevronLeft, Check, FileText, X,
-  ChevronDown, Search, MapPin, Calendar, Globe, Briefcase, CreditCard, Camera,
+  ChevronDown, Search, MapPin, Calendar, Globe, Briefcase, CreditCard, Camera, Zap,
 } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { cn } from '@/lib/utils'
@@ -506,7 +506,6 @@ function DatePicker({ value, onChange, error, min, max, placeholder = 'Select da
   const prevMonth = () => viewMonth === 0  ? (setViewMonth(11), setViewYear(y=>y-1)) : setViewMonth(m=>m-1)
   const nextMonth = () => viewMonth === 11 ? (setViewMonth(0),  setViewYear(y=>y+1)) : setViewMonth(m=>m+1)
 
-  /* Build day-grid cells (null = empty leading cell) */
   const firstDow  = new Date(viewYear, viewMonth, 1).getDay()
   const daysInMon = new Date(viewYear, viewMonth + 1, 0).getDate()
   const cells: (Date|null)[] = [
@@ -514,7 +513,6 @@ function DatePicker({ value, onChange, error, min, max, placeholder = 'Select da
     ...Array.from({length: daysInMon}, (_,i) => new Date(viewYear, viewMonth, i+1)),
   ]
 
-  /* Year picker grid */
   const yearList = Array.from({length: 12}, (_, i) => yearPage + i)
 
   const displayValue = selected
@@ -548,7 +546,6 @@ function DatePicker({ value, onChange, error, min, max, placeholder = 'Select da
             transition={{ duration: 0.12 }}
             className="absolute left-0 top-full z-[999] mt-1.5 w-72 select-none overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
 
-            {/* ── Day view ── */}
             {mode === 'day' && (<>
               <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #F1F3F8' }}>
                 <button type="button" onClick={prevMonth}
@@ -566,15 +563,11 @@ function DatePicker({ value, onChange, error, min, max, placeholder = 'Select da
                   <ChevronRight size={14} />
                 </button>
               </div>
-
-              {/* Weekday headers */}
               <div className="grid grid-cols-7 px-3 pt-3 pb-1">
                 {WEEK_DAYS.map(d => (
                   <div key={d} className="flex items-center justify-center text-[10px] font-bold uppercase tracking-wide text-gray-400">{d}</div>
                 ))}
               </div>
-
-              {/* Day cells */}
               <div className="grid grid-cols-7 gap-y-0.5 px-3 pb-3">
                 {cells.map((d, i) => {
                   if (!d) return <div key={`e${i}`} className="h-8" />
@@ -593,8 +586,6 @@ function DatePicker({ value, onChange, error, min, max, placeholder = 'Select da
                   )
                 })}
               </div>
-
-              {/* Footer */}
               <div className="flex items-center justify-between px-4 py-2.5" style={{ borderTop: '1px solid #F1F3F8' }}>
                 <button type="button" onClick={() => onChange('')}
                   className="text-xs text-gray-400 transition-colors hover:text-red-400">Clear</button>
@@ -607,7 +598,6 @@ function DatePicker({ value, onChange, error, min, max, placeholder = 'Select da
               </div>
             </>)}
 
-            {/* ── Year view ── */}
             {mode === 'year' && (<>
               <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #F1F3F8' }}>
                 <button type="button" onClick={() => setYearPage(p => p - 12)}
@@ -639,7 +629,6 @@ function DatePicker({ value, onChange, error, min, max, placeholder = 'Select da
               </button>
             </>)}
 
-            {/* ── Month view ── */}
             {mode === 'month' && (<>
               <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #F1F3F8' }}>
                 <button type="button" onClick={() => setViewYear(y => y - 1)}
@@ -972,6 +961,26 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
   const [avatarError,   setAvatarError]   = useState<string | null>(null)
   const [showTerms,     setShowTerms]     = useState(false)
 
+  // ── Registration mode ────────────────────────────────
+  const [mode, setMode] = useState<'express' | 'full'>('express')
+
+  // ── Express account form state ───────────────────────
+  const [expressData, setExpressData] = useState({
+    name: '', email: '', homeCountry: '', password: '', termsAccepted: false,
+  })
+  const [expressErrors, setExpressErrors] = useState<{
+    name?: string; email?: string; homeCountry?: string;
+    password?: string; termsAccepted?: string
+  }>({})
+  const [expressLoading, setExpressLoading] = useState(false)
+  const [expressApiErr,  setExpressApiErr]  = useState<string | null>(null)
+  const [expressShowPw,  setExpressShowPw]  = useState(false)
+
+  const setEx = (k: keyof typeof expressData, v: unknown) => {
+    setExpressData(d => ({ ...d, [k]: v }))
+    setExpressErrors(e => ({ ...e, [k]: undefined }))
+  }
+
   const set = (k: keyof FormData, v: unknown) => {
     setData(d => ({ ...d, [k]: v }))
     setErrors(e => ({ ...e, [k]: undefined }))
@@ -1184,10 +1193,70 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
       }
       window.location.href = '/my-learning'
     } catch (err: unknown) {
-      const axiosMsg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message
-      const nativeMsg = err instanceof Error ? err.message : undefined
-      setApiErr(axiosMsg ?? nativeMsg ?? 'Registration failed. Please try again.')
+      const resp = (err as { response?: { data?: { error?: { message?: string; code?: string } } } })?.response?.data?.error
+      const code = resp?.code
+      const msg  = resp?.message ?? (err instanceof Error ? err.message : undefined) ?? 'Registration failed. Please try again.'
+      if (code === 'EMAIL_TAKEN') {
+        setStep(3)
+        setErrors(e => ({ ...e, email: msg }))
+      } else {
+        setApiErr(msg)
+      }
       setLoading(false)
+    }
+  }
+
+  async function submitExpress() {
+    const errs: typeof expressErrors = {}
+    const name = expressData.name.trim()
+
+    /* Name */
+    if (!name) errs.name = 'Full name is required'
+    else if (name.split(/\s+/).length < 2) errs.name = 'Enter your first and last name'
+    else if (!/^[a-zA-Z\s\-'\.]+$/.test(name)) errs.name = 'Name must contain letters only'
+
+    /* Email */
+    if (!expressData.email.trim()) errs.email = 'Email is required'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(expressData.email)) errs.email = 'Enter a valid email address'
+
+    /* Country */
+    if (!expressData.homeCountry) errs.homeCountry = 'Please select your country'
+
+    /* Password */
+    if (!expressData.password) errs.password = 'Password is required'
+    else if (expressData.password.length < 8) errs.password = 'At least 8 characters required'
+    else if (!/[A-Z]/.test(expressData.password)) errs.password = 'Must include an uppercase letter'
+    else if (!/[0-9]/.test(expressData.password)) errs.password = 'Must include a number'
+
+    /* Terms */
+    if (!expressData.termsAccepted) errs.termsAccepted = 'You must accept the terms to continue'
+
+    setExpressErrors(errs)
+    if (Object.keys(errs).length > 0) return
+
+    setExpressLoading(true)
+    setExpressApiErr(null)
+    try {
+      await api.post('/auth/register', {
+        name,
+        email:      expressData.email.trim().toLowerCase(),
+        password:   expressData.password,
+        signupType: 'express',
+        enrollmentApplication: {
+          homeCountry: expressData.homeCountry,
+        },
+      })
+      window.location.href = '/my-learning'
+    } catch (err: unknown) {
+      const resp = (err as { response?: { data?: { error?: { message?: string; code?: string } } } })?.response?.data?.error
+      const code = resp?.code
+      const msg  = resp?.message ?? (err instanceof Error ? err.message : undefined) ?? 'Registration failed. Please try again.'
+      if (code === 'EMAIL_TAKEN') {
+        setExpressErrors(e => ({ ...e, email: msg }))
+      } else {
+        setExpressApiErr(msg)
+      }
+      setExpressLoading(false)
     }
   }
 
@@ -1390,7 +1459,7 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
 
           {/* Selected ID document upload — label depends on idType */}
           {(() => {
-            const docMeta = ID_DOC_META[data.idType] ?? { label: 'ID Document Copy', hint: 'Clear scan or photo of your government-issued ID (max 3 MB)' }
+            const docMeta = ID_DOC_META[data.idType] ?? { label: 'ID Document Copy', hint: 'Clear scan or photo of your government-issued ID (max 10 MB)' }
             return (
               <div>
                 <FileDropzone
@@ -1577,104 +1646,262 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
   }
 
   /* ── Render ─────────────────────────────────────────── */
+  const expressStrength = getStrength(expressData.password)
+
   return (
     <div className="flex flex-col gap-5">
 
-      {/* ── Step indicator ──────────────────────────────── */}
-      <div className="flex items-start">
-        {STEP_LABELS.map((label, i) => (
-          <div key={i} className={cn('flex items-center', i < STEP_LABELS.length - 1 && 'flex-1')}>
-            <div className="flex flex-col items-center gap-1.5">
-              {/* Circle */}
-              <motion.div
-                animate={{
-                  background: i < step  ? '#0057b8' : i === step ? '#0057b8' : '#F1F3F8',
-                  boxShadow:  i === step ? '0 0 0 4px rgba(0,87,184,0.12)' : 'none',
-                }}
-                transition={{ duration: 0.2 }}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold"
-                style={{ color: i <= step ? '#fff' : '#9CA3AF' }}>
-                {i < step
-                  ? <Check size={14} strokeWidth={3} />
-                  : <span>{i + 1}</span>}
-              </motion.div>
-              {/* Label */}
-              <span className={cn(
-                'hidden text-[10px] font-semibold whitespace-nowrap sm:block transition-colors duration-200',
-                i === step ? 'text-blue-600' : i < step ? 'text-gray-500' : 'text-gray-300'
-              )}>{label}</span>
+      {/* ── Mode tab switcher ─────────────────────────── */}
+      <div className="flex gap-1.5 rounded-2xl border border-gray-200 bg-gray-50 p-1">
+        <button
+          type="button"
+          onClick={() => setMode('express')}
+          className={cn(
+            'relative flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all duration-200',
+            mode === 'express'
+              ? 'bg-white text-gray-900 shadow-sm'
+              : 'text-gray-400 hover:text-gray-600'
+          )}>
+          <Zap size={14} className={mode === 'express' ? 'text-blue-600' : 'text-gray-400'} />
+          Express Account
+          {mode === 'express' && (
+            <span className="rounded-full px-1.5 py-0.5 text-[10px] font-bold tracking-wide"
+              style={{ background: '#EFF6FF', color: '#0057b8' }}>
+              Recommended
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('full')}
+          className={cn(
+            'flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all duration-200',
+            mode === 'full'
+              ? 'bg-white text-gray-900 shadow-sm'
+              : 'text-gray-400 hover:text-gray-600'
+          )}>
+          <FileText size={14} className={mode === 'full' ? 'text-blue-600' : 'text-gray-400'} />
+          Full Registration
+        </button>
+      </div>
+
+      <AnimatePresence mode="wait">
+
+        {/* ── Express Account form ─────────────────────── */}
+        {mode === 'express' && (
+          <motion.div key="express-form"
+            initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="flex flex-col gap-4">
+
+            <div>
+              <h2 className="text-base font-bold text-gray-900">Create your account</h2>
+              <p className="text-sm text-gray-400">Quick setup — just the essentials to get started</p>
             </div>
 
-            {/* Connector line */}
-            {i < STEP_LABELS.length - 1 && (
-              <div className="mx-2 mb-5 flex-1">
-                <div className="h-[2px] w-full rounded-full overflow-hidden bg-gray-100">
-                  <motion.div
-                    animate={{ width: i < step ? '100%' : '0%' }}
-                    transition={{ duration: 0.3 }}
-                    className="h-full rounded-full bg-blue-600" />
-                </div>
+            {/* Name */}
+            <Field label="Full Name *" error={expressErrors.name}>
+              <div className="relative">
+                <User size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Input error={expressErrors.name} value={expressData.name}
+                  placeholder="e.g. Ahmed Al Mansouri" className="pl-9"
+                  onChange={e => setEx('name', e.target.value)} />
               </div>
+            </Field>
+
+            {/* Email */}
+            <Field label="Email Address *" error={expressErrors.email}>
+              <div className="relative">
+                <Mail size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Input error={expressErrors.email} value={expressData.email}
+                  type="email" placeholder="you@example.com" className="pl-9"
+                  onChange={e => setEx('email', e.target.value)} />
+              </div>
+            </Field>
+
+            {/* Country of Residence */}
+            <Field label="Country of Residence *" error={expressErrors.homeCountry}>
+              <CountryPicker value={expressData.homeCountry}
+                onChange={v => setEx('homeCountry', v)}
+                error={expressErrors.homeCountry}
+                placeholder="Select your country of residence…" />
+            </Field>
+
+            {/* Password */}
+            <Field label="Password *" error={expressErrors.password}>
+              <div className="relative">
+                <Lock size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type={expressShowPw ? 'text' : 'password'}
+                  value={expressData.password}
+                  placeholder="Min. 8 chars, uppercase + number"
+                  onChange={e => setEx('password', e.target.value)}
+                  className={cn(expressErrors.password ? inputErr : inputBase, 'pl-9 pr-10')}
+                />
+                <button type="button" onClick={() => setExpressShowPw(x => !x)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                  {expressShowPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+              {expressData.password && (
+                <div className="flex items-center gap-2 pt-0.5">
+                  <div className="flex flex-1 gap-1">
+                    {[1,2,3,4].map(i => (
+                      <div key={i} className="h-1.5 flex-1 rounded-full transition-all duration-300"
+                        style={{ background: i <= expressStrength.score ? expressStrength.color : '#E5E7EB' }} />
+                    ))}
+                  </div>
+                  <span className="text-[10px] font-bold" style={{ color: expressStrength.color }}>
+                    {expressStrength.label}
+                  </span>
+                </div>
+              )}
+            </Field>
+
+            {/* Terms */}
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3.5 hover:border-blue-200 hover:bg-blue-50/40 transition-all">
+              <input type="checkbox" checked={expressData.termsAccepted}
+                onChange={e => setEx('termsAccepted', e.target.checked)}
+                className="mt-0.5 h-4 w-4 flex-shrink-0 cursor-pointer rounded accent-blue-600" />
+              <span className="text-xs leading-relaxed text-gray-600">
+                I agree to Delta Institutions&apos;{' '}
+                <button type="button" onClick={e => { e.preventDefault(); setShowTerms(true) }}
+                  className="font-semibold transition-colors hover:opacity-80" style={{ color: '#0057b8' }}>
+                  Terms &amp; Conditions
+                </button>
+                , Privacy Policy, and KHDA training regulations.
+              </span>
+            </label>
+            {expressErrors.termsAccepted && (
+              <p className="flex items-center gap-1 text-[11px] font-medium text-red-500">
+                <AlertCircle size={10} strokeWidth={2.5} />{expressErrors.termsAccepted}
+              </p>
             )}
-          </div>
-        ))}
-      </div>
 
-      {/* ── Step header ─────────────────────────────────── */}
-      <div>
-        <h2 className="text-base font-bold text-gray-900">Step {step + 1}: {STEP_LABELS[step]}</h2>
-        <p className="text-sm text-gray-400">
-          {step === 0 && 'Tell us about yourself'}
-          {step === 1 && 'Your address and documents'}
-          {step === 2 && 'Choose your programs'}
-          {step === 3 && 'Create your account'}
-        </p>
-      </div>
+            {/* API error */}
+            <AnimatePresence>
+              {expressApiErr && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                  className="flex items-center gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                  <AlertCircle size={15} className="flex-shrink-0" />
+                  {expressApiErr}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-      {/* ── Fields ──────────────────────────────────────── */}
-      <AnimatePresence mode="wait">
-        <motion.div key={step}
-          initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.18, ease: 'easeOut' }}>
-          {renderStep()}
-        </motion.div>
-      </AnimatePresence>
+            {/* Submit */}
+            <button type="button" onClick={submitExpress} disabled={expressLoading}
+              className="flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+              style={{ background: '#0057b8', boxShadow: '0 4px 14px rgba(0,87,184,0.3)' }}>
+              {expressLoading ? <><Spinner size={14} /> Creating Account…</> : 'Create Account & Continue'}
+            </button>
 
-      {/* ── API error ───────────────────────────────────── */}
-      <AnimatePresence>
-        {apiErr && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-            className="flex items-center gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-            <AlertCircle size={15} className="flex-shrink-0" />
-            {apiErr}
           </motion.div>
         )}
+
+        {/* ── Full Registration form ───────────────────── */}
+        {mode === 'full' && (
+          <motion.div key="full-form"
+            initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="flex flex-col gap-5">
+
+            {/* Step indicator */}
+            <div className="flex items-start">
+              {STEP_LABELS.map((label, i) => (
+                <div key={i} className={cn('flex items-center', i < STEP_LABELS.length - 1 && 'flex-1')}>
+                  <div className="flex flex-col items-center gap-1.5">
+                    <motion.div
+                      animate={{
+                        background: i < step  ? '#0057b8' : i === step ? '#0057b8' : '#F1F3F8',
+                        boxShadow:  i === step ? '0 0 0 4px rgba(0,87,184,0.12)' : 'none',
+                      }}
+                      transition={{ duration: 0.2 }}
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold"
+                      style={{ color: i <= step ? '#fff' : '#9CA3AF' }}>
+                      {i < step
+                        ? <Check size={14} strokeWidth={3} />
+                        : <span>{i + 1}</span>}
+                    </motion.div>
+                    <span className={cn(
+                      'hidden text-[10px] font-semibold whitespace-nowrap sm:block transition-colors duration-200',
+                      i === step ? 'text-blue-600' : i < step ? 'text-gray-500' : 'text-gray-300'
+                    )}>{label}</span>
+                  </div>
+                  {i < STEP_LABELS.length - 1 && (
+                    <div className="mx-2 mb-5 flex-1">
+                      <div className="h-[2px] w-full rounded-full overflow-hidden bg-gray-100">
+                        <motion.div
+                          animate={{ width: i < step ? '100%' : '0%' }}
+                          transition={{ duration: 0.3 }}
+                          className="h-full rounded-full bg-blue-600" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Step header */}
+            <div>
+              <h2 className="text-base font-bold text-gray-900">Step {step + 1}: {STEP_LABELS[step]}</h2>
+              <p className="text-sm text-gray-400">
+                {step === 0 && 'Tell us about yourself'}
+                {step === 1 && 'Your address and documents'}
+                {step === 2 && 'Choose your programs'}
+                {step === 3 && 'Create your account'}
+              </p>
+            </div>
+
+            {/* Fields */}
+            <AnimatePresence mode="wait">
+              <motion.div key={step}
+                initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.18, ease: 'easeOut' }}>
+                {renderStep()}
+              </motion.div>
+            </AnimatePresence>
+
+            {/* API error */}
+            <AnimatePresence>
+              {apiErr && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                  className="flex items-center gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                  <AlertCircle size={15} className="flex-shrink-0" />
+                  {apiErr}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Navigation */}
+            <div className="flex items-center gap-2 pt-1">
+              {step > 0 && (
+                <button type="button" onClick={back}
+                  className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50">
+                  <ChevronLeft size={15} /> Back
+                </button>
+              )}
+              {step < 3 ? (
+                <button type="button" onClick={next}
+                  className="ml-auto flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]"
+                  style={{ background: '#0057b8', boxShadow: '0 4px 14px rgba(0,87,184,0.3)' }}>
+                  Continue <ChevronRight size={15} />
+                </button>
+              ) : (
+                <button type="button" onClick={submit} disabled={loading}
+                  className="ml-auto flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{ background: '#0057b8', boxShadow: '0 4px 14px rgba(0,87,184,0.3)' }}>
+                  {loading ? <><Spinner size={14} /> Submitting…</> : 'Submit Application'}
+                </button>
+              )}
+            </div>
+
+          </motion.div>
+        )}
+
       </AnimatePresence>
-
-      {/* ── Navigation ──────────────────────────────────── */}
-      <div className="flex items-center gap-2 pt-1">
-        {step > 0 && (
-          <button type="button" onClick={back}
-            className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 transition-all hover:border-gray-300 hover:bg-gray-50">
-            <ChevronLeft size={15} /> Back
-          </button>
-        )}
-
-        {step < 3 ? (
-          <button type="button" onClick={next}
-            className="ml-auto flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]"
-            style={{ background: '#0057b8', boxShadow: '0 4px 14px rgba(0,87,184,0.3)' }}>
-            Continue <ChevronRight size={15} />
-          </button>
-        ) : (
-          <button type="button" onClick={submit} disabled={loading}
-            className="ml-auto flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
-            style={{ background: '#0057b8', boxShadow: '0 4px 14px rgba(0,87,184,0.3)' }}>
-            {loading ? <><Spinner size={14} /> Submitting…</> : 'Submit Application'}
-          </button>
-        )}
-      </div>
 
       {/* ── Sign in link ─────────────────────────────────── */}
       <p className="text-center text-xs text-gray-400">

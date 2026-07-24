@@ -55,6 +55,24 @@ const envSchema = z.object({
   MUX_TOKEN_ID:       opt(z.string().min(1)),
   MUX_TOKEN_SECRET:   opt(z.string().min(1)),
   MUX_WEBHOOK_SECRET: opt(z.string().min(1)),
+
+  /* Tabby — BNPL gateway for UAE (AED) */
+  TABBY_SECRET_KEY:      opt(z.string().min(1)),
+  TABBY_PUBLIC_KEY:      opt(z.string().min(1)),
+  TABBY_MERCHANT_CODE:   opt(z.string().min(1)),
+  TABBY_WEBHOOK_SECRET:  opt(z.string().min(1)),
+  TABBY_CURRENCY:        z.string().length(3).default('AED'),
+
+  /* Abzer (BillXPro) — payment gateway for UAE (AED) */
+  ABZER_ACCESS_KEY:      opt(z.string().min(1)),
+  ABZER_SECRET_KEY:      opt(z.string().min(1)),
+  ABZER_TEMPLATE_CODE:   z.string().default('paymentlink-mail-template'),
+  ABZER_WEBHOOK_SECRET:  opt(z.string().min(1)),
+  ABZER_BASE_URL:        z.string().default('https://billxpro.com/as/api/v100'),
+  ABZER_CURRENCY:        z.string().length(3).default('AED'),
+
+  /* UAE exchange rate — used when priceAED is not set on a course */
+  UAE_EXCHANGE_RATE: z.coerce.number().positive().default(3.67),
 })
 
 const parsed = envSchema.safeParse(process.env)

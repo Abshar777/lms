@@ -63,4 +63,42 @@ router.post('/razorpay/verify', authenticate, validate(razorpayVerifySchema), as
   } catch (err) { next(err) }
 })
 
+/* ── Gateway config — which gateways are available for this user ── */
+router.get('/config', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const config = await orderSvc.getGatewayConfig(req.user!.id)
+    sendSuccess(res, config)
+  } catch (err) { next(err) }
+})
+
+/* ── Tabby — create checkout (UAE) ──────────────────────── */
+const tabbyCreateSchema = z.object({
+  courseId:   z.string().min(1),
+  slug:       z.string().min(1),
+  couponCode: z.string().trim().optional(),
+})
+
+router.post('/tabby/create-order', authenticate, validate(tabbyCreateSchema), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { courseId, slug, couponCode } = req.body as { courseId: string; slug: string; couponCode?: string }
+    const result = await orderSvc.createTabbyOrder(req.user!.id, courseId, slug, couponCode)
+    sendSuccess(res, result, 'Tabby checkout created', 201)
+  } catch (err) { next(err) }
+})
+
+/* ── Abzer — create checkout (UAE) ──────────────────────── */
+const abzerCreateSchema = z.object({
+  courseId:   z.string().min(1),
+  slug:       z.string().min(1),
+  couponCode: z.string().trim().optional(),
+})
+
+router.post('/abzer/create-order', authenticate, validate(abzerCreateSchema), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { courseId, slug, couponCode } = req.body as { courseId: string; slug: string; couponCode?: string }
+    const result = await orderSvc.createAbzerOrder(req.user!.id, courseId, slug, couponCode)
+    sendSuccess(res, result, 'Abzer checkout created', 201)
+  } catch (err) { next(err) }
+})
+
 export default router

@@ -125,6 +125,75 @@ export function useRazorpayCheckout(opts: UseRazorpayCheckoutOptions = {}) {
   })
 }
 
+/* ─── Gateway config — which gateways this user should use ── */
+
+export interface GatewayConfig {
+  gateways: ('tabby' | 'abzer' | 'razorpay')[]
+  currency: 'AED' | 'INR' | 'USD'
+}
+
+export function useGatewayConfig() {
+  return useQuery({
+    queryKey: ['checkout', 'config'],
+    queryFn:  () => apiGet<GatewayConfig>('/checkout/config'),
+    staleTime: 5 * 60_000,
+    retry: false,
+  })
+}
+
+/* ─── Tabby checkout (UAE redirect-based) ───────────── */
+
+interface TabbyCreateOrderResult {
+  checkoutUrl: string
+  checkoutId:  string
+}
+
+interface UseTabbyCheckoutOptions {
+  onError?: (msg: string) => void
+}
+
+export function useTabbyCheckout(opts: UseTabbyCheckoutOptions = {}) {
+  return useMutation({
+    mutationFn: async ({ courseId, slug, couponCode }: { courseId: string; slug: string; couponCode?: string }) => {
+      const result = await apiPost<TabbyCreateOrderResult>(
+        '/checkout/tabby/create-order',
+        { courseId, slug, couponCode },
+      )
+      /* Redirect to Tabby hosted checkout page */
+      window.location.href = result.checkoutUrl
+    },
+    onError: (err: Error) => {
+      opts.onError?.(err.message)
+    },
+  })
+}
+
+/* ─── Abzer checkout (UAE redirect-based) ───────────── */
+
+interface AbzerCreateOrderResult {
+  checkoutUrl:  string
+  abzerOrderId: string
+}
+
+interface UseAbzerCheckoutOptions {
+  onError?: (msg: string) => void
+}
+
+export function useAbzerCheckout(opts: UseAbzerCheckoutOptions = {}) {
+  return useMutation({
+    mutationFn: async ({ courseId, slug, couponCode }: { courseId: string; slug: string; couponCode?: string }) => {
+      const result = await apiPost<AbzerCreateOrderResult>(
+        '/checkout/abzer/create-order',
+        { courseId, slug, couponCode },
+      )
+      window.location.href = result.checkoutUrl
+    },
+    onError: (err: Error) => {
+      opts.onError?.(err.message)
+    },
+  })
+}
+
 /* ─── Stripe checkout ───────────────────────────────── */
 export interface CheckoutSession {
   url: string
@@ -161,12 +230,14 @@ export function useValidateCoupon(code: string, courseId: string) {
 export interface MyOrder {
   id:                  string
   courseId:            string | { id: string; title: string; slug: string; thumbnailUrl?: string }
-  gateway:             'razorpay' | 'stripe'
+  gateway:             'razorpay' | 'stripe' | 'tabby' | 'abzer'
   amount:              number
   currency:            string
   status:              'pending' | 'paid' | 'refunded'
   discountAmount:      number
   razorpayPaymentId?:  string
+  tabbyPaymentId?:     string
+  abzerPaymentId?:     string
   stripeInvoiceUrl?:   string
   refundedAt?:         string
   createdAt:           string

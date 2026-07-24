@@ -259,7 +259,7 @@ async function runFiveMinReminders(): Promise<void> {
       const joinUrl = getJoinUrl(b.liveClassId)
 
       await dispatch(userId, b.liveClassId.title, classAt, 'five-min', () =>
-        sendFiveMinReminder(b.userId.email, b.userId.name, b.liveClassId.title, joinUrl),
+        sendFiveMinReminder(b.userId.email, b.userId.name, b.liveClassId.title, joinUrl, classAt),
       )
 
       await ClassBookingModel.findByIdAndUpdate(b._id, { reminder5MinSent: true })

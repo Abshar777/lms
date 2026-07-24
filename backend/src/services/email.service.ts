@@ -361,26 +361,29 @@ export async function sendBookingConfirmation(
   to: string,
   name: string,
   sessionTitle: string,
-  date: string,
-  joinUrl: string,
+  sessionStart: Date | string,
 ): Promise<void> {
-  const subject = `Booking confirmed: ${sessionTitle}`
+  const d = new Date(sessionStart)
+  const dateStr = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Dubai' })
+  const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Dubai' })
+  const subject = `✅ Class Booking Confirmed`
   const html = wrap(subject, `
-    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">Session booked! 🎉</h2>
-    <p>Hi ${escapeHtml(name)}, your seat is confirmed for <strong>${escapeHtml(sessionTitle)}</strong>.</p>
-    <table cellpadding="0" cellspacing="0" style="margin:18px 0;background:#F4F5F8;border-radius:12px;padding:16px;width:100%">
-      <tr><td style="font-size:14px;color:#374151;padding:4px 0">
-        <strong>Date &amp; Time:</strong> ${escapeHtml(date)}
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">✅ Class Booking Confirmed</h2>
+    <p style="margin:0 0 16px;color:#374151">Dear ${escapeHtml(name)},</p>
+    <p style="margin:0 0 20px;color:#374151">Your class has been successfully booked.</p>
+    <table cellpadding="0" cellspacing="0" style="margin:0 0 20px;background:#F4F5F8;border-radius:12px;padding:16px;width:100%;border:1px solid #E5E7EB">
+      <tr><td style="font-size:14px;color:#374151;padding:6px 0">
+        <strong>Date:</strong> ${dateStr}
+      </td></tr>
+      <tr><td style="font-size:14px;color:#374151;padding:6px 0">
+        <strong>Time:</strong> ${timeStr} (UAE Time)
       </td></tr>
     </table>
-    <p style="margin:24px 0">
-      <a href="${joinUrl}" style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
-        Join session →
-      </a>
-    </p>
-    <p style="font-size:12px;color:#9CA3AF">You'll receive reminder emails before the session starts.</p>
+    <p style="margin:0 0 20px;color:#374151">You will receive the session joining link <strong>5 minutes before the class begins</strong>.</p>
+    <p style="margin:0 0 24px;color:#374151">Please be available and join the session on time.</p>
+    <p style="margin:0;color:#374151">Thank you,<br><strong>Delta Academy</strong></p>
   `)
-  await sender.send({ to, subject, html, text: `Your seat is confirmed for ${sessionTitle} on ${date}. Join: ${joinUrl}` })
+  await sender.send({ to, subject, html, text: `Dear ${name},\n\nYour class has been successfully booked.\n\nDate: ${dateStr}\nTime: ${timeStr} (UAE Time)\n\nYou will receive the session joining link 5 minutes before the class begins.\n\nPlease be available and join the session on time.\n\nThank you,\nDelta Academy` })
 }
 
 export async function sendSessionLinkReminder(
@@ -460,19 +463,35 @@ export async function sendFiveMinReminder(
   name: string,
   sessionTitle: string,
   joinUrl: string,
+  sessionStart: Date | string,
 ): Promise<void> {
-  const subject = `Starting in 5 mins — join now: ${sessionTitle}`
+  const d = new Date(sessionStart)
+  const dateStr = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Dubai' })
+  const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Dubai' })
+  const subject = `🔔 Your Class Starts in 5 Minutes`
   const html = wrap(subject, `
-    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">5 minutes to go! ⏱️</h2>
-    <p>Hi ${escapeHtml(name)}, <strong>${escapeHtml(sessionTitle)}</strong> is starting in just 5 minutes.</p>
-    <p>Click below to join now so you're ready when it begins.</p>
-    <p style="margin:24px 0">
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">🔔 Your Class Starts in 5 Minutes</h2>
+    <p style="margin:0 0 16px;color:#374151">Dear <strong>${escapeHtml(name)}</strong>,</p>
+    <p style="margin:0 0 20px;color:#374151">This is a reminder that your class will begin in <strong>5 minutes</strong>.</p>
+    <table cellpadding="0" cellspacing="0" style="margin:0 0 20px;background:#F4F5F8;border-radius:12px;padding:16px;width:100%;border:1px solid #E5E7EB">
+      <tr><td style="font-size:14px;color:#374151;padding:6px 0">
+        <strong>Date:</strong> ${dateStr}
+      </td></tr>
+      <tr><td style="font-size:14px;color:#374151;padding:6px 0">
+        <strong>Time:</strong> ${timeStr} (UAE Time)
+      </td></tr>
+    </table>
+    <p style="margin:0 0 12px;color:#374151"><strong>Join the session here:</strong></p>
+    <p style="margin:0 0 20px">
       <a href="${joinUrl}" style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:700;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:15px">
-        Join now →
+        Join Now →
       </a>
     </p>
+    <p style="margin:0 0 20px;color:#374151">Please join a few minutes early to ensure a smooth start.</p>
+    <p style="margin:0 0 4px;color:#374151">See you in class!</p>
+    <p style="margin:0;color:#374151"><strong>Delta Academy</strong></p>
   `)
-  await sender.send({ to, subject, html, text: `${sessionTitle} starts in 5 minutes. Join: ${joinUrl}` })
+  await sender.send({ to, subject, html, text: `Dear ${name},\n\nThis is a reminder that your class will begin in 5 minutes.\n\nDate: ${dateStr}\nTime: ${timeStr} (UAE Time)\n\nJoin the session here: ${joinUrl}\n\nPlease join a few minutes early to ensure a smooth start.\n\nSee you in class!\nDelta Academy` })
 }
 
 /** At-time reminder — WITH join link, sent when class has just started */
@@ -482,45 +501,84 @@ export async function sendClassStartingReminder(
   sessionTitle: string,
   joinUrl: string,
 ): Promise<void> {
-  const subject = `Class is starting now: ${sessionTitle}`
+  const subject = `🚀 Class Has Started`
   const html = wrap(subject, `
-    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">Your class is live! 🎯</h2>
-    <p>Hi ${escapeHtml(name)}, <strong>${escapeHtml(sessionTitle)}</strong> has just started.</p>
-    <p>Don't miss it — join immediately using the button below.</p>
-    <p style="margin:24px 0">
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">🚀 Class Has Started</h2>
+    <p style="margin:0 0 16px;color:#374151">Dear <strong>${escapeHtml(name)}</strong>,</p>
+    <p style="margin:0 0 20px;color:#374151">Your scheduled class has now started.</p>
+    <p style="margin:0 0 20px;color:#374151">If you have not already joined, please use your session link to enter the class.</p>
+    <p style="margin:0 0 24px">
       <a href="${joinUrl}" style="display:inline-block;background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff;font-weight:700;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:15px">
-        Join class now →
+        Join Now →
       </a>
     </p>
+    <p style="margin:0 0 24px;color:#374151">We look forward to your participation.</p>
+    <p style="margin:0;color:#374151"><strong>Delta Academy</strong></p>
   `)
-  await sender.send({ to, subject, html, text: `${sessionTitle} is starting now. Join: ${joinUrl}` })
+  await sender.send({ to, subject, html, text: `Dear ${name},\n\nYour scheduled class has now started.\n\nIf you have not already joined, please use your session link to enter the class: ${joinUrl}\n\nWe look forward to your participation.\n\nDelta Academy` })
 }
 
 export async function sendRescheduledNotification(
   to: string,
   name: string,
   sessionTitle: string,
-  oldDate: string,
-  newDate: string,
+  oldStart: Date | string,
+  newStart: Date | string,
 ): Promise<void> {
-  const subject = `Rescheduled: ${sessionTitle}`
+  const fmt = (dt: Date | string) => {
+    const d = new Date(dt)
+    const date = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Dubai' })
+    const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Dubai' })
+    return `${date} at ${time}`
+  }
+  const oldLabel = fmt(oldStart)
+  const newLabel = fmt(newStart)
+  const subject = `📅 Class Rescheduled`
   const html = wrap(subject, `
-    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">Session rescheduled 📆</h2>
-    <p>Hi ${escapeHtml(name)}, <strong>${escapeHtml(sessionTitle)}</strong> has been rescheduled.</p>
-    <table cellpadding="0" cellspacing="0" style="margin:18px 0;background:#F4F5F8;border-radius:12px;padding:16px;width:100%">
-      <tr><td style="font-size:14px;color:#374151;padding:4px 0">
-        <strong>Old time:</strong> ${escapeHtml(oldDate)}
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">📅 Class Rescheduled</h2>
+    <p style="margin:0 0 16px;color:#374151">Dear <strong>${escapeHtml(name)}</strong>,</p>
+    <p style="margin:0 0 20px;color:#374151">Your scheduled class has been rescheduled.</p>
+    <table cellpadding="0" cellspacing="0" style="margin:0 0 20px;background:#F4F5F8;border-radius:12px;padding:16px;width:100%;border:1px solid #E5E7EB">
+      <tr><td style="font-size:14px;color:#374151;padding:6px 0">
+        <strong>Previous Schedule:</strong> <span style="text-decoration:line-through;color:#9CA3AF">${oldLabel}</span>
       </td></tr>
-      <tr><td style="font-size:14px;color:#374151;padding:4px 0">
-        <strong>New time:</strong> ${escapeHtml(newDate)}
+      <tr><td style="font-size:14px;color:#374151;padding:6px 0;border-top:1px solid #E5E7EB">
+        <strong>New Schedule:</strong> ${newLabel} (UAE Time)
       </td></tr>
     </table>
-    <p>Your booking is automatically updated. We'll send you reminders for the new time.</p>
+    <p style="margin:0 0 20px;color:#374151">If the session is conducted online, the joining link will be shared <strong>5 minutes before the class begins</strong>.</p>
+    <p style="margin:0 0 20px;color:#374151">Thank you for your cooperation. We look forward to seeing you in the rescheduled session.</p>
+    <p style="margin:0;color:#374151"><strong>Delta Academy</strong></p>
   `)
-  await sender.send({ to, subject, html, text: `${sessionTitle} has been rescheduled from ${oldDate} to ${newDate}.` })
+  await sender.send({ to, subject, html, text: `Dear ${name},\n\nYour scheduled class has been rescheduled.\n\nPrevious Schedule: ${oldLabel}\nNew Schedule: ${newLabel} (UAE Time)\n\nIf the session is conducted online, the joining link will be shared 5 minutes before the class begins.\n\nThank you for your cooperation. We look forward to seeing you in the rescheduled session.\n\nDelta Academy` })
 }
 
 /* ── Reschedule email sequence (3 emails sent at different times) ── */
+
+export async function sendDelayNotification(
+  to: string,
+  name: string,
+  sessionTitle: string,
+  newStart: Date | string,
+): Promise<void> {
+  const d = new Date(newStart)
+  const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Dubai' })
+  const subject = `⏳ Class Delay Notice`
+  const html = wrap(subject, `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">⏳ Class Delay Notice</h2>
+    <p style="margin:0 0 16px;color:#374151">Dear <strong>${escapeHtml(name)}</strong>,</p>
+    <p style="margin:0 0 20px;color:#374151">Your scheduled class has been delayed.</p>
+    <table cellpadding="0" cellspacing="0" style="margin:0 0 20px;background:#F4F5F8;border-radius:12px;padding:16px;width:100%;border:1px solid #E5E7EB">
+      <tr><td style="font-size:14px;color:#374151;padding:6px 0">
+        <strong>Revised Start Time:</strong> ${timeStr} (UAE Time)
+      </td></tr>
+    </table>
+    <p style="margin:0 0 20px;color:#374151">We apologize for the inconvenience and appreciate your patience. If applicable, you may continue to use the same joining link unless notified otherwise.</p>
+    <p style="margin:0 0 24px;color:#374151">Thank you.</p>
+    <p style="margin:0;color:#374151"><strong>Delta Academy</strong></p>
+  `)
+  await sender.send({ to, subject, html, text: `Dear ${name},\n\nYour scheduled class has been delayed.\n\nRevised Start Time: ${timeStr} (UAE Time)\n\nWe apologize for the inconvenience and appreciate your patience. If applicable, you may continue to use the same joining link unless notified otherwise.\n\nThank you.\n\nDelta Academy` })
+}
 
 interface RescheduledArgs {
   to:      string
@@ -643,15 +701,21 @@ export async function sendCancelledNotification(
   to: string,
   name: string,
   sessionTitle: string,
-  date: string,
+  sessionStart: Date | string,
 ): Promise<void> {
-  const subject = `Cancelled: ${sessionTitle}`
+  const d = new Date(sessionStart)
+  const dateStr = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Dubai' })
+  const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Dubai' })
+  const subject = `❗ Class Cancellation Notice`
   const html = wrap(subject, `
-    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">Session cancelled</h2>
-    <p>Hi ${escapeHtml(name)}, unfortunately <strong>${escapeHtml(sessionTitle)}</strong> scheduled for ${escapeHtml(date)} has been cancelled.</p>
-    <p>Please contact the admin team if you have any questions.</p>
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">❗ Class Cancellation Notice</h2>
+    <p style="margin:0 0 16px;color:#374151">Dear <strong>${escapeHtml(name)}</strong>,</p>
+    <p style="margin:0 0 20px;color:#374151">We regret to inform you that your scheduled class on <strong>${dateStr} at ${timeStr} (UAE Time)</strong> has been cancelled.</p>
+    <p style="margin:0 0 20px;color:#374151">We apologize for the inconvenience. A replacement session will be scheduled, and you will be notified once it is available.</p>
+    <p style="margin:0 0 24px;color:#374151">Thank you for your understanding.</p>
+    <p style="margin:0;color:#374151"><strong>Delta Academy</strong></p>
   `)
-  await sender.send({ to, subject, html, text: `${sessionTitle} on ${date} has been cancelled.` })
+  await sender.send({ to, subject, html, text: `Dear ${name},\n\nWe regret to inform you that your scheduled class on ${dateStr} at ${timeStr} (UAE Time) has been cancelled.\n\nWe apologize for the inconvenience. A replacement session will be scheduled, and you will be notified once it is available.\n\nThank you for your understanding.\n\nDelta Academy` })
 }
 
 export async function sendBookingCancelledByStudent(

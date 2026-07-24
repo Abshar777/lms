@@ -336,26 +336,25 @@ export class LiveClassController {
       if (wasCancelled || wasRescheduled) {
         ;(async () => {
           try {
-            const { sendCancelledNotification, sendRescheduledEmail1, sendRescheduledEmail2, sendRescheduledEmail3 } = await import('@/services/email.service.ts')
+            const { sendCancelledNotification, sendDelayNotification, sendRescheduledNotification } = await import('@/services/email.service.ts')
             const bookings = await ClassBookingModel.find({
               liveClassId: id, status: { $in: ['booked', 'attended'] },
             }).lean()
-            const reason = typeof dto['rescheduleReason'] === 'string' && (dto['rescheduleReason'] as string).trim()
-              ? (dto['rescheduleReason'] as string).trim()
-              : 'Schedule adjustment'
+            const oldStart = oldSession?.scheduledStart ?? new Date()
+            const newStart = live.scheduledStart ?? new Date()
+            /* Same calendar day → delay; different day → full reschedule */
+            const oldDay = new Date(oldStart).toLocaleDateString('en-US', { timeZone: 'Asia/Dubai' })
+            const newDay = new Date(newStart).toLocaleDateString('en-US', { timeZone: 'Asia/Dubai' })
+            const isReschedule = oldDay !== newDay
             for (const booking of bookings) {
               const user = await UserModel.findById(booking.userId).lean()
               if (!user?.email) continue
-              const title   = live.title
-              const oldDate = oldSession?.scheduledStart ? new Date(oldSession.scheduledStart).toLocaleString() : 'TBD'
-              const newDate = live.scheduledStart ? new Date(live.scheduledStart).toLocaleString() : 'TBD'
               if (wasCancelled) {
-                sendCancelledNotification(user.email, user.name, title, oldDate).catch(() => {})
+                sendCancelledNotification(user.email, user.name, live.title, oldStart).catch(() => {})
+              } else if (isReschedule) {
+                sendRescheduledNotification(user.email, user.name, live.title, oldStart, newStart).catch(() => {})
               } else {
-                const emailArgs = { to: user.email, name: user.name, title, oldDate, newDate, reason }
-                sendRescheduledEmail1(emailArgs).catch(() => {})
-                setTimeout(() => { sendRescheduledEmail2(emailArgs).catch(() => {}) }, 2 * 60 * 60 * 1000)
-                setTimeout(() => { sendRescheduledEmail3(emailArgs).catch(() => {}) }, 24 * 60 * 60 * 1000)
+                sendDelayNotification(user.email, user.name, live.title, newStart).catch(() => {})
               }
             }
           } catch (e) { console.error('[Notification] update notification failed:', e) }

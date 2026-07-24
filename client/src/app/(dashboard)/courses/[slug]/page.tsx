@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { useCourse } from '@/lib/api/courses'
 import { useCourseProgress, useEnroll } from '@/lib/api/enrollments'
-import { useRazorpayCheckout, useValidateCoupon } from '@/lib/api/checkout'
+import { useRazorpayCheckout, useTabbyCheckout, useAbzerCheckout, useGatewayConfig, useValidateCoupon } from '@/lib/api/checkout'
 import { formatPrice } from '@/lib/formatPrice'
 import { CertificateButton } from '@/components/learn/CertificateButton'
 import { CourseReviews } from '@/components/courses/CourseReviews'
@@ -51,8 +51,12 @@ function CourseDetailInner({ slug }: { slug: string }) {
 
   const { data, isLoading, isError } = useCourse(slug)
   const { data: progress } = useCourseProgress(slug)
-  const enroll   = useEnroll()
-  const checkout = useRazorpayCheckout()
+  const enroll          = useEnroll()
+  const { data: gatewayConfig } = useGatewayConfig()
+  const isUAE           = gatewayConfig?.currency === 'AED'
+  const checkout        = useRazorpayCheckout()
+  const tabbyCheckout   = useTabbyCheckout({ onError: msg => setEnrollError(msg) })
+  const abzerCheckout   = useAbzerCheckout({ onError: msg => setEnrollError(msg) })
 
   const [enrollError,   setEnrollError]   = useState<string | null>(null)
   const [couponOpen,    setCouponOpen]     = useState(false)
@@ -126,6 +130,11 @@ function CourseDetailInner({ slug }: { slug: string }) {
 
   const onCheckout = async () => {
     setEnrollError(null)
+    if (isUAE) {
+      /* UAE users — Abzer redirect (primary) */
+      abzerCheckout.mutate({ courseId: course.id, slug: course.slug, couponCode: couponCode || undefined })
+      return
+    }
     try {
       await checkout.mutateAsync({ courseId: course.id, couponCode: couponCode || undefined })
     } catch (err: any) {
@@ -445,17 +454,30 @@ function CourseDetailInner({ slug }: { slug: string }) {
                 </Link>
               ) : isPaid ? (
                 <>
+                  {/* Primary payment button — Abzer (UAE) or Razorpay (non-UAE) */}
                   <motion.button
                     onClick={onCheckout}
-                    disabled={checkout.isPending}
+                    disabled={checkout.isPending || abzerCheckout.isPending}
                     whileHover={{ y: -2, boxShadow: '0 12px 32px rgba(0,87,184,0.40)' }}
                     whileTap={{ scale: 0.97 }}
                     className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all disabled:opacity-70"
                     style={{ background: '#0057b8', boxShadow: '0 6px 24px rgba(0,87,184,0.30)' }}>
-                    {checkout.isPending
+                    {(checkout.isPending || abzerCheckout.isPending)
                       ? <><Spinner size={15} />Redirecting…</>
-                      : <><ShoppingCart size={15} />Buy for {formatPrice(discountedPrice)}</>}
+                      : isUAE
+                        ? <><ShoppingCart size={15} />Pay with Abzer</>
+                        : <><ShoppingCart size={15} />Buy for {formatPrice(discountedPrice)}</>}
                   </motion.button>
+
+                  {/* Tabby — coming soon for UAE users */}
+                  {isUAE && (
+                    <motion.button
+                      disabled
+                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold transition-all opacity-50 cursor-not-allowed"
+                      style={{ border: '1.5px solid #9CA3AF', color: '#9CA3AF' }}>
+                      <ShoppingCart size={15} />Tabby — Coming Soon
+                    </motion.button>
+                  )}
 
                   {/* Coupon code accordion */}
                   <div className="mt-3">

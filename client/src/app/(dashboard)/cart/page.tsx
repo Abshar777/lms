@@ -9,7 +9,7 @@ import {
   CheckCircle2, GraduationCap,
 } from 'lucide-react'
 import { useCartStore, type CartItem } from '@/store/cart.store'
-import { useRazorpayCheckout, useValidateCoupon } from '@/lib/api/checkout'
+import { useRazorpayCheckout, useTabbyCheckout, useAbzerCheckout, useGatewayConfig, useValidateCoupon } from '@/lib/api/checkout'
 import Spinner from '@/components/ui/Spinner'
 
 /* ── helpers ─────────────────────────────────────────── */
@@ -75,19 +75,32 @@ function CouponRow({
 
 /* ── Single cart item card ───────────────────────────── */
 function CartItemCard({ item, onRemove }: { item: CartItem; onRemove: () => void }) {
-  const checkout  = useRazorpayCheckout()
-  const isFree    = item.isFree || !item.price || item.price === 0
+  const checkout      = useRazorpayCheckout()
+  const tabbyCheckout = useTabbyCheckout()
+  const abzerCheckout = useAbzerCheckout()
+  const { data: gatewayConfig } = useGatewayConfig()
+  const isUAE         = gatewayConfig?.currency === 'AED'
+  const isFree        = item.isFree || !item.price || item.price === 0
   const [coupon,  setCoupon]  = useState<string | undefined>(undefined)
   const [buying,  setBuying]  = useState(false)
 
   const handleBuy = async () => {
     if (isFree) return
     setBuying(true)
+    if (isUAE) {
+      abzerCheckout.mutate({ courseId: item.id, slug: item.slug, couponCode: coupon })
+      return
+    }
     try {
       await checkout.mutateAsync({ courseId: item.id, couponCode: coupon })
     } catch {
       setBuying(false)
     }
+  }
+
+  const handleAbzerBuy = () => {
+    if (isFree) return
+    abzerCheckout.mutate({ courseId: item.id, slug: item.slug, couponCode: coupon })
   }
 
   return (
@@ -156,16 +169,28 @@ function CartItemCard({ item, onRemove }: { item: CartItem; onRemove: () => void
                 </motion.button>
               </Link>
             ) : (
-              <motion.button
-                whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                onClick={handleBuy}
-                disabled={buying || checkout.isPending}
-                className="flex items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-bold text-white disabled:opacity-60 transition-all"
-                style={{ background: '#0057b8', boxShadow: '0 2px 8px rgba(0,87,184,0.25)' }}>
-                {buying || checkout.isPending
-                  ? <><Spinner size={11} />Processing…</>
-                  : <><ArrowRight size={11} />Checkout</>}
-              </motion.button>
+              <div className="flex flex-col gap-1">
+                <motion.button
+                  whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                  onClick={handleBuy}
+                  disabled={buying || checkout.isPending || abzerCheckout.isPending}
+                  className="flex items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-bold text-white disabled:opacity-60 transition-all"
+                  style={{ background: '#0057b8', boxShadow: '0 2px 8px rgba(0,87,184,0.25)' }}>
+                  {buying || checkout.isPending || abzerCheckout.isPending
+                    ? <><Spinner size={11} />Processing…</>
+                    : isUAE
+                      ? <><ArrowRight size={11} />Pay · Abzer</>
+                      : <><ArrowRight size={11} />Checkout</>}
+                </motion.button>
+                {isUAE && (
+                  <button
+                    disabled
+                    className="flex items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-bold opacity-40 cursor-not-allowed transition-all"
+                    style={{ border: '1.5px solid #9CA3AF', color: '#9CA3AF' }}>
+                    <ArrowRight size={11} />Tabby — Coming Soon
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>

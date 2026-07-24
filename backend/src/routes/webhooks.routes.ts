@@ -2,6 +2,8 @@ import { Router } from 'express'
 import { OrderService } from '@/services/order.service.ts'
 import { StripeService } from '@/services/stripe.service.ts'
 import { RazorpayService } from '@/services/razorpay.service.ts'
+import { TabbyService } from '@/services/tabby.service.ts'
+import { AbzerService } from '@/services/abzer.service.ts'
 import { env } from '@/config/env.ts'
 import { logger } from '@/utils/logger.ts'
 import type { Request, Response } from 'express'
@@ -21,6 +23,8 @@ const router      = Router()
 const orderSvc    = new OrderService()
 const stripeSvc   = new StripeService()
 const razorpaySvc = new RazorpayService()
+const tabbySvc    = new TabbyService()
+const abzerSvc    = new AbzerService()
 
 router.post('/stripe', async (req: Request, res: Response) => {
   const sig = req.headers['stripe-signature']
@@ -138,6 +142,114 @@ router.post('/razorpay', async (req: Request, res: Response) => {
     }
   } catch (err) {
     logger.error({ err, event: payload?.event }, 'Razorpay webhook handler error')
+  }
+
+  res.status(200).json({ received: true })
+})
+
+/* ─────────────────────────────────────────────────────
+   Tabby webhook
+   Tabby calls this when a payment is AUTHORIZED/CLOSED.
+   Fulfills the order and triggers enrollment.
+   Always responds 200 so Tabby doesn't retry on errors.
+───────────────────────────────────────────────────── */
+router.post('/tabby', async (req: Request, res: Response) => {
+  /* Verify signature when secret is configured */
+  if (env.TABBY_WEBHOOK_SECRET) {
+    const sig     = req.headers['x-tabby-signature'] as string | undefined
+    const rawBody = req.body as Buffer
+    if (!sig || !Buffer.isBuffer(rawBody)) {
+      logger.warn('Tabby webhook: missing signature or body')
+      res.status(200).json({ received: true })
+      return
+    }
+    const valid = tabbySvc.verifyWebhookSignature(rawBody.toString('utf8'), sig, env.TABBY_WEBHOOK_SECRET)
+    if (!valid) {
+      logger.warn('Tabby webhook: signature mismatch')
+      res.status(200).json({ received: true })
+      return
+    }
+  }
+
+  let payload: any
+  try {
+    const raw = req.body
+    payload = Buffer.isBuffer(raw) ? JSON.parse(raw.toString('utf8')) : (typeof raw === 'string' ? JSON.parse(raw) : raw)
+  } catch {
+    res.status(200).json({ received: true })
+    return
+  }
+
+  try {
+    /* Tabby sends payment status as AUTHORIZED or CLOSED (captured) */
+    const status      = (payload?.status as string | undefined)?.toUpperCase()
+    const paymentId   = payload?.id as string | undefined
+    /* reference_id was set to our orderId in the checkout request */
+    const checkoutId  = payload?.checkout_id ?? payload?.order?.reference_id ?? paymentId
+
+    if ((status === 'AUTHORIZED' || status === 'CLOSED') && paymentId && checkoutId) {
+      await orderSvc.fulfillTabbyFromWebhook(checkoutId, paymentId)
+      logger.info({ paymentId, checkoutId }, 'Tabby: order fulfilled via webhook')
+    } else {
+      logger.debug({ status, paymentId }, 'Tabby webhook: ignored event')
+    }
+  } catch (err) {
+    logger.error({ err, payload }, 'Tabby webhook handler error')
+  }
+
+  res.status(200).json({ received: true })
+})
+
+/* ─────────────────────────────────────────────────────
+   Abzer (BillXPro) webhook
+   Event: WH_RECEIPT_POSTING — triggered on successful payment
+   Security: Abzer sends a custom header you configure in
+   their admin console. Set X-Abzer-Secret to ABZER_WEBHOOK_SECRET.
+   Always responds 200 so Abzer doesn't retry on errors.
+───────────────────────────────────────────────────── */
+router.post('/abzer', async (req: Request, res: Response) => {
+  /* Verify custom secret header when configured */
+  if (env.ABZER_WEBHOOK_SECRET) {
+    /* Configure Abzer admin → Webhook → Headers → X-Abzer-Secret: <your secret> */
+    const headerSecret = req.headers['x-abzer-secret'] ?? req.headers['x-apikey']
+    if (headerSecret !== env.ABZER_WEBHOOK_SECRET) {
+      logger.warn('Abzer webhook: invalid or missing secret header')
+      res.status(200).json({ received: true })
+      return
+    }
+  }
+
+  let payload: any
+  try {
+    const raw = req.body
+    payload = Buffer.isBuffer(raw)
+      ? JSON.parse(raw.toString('utf8'))
+      : typeof raw === 'string' ? JSON.parse(raw) : raw
+  } catch {
+    res.status(200).json({ received: true })
+    return
+  }
+
+  try {
+    /*
+     * WH_RECEIPT_POSTING payload fields (Abzer Webhook Docs v1.0):
+     *   type:          'WH_RECEIPT_POSTING'
+     *   paymentStatus: 'Success' | 'Pending Approval'
+     *   receiptId:     Abzer's receipt UUID
+     *   invoiceNumber: our referenceNumber (= our orderId)
+     */
+    const type          = payload?.type as string | undefined
+    const paymentStatus = payload?.paymentStatus as string | undefined
+    const orderId       = payload?.invoiceNumber as string | undefined   /* our referenceNumber */
+    const receiptId     = payload?.receiptId     as string | undefined
+
+    if (type === 'WH_RECEIPT_POSTING' && paymentStatus === 'Success' && orderId && receiptId) {
+      await orderSvc.fulfillAbzerFromWebhook(orderId, receiptId)
+    } else {
+      logger.debug({ type, paymentStatus, orderId }, 'Abzer webhook: ignored event')
+    }
+  } catch (err) {
+    logger.error({ err, payload }, 'Abzer webhook handler error')
   }
 
   res.status(200).json({ received: true })

@@ -173,6 +173,16 @@ export class AuthController {
     }
   }
 
+  /* ── PATCH /auth/me/complete-registration ──────── */
+  completeRegistration = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const user = await this.service.completeRegistration(req.user!.id, req.body)
+      sendSuccess(res, { user }, 'Registration submitted. Pending admin approval.')
+    } catch (err) {
+      next(err)
+    }
+  }
+
   /* ── PATCH /auth/me/password ────────────────────── */
   changePassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

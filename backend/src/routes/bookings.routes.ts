@@ -63,7 +63,7 @@ async function afterBookingCreated(
   /* 2. Confirmation email — if it fails, add a system notification */
   try {
     const { sendBookingConfirmation } = await import('@/services/email.service.ts')
-    await sendBookingConfirmation(userEmail, userName, sessionTitle, dateLabel, joinUrl)
+    await sendBookingConfirmation(userEmail, userName, sessionTitle, sessionStart)
   } catch {
     await notifSvc.create(userId, {
       kind:  'system',

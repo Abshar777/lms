@@ -37,13 +37,14 @@ const enrollmentAppSchema = z.object({
 }).optional()
 
 const registerSchema = z.object({
-  name:     z.string().min(2).max(120).trim(),
-  email:    z.string().email().toLowerCase(),
-  password: z
+  name:       z.string().min(2).max(120).trim(),
+  email:      z.string().email().toLowerCase(),
+  password:   z
     .string()
     .min(8, 'Password must be at least 8 characters')
     .regex(/[A-Z]/, 'Must contain an uppercase letter')
     .regex(/[0-9]/, 'Must contain a number'),
+  signupType: z.enum(['express', 'full']).optional(),
   enrollmentApplication: enrollmentAppSchema,
 })
 
@@ -95,6 +96,33 @@ const enrollmentDocsSchema = z.object({
   photoUrl:    z.string().url().optional().or(z.literal('')),
 })
 
+/* Complete registration — express users upgrading to full enrollment */
+const completeRegistrationSchema = z.object({
+  phone:              z.string().min(5).max(30),
+  emergencyContact:   z.string().max(30).optional().or(z.literal('')),
+  gender:             z.enum(['Male', 'Female', 'Prefer not to say']),
+  dateOfBirth:        z.string().min(1),
+  nationality:        z.string().max(80),
+  homeCountry:        z.string().max(80),
+  occupation:         z.string().max(120),
+  idType:             z.enum(['Emirates ID', 'Passport', 'Aadhaar Card', 'Other']),
+  idNumber:           z.string().max(40),
+  countryAttendance:  z.string().max(80),
+  villa:              z.string().max(120).optional().or(z.literal('')),
+  city:               z.string().min(1).max(80),
+  addressCountry:     z.string().max(80),
+  passportUrl:        z.string().url(),
+  idDocUrl:           z.string().url(),
+  photoUrl:           z.string().url().optional().or(z.literal('')),
+  experienceLevel:    z.enum(['Beginner', 'Intermediate', 'Advanced']),
+  preferredStartDate: z.string().min(1),
+  hearAboutUs:        z.string().max(80),
+  referralName:       z.string().max(120).optional().or(z.literal('')),
+  programs:           z.array(z.string().max(120)).min(1, 'Select at least one program'),
+  paymentMethod:      z.string().max(50),
+  avatarUrl:          z.string().url().optional().or(z.literal('')),
+})
+
 /* Re-auth schema used by deactivate + delete */
 const reauthSchema = z.object({
   password: z.string().min(1, 'Password is required'),
@@ -115,8 +143,9 @@ router.use('/2fa', totpRoutes)
 
 router.post  ('/logout-all',          authenticate, auth.logoutAll)
 router.get   ('/me',                  authenticate, auth.me)
-router.patch ('/me',                  authenticate, validate(updateMeSchema), auth.updateMe)
-router.patch ('/me/enrollment-docs',  authenticate, validate(enrollmentDocsSchema), auth.updateEnrollmentDocs)
+router.patch ('/me',                       authenticate, validate(updateMeSchema), auth.updateMe)
+router.patch ('/me/enrollment-docs',       authenticate, validate(enrollmentDocsSchema), auth.updateEnrollmentDocs)
+router.patch ('/me/complete-registration', authenticate, validate(completeRegistrationSchema), auth.completeRegistration)
 router.patch ('/me/password',         authenticate, validate(changePasswordSchema), auth.changePassword)
 router.post  ('/resend-verification', authenticate, auth.resendVerification)
 router.get   ('/sessions',            authenticate, auth.listSessions)

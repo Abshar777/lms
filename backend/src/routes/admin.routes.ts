@@ -281,6 +281,17 @@ const enrollmentDocsAdminSchema = z.object({
 })
 router.patch('/enrollment-requests/:userId/docs', requireAnyAdmin, validate(enrollmentDocsAdminSchema), ctrl.updateStudentDocs)
 
+/* ─── Express Members ─────────────────────────────── */
+const expressMembersQuerySchema = z.object({
+  page:     z.coerce.number().int().min(1).default(1),
+  per_page: z.coerce.number().int().min(1).max(500).default(20),
+  status:   z.enum(['all', 'active', 'blocked']).default('all'),
+  search:   z.string().trim().optional(),
+})
+router.get   ('/express-members',            requireAnyAdmin, validate(expressMembersQuerySchema, 'query'), ctrl.listExpressMembers)
+router.patch ('/express-members/:userId/block', requireAnyAdmin, ctrl.blockExpressMember)
+router.delete('/express-members/:userId',    requireAdmin,    ctrl.deleteExpressMember)
+
 /* GET /admin/users/:id/enrollments — list a student's course enrollments */
 router.get('/users/:id/enrollments', requireAdmin,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -588,7 +599,7 @@ router.post('/bookings/book-for-student', requireAnyAdmin, validate(bookForStude
     }).catch(() => {/* non-fatal */})
 
     import('@/services/email.service.ts').then(({ sendBookingConfirmation }) => {
-      sendBookingConfirmation((student as any).email, (student as any).name, session.title, dateLabel, joinUrl)
+      sendBookingConfirmation((student as any).email, (student as any).name, session.title, session.scheduledStart)
         .catch(() => {/* non-fatal */})
     }).catch(() => {/* non-fatal */})
 
