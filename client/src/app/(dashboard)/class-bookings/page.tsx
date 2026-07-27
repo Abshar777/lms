@@ -9,9 +9,11 @@ import {
   Building2, Lock, MapPin, Wifi, Flame, TrendingUp,
   GraduationCap, UserCircle2, SlidersHorizontal, Zap, ChevronDown,
 } from 'lucide-react'
+import Link from 'next/link'
 import { useToast } from '@/store/ui.store'
 import { useAllLiveClasses, type LiveClass } from '@/lib/api/liveClasses'
 import { useMyBookings, useCreateBooking, useCancelBooking, type MyBooking } from '@/lib/api/bookings'
+import { useCurrentUser } from '@/lib/api/user'
 import { APP_TIMEZONE } from '@/lib/timezone'
 import { useServerNow } from '@/hooks/useServerNow'
 import Spinner from '@/components/ui/Spinner'
@@ -459,6 +461,8 @@ function SlotModal({group,bookingMap,onBook,onCancel,bookPending,cancelPending,o
   bookPending:Set<string>; cancelPending:Set<string>; onClose:()=>void
 }) {
   const {slots,bookedSlot,instructor,courseTitle,moduleTitle} = group
+  const { data: currentUser } = useCurrentUser()
+  const isPendingAny = currentUser?.enrollmentStatus === 'pending'
   const defaultId = useMemo(()=>{
     if(bookedSlot) return bookedSlot.id
     return slots.find(s=>{const st=getSlotStatus(s,bookingMap.get(s.id),false);return st==='bookable'||st==='live'})?.id??slots[0]?.id??null
@@ -583,7 +587,13 @@ function SlotModal({group,bookingMap,onBook,onCancel,bookPending,cancelPending,o
                   )
                 })()}
                 {selSt==='bookable'&&(
-                  isEnr?(
+                  isEnr&&isPendingAny?(
+                    <Link href="/complete-registration"
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white"
+                      style={{background:'#0057b8'}}>
+                      <BookOpen size={14}/>Complete Registration to Book
+                    </Link>
+                  ):isEnr?(
                     <motion.button type="button"
                       whileHover={{scale:1.01,boxShadow:'0 8px 28px rgba(0,87,184,0.32)'}}
                       whileTap={{scale:0.98}}
@@ -1342,7 +1352,7 @@ export default function ClassBookingsPage() {
       else if(code==='ALREADY_BOOKED')  toast.info('Already booked.')
       else if(code==='NOT_ENROLLED')    toast.error('Enroll in this course to book.')
       else if(code==='MODULE_BLOCKED')   toast.error('This class belongs to a module you don\'t have access to. Contact your admin.')
-      else if(code==='PENDING_APPROVAL') toast.error('Your account is in viewer mode. Admin approval is required to book classes.')
+      else if(code==='PENDING_APPROVAL') toast.error('Complete your registration first to book classes.')
       else if(code==='ACCESS_REJECTED')  toast.error('Your access request was not approved. Contact support to appeal.')
       else toast.error(e?.response?.data?.error?.message??'Could not book.')
     }finally{setBookPending(p=>{const s=new Set(p);s.delete(id);return s})}
