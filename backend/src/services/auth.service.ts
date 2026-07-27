@@ -395,6 +395,33 @@ export class AuthService {
     const updated = await UserModel.findByIdAndUpdate(userId, { $set }, { new: true }).exec()
     if (!updated) throw new AuthError('USER_NOT_FOUND', 'Account not found.', 404)
 
+    /* If the user already has a paid order, auto-approve immediately (approved by payment).
+       This handles the express-account flow: pay → register → auto-approved. */
+    const { OrderModel, CourseModel } = await import('@/models/schema.ts')
+    const paidOrder = await OrderModel.findOne({ userId, status: 'paid' }).lean()
+    if (paidOrder) {
+      const course    = await CourseModel.findById((paidOrder as any).courseId).select('program').lean()
+      const newCat    = (course as any)?.program as string | undefined
+      const existing: string[] = (updated as any).categories ?? ((updated as any).category ? [(updated as any).category] : [])
+      const merged    = newCat ? [...new Set([...existing, newCat])] : existing
+      await UserModel.findByIdAndUpdate(userId, {
+        $set: {
+          enrollmentStatus: 'approved',
+          approvedByEmail:  'payment@system',
+          approvedByName:   'Paid Enrollment',
+          approvedByRole:   'system',
+          approvedAt:       new Date(),
+          ...(merged.length > 0 && { categories: merged, category: merged[0] }),
+        },
+        $unset: { rejectionReason: '', enrollmentCancellationReason: '' },
+      })
+      const approved = await UserModel.findById(userId).exec()
+      if (approved) {
+        logger.info({ userId }, '✅ Express user auto-approved after completing registration with existing paid order')
+        return toSafeUser(approved)
+      }
+    }
+
     logger.info({ userId }, 'express user completed full registration')
     return toSafeUser(updated)
   }

@@ -3,7 +3,9 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { User, Mail, Lock, Eye, EyeOff, ChevronRight, Zap } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
+import { User, Mail, Lock, Eye, EyeOff, ChevronRight, Zap, BookOpen } from 'lucide-react'
 import { useCurrentUser } from '@/lib/api/user'
 import { RequestSection } from '@/components/settings/RequestSection'
 import Spinner from '@/components/ui/Spinner'
@@ -111,6 +113,32 @@ function AccountCard() {
   )
 }
 
+function PaymentBanner() {
+  const params    = useSearchParams()
+  const fromPayment = params.get('from') === 'payment'
+  if (!fromPayment) return null
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+      className="rounded-2xl p-4 flex items-start gap-3"
+      style={{ background: 'linear-gradient(135deg,#EFF6FF,#DBEAFE)', border: '1.5px solid #93C5FD' }}
+    >
+      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl"
+        style={{ background: '#DBEAFE', border: '1px solid #93C5FD' }}>
+        <BookOpen size={15} style={{ color: '#1D4ED8' }} />
+      </div>
+      <div>
+        <p className="text-sm font-semibold" style={{ color: '#1E40AF' }}>
+          Complete your registration to access your course
+        </p>
+        <p className="mt-0.5 text-xs" style={{ color: '#3B82F6' }}>
+          Your payment was successful. Fill in your details below and you'll get instant access — no admin wait needed.
+        </p>
+      </div>
+    </motion.div>
+  )
+}
+
 export default function CompleteRegistrationPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-5 pb-20">
@@ -127,6 +155,11 @@ export default function CompleteRegistrationPage() {
           Fill in your details to unlock full access to courses, live classes, and bookings.
         </p>
       </div>
+
+      {/* Payment context banner */}
+      <Suspense fallback={null}>
+        <PaymentBanner />
+      </Suspense>
 
       {/* Auto-filled account card */}
       <AccountCard />

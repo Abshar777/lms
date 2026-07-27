@@ -9,6 +9,7 @@
     "build": "bun build src/index.ts --outdir dist --target bun",
     "seed": "bun src/scripts/seed.ts",
     "migrate-orgs": "bun src/scripts/migrate-orgs.ts",
+    "migrate-live": "bun src/scripts/migrate-live.ts",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {

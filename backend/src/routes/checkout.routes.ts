@@ -101,4 +101,21 @@ router.post('/abzer/create-order', authenticate, validate(abzerCreateSchema), as
   } catch (err) { next(err) }
 })
 
+/* ── Abzer — verify return URL + fulfill (webhook fallback) ─ */
+/* Called by the client payment-return page after BillxPro redirects back.
+   Ensures the order is fulfilled even when the sandbox webhook doesn't fire.
+   Returns needsRegistration so the client can redirect express users. */
+const abzerVerifyReturnSchema = z.object({
+  orderId:       z.string().min(1),
+  transactionId: z.string().optional(),
+})
+
+router.post('/abzer/verify-return', authenticate, validate(abzerVerifyReturnSchema), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { orderId, transactionId } = req.body as { orderId: string; transactionId?: string }
+    const result = await orderSvc.verifyAbzerReturn(req.user!.id, orderId, transactionId ?? '')
+    sendSuccess(res, result)
+  } catch (err) { next(err) }
+})
+
 export default router

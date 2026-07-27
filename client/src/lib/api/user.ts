@@ -97,6 +97,20 @@ export function useCompleteRegistration() {
   })
 }
 
+/* POST /checkout/abzer/verify-return — fulfill order after BillxPro redirect.
+   Returns needsRegistration: true when the buyer is an express account. */
+export function useVerifyAbzerReturn() {
+  return useMutation({
+    mutationFn: async (input: { orderId: string; transactionId?: string }) => {
+      const res = await api.post<{ success: boolean; data: { needsRegistration: boolean } }>(
+        '/checkout/abzer/verify-return',
+        input,
+      )
+      return res.data.data
+    },
+  })
+}
+
 /* POST /auth/logout — server clears the cookies. */
 export function logout(): Promise<void> {
   return api.post('/auth/logout').then(() => {/* no-op */}).catch(() => {/* best-effort */})

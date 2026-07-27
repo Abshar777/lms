@@ -496,6 +496,31 @@ export class OrderService {
     logger.info({ orderId, receiptId }, 'Abzer: order fulfilled via webhook')
   }
 
+  /* ─── Abzer return-URL verify + fulfill (called by client after BillxPro redirect) ── */
+  /* Fallback path in case the Abzer webhook didn't fire (common in sandbox).
+     Also tells the client whether the user is an express account that needs
+     to complete registration before accessing their course. */
+  async verifyAbzerReturn(
+    userId:        string,
+    orderId:       string,
+    transactionId: string,
+  ): Promise<{ needsRegistration: boolean }> {
+    const order = await this.orderRepo.findById(orderId)
+    if (!order) throw new OrderError('ORDER_NOT_FOUND', 'Order not found', 404)
+    if (order.userId.toString() !== userId) {
+      throw new OrderError('FORBIDDEN', 'Order does not belong to you', 403)
+    }
+
+    if (order.status !== 'paid') {
+      await this.fulfillAbzerFromWebhook(orderId, transactionId || 'return-url-fallback')
+    }
+
+    const user = await UserModel.findById(userId).select('signupType').lean()
+    const needsRegistration = (user as any)?.signupType === 'express'
+
+    return { needsRegistration }
+  }
+
   /* ─── Refund (gateway-aware) ────────────────────────── */
   async refund(orderId: string): Promise<void> {
     const order = await this.orderRepo.findById(orderId)
@@ -561,11 +586,19 @@ export class OrderService {
 
   /* Auto-approve a viewer/rejected user when they successfully pay for a course.
      Sets enrollmentStatus → 'approved', assigns the course's program category,
-     and marks approval as a paid self-enrollment so admins can see it in the UI. */
+     and marks approval as a paid self-enrollment so admins can see it in the UI.
+     Express accounts (signupType === 'express') are skipped — they must complete
+     their full registration first; the registration handler checks for paid orders
+     and auto-approves at that point. */
   private async _autoApproveViaPayment(userId: string, courseId: string): Promise<void> {
     const user = await UserModel.findById(userId)
-      .select('enrollmentStatus categories category').lean()
+      .select('enrollmentStatus categories category signupType').lean()
     if (!user || (user as any).enrollmentStatus === 'approved') return
+
+    if ((user as any).signupType === 'express') {
+      logger.info({ userId }, 'Express account paid — deferring approval until registration complete')
+      return
+    }
 
     const course = await CourseModel.findById(courseId).select('program').lean()
     const newCat  = (course as any)?.program as string | undefined

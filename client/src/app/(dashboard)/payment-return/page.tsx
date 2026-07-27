@@ -1,7 +1,7 @@
 'use client'
 
-import { Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { Suspense, useEffect, useRef } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import {
@@ -9,6 +9,7 @@ import {
   ArrowRight, BookOpen, RotateCcw,
 } from 'lucide-react'
 import Spinner from '@/components/ui/Spinner'
+import { useVerifyAbzerReturn } from '@/lib/api/user'
 
 /* ── helpers ─────────────────────────────────────────── */
 function fmt(amount: string | null, currency: string | null) {
@@ -19,6 +20,7 @@ function fmt(amount: string | null, currency: string | null) {
 /* ── inner component (needs Suspense for useSearchParams) ── */
 function ReturnContent() {
   const params      = useSearchParams()
+  const router      = useRouter()
   const status      = params.get('status')
   const amount      = params.get('amount')
   const currency    = params.get('currencyCode')
@@ -26,12 +28,42 @@ function ReturnContent() {
   const txId        = params.get('transactionId')
   const docRef      = params.get('docRefNumber')
 
-  const isSuccess  = status === 'PAYMENT_GATEWAY_SUCCESS'
+  const isSuccess   = status === 'PAYMENT_GATEWAY_SUCCESS'
   const isCancelled = status === 'PAYMENT_GATEWAY_CANCEL'
-  const isFailure  = !isSuccess && !isCancelled
+
+  const verifyReturn = useVerifyAbzerReturn()
+  const calledRef    = useRef(false)
+
+  /* On success, call verify-return to fulfill the order (webhook fallback)
+     and find out if the user is an express account that needs to register. */
+  useEffect(() => {
+    if (!isSuccess || !docRef || calledRef.current) return
+    calledRef.current = true
+    verifyReturn.mutate(
+      { orderId: docRef, transactionId: txId ?? undefined },
+      {
+        onSuccess: (data) => {
+          if (data?.needsRegistration) {
+            router.replace('/complete-registration?from=payment')
+          }
+        },
+      },
+    )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSuccess, docRef])
 
   /* ── Success ──────────────────────────────────────── */
   if (isSuccess) {
+    /* Show spinner while verify-return is in flight */
+    if (verifyReturn.isPending) {
+      return (
+        <div className="flex flex-col items-center gap-4">
+          <Spinner size={32} />
+          <p className="text-sm" style={{ color: '#9CA3AF' }}>Confirming your payment…</p>
+        </div>
+      )
+    }
+
     return (
       <div className="flex flex-col items-center text-center gap-6 max-w-md mx-auto">
         <motion.div
@@ -48,8 +80,7 @@ function ReturnContent() {
             Payment Successful!
           </h1>
           <p className="text-sm leading-relaxed" style={{ color: '#6B7280' }}>
-            Your payment has been received. Your course enrollment will be
-            activated within a few minutes.
+            Your payment has been received and your course enrollment is ready.
           </p>
         </div>
 
