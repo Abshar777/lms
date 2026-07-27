@@ -60,9 +60,11 @@ export class LiveClassRepository extends BaseRepository<ILiveClass> {
    * We do NOT mutate the DB, so internal (Mux) sessions can still be started
    * late or rescheduled. */
   async listAll(filter: {
-    status?:    string
-    limit?:     number
-    courseIds?: string[]
+    status?:         string
+    limit?:          number
+    courseIds?:      string[]
+    organizationId?: string
+    instructorId?:   string
   } = {}): Promise<ILiveClass[]> {
     const now      = Date.now()
     // Use a generous 12-hour lookback so any class up to 12h long is captured;
@@ -73,6 +75,12 @@ export class LiveClassRepository extends BaseRepository<ILiveClass> {
 
     if (filter.courseIds && filter.courseIds.length > 0) {
       query['courseId'] = { $in: filter.courseIds.map(id => new Types.ObjectId(id)) }
+    }
+    if (filter.organizationId && Types.ObjectId.isValid(filter.organizationId)) {
+      query['organizationId'] = new Types.ObjectId(filter.organizationId)
+    }
+    if (filter.instructorId && Types.ObjectId.isValid(filter.instructorId)) {
+      query['instructorId'] = new Types.ObjectId(filter.instructorId)
     }
 
     if (filter.status && filter.status !== 'all') {

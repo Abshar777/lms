@@ -3,17 +3,19 @@ import { useQuery } from '@tanstack/react-query'
 import { apiGet, api } from '@/lib/axios'
 
 export interface CurrentAdmin {
-  id:         string
-  name:       string
-  email:      string
-  avatarUrl?: string
-  role:       'student' | 'instructor' | 'admin' | '4x_admin' | 'digital_marketing_admin' | 'ai_admin' | 'super_admin'
-  headline?:  string
-  bio?:       string
-  isVerified: boolean
-  isActive:   boolean
-  createdAt:  string
-  updatedAt:  string
+  id:              string
+  name:            string
+  email:           string
+  avatarUrl?:      string
+  role:            'student' | 'instructor' | 'admin' | 'sub_admin' | 'support' | '4x_admin' | 'digital_marketing_admin' | 'ai_admin' | 'super_admin'
+  organizationId?: string
+  program?:        'ai' | 'digital_marketing' | 'forex'
+  headline?:       string
+  bio?:            string
+  isVerified:      boolean
+  isActive:        boolean
+  createdAt:       string
+  updatedAt:       string
 }
 
 export const userKeys = {

@@ -95,8 +95,12 @@ export class OrderRepository {
       .exec()
   }
 
-  async listAll(page = 1, perPage = 20, status?: string): Promise<{ docs: IOrder[]; totalCount: number }> {
-    const filter = status && status !== 'all' ? { status } : {}
+  async listAll(page = 1, perPage = 20, status?: string, organizationId?: string): Promise<{ docs: IOrder[]; totalCount: number }> {
+    const filter: Record<string, unknown> = status && status !== 'all' ? { status } : {}
+    if (organizationId) {
+      const { Types } = await import('mongoose')
+      if (Types.ObjectId.isValid(organizationId)) filter['organizationId'] = new Types.ObjectId(organizationId)
+    }
     const [docs, totalCount] = await Promise.all([
       OrderModel
         .find(filter)
@@ -111,12 +115,17 @@ export class OrderRepository {
     return { docs, totalCount }
   }
 
-  async revenueTimeseries(days: number): Promise<{ date: string; amount: number }[]> {
+  async revenueTimeseries(days: number, organizationId?: string): Promise<{ date: string; amount: number }[]> {
     const since = new Date()
     since.setDate(since.getDate() - days)
 
+    const matchBase: Record<string, unknown> = { status: 'paid', createdAt: { $gte: since } }
+    if (organizationId) {
+      const { Types } = await import('mongoose')
+      if (Types.ObjectId.isValid(organizationId)) matchBase['organizationId'] = new Types.ObjectId(organizationId)
+    }
     const rows = await OrderModel.aggregate([
-      { $match: { status: 'paid', createdAt: { $gte: since } } },
+      { $match: matchBase },
       {
         $group: {
           _id:    { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },

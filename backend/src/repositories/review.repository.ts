@@ -50,10 +50,19 @@ export class ReviewRepository extends BaseRepository<IReview> {
   async listAll(
     page: number,
     perPage: number,
+    organizationId?: string,
   ): Promise<{ docs: IReview[]; totalCount: number }> {
+    const filter: Record<string, unknown> = {}
+    if (organizationId && Types.ObjectId.isValid(organizationId)) {
+      const { CourseModel } = await import('@/models/schema.ts')
+      const courseIds = await CourseModel.find(
+        { organizationId: new Types.ObjectId(organizationId) }, '_id',
+      ).lean()
+      filter['courseId'] = { $in: courseIds.map((c: any) => c._id) }
+    }
     const [docs, totalCount] = await Promise.all([
       ReviewModel
-        .find({})
+        .find(filter)
         .sort({ createdAt: -1 })
         .skip((page - 1) * perPage)
         .limit(perPage)
@@ -61,7 +70,7 @@ export class ReviewRepository extends BaseRepository<IReview> {
         .populate('courseId',     'title slug thumbnailUrl')
         .populate('instructorId', 'name avatarUrl')
         .exec(),
-      ReviewModel.countDocuments({}).exec(),
+      ReviewModel.countDocuments(filter).exec(),
     ])
     return { docs, totalCount }
   }

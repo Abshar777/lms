@@ -35,7 +35,7 @@ const listQuerySchema = z.object({
   sort:         z.string().optional(),
 })
 
-router.get ('/',                       validate(listQuerySchema, 'query'), courses.list)
+router.get ('/',                       optionalAuthenticate, validate(listQuerySchema, 'query'), courses.list)
 /* by-id lookup must come BEFORE /:slug — otherwise Express treats
    "by-id" as a slug and the wrong handler fires. */
 router.get ('/by-id/:id',              optionalAuthenticate, courses.getById)

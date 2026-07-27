@@ -1,3 +1,4 @@
+import { Types } from 'mongoose'
 import { CouponModel, type ICoupon } from '@/models/schema.ts'
 
 export class CouponRepository {
@@ -10,28 +11,37 @@ export class CouponRepository {
     return CouponModel.findById(id).exec()
   }
 
-  async listAll(page = 1, perPage = 50): Promise<{ docs: ICoupon[]; totalCount: number }> {
+  async listAll(page = 1, perPage = 50, organizationId?: string): Promise<{ docs: ICoupon[]; totalCount: number }> {
+    const filter: Record<string, unknown> = {}
+    if (organizationId && Types.ObjectId.isValid(organizationId)) {
+      filter['organizationId'] = new Types.ObjectId(organizationId)
+    }
     const [docs, totalCount] = await Promise.all([
-      CouponModel.find().sort({ createdAt: -1 }).skip((page - 1) * perPage).limit(perPage).exec(),
-      CouponModel.countDocuments().exec(),
+      CouponModel.find(filter).sort({ createdAt: -1 }).skip((page - 1) * perPage).limit(perPage).exec(),
+      CouponModel.countDocuments(filter).exec(),
     ])
     return { docs, totalCount }
   }
 
   async create(data: {
-    code:          string
-    discountType:  'percent' | 'fixed'
-    discountValue: number
-    maxUses?:      number
-    expiresAt?:    Date
-    isActive?:     boolean
-    appliesTo?:    string[]
+    code:            string
+    discountType:    'percent' | 'fixed'
+    discountValue:   number
+    maxUses?:        number
+    expiresAt?:      Date
+    isActive?:       boolean
+    appliesTo?:      string[]
+    organizationId?: string
   }): Promise<ICoupon> {
-    return CouponModel.create({
+    const payload: Record<string, unknown> = {
       ...data,
-      code:     data.code.toUpperCase().trim(),
+      code:      data.code.toUpperCase().trim(),
       usedCount: 0,
-    })
+    }
+    if (data.organizationId && Types.ObjectId.isValid(data.organizationId)) {
+      payload['organizationId'] = new Types.ObjectId(data.organizationId)
+    }
+    return CouponModel.create(payload)
   }
 
   async update(id: string, patch: Partial<Pick<ICoupon,

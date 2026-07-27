@@ -20,7 +20,8 @@ const enrollmentKeys = {
 export type AdminUserRole =
   | 'student'
   | 'instructor'
-
+  | 'sub_admin'
+  | 'support'
   | 'admin'
   | '4x_admin'
   | 'digital_marketing_admin'
@@ -39,6 +40,7 @@ export interface AdminUser {
   bio?:             string
   category?:        '4x-trading' | 'digital-marketing' | 'ai'
   categories?:      ('4x-trading' | 'digital-marketing' | 'ai')[]
+  program?:         'ai' | 'digital_marketing' | 'forex'
   enrollmentStatus?: 'pending' | 'approved' | 'rejected' | 'cancelled'
   rejectionReason?:        string
   rejectedByEmail?:        string
@@ -160,7 +162,7 @@ export function useUpdateUser() {
   return useMutation({
     mutationFn: async ({
       id, ...dto
-    }: { id: string; role?: AdminUser['role']; isActive?: boolean; isVerified?: boolean; name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | 'ai' | null; categories?: ('4x-trading' | 'digital-marketing' | 'ai')[]; avatarUrl?: string; headline?: string; bio?: string }) => {
+    }: { id: string; role?: AdminUser['role']; isActive?: boolean; isVerified?: boolean; name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | 'ai' | null; categories?: ('4x-trading' | 'digital-marketing' | 'ai')[]; avatarUrl?: string; headline?: string; bio?: string; program?: 'ai' | 'digital_marketing' | 'forex' }) => {
       const res = await api.patch<{ success: true; data: AdminUser }>(`/admin/users/${id}`, dto)
       return res.data.data
     },

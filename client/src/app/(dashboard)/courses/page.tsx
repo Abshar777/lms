@@ -468,56 +468,52 @@ export default function CoursesPage() {
       </motion.div>
 
       {/* ── Course grid ───────────────────────────── */}
-      <AnimatePresence mode="wait">
-        {isLoading ? (
-          <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className={`grid gap-4 ${gridCols}`}>
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="overflow-hidden rounded-2xl bg-white" style={{ border: '1px solid #E5E7EB' }}>
-                <div className="aspect-video animate-pulse" style={{ background: '#F3F4F6' }} />
-                <div className="space-y-2.5 p-4">
-                  <div className="h-3.5 w-16 rounded animate-pulse" style={{ background: '#EFF6FF' }} />
-                  <div className="h-4 w-4/5 rounded animate-pulse" style={{ background: '#F3F4F6' }} />
-                  <div className="h-3 w-2/5 rounded animate-pulse" style={{ background: '#F9FAFB' }} />
-                  <div className="flex gap-2">
-                    <div className="h-5 w-16 rounded-lg animate-pulse" style={{ background: '#F3F4F6' }} />
-                    <div className="h-5 w-12 rounded-lg animate-pulse" style={{ background: '#F3F4F6' }} />
-                  </div>
+      {isLoading ? (
+        <div className={`grid gap-4 ${gridCols}`}>
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="overflow-hidden rounded-2xl bg-white" style={{ border: '1px solid #E5E7EB' }}>
+              <div className="aspect-video animate-pulse" style={{ background: '#F3F4F6' }} />
+              <div className="space-y-2.5 p-4">
+                <div className="h-3.5 w-16 rounded animate-pulse" style={{ background: '#EFF6FF' }} />
+                <div className="h-4 w-4/5 rounded animate-pulse" style={{ background: '#F3F4F6' }} />
+                <div className="h-3 w-2/5 rounded animate-pulse" style={{ background: '#F9FAFB' }} />
+                <div className="flex gap-2">
+                  <div className="h-5 w-16 rounded-lg animate-pulse" style={{ background: '#F3F4F6' }} />
+                  <div className="h-5 w-12 rounded-lg animate-pulse" style={{ background: '#F3F4F6' }} />
                 </div>
               </div>
-            ))}
-          </motion.div>
-        ) : data?.docs.length === 0 ? (
-          <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="flex flex-col items-center justify-center py-24 gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-3xl"
-              style={{ background: '#F3F4F6', border: '1px solid #E5E7EB' }}>
-              <BookOpen size={24} style={{ color: '#D1D5DB' }} />
             </div>
-            <p className="text-base font-bold" style={{ color: '#111827' }}>No courses found</p>
-            <p className="text-sm text-center" style={{ color: '#9CA3AF' }}>Try adjusting your filters or search query</p>
-            <Button onClick={() => {
-              setSearch(''); setLevel('all'); setCategory('all'); setFree(false)
-              setDuration('any'); setPriceRange('any')
-            }}
-              variant="ghost"
-              size="sm"
-              className="mt-1 rounded-xl px-5 py-2 text-sm font-semibold h-auto transition-colors hover:opacity-90"
-              style={{ background: 'rgba(0,87,184,0.10)', color: '#0057b8' }}>
-              Clear filters
-            </Button>
-          </motion.div>
-        ) : (
-          <motion.div key="grid" variants={stagger} initial="hidden" animate="show"
-            className={`grid gap-4 ${gridCols}`}>
-            {data?.docs.map(course => (
-              <motion.div key={course.id} variants={cardAnim}>
-                <MaterialCard course={course} />
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+          ))}
+        </div>
+      ) : data?.docs.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 gap-4">
+          <div className="flex h-16 w-16 items-center justify-center rounded-3xl"
+            style={{ background: '#F3F4F6', border: '1px solid #E5E7EB' }}>
+            <BookOpen size={24} style={{ color: '#D1D5DB' }} />
+          </div>
+          <p className="text-base font-bold" style={{ color: '#111827' }}>No courses found</p>
+          <p className="text-sm text-center" style={{ color: '#9CA3AF' }}>Try adjusting your filters or search query</p>
+          <Button onClick={() => {
+            setSearch(''); setLevel('all'); setCategory('all'); setFree(false)
+            setDuration('any'); setPriceRange('any')
+          }}
+            variant="ghost"
+            size="sm"
+            className="mt-1 rounded-xl px-5 py-2 text-sm font-semibold h-auto transition-colors hover:opacity-90"
+            style={{ background: 'rgba(0,87,184,0.10)', color: '#0057b8' }}>
+            Clear filters
+          </Button>
+        </div>
+      ) : (
+        <motion.div variants={stagger} initial="hidden" animate="show"
+          className={`grid gap-4 ${gridCols}`}>
+          {data?.docs.map(course => (
+            <motion.div key={course.id} variants={cardAnim}>
+              <MaterialCard course={course} />
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
 
       {/* ── Pagination ────────────────────────────── */}
       {data && data.meta.total_pages > 1 && (

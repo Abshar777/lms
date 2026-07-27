@@ -6,7 +6,7 @@ import { ShieldOff } from 'lucide-react'
 import { useCurrentUser, logout } from '@/lib/api/user'
 import Spinner from '@/components/ui/Spinner'
 
-const ALLOWED_ROLES = ['super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'instructor']
+const ALLOWED_ROLES = ['super_admin', 'admin', 'sub_admin', 'support', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'instructor']
 
 export function AdminGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()

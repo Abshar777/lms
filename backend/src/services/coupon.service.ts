@@ -57,12 +57,13 @@ export class CouponService {
 
   /* ─── Admin CRUD ────────────────────────────────── */
   async create(data: {
-    code:          string
-    discountType:  'percent' | 'fixed'
-    discountValue: number
-    maxUses?:      number
-    expiresAt?:    string   // ISO string
-    appliesTo?:    string[]
+    code:            string
+    discountType:    'percent' | 'fixed'
+    discountValue:   number
+    maxUses?:        number
+    expiresAt?:      string   // ISO string
+    appliesTo?:      string[]
+    organizationId?: string
   }): Promise<ICoupon> {
     // Check duplicate code
     const existing = await this.repo.findByCode(data.code)
@@ -81,8 +82,8 @@ export class CouponService {
     })
   }
 
-  async list(page = 1, perPage = 50) {
-    return this.repo.listAll(page, perPage)
+  async list(page = 1, perPage = 50, organizationId?: string) {
+    return this.repo.listAll(page, perPage, organizationId)
   }
 
   async update(id: string, patch: {

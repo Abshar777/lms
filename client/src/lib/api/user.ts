@@ -29,25 +29,26 @@ export interface EnrollmentApplication {
 }
 
 export interface CurrentUser {
-  id:          string
-  name:        string
-  email:       string
-  avatarUrl?:  string
-  role:        'student' | 'instructor' | 'admin' | 'viewer'
-  headline?:   string
-  bio?:        string
-  websiteUrl?: string
-  isVerified:  boolean
-  isActive:    boolean
-  signupType?:  'express' | 'full'
-  category?:   '4x-trading' | 'digital-marketing' | 'ai'
+  id:             string
+  name:           string
+  email:          string
+  avatarUrl?:     string
+  role:           'student' | 'instructor' | 'admin' | 'viewer'
+  headline?:      string
+  bio?:           string
+  websiteUrl?:    string
+  isVerified:     boolean
+  isActive:       boolean
+  signupType?:    'express' | 'full'
+  category?:      '4x-trading' | 'digital-marketing' | 'ai'
+  organizationId?: string
   enrollmentStatus?:            'pending' | 'approved' | 'cancelled' | 'rejected'
   enrollmentCancellationReason?: string
   rejectionReason?:             string
   fullRegistrationSubmittedAt?: string
   enrollmentApplication?:       EnrollmentApplication
-  createdAt:   string
-  updatedAt:   string
+  createdAt:      string
+  updatedAt:      string
 }
 
 export const userKeys = {

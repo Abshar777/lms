@@ -34,9 +34,12 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
     ).lean()
     const enrolledCourseIds = new Set(enrollments.map((e: any) => String(e.courseId)))
 
-    // Return ALL sessions — effective status is computed from the clock below,
-    // so we must fetch every session rather than filter by raw DB status.
-    const classes = await LiveClassModel.find({})
+    // Return sessions for the student's org (or all if no org on record).
+    const lcOrgFilter: Record<string, unknown> = {}
+    if (req.user?.organizationId && Types.ObjectId.isValid(req.user.organizationId)) {
+      lcOrgFilter['organizationId'] = new Types.ObjectId(req.user.organizationId)
+    }
+    const classes = await LiveClassModel.find(lcOrgFilter)
       .populate('instructorId', 'id name avatarUrl')
       .populate('courseId', 'id title slug thumbnailUrl program')
       .populate('sectionId', 'id title')

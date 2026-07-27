@@ -11,13 +11,14 @@ import type { CurrentAdmin } from '@/lib/api/user'
 
 /* ── Custom dark select ──────────────────────────── */
 function SelectField<T extends string>({
-  label, value, options, onChange, disabled,
+  label, value, options, onChange, disabled, error,
 }: {
   label:    string
   value:    T
   options:  { value: T; label: string }[]
   onChange: (v: T) => void
   disabled?: boolean
+  error?:   string
 }) {
   const [open, setOpen] = useState(false)
   const current = options.find(o => o.value === value)
@@ -35,12 +36,12 @@ function SelectField<T extends string>({
           className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm transition-all"
           style={{
             background: disabled ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.06)',
-            border: `1px solid ${open ? 'rgba(0,87,184,0.5)' : 'rgba(255,255,255,0.09)'}`,
+            border: `1px solid ${error ? '#ef4444' : open ? 'rgba(0,87,184,0.5)' : 'rgba(255,255,255,0.09)'}`,
             boxShadow: open ? '0 0 0 3px rgba(0,87,184,0.08)' : 'none',
-            color: disabled ? 'rgba(255,255,255,0.3)' : 'white',
+            color: disabled ? 'rgba(255,255,255,0.3)' : value ? 'white' : 'rgba(255,255,255,0.35)',
           }}
         >
-          <span>{current?.label ?? '—'}</span>
+          <span>{current?.label ?? `Select ${label.toLowerCase()}…`}</span>
           {!disabled && (
             <ChevronDown size={13} style={{
               color: 'rgba(255,255,255,0.35)',
@@ -72,7 +73,7 @@ function SelectField<T extends string>({
                     key={o.value}
                     type="button"
                     onClick={() => { onChange(o.value); setOpen(false) }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-white/06"
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-white/[0.06]"
                     style={{ color: o.value === value ? '#0057b8' : 'rgba(255,255,255,0.8)' }}
                   >
                     <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center">
@@ -86,6 +87,7 @@ function SelectField<T extends string>({
           )}
         </AnimatePresence>
       </div>
+      {error && <p className="mt-1 text-[11px]" style={{ color: '#ef4444' }}>{error}</p>}
     </div>
   )
 }
@@ -101,7 +103,7 @@ function Toggle({ label, checked, onChange, color }: {
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="flex items-center gap-2.5 rounded-xl p-2 transition-colors hover:bg-white/04"
+      className="flex items-center gap-2.5 rounded-xl p-2 transition-colors hover:bg-white/[0.04]"
     >
       <div
         className="relative h-5 w-9 flex-shrink-0 rounded-full transition-colors duration-200"
@@ -119,34 +121,49 @@ function Toggle({ label, checked, onChange, color }: {
   )
 }
 
-/* ── Role option sets ────────────────────────────── */
+/* ── Role options ────────────────────────────────── */
 const ROLE_OPTIONS_BY_EDITOR: Record<string, { value: AdminUserRole; label: string }[]> = {
   super_admin: [
-    { value: 'super_admin',             label: 'Super Admin' },
-    { value: 'admin',                   label: 'Admin' },
-    { value: '4x_admin',               label: 'FOREX Admin' },
-    { value: 'digital_marketing_admin', label: 'DM Admin' },
-    { value: 'ai_admin',               label: 'AI Admin' },
-    { value: 'instructor',              label: 'Instructor' },
+    { value: 'super_admin', label: 'Super Admin' },
+    { value: 'admin',       label: 'Admin' },
+    { value: 'sub_admin',   label: 'Sub Admin' },
+    { value: 'instructor',  label: 'Instructor' },
   ],
   admin: [
-    { value: 'admin',                   label: 'Admin' },
-    { value: '4x_admin',               label: 'FOREX Admin' },
-    { value: 'digital_marketing_admin', label: 'DM Admin' },
-    { value: 'ai_admin',               label: 'AI Admin' },
-    { value: 'instructor',              label: 'Instructor' },
+    { value: 'sub_admin',  label: 'Sub Admin' },
+    { value: 'instructor', label: 'Instructor' },
   ],
 }
 
-const CATEGORY_OPTIONS = [
-  { value: '' as const,                   label: 'No category' },
-  { value: '4x-trading' as const,         label: 'FOREX Trading' },
-  { value: 'digital-marketing' as const,  label: 'Digital Marketing' },
-  { value: 'ai' as const,                 label: 'AI' },
+const ALL_ROLE_LABELS: Record<string, string> = {
+  super_admin: 'Super Admin',
+  admin:       'Admin',
+  sub_admin:   'Sub Admin',
+  instructor:  'Instructor',
+  support:     'Support Staff',
+  student:     'Student',
+}
+
+const PROGRAM_OPTIONS: { value: 'ai' | 'digital_marketing' | 'forex'; label: string }[] = [
+  { value: 'ai',                label: 'AI' },
+  { value: 'digital_marketing', label: 'Digital Marketing' },
+  { value: 'forex',             label: 'FOREX Trading' },
 ]
 
-function needsCategory(role: AdminUserRole) {
-  return role === '4x_admin' || role === 'digital_marketing_admin' || role === 'ai_admin' || role === 'instructor'
+const PROGRAM_TO_CATEGORY: Record<string, '4x-trading' | 'digital-marketing' | 'ai'> = {
+  ai:                'ai',
+  digital_marketing: 'digital-marketing',
+  forex:             '4x-trading',
+}
+
+const CATEGORY_TO_PROGRAM: Record<string, 'ai' | 'digital_marketing' | 'forex'> = {
+  'ai':                'ai',
+  'digital-marketing': 'digital_marketing',
+  '4x-trading':        'forex',
+}
+
+function needsProgram(role: AdminUserRole) {
+  return role === 'sub_admin' || role === 'instructor'
 }
 
 /* ── Modal ───────────────────────────────────────── */
@@ -161,12 +178,21 @@ export function EditUserModal({ user, me, onClose, onSuccess }: Props) {
   const [name,          setName]          = useState(user.name)
   const [email,         setEmail]         = useState(user.email)
   const [role,          setRole]          = useState<AdminUserRole>(user.role)
-  const [category,      setCategory]      = useState<'4x-trading' | 'digital-marketing' | 'ai' | ''>(user.category ?? '')
+  const [program,       setProgram]       = useState<'ai' | 'digital_marketing' | 'forex' | ''>(() => {
+    if (user.role === 'instructor' && user.category) {
+      return CATEGORY_TO_PROGRAM[user.category] ?? ''
+    }
+    if (user.role === 'sub_admin' && user.program) {
+      return user.program
+    }
+    return ''
+  })
   const [isActive,      setIsActive]      = useState(user.isActive)
   const [isVerified,    setIsVerified]    = useState(user.isVerified)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(user.avatarUrl ?? null)
   const [avatarFile,    setAvatarFile]    = useState<File | null>(null)
   const [uploading,     setUploading]     = useState(false)
+  const [errors,        setErrors]        = useState<Record<string, string>>({})
   const fileRef = useRef<HTMLInputElement>(null)
 
   const updateUser = useUpdateUser()
@@ -179,6 +205,12 @@ export function EditUserModal({ user, me, onClose, onSuccess }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    const errs: Record<string, string> = {}
+    if (needsProgram(activeRole) && !program) errs.program = 'Program is required'
+    setErrors(errs)
+    if (Object.keys(errs).length > 0) return
+
     try {
       let avatarUrl: string | undefined
       if (avatarFile) {
@@ -199,10 +231,19 @@ export function EditUserModal({ user, me, onClose, onSuccess }: Props) {
         id: user.id, name: name.trim(), email: email.trim(), isActive, isVerified,
       }
       if (canEditRole && role !== user.role) dto.role = role
-      dto.category = needsCategory(activeRole)
-        ? ((category || null) as '4x-trading' | 'digital-marketing' | 'ai' | null)
-        : null
       if (avatarUrl) (dto as any).avatarUrl = avatarUrl
+
+      /* Program / category mapping */
+      if (needsProgram(activeRole) && program) {
+        if (activeRole === 'instructor') {
+          dto.category = PROGRAM_TO_CATEGORY[program]
+        } else {
+          dto.program = program as 'ai' | 'digital_marketing' | 'forex'
+        }
+      } else if (!needsProgram(activeRole)) {
+        dto.category = null
+      }
+
       await updateUser.mutateAsync(dto)
       toast.success('User updated')
       onSuccess()
@@ -259,7 +300,7 @@ export function EditUserModal({ user, me, onClose, onSuccess }: Props) {
               <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{user.email}</p>
             </div>
             <button onClick={onClose}
-              className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-white/08"
+              className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-white/[0.08]"
               style={{ color: 'rgba(255,255,255,0.4)' }}>
               <X size={15} />
             </button>
@@ -342,25 +383,26 @@ export function EditUserModal({ user, me, onClose, onSuccess }: Props) {
                   label="Role"
                   value={role}
                   options={roleOptions}
-                  onChange={v => { setRole(v); setCategory('') }}
+                  onChange={v => { setRole(v); setProgram(''); setErrors({}) }}
                 />
               ) : (
                 <div>
                   <label className="mb-1.5 block text-xs font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>Role</label>
                   <div className="rounded-xl px-3 py-2.5 text-sm"
                     style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.4)' }}>
-                    {ROLE_OPTIONS_BY_EDITOR['super_admin']?.find(o => o.value === user.role)?.label ?? user.role}
+                    {ALL_ROLE_LABELS[user.role] ?? user.role}
                   </div>
                 </div>
               )}
 
-              {/* Category */}
-              {needsCategory(activeRole) && (
+              {/* Program — for sub_admin and instructor */}
+              {needsProgram(activeRole) && (
                 <SelectField
-                  label="Category"
-                  value={category}
-                  options={CATEGORY_OPTIONS}
-                  onChange={setCategory}
+                  label="Program"
+                  value={program}
+                  options={PROGRAM_OPTIONS}
+                  onChange={v => { setProgram(v); setErrors(prev => ({ ...prev, program: '' })) }}
+                  error={errors.program}
                 />
               )}
 
@@ -375,7 +417,7 @@ export function EditUserModal({ user, me, onClose, onSuccess }: Props) {
             {/* Actions */}
             <div className="mt-5 flex justify-end gap-2">
               <button type="button" onClick={onClose}
-                className="rounded-xl px-4 py-2 text-sm font-medium transition-colors hover:bg-white/07"
+                className="rounded-xl px-4 py-2 text-sm font-medium transition-colors hover:bg-white/[0.07]"
                 style={{ color: 'rgba(255,255,255,0.5)' }}>
                 Cancel
               </button>

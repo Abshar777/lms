@@ -1,9 +1,9 @@
 'use client'
 
-import { use, useMemo, useState, Suspense } from 'react'
+import { use, useMemo, useState, useEffect, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Star, Users, Clock, Globe, BookOpen,
   CheckCircle2, Play, Tag, AlertCircle, Zap,
@@ -46,8 +46,10 @@ const whatYouLearn = [
 /* ── Inner component: uses useSearchParams (must be inside Suspense) ── */
 function CourseDetailInner({ slug }: { slug: string }) {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const checkoutStatus = searchParams.get('checkout') // 'success' | 'cancel' | null
+  const [checkoutStatus, setCheckoutStatus] = useState<string | null>(null)
+  useEffect(() => {
+    setCheckoutStatus(new URLSearchParams(window.location.search).get('checkout'))
+  }, [])
 
   const { data, isLoading, isError } = useCourse(slug)
   const { data: progress } = useCourseProgress(slug)
@@ -596,17 +598,8 @@ function CourseDetailInner({ slug }: { slug: string }) {
   )
 }
 
-/* ── Page shell: resolves dynamic params, wraps inner in Suspense ── */
+/* ── Page shell: resolves dynamic params ── */
 export default function CourseDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
-  return (
-    <Suspense fallback={
-      <div className="flex h-[70vh] flex-col items-center justify-center gap-3">
-        <Spinner size={30} />
-        <p className="text-sm" style={{ color: '#9CA3AF' }}>Loading course…</p>
-      </div>
-    }>
-      <CourseDetailInner slug={slug} />
-    </Suspense>
-  )
+  return <CourseDetailInner slug={slug} />
 }

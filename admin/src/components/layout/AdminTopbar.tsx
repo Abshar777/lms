@@ -2,13 +2,15 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Bell, Plus, ChevronDown, X, BookOpen, Users, GraduationCap, Menu, UserCog, LogOut } from 'lucide-react'
+import { Search, Bell, Plus, ChevronDown, X, BookOpen, Users, GraduationCap, Menu, UserCog, LogOut, Building2, Check } from 'lucide-react'
 import Link from 'next/link'
 import { useUIStore } from '@/store/ui.store'
 import { useCurrentUser, logout } from '@/lib/api/user'
 import { useRouter } from 'next/navigation'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useImpersonationStore } from '@/store/impersonation.store'
+import { useOrgStore } from '@/store/org.store'
+import { useOrganizations } from '@/lib/api/organizations'
 
 const notifications = [
   { id: 1, type: 'enroll',     text: 'New enrollment: UI/UX Design Mastery', time: '2m ago',  unread: true },
@@ -23,6 +25,7 @@ export function AdminTopbar() {
   const [notifOpen,   setNotifOpen]   = useState(false)
   const [quickOpen,   setQuickOpen]   = useState(false)
   const [avatarOpen,  setAvatarOpen]  = useState(false)
+  const [orgOpen,     setOrgOpen]     = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const unreadCount = notifications.filter(n => n.unread).length
   const isMobile = useIsMobile()
@@ -32,6 +35,10 @@ export function AdminTopbar() {
   const router = useRouter()
   const avatarInitial = (user?.name?.trim()?.[0] ?? '?').toUpperCase()
   const { impersonatedUser, endImpersonation } = useImpersonationStore()
+
+  const isSuperAdmin = user?.role === 'super_admin'
+  const { activeOrgId, activeOrgName, setOrg, clearOrg } = useOrgStore()
+  const { data: orgs = [] } = useOrganizations(isSuperAdmin)
 
   const handleLogout = async () => {
     await logout()
@@ -87,17 +94,75 @@ export function AdminTopbar() {
         </AnimatePresence>
       </div>
 
-      {/* ── Category scope badge ───────────────────── */}
-      {user && (user.role === '4x_admin' || user.role === 'digital_marketing_admin' || user.role === 'ai_admin') && (
+      {/* ── Org switcher (super_admin only) ──────────── */}
+      {isSuperAdmin && (
+        <div className="relative flex-shrink-0">
+          <motion.button
+            type="button"
+            onClick={() => { setOrgOpen(v => !v); setNotifOpen(false); setQuickOpen(false); setAvatarOpen(false) }}
+            whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
+            className="flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all"
+            style={activeOrgId
+              ? { background: 'rgba(0,87,184,0.14)', border: '1px solid rgba(0,87,184,0.4)', color: '#60A5FA' }
+              : { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.55)' }}>
+            <Building2 size={12} />
+            <span>{activeOrgName ?? 'All Orgs'}</span>
+            <ChevronDown size={11} style={{ transform: orgOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }} />
+          </motion.button>
+
+          <AnimatePresence>
+            {orgOpen && (
+              <>
+                <div className="fixed inset-0 z-[60]" onClick={() => setOrgOpen(false)} />
+                <motion.div
+                  initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={{ duration: 0.12 }}
+                  className="absolute left-0 top-full mt-2 w-48 z-[61] overflow-hidden rounded-xl py-1"
+                  style={{ background: '#131525', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 20px 50px rgba(0,0,0,0.7)' }}>
+                  <button
+                    type="button"
+                    onClick={() => { clearOrg(); setOrgOpen(false) }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-white/06"
+                    style={{ color: !activeOrgId ? '#60A5FA' : 'rgba(255,255,255,0.7)' }}>
+                    <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center">
+                      {!activeOrgId && <Check size={12} />}
+                    </span>
+                    All Organizations
+                  </button>
+                  {orgs.map(org => (
+                    <button
+                      key={org.id}
+                      type="button"
+                      onClick={() => { setOrg(org.id, org.name, org.slug); setOrgOpen(false) }}
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-white/06"
+                      style={{ color: activeOrgId === org.id ? '#60A5FA' : 'rgba(255,255,255,0.7)' }}>
+                      <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center">
+                        {activeOrgId === org.id && <Check size={12} />}
+                      </span>
+                      <span className="truncate">{org.name}</span>
+                      <span className="ml-auto text-[9px] font-mono opacity-40">{org.currency}</span>
+                    </button>
+                  ))}
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {/* ── Category scope badge (scoped roles) ───────── */}
+      {user && (user.role === '4x_admin' || user.role === 'digital_marketing_admin' || user.role === 'ai_admin' || user.role === 'sub_admin' || user.role === 'support') && (
         <div className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold flex-shrink-0"
           style={user.role === '4x_admin'
             ? { background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.3)', color: '#60A5FA' }
-            : user.role === 'ai_admin'
+            : user.role === 'ai_admin' || (user.role === 'sub_admin' && user.program === 'ai')
             ? { background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.3)', color: '#8B5CF6' }
+            : user.role === 'support'
+            ? { background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.3)', color: '#FBbf24' }
             : { background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.3)', color: '#34D399' }}>
           <span className="h-1.5 w-1.5 rounded-full flex-shrink-0"
-            style={{ background: user.role === '4x_admin' ? '#60A5FA' : user.role === 'ai_admin' ? '#8B5CF6' : '#34D399' }} />
-          {user.role === '4x_admin' ? 'FOREX Trading' : user.role === 'ai_admin' ? 'AI' : 'Digital Marketing'} scope
+            style={{ background: user.role === '4x_admin' ? '#60A5FA' : user.role === 'ai_admin' ? '#8B5CF6' : user.role === 'support' ? '#FBbf24' : '#34D399' }} />
+          {user.role === '4x_admin' ? 'FOREX Trading' : user.role === 'ai_admin' ? 'AI' : user.role === 'support' ? 'Support' : user.role === 'sub_admin' ? (user.program === 'ai' ? 'AI' : user.program === 'forex' ? 'FOREX' : 'Digital Mktg') + ' Sub-Admin' : 'Digital Marketing'} scope
         </div>
       )}
 
@@ -250,7 +315,7 @@ export function AdminTopbar() {
 
       {/* Backdrop for dropdowns */}
       {(notifOpen || quickOpen || avatarOpen) && (
-        <div className="fixed inset-0 z-40" onClick={() => { setNotifOpen(false); setQuickOpen(false); setAvatarOpen(false) }} />
+        <div className="fixed inset-0 z-40" onClick={() => { setNotifOpen(false); setQuickOpen(false); setAvatarOpen(false); setOrgOpen(false) }} />
       )}
 
     </motion.header>

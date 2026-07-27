@@ -46,8 +46,8 @@ export class ReviewService {
     return this.reviewRepo.findByCourse(courseId, page, perPage)
   }
 
-  async listAll(page: number, perPage: number) {
-    return this.reviewRepo.listAll(page, perPage)
+  async listAll(page: number, perPage: number, organizationId?: string) {
+    return this.reviewRepo.listAll(page, perPage, organizationId)
   }
 
   async deleteOwn(userId: string, reviewId: string) {

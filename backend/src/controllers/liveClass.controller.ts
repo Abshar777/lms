@@ -141,7 +141,8 @@ export class LiveClassController {
     try {
       const status = typeof req.query['status'] === 'string' ? req.query['status'] : 'all'
       const limit  = Math.min(Number(req.query['limit'] ?? 100), 200)
-      const scope  = req.user?.categoryScope
+      const isInstructor = req.user?.role === 'instructor'
+      const scope  = isInstructor ? undefined : req.user?.categoryScope
       let courseIds: string[] | undefined
       if (scope) {
         const CourseModel = (await import('@/models/schema.ts')).CourseModel
@@ -150,7 +151,13 @@ export class LiveClassController {
         // No courses in this category → return empty, don't leak other categories' sessions
         if (courseIds.length === 0) { sendSuccess(res, []); return }
       }
-      const docs = await this.service.listAll({ status, limit, courseIds })
+      const docs = await this.service.listAll({
+        status,
+        limit,
+        courseIds,
+        organizationId: req.user?.organizationId,
+        instructorId:   isInstructor ? req.user?.id : undefined,
+      })
       sendSuccess(res, docs.map(toDTO))
     } catch (err) { next(err) }
   }
@@ -258,6 +265,7 @@ export class LiveClassController {
         isOnline,
         location:        dto.location,
         room:            dto.room,
+        organizationId:  req.user?.organizationId,
       })
       sendSuccess(res, toDTO(live), 'Live class scheduled', 201)
 

@@ -25,13 +25,15 @@ export class SupportError extends Error {
 }
 
 type Requester = {
-  id:            string
-  role:          'student' | 'instructor' | 'admin' | '4x_admin' | 'digital_marketing_admin' | 'ai_admin' | 'super_admin'
-  categoryScope?: '4x-trading' | 'digital-marketing' | 'ai'
+  id:              string
+  role:            'student' | 'instructor' | 'admin' | '4x_admin' | 'digital_marketing_admin' | 'ai_admin' | 'super_admin' | 'sub_admin' | 'support'
+  categoryScope?:  '4x-trading' | 'digital-marketing' | 'ai'
+  organizationId?: string
 }
 
 const isStaff = (r: Requester) =>
-  r.role === 'admin' || r.role === 'super_admin' || r.role === '4x_admin' || r.role === 'digital_marketing_admin' || r.role === 'ai_admin'
+  r.role === 'admin' || r.role === 'super_admin' || r.role === 'sub_admin' || r.role === 'support'
+  || r.role === '4x_admin' || r.role === 'digital_marketing_admin' || r.role === 'ai_admin'
 
 const notifSvc = new NotificationService()
 
@@ -41,7 +43,7 @@ export class SupportService {
     requester: Requester,
     input: { subject: string; category?: SupportCategory; message: string; program?: string },
   ): Promise<ISupportTicket> {
-    const ticket = await SupportTicketModel.create({
+    const ticketData: Record<string, unknown> = {
       userId:         new Types.ObjectId(requester.id),
       subject:        input.subject.trim(),
       category:       input.category ?? 'other',
@@ -57,7 +59,11 @@ export class SupportService {
       lastSenderRole: 'student',
       userUnread:     false,
       adminUnread:    true,
-    })
+    }
+    if (requester.organizationId && Types.ObjectId.isValid(requester.organizationId)) {
+      ticketData['organizationId'] = new Types.ObjectId(requester.organizationId)
+    }
+    const ticket = await SupportTicketModel.create(ticketData)
     return this.populate(ticket.id)
   }
 
@@ -70,12 +76,15 @@ export class SupportService {
       .exec()
   }
 
-  /* ── Admin: list all tickets (scoped by program if set) */
-  async listAll(filter: { status?: string; search?: string; program?: string } = {}): Promise<ISupportTicket[]> {
+  /* ── Admin: list all tickets (scoped by program and org if set) */
+  async listAll(filter: { status?: string; search?: string; program?: string; organizationId?: string } = {}): Promise<ISupportTicket[]> {
     const query: Record<string, unknown> = {}
     if (filter.status && filter.status !== 'all') query['status'] = filter.status
     if (filter.search?.trim()) query['subject'] = { $regex: filter.search.trim(), $options: 'i' }
     if (filter.program) query['program'] = filter.program
+    if (filter.organizationId && Types.ObjectId.isValid(filter.organizationId)) {
+      query['organizationId'] = new Types.ObjectId(filter.organizationId)
+    }
     return SupportTicketModel
       .find(query)
       .sort({ lastMessageAt: -1 })
@@ -84,9 +93,12 @@ export class SupportService {
       .exec()
   }
 
-  /* ── Admin: status counts (scoped by program if set) ── */
-  async adminStats(program?: string): Promise<{ open: number; pending: number; resolved: number; closed: number; unread: number; total: number }> {
+  /* ── Admin: status counts (scoped by program and org if set) ── */
+  async adminStats(program?: string, organizationId?: string): Promise<{ open: number; pending: number; resolved: number; closed: number; unread: number; total: number }> {
     const base: Record<string, unknown> = program ? { program } : {}
+    if (organizationId && Types.ObjectId.isValid(organizationId)) {
+      base['organizationId'] = new Types.ObjectId(organizationId)
+    }
     const [open, pending, resolved, closed, unread, total] = await Promise.all([
       SupportTicketModel.countDocuments({ ...base, status: 'open' }),
       SupportTicketModel.countDocuments({ ...base, status: 'pending' }),

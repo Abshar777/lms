@@ -25,9 +25,9 @@ export class AdminController {
   private readonly sectionRepo     = new SectionRepository()
 
   /* ─── Dashboard stats ─────────────────────────── */
-  stats = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  stats = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      sendSuccess(res, await this.admin.getStats())
+      sendSuccess(res, await this.admin.getStats(req.user!.organizationId))
     } catch (err) { next(err) }
   }
 
@@ -42,15 +42,16 @@ export class AdminController {
       const isTeachingStaff = TEACHING_STAFF.includes(req.user!.role)
       const { docs, totalCount } = await this.courseService.listAdmin({
         page,
-        perPage:      per_page,
-        search:       q['search']?.trim() || undefined,
-        status:       (q['status'] as 'draft' | 'published' | 'archived' | 'all' | undefined) ?? 'all',
-        level:        q['level'] as 'beginner' | 'intermediate' | 'advanced' | undefined,
-        category:     q['category']?.trim() || undefined,
-        program:      scope ?? (q['program'] as string | undefined),
-        free:         q['free'] === 'true',
-        sort:         q['sort'] as 'popular' | 'rating' | 'newest' | 'price_lo' | 'price_hi' | undefined,
-        instructorId: isTeachingStaff ? req.user!.id : undefined,
+        perPage:        per_page,
+        search:         q['search']?.trim() || undefined,
+        status:         (q['status'] as 'draft' | 'published' | 'archived' | 'all' | undefined) ?? 'all',
+        level:          q['level'] as 'beginner' | 'intermediate' | 'advanced' | undefined,
+        category:       q['category']?.trim() || undefined,
+        program:        isTeachingStaff ? (q['program'] as string | undefined) : (scope ?? (q['program'] as string | undefined)),
+        free:           q['free'] === 'true',
+        sort:           q['sort'] as 'popular' | 'rating' | 'newest' | 'price_lo' | 'price_hi' | undefined,
+        instructorId:   isTeachingStaff ? req.user!.id : undefined,
+        organizationId: req.user!.organizationId,
       })
       const counts = await Promise.all(docs.map(c => this.lessonRepo.countByCourse(c.id)))
       const dtos   = docs.map((c, i) => toCourseDTO(c, counts[i]))
@@ -95,7 +96,7 @@ export class AdminController {
 
       /* Instructors can only author their own courses; admins may assign
          the course to any instructor (or default to themselves). */
-      const isAdmin = ['super_admin', 'admin', '4x_admin', 'digital_marketing_admin'].includes(req.user!.role)
+      const isAdmin = ['super_admin', 'admin', 'sub_admin', 'support', '4x_admin', 'digital_marketing_admin', 'ai_admin'].includes(req.user!.role)
       const instructorId = isAdmin
         ? (dto.instructorId ?? req.user!.id)
         : req.user!.id
@@ -103,20 +104,21 @@ export class AdminController {
       const scope = req.user!.categoryScope
 
       const course = await this.courseService.create({
-        title:        dto.title,
-        slug:         dto.slug,
-        description:  dto.description,
-        thumbnailUrl: dto.thumbnailUrl,
-        previewUrl:   dto.previewUrl,
-        price:        dto.price,
-        isFree:       dto.isFree,
-        status:       dto.status,
-        level:        dto.level,
-        language:     dto.language,
+        title:          dto.title,
+        slug:           dto.slug,
+        description:    dto.description,
+        thumbnailUrl:   dto.thumbnailUrl,
+        previewUrl:     dto.previewUrl,
+        price:          dto.price,
+        isFree:         dto.isFree,
+        status:         dto.status,
+        level:          dto.level,
+        language:       dto.language,
         tags,
         instructorId,
-        categoryId:   dto.categoryId,
-        program:      scope ?? dto.program,
+        categoryId:     dto.categoryId,
+        program:        scope ?? dto.program,
+        organizationId: req.user!.organizationId,
       })
       sendSuccess(res, toCourseDTO(course, 0), 'Course created', 201)
     } catch (err) { next(err) }
@@ -128,7 +130,7 @@ export class AdminController {
       await this.sectionService.assertCourseEditable(id, req.user!.id, req.user!.role, req.user!.categoryScope)
       const dto = req.body as Record<string, unknown>
       /* Instructors cannot reassign their course to a different author. */
-      const isAdmin = ['super_admin', 'admin', '4x_admin', 'digital_marketing_admin'].includes(req.user!.role)
+      const isAdmin = ['super_admin', 'admin', 'sub_admin', 'support', '4x_admin', 'digital_marketing_admin', 'ai_admin'].includes(req.user!.role)
       if (!isAdmin) delete dto['instructorId']
       /* Category-scoped admins cannot override their program scope */
       const scope = req.user!.categoryScope
@@ -189,7 +191,7 @@ export class AdminController {
       const status           = q['status'] as 'active' | 'inactive' | undefined
       const excludeStudents  = Boolean(q['exclude_students'])
       const enrollmentStatus = q['enrollmentStatus'] as 'pending' | 'approved' | 'rejected' | 'cancelled' | undefined
-      const { docs, totalCount } = await this.userService.listByRole(role, { page, perPage: per_page, search, category: effectiveCategory, status, excludeStudents, enrollmentStatus })
+      const { docs, totalCount } = await this.userService.listByRole(role, { page, perPage: per_page, search, category: effectiveCategory, status, excludeStudents, enrollmentStatus, organizationId: req.user!.organizationId })
       const meta = buildPaginationMeta(totalCount, page, per_page)
       sendSuccess(res, docs, undefined, 200, meta)
     } catch (err) { next(err) }
@@ -206,14 +208,17 @@ export class AdminController {
   createUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const dto = req.body as {
-        name:      string
-        email:     string
-        password:  string
-        role:      UserRole
-        bio?:      string
-        headline?: string
+        name:       string
+        email:      string
+        password:   string
+        role:       UserRole
+        bio?:       string
+        headline?:  string
+        category?:  '4x-trading' | 'digital-marketing' | 'ai'
+        program?:   'ai' | 'digital_marketing' | 'forex'
+        avatarUrl?: string
       }
-      const user = await this.userService.adminCreateUser(dto)
+      const user = await this.userService.adminCreateUser({ ...dto, organizationId: req.user!.organizationId })
       sendSuccess(res, user, 'User created', 201)
     } catch (err) { next(err) }
   }
@@ -222,7 +227,7 @@ export class AdminController {
   listReviews = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { page, per_page } = parsePagination(req.query as Record<string, unknown>)
-      const { docs, totalCount } = await this.reviewService.listAll(page, per_page)
+      const { docs, totalCount } = await this.reviewService.listAll(page, per_page, req.user!.organizationId)
       const meta = buildPaginationMeta(totalCount, page, per_page)
       sendSuccess(res, docs, undefined, 200, meta)
     } catch (err) { next(err) }
@@ -257,7 +262,7 @@ export class AdminController {
   updateUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const id = String(req.params['id'] ?? '')
-      const dto = req.body as { role?: UserRole; isActive?: boolean; isVerified?: boolean; name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | 'ai' | null; categories?: ('4x-trading' | 'digital-marketing' | 'ai')[]; headline?: string; bio?: string }
+      const dto = req.body as { role?: UserRole; isActive?: boolean; isVerified?: boolean; name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | 'ai' | null; categories?: ('4x-trading' | 'digital-marketing' | 'ai')[]; headline?: string; bio?: string; avatarUrl?: string; program?: 'ai' | 'digital_marketing' | 'forex' }
       const user = await this.userService.adminUpdate(id, dto)
       sendSuccess(res, user, 'User updated')
     } catch (err) { next(err) }
@@ -274,10 +279,15 @@ export class AdminController {
       const scope  = req.user!.categoryScope as string | undefined
       const role   = req.user!.role
 
+      const orgId = req.user!.organizationId
       const filter: Record<string, unknown> = {
         role:             'student',
         enrollmentStatus: { $exists: true },
         signupType:       { $ne: 'express' },   // express-only users go to the Express Members section
+      }
+      if (orgId) {
+        const { Types: OTypes } = await import('mongoose')
+        if (OTypes.ObjectId.isValid(orgId)) filter['organizationId'] = new OTypes.ObjectId(orgId)
       }
 
       // For approved tab: scoped admins only see students in their category
@@ -323,9 +333,14 @@ export class AdminController {
       const status  = q['status'] ?? 'all'
       const search  = q['search']?.trim()
 
+      const orgId2 = req.user!.organizationId
       const filter: Record<string, unknown> = {
         role:       'student',
         signupType: 'express',
+      }
+      if (orgId2) {
+        const { Types: OTypes } = await import('mongoose')
+        if (OTypes.ObjectId.isValid(orgId2)) filter['organizationId'] = new OTypes.ObjectId(orgId2)
       }
 
       if (status === 'active')  filter['isActive'] = true
@@ -748,7 +763,7 @@ export class AdminController {
   enrollmentsTimeseries = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const days = Math.min(180, Math.max(7, Number(req.query['days'] ?? 30)))
-      const data = await this.admin.enrollmentsTimeseries(days)
+      const data = await this.admin.enrollmentsTimeseries(days, req.user!.organizationId)
       sendSuccess(res, data)
     } catch (err) { next(err) }
   }
@@ -756,12 +771,12 @@ export class AdminController {
   topCourses = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const limit = Math.min(20, Math.max(1, Number(req.query['limit'] ?? 5)))
-      const data  = await this.admin.topCourses(limit)
+      const data  = await this.admin.topCourses(limit, req.user!.organizationId)
       sendSuccess(res, data)
     } catch (err) { next(err) }
   }
 
-  completionStats = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try { sendSuccess(res, await this.admin.completionStats()) } catch (err) { next(err) }
+  completionStats = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try { sendSuccess(res, await this.admin.completionStats(req.user!.organizationId)) } catch (err) { next(err) }
   }
 }

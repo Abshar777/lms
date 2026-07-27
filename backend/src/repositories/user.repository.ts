@@ -1,3 +1,4 @@
+import { Types } from 'mongoose'
 import { BaseRepository } from './base.repository.ts'
 import { UserModel, RefreshTokenModel, AuthTokenModel } from '@/models/schema.ts'
 import type {
@@ -40,6 +41,8 @@ export class UserRepository extends BaseRepository<IUser> {
     category?:              IUser['category']
     enrollmentApplication?: IUser['enrollmentApplication']
     signupType?:            IUser['signupType']
+    organizationId?:        Types.ObjectId | string
+    program?:               IUser['program']
   }): Promise<IUser> {
     return this.create({
       ...data,
@@ -107,6 +110,7 @@ export class UserRepository extends BaseRepository<IUser> {
       enrollmentStatus?: string
       status?:           'active' | 'inactive'
       excludeStudents?:  boolean
+      organizationId?:   string
     },
   ): Promise<{ docs: IUser[]; totalCount: number }> {
     const filter: Record<string, unknown> = {}
@@ -144,6 +148,10 @@ export class UserRepository extends BaseRepository<IUser> {
       filter['$or'] = categoryOr
     } else if (searchOr) {
       filter['$or'] = searchOr
+    }
+
+    if (params.organizationId && Types.ObjectId.isValid(params.organizationId)) {
+      filter['organizationId'] = new Types.ObjectId(params.organizationId)
     }
 
     return this.paginate(filter, params.page, params.perPage, { createdAt: -1 })

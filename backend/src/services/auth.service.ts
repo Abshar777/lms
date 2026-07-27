@@ -63,7 +63,13 @@ export class AuthService {
     const appFields = dto.enrollmentApplication ? Object.keys(dto.enrollmentApplication).filter(k => (dto.enrollmentApplication as Record<string, unknown>)[k] != null) : []
     const signupType: 'express' | 'full' = dto.signupType ?? (appFields.length <= 1 ? 'express' : 'full')
 
-    /* 4. Create user with pending enrollment status */
+    /* 4. Determine organization from homeCountry (India → Bangalore, else → Dubai) */
+    const { OrganizationModel } = await import('@/models/schema.ts')
+    const orgSlug = dto.enrollmentApplication?.homeCountry === 'IN' ? 'bangalore' : 'dubai'
+    const orgDoc  = await OrganizationModel.findOne({ slug: orgSlug }).select('_id').lean()
+    const organizationId = orgDoc?._id
+
+    /* 5. Create user with pending enrollment status */
     const user = await this.userRepo.createUser({
       name:                   dto.name.trim(),
       email:                  dto.email,
@@ -73,6 +79,7 @@ export class AuthService {
       categories:             [],
       enrollmentApplication:  dto.enrollmentApplication,
       signupType,
+      organizationId:         organizationId as any,
     })
 
     /* 5. Issue tokens (student gets tokens but stays pending) */

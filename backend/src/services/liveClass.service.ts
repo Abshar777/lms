@@ -27,7 +27,7 @@ export class LiveClassService {
 
   /* ── Public list — slug-based for the course page ─── */
   /* Admin — list all live classes across all courses */
-  async listAll(filter: { status?: string; limit?: number; courseIds?: string[] } = {}): Promise<ILiveClass[]> {
+  async listAll(filter: { status?: string; limit?: number; courseIds?: string[]; organizationId?: string; instructorId?: string } = {}): Promise<ILiveClass[]> {
     return this.liveRepo.listAll(filter)
   }
 
@@ -116,21 +116,22 @@ export class LiveClassService {
 
   /* ── Admin/instructor create ──────────────────────── */
   async create(input: {
-    courseId:        string
-    instructorId:    string
-    title:           string
-    description?:    string
-    scheduledStart:  Date
-    durationMins:    number
-    type:            LiveClassType
-    meetingUrl?:     string
-    googleMeetCode?: string
-    sectionId?:      string
+    courseId:         string
+    instructorId:     string
+    title:            string
+    description?:     string
+    scheduledStart:   Date
+    durationMins:     number
+    type:             LiveClassType
+    meetingUrl?:      string
+    googleMeetCode?:  string
+    sectionId?:       string
     sessionCapacity?: number
-    language?:       string
-    isOnline?:       boolean
-    location?:       string
-    room?:           string
+    language?:        string
+    isOnline?:        boolean
+    location?:        string
+    room?:            string
+    organizationId?:  string
   }): Promise<ILiveClass> {
     if (!Types.ObjectId.isValid(input.courseId)) {
       throw new LiveClassError('INVALID_COURSE_ID', 'Invalid course id', 400)
@@ -175,6 +176,9 @@ export class LiveClassService {
     }
     if (input.location) (doc as any).location = input.location.trim()
     if (input.room)     (doc as any).room     = input.room.trim()
+    if (input.organizationId && Types.ObjectId.isValid(input.organizationId)) {
+      ;(doc as any).organizationId = new Types.ObjectId(input.organizationId)
+    }
 
     if (input.sectionId && Types.ObjectId.isValid(input.sectionId)) {
       doc.sectionId = new Types.ObjectId(input.sectionId)

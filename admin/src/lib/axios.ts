@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { useImpersonationStore } from '@/store/impersonation.store'
+import { useOrgStore } from '@/store/org.store'
 
 /**
  * Admin API client.
@@ -21,6 +22,11 @@ api.interceptors.request.use(config => {
     if (token) {
       config.headers = config.headers ?? {}
       config.headers['Authorization'] = `Bearer ${token}`
+    }
+    const orgId = useOrgStore.getState().activeOrgId
+    if (orgId) {
+      config.headers = config.headers ?? {}
+      config.headers['X-Organization-Id'] = orgId
     }
   }
   return config

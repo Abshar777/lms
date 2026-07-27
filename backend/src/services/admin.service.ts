@@ -8,7 +8,7 @@ import {
    no PII surfaced.
 ───────────────────────────────────────────────────── */
 export class AdminService {
-  async getStats(): Promise<{
+  async getStats(organizationId?: string): Promise<{
     totalCourses:     number
     publishedCourses: number
     draftCourses:     number
@@ -16,30 +16,32 @@ export class AdminService {
     totalInstructors: number
     totalEnrollments: number
     totalReviews:     number
-    /* Actual revenue from completed Stripe payments (in dollars).
-       Falls back to 0 until first paid order is processed. */
     revenueEstimate:  number
   }> {
+    const orgMatch: Record<string, unknown> = {}
+    if (organizationId && Types.ObjectId.isValid(organizationId)) {
+      orgMatch['organizationId'] = new Types.ObjectId(organizationId)
+    }
+
     const [
       totalCourses, publishedCourses, draftCourses,
       totalStudents, totalInstructors,
       totalEnrollments, totalReviews,
       revenueAgg,
     ] = await Promise.all([
-      CourseModel.countDocuments({}).exec(),
-      CourseModel.countDocuments({ status: 'published' }).exec(),
-      CourseModel.countDocuments({ status: 'draft' }).exec(),
-      UserModel.countDocuments({ role: 'student' }).exec(),
-      UserModel.countDocuments({ role: 'instructor' }).exec(),
-      EnrollmentModel.countDocuments({}).exec(),
+      CourseModel.countDocuments(orgMatch).exec(),
+      CourseModel.countDocuments({ ...orgMatch, status: 'published' }).exec(),
+      CourseModel.countDocuments({ ...orgMatch, status: 'draft' }).exec(),
+      UserModel.countDocuments({ ...orgMatch, role: 'student' }).exec(),
+      UserModel.countDocuments({ ...orgMatch, role: 'instructor' }).exec(),
+      EnrollmentModel.countDocuments(orgMatch).exec(),
       ReviewModel.countDocuments({}).exec(),
       OrderModel.aggregate([
-        { $match: { status: 'paid' } },
+        { $match: { ...orgMatch, status: 'paid' } },
         { $group: { _id: null, total: { $sum: '$amount' } } },
       ]).exec(),
     ])
 
-    /* Amount is in cents → convert to dollars */
     const revenueCents = revenueAgg[0]?.total ?? 0
 
     return {
@@ -54,15 +56,18 @@ export class AdminService {
     }
   }
 
-  /* Daily enrollments for the last N days. Zero-fills missing days so
-     the client gets a continuous series suitable for a chart. */
-  async enrollmentsTimeseries(days: number): Promise<{ date: string; count: number }[]> {
+  async enrollmentsTimeseries(days: number, organizationId?: string): Promise<{ date: string; count: number }[]> {
     const since = new Date()
     since.setUTCHours(0, 0, 0, 0)
     since.setUTCDate(since.getUTCDate() - (days - 1))
 
+    const matchBase: Record<string, unknown> = { createdAt: { $gte: since } }
+    if (organizationId && Types.ObjectId.isValid(organizationId)) {
+      matchBase['organizationId'] = new Types.ObjectId(organizationId)
+    }
+
     const rows = await EnrollmentModel.aggregate([
-      { $match: { createdAt: { $gte: since } } },
+      { $match: matchBase },
       {
         $group: {
           _id:   { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'UTC' } },
@@ -84,8 +89,7 @@ export class AdminService {
     return out
   }
 
-  /* Highest-enrolled courses (regardless of status) with basic metadata. */
-  async topCourses(limit: number): Promise<{
+  async topCourses(limit: number, organizationId?: string): Promise<{
     id:            string
     title:         string
     slug:          string
@@ -93,8 +97,12 @@ export class AdminService {
     ratingAvg:     number
     thumbnailUrl?: string
   }[]> {
+    const filter: Record<string, unknown> = {}
+    if (organizationId && Types.ObjectId.isValid(organizationId)) {
+      filter['organizationId'] = new Types.ObjectId(organizationId)
+    }
     const docs = await CourseModel
-      .find({})
+      .find(filter)
       .sort({ enrolledCount: -1 })
       .limit(limit)
       .select('title slug enrolledCount ratingAvg thumbnailUrl')
@@ -109,22 +117,21 @@ export class AdminService {
     }))
   }
 
-  /* Aggregate completion rate: completed / total enrollments.
-     The model only stores 'active' | 'completed' | 'dropped'. */
-  async completionStats(): Promise<{
+  async completionStats(organizationId?: string): Promise<{
     totalEnrollments: number
     completed:        number
     active:           number
     dropped:          number
     completionRate:   number
   }> {
+    const matchBase: Record<string, unknown> = {}
+    if (organizationId && Types.ObjectId.isValid(organizationId)) {
+      matchBase['organizationId'] = new Types.ObjectId(organizationId)
+    }
+
     const rows = await EnrollmentModel.aggregate([
-      {
-        $group: {
-          _id:   '$status',
-          count: { $sum: 1 },
-        },
-      },
+      { $match: matchBase },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
     ]).exec()
 
     let completed = 0, active = 0, dropped = 0
@@ -133,7 +140,6 @@ export class AdminService {
       if (r._id === 'active')    active    = r.count
       if (r._id === 'dropped')   dropped   = r.count
     }
-    /* "Started" denominator excludes dropped enrollments. */
     const eligible = completed + active
     const completionRate = eligible > 0
       ? Math.round((completed / eligible) * 1000) / 10
@@ -147,7 +153,3 @@ export class AdminService {
     }
   }
 }
-
-/* Silence unused-import warning — `Types` is intentionally re-exported
-   for future expansion if AdminService grows id-targeted queries. */
-void Types

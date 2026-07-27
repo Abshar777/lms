@@ -6,7 +6,8 @@ import { connectDatabase, disconnectDatabase } from '@/config/database.ts'
 import { logger } from '@/utils/logger.ts'
 import { startReminderJobs } from '@/jobs/reminders.job.ts'
 import { seedDefaultRoles } from '@/utils/seedRoles.ts'
-import { UserModel } from '@/models/schema.ts'
+import { seedOrganizations } from '@/utils/seedOrganizations.ts'
+import { UserModel, OrganizationModel, CourseModel, LiveClassModel, EnrollmentModel, OrderModel, CouponModel, SupportTicketModel } from '@/models/schema.ts'
 
 async function bootstrap() {
   /* 1. Connect to MongoDB before accepting traffic */
@@ -14,6 +15,9 @@ async function bootstrap() {
 
   /* 1a. Ensure system roles exist (idempotent — skips existing) */
   await seedDefaultRoles()
+
+  /* 1a-org. Ensure both academy organizations exist (idempotent) */
+  await seedOrganizations()
 
   /* 1b-pre. Drop the old sparse unique index on stripeCheckoutSessionId so
      Razorpay orders (which have no Stripe session) can coexist in the collection.
@@ -35,6 +39,32 @@ async function bootstrap() {
   )
   if (migrated.modifiedCount > 0) {
     logger.info(`✅  Migrated ${migrated.modifiedCount} legacy student(s) → enrollmentStatus: approved`)
+  }
+
+  /* 1c. Org backfill — assign all records that predate organizationId to Dubai Academy.
+     This runs once per record (idempotent: only touches docs without organizationId). */
+  const dubaiOrg = await OrganizationModel.findOne({ slug: 'dubai' })
+  if (dubaiOrg) {
+    const orgId  = dubaiOrg._id
+    const noOrg  = { organizationId: { $exists: false } }
+    const setOrg = { $set: { organizationId: orgId } }
+
+    const [users, courses, classes, enrollments, orders, coupons, tickets] = await Promise.all([
+      UserModel.updateMany({ ...noOrg, role: { $ne: 'super_admin' } }, setOrg),
+      CourseModel.updateMany(noOrg, setOrg),
+      LiveClassModel.updateMany(noOrg, setOrg),
+      EnrollmentModel.updateMany(noOrg, setOrg),
+      OrderModel.updateMany(noOrg, setOrg),
+      CouponModel.updateMany(noOrg, setOrg),
+      SupportTicketModel.updateMany(noOrg, setOrg),
+    ])
+
+    const total = users.modifiedCount + courses.modifiedCount + classes.modifiedCount
+      + enrollments.modifiedCount + orders.modifiedCount + coupons.modifiedCount + tickets.modifiedCount
+
+    if (total > 0) {
+      logger.info(`✅  Org backfill: assigned ${total} record(s) → Dubai Academy`)
+    }
   }
 
   /* 2. Start HTTP server.

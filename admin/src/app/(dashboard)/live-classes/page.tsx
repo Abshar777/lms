@@ -1630,25 +1630,23 @@ export default function LiveClassesPage() {
 
       {/* Table view */}
       {view === 'table' && (
-        <AnimatePresence mode="wait">
+        <>
           {isLoading && (
-            <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="flex items-center justify-center gap-2 py-20 text-sm"
+            <div className="flex items-center justify-center gap-2 py-20 text-sm"
               style={{ color: 'rgba(255,255,255,0.3)' }}>
               <Spinner size={16} />Loading sessions…
-            </motion.div>
+            </div>
           )}
 
           {isError && (
-            <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="flex flex-col items-center gap-3 py-16 text-center">
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
               <AlertCircle size={28} style={{ color: '#EF4444' }} />
               <p className="text-sm font-semibold text-white">Couldn&apos;t load live classes</p>
-            </motion.div>
+            </div>
           )}
 
           {!isLoading && !isError && items.length === 0 && (
-            <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               className="flex flex-col items-center gap-4 py-20 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-3xl"
                 style={{ background: 'rgba(0,87,184,0.08)', border: '1px solid rgba(0,87,184,0.15)' }}>
@@ -1670,7 +1668,7 @@ export default function LiveClassesPage() {
           )}
 
           {!isLoading && !isError && grouped.length > 0 && (
-            <motion.div key="table" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <div className="overflow-hidden rounded-2xl" style={{ border: '1px solid rgba(255,255,255,0.07)' }}>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[720px]">
@@ -1721,7 +1719,7 @@ export default function LiveClassesPage() {
               </div>
             </motion.div>
           )}
-        </AnimatePresence>
+        </>
       )}
 
       {/* Quick create modal (online) */}

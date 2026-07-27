@@ -2,7 +2,7 @@ import type { Request, Response, NextFunction } from 'express'
 import { verifyAccessToken } from '@/utils/jwt.ts'
 import { sendError } from '@/utils/response.ts'
 import { ACCESS_COOKIE, ADMIN_ACCESS_COOKIE } from '@/utils/authCookies.ts'
-import type { UserRole } from '@/types/index.ts'
+import type { UserRole, ProgramType } from '@/types/index.ts'
 
 /* ─────────────────────────────────────────────────────
    authenticate
@@ -34,6 +34,12 @@ export async function authenticate(
       id:    payload.sub!,
       email: payload.email,
       role:  payload.role,
+    }
+    // Load org context from DB (same approach as authenticateAdmin)
+    const { UserModel } = await import('@/models/schema.ts')
+    const user = await UserModel.findById(payload.sub).select('organizationId').lean()
+    if (user && (user as any).organizationId) {
+      req.user.organizationId = (user as any).organizationId.toString()
     }
     next()
   } catch (err: any) {
@@ -110,21 +116,50 @@ export function requireRole(...roles: UserRole[]) {
 }
 
 /* ─── Role hierarchy (highest to lowest) ───────────────
-   super_admin > admin > 4x_admin / digital_marketing_admin > instructor > student
+   super_admin > admin > sub_admin / support > instructor > student
 ──────────────────────────────────────────────────── */
 export const requireSuperAdmin = requireRole('super_admin')
 
 /** Any admin-panel admin — super_admin or admin (full platform management) */
 export const requireAdmin      = requireRole('super_admin', 'admin')
 
-/** Category admins + above */
-export const requireAnyAdmin   = requireRole('super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin')
+/** Category-scoped admins + above (sub_admin replaces legacy *_admin roles) */
+export const requireAnyAdmin   = requireRole('super_admin', 'admin', 'sub_admin', 'support', '4x_admin', 'digital_marketing_admin', 'ai_admin')
 
 /** Teaching staff + above */
-export const requireInstructor = requireRole('super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'instructor')
+export const requireInstructor = requireRole('super_admin', 'admin', 'sub_admin', 'support', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'instructor')
 
 /** Any authenticated user */
-export const requireStudent    = requireRole('super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'instructor', 'student')
+export const requireStudent    = requireRole('super_admin', 'admin', 'sub_admin', 'support', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'instructor', 'student')
+
+/** Require caller's organization matches the given org slug */
+export function requireOrgAccess(slug: import('@/types/index.ts').OrgSlug) {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    if (!req.user) { sendError(res, 'UNAUTHORIZED', 'Authentication required', 401); return }
+    if (req.user.role === 'super_admin') { next(); return }
+
+    const { OrganizationModel } = await import('@/models/schema.ts')
+    const org = await OrganizationModel.findOne({ slug }).select('_id').lean()
+    if (!org) { sendError(res, 'NOT_FOUND', 'Organization not found', 404); return }
+
+    if (req.user.organizationId !== org._id.toString()) {
+      sendError(res, 'FORBIDDEN', 'Access restricted to this organization', 403); return
+    }
+    next()
+  }
+}
+
+/** Require sub_admin's program matches one of the given programs */
+export function requireProgram(...programs: import('@/types/index.ts').ProgramType[]) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user) { sendError(res, 'UNAUTHORIZED', 'Authentication required', 401); return }
+    if (req.user.role === 'super_admin' || req.user.role === 'admin') { next(); return }
+    if (!req.user.program || !programs.includes(req.user.program)) {
+      sendError(res, 'FORBIDDEN', `Access restricted to programs: ${programs.join(', ')}`, 403); return
+    }
+    next()
+  }
+}
 
 /* ─────────────────────────────────────────────────────
    authenticateAdmin
@@ -158,6 +193,23 @@ export async function authenticateAdmin(
       email: payload.email,
       role:  payload.role,
     }
+
+    // Load org context from DB for non-super_admin users
+    if (payload.role !== 'super_admin') {
+      const { UserModel } = await import('@/models/schema.ts')
+      const user = await UserModel.findById(payload.sub).select('organizationId program').lean()
+      if (user) {
+        if ((user as any).organizationId) req.user.organizationId = (user as any).organizationId.toString()
+        if ((user as any).program)        req.user.program        = (user as any).program as ProgramType
+      }
+    } else {
+      // super_admin selects active org via X-Organization-Id header
+      const orgHeader = req.headers['x-organization-id']
+      if (orgHeader && typeof orgHeader === 'string') {
+        req.user.organizationId = orgHeader
+      }
+    }
+
     next()
   } catch (err: any) {
     const isExpired = err?.code === 'ERR_JWT_EXPIRED'
@@ -181,7 +233,12 @@ export async function authenticateAdmin(
 ───────────────────────────────────────────────────── */
 export async function injectCategoryScope(req: Request, _res: Response, next: NextFunction): Promise<void> {
   if (!req.user) { next(); return }
-  if (req.user.role === '4x_admin')                     req.user.categoryScope = '4x-trading'
+  if (req.user.role === 'sub_admin') {
+    // sub_admin program → categoryScope
+    if      (req.user.program === 'ai')                 req.user.categoryScope = 'ai'
+    else if (req.user.program === 'digital_marketing')  req.user.categoryScope = 'digital-marketing'
+    else if (req.user.program === 'forex')              req.user.categoryScope = '4x-trading'
+  } else if (req.user.role === '4x_admin')                     req.user.categoryScope = '4x-trading'
   else if (req.user.role === 'digital_marketing_admin') req.user.categoryScope = 'digital-marketing'
   else if (req.user.role === 'ai_admin')                req.user.categoryScope = 'ai'
   else if (req.user.role === 'instructor') {
@@ -258,6 +315,12 @@ export async function optionalAuthenticate(
         id:    payload.sub!,
         email: payload.email,
         role:  payload.role,
+      }
+      // Load org context from DB
+      const { UserModel } = await import('@/models/schema.ts')
+      const user = await UserModel.findById(payload.sub).select('organizationId').lean()
+      if (user && (user as any).organizationId) {
+        req.user.organizationId = (user as any).organizationId.toString()
       }
     } catch {
       /* expired / invalid — treat as unauthenticated */

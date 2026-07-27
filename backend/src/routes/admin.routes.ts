@@ -40,7 +40,7 @@ router.get ('/auth/me',      authenticateAdmin, authCtrl.me)
 /* Admin routes are open to admins and instructors. Per-resource
    ownership checks inside the controllers reject instructors who
    try to mutate courses they don't own. */
-router.use(authenticateAdmin, requireRole('super_admin', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'instructor'), injectCategoryScope)
+router.use(authenticateAdmin, requireRole('super_admin', 'admin', 'sub_admin', 'support', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'instructor'), injectCategoryScope)
 
 /* ─── Schemas ─────────────────────────────────────── */
 const courseCreateSchema = z.object({
@@ -78,7 +78,7 @@ const categoryUpdateSchema = categoryCreateSchema.partial()
 const usersQuerySchema = z.object({
   page:              z.coerce.number().int().min(1).default(1),
   per_page:          z.coerce.number().int().min(1).max(500).default(20),
-  role:              z.enum(['student', 'instructor', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'super_admin']).optional(),
+  role:              z.enum(['student', 'instructor', 'admin', 'sub_admin', 'support', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'super_admin']).optional(),
   search:            z.string().trim().optional(),
   category:          z.enum(['4x-trading', 'digital-marketing', 'ai']).optional(),
   status:            z.enum(['active', 'inactive']).optional(),
@@ -86,11 +86,20 @@ const usersQuerySchema = z.object({
   enrollmentStatus:  z.enum(['pending', 'approved', 'rejected', 'cancelled']).optional(),
 })
 
-/* ─── Dashboard (admin-only) ─────────────────────── */
-router.get('/stats',                       requireAdmin, ctrl.stats)
-router.get('/analytics/enrollments',       requireAdmin, ctrl.enrollmentsTimeseries)
-router.get('/analytics/top-courses',       requireAdmin, ctrl.topCourses)
-router.get('/analytics/completion',        requireAdmin, ctrl.completionStats)
+/* ─── Organizations (super_admin only) ───────────── */
+router.get('/organizations', requireRole('super_admin'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { OrganizationModel } = await import('@/models/schema.ts')
+    const orgs = await OrganizationModel.find().select('name slug currency').lean()
+    sendSuccess(res, orgs.map(o => ({ id: (o._id as any).toString(), name: o.name, slug: o.slug, currency: o.currency })))
+  } catch (err) { next(err) }
+})
+
+/* ─── Dashboard ──────────────────────────────────── */
+router.get('/stats',                       requireAnyAdmin, ctrl.stats)
+router.get('/analytics/enrollments',       requireAnyAdmin, ctrl.enrollmentsTimeseries)
+router.get('/analytics/top-courses',       requireAnyAdmin, ctrl.topCourses)
+router.get('/analytics/completion',        requireAnyAdmin, ctrl.completionStats)
 
 /* ─── Bulk course operations (8.12) ──────────────── */
 const bulkSchema = z.object({
@@ -136,7 +145,7 @@ router.delete('/categories/:id', requireAdmin, audit('category.delete', 'Categor
 
 /* ─── Users (admin-only) ──────────────────────────── */
 const userUpdateSchema = z.object({
-  role:       z.enum(['student', 'instructor', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'super_admin']).optional(),
+  role:       z.enum(['student', 'instructor', 'admin', 'sub_admin', 'support', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'super_admin']).optional(),
   isActive:   z.boolean().optional(),
   isVerified: z.boolean().optional(),
   name:       z.string().min(2).max(100).trim().optional(),
@@ -152,12 +161,13 @@ const userCreateSchema = z.object({
   name:       z.string().min(2).max(100).trim(),
   email:      z.string().email(),
   password:   z.string().min(8, 'Password must be at least 8 characters'),
-  role:       z.enum(['student', 'instructor', 'admin', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'super_admin']).default('instructor'),
+  role:       z.enum(['student', 'instructor', 'admin', 'sub_admin', 'support', '4x_admin', 'digital_marketing_admin', 'ai_admin', 'super_admin']).default('instructor'),
   bio:        z.string().max(2000).optional(),
   headline:   z.string().max(255).optional(),
   category:   z.enum(['4x-trading', 'digital-marketing', 'ai']).optional(),
   categories: z.array(z.enum(['4x-trading', 'digital-marketing', 'ai'])).optional(),
   avatarUrl:  z.string().url().or(z.literal('')).optional(),
+  program:    z.enum(['ai', 'digital_marketing', 'forex']).optional(),
   courses:    z.array(z.object({
     courseId:       z.string().min(1),
     blockedLessons: z.array(z.string()).default([]),
@@ -182,11 +192,15 @@ router.post ('/users',          validate(userCreateSchema), audit('user.create',
       res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Instructors cannot create accounts.' } })
       return
     }
-    if ((role === '4x_admin' || role === 'digital_marketing_admin' || role === 'ai_admin') && targetRole !== 'instructor') {
+    if ((role === '4x_admin' || role === 'digital_marketing_admin' || role === 'ai_admin' || role === 'sub_admin') && targetRole !== 'instructor') {
       res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You can only create instructor accounts.' } })
       return
     }
-    if (role === 'admin' && targetRole === 'super_admin') {
+    if (role === 'support' && !['student', 'instructor'].includes(targetRole)) {
+      res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Support staff can only create student or instructor accounts.' } })
+      return
+    }
+    if ((role === 'admin' || role === 'sub_admin' || role === 'support') && targetRole === 'super_admin') {
       res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Only super admins can create super admin accounts.' } })
       return
     }
@@ -199,7 +213,11 @@ router.post ('/users',          validate(userCreateSchema), audit('user.create',
     try {
       /* Build DTO without the courses field (handled separately) */
       const { courses, ...userDto } = req.body as z.infer<typeof userCreateSchema>
-      const user = await userSvc.adminCreateUser({ ...userDto, approvedBy: req.user!.id })
+      const user = await userSvc.adminCreateUser({
+        ...userDto,
+        approvedBy:     req.user!.id,
+        organizationId: req.user!.organizationId,
+      })
 
       /* Enroll the new student into the requested courses */
       if (courses && courses.length > 0) {
@@ -211,11 +229,15 @@ router.post ('/users',          validate(userCreateSchema), audit('user.create',
               const blockedObjectIds = (c.blockedLessons ?? [])
                 .filter((id: string) => Types.ObjectId.isValid(id))
                 .map((id: string) => new Types.ObjectId(id))
-              await EnrollmentModel.create({
+              const enrollDoc: Record<string, unknown> = {
                 userId:         new Types.ObjectId(user.id),
                 courseId:       new Types.ObjectId(c.courseId),
                 blockedLessons: blockedObjectIds,
-              })
+              }
+              if (req.user!.organizationId && Types.ObjectId.isValid(req.user!.organizationId)) {
+                enrollDoc['organizationId'] = new Types.ObjectId(req.user!.organizationId)
+              }
+              await EnrollmentModel.create(enrollDoc)
             } catch (_) { /* skip duplicate enrollments silently */ }
           })
         )
@@ -728,7 +750,7 @@ const revenueQuerySchema = z.object({
 router.get('/analytics/revenue', requireAdmin, validate(revenueQuerySchema, 'query'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const days = Number(req.query['days'] ?? 30)
-    const series = await orderSvc.revenueTimeseries(days)
+    const series = await orderSvc.revenueTimeseries(days, req.user!.organizationId)
     sendSuccess(res, series)
   } catch (err) { next(err) }
 })
@@ -744,7 +766,7 @@ router.get('/orders', requireAdmin, validate(ordersQuerySchema, 'query'), async 
   try {
     const { page, per_page, status } = req.query as any
     const { docs, totalCount } = await orderSvc.adminList(
-      Number(page ?? 1), Number(per_page ?? 20), String(status ?? 'all'),
+      Number(page ?? 1), Number(per_page ?? 20), String(status ?? 'all'), req.user!.organizationId,
     )
     sendSuccess(res, docs, undefined, 200, buildPaginationMeta(totalCount, Number(page ?? 1), Number(per_page ?? 20)))
   } catch (err) { next(err) }
@@ -774,14 +796,14 @@ const couponUpdateSchema = couponCreateSchema.partial().extend({
 router.get('/coupons', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { page, per_page } = parsePagination(req.query as Record<string, unknown>)
-    const { docs, totalCount } = await couponSvc.list(page, per_page)
+    const { docs, totalCount } = await couponSvc.list(page, per_page, req.user!.organizationId)
     sendSuccess(res, docs, undefined, 200, buildPaginationMeta(totalCount, page, per_page))
   } catch (err) { next(err) }
 })
 
 router.post('/coupons', requireAdmin, validate(couponCreateSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const coupon = await couponSvc.create(req.body)
+    const coupon = await couponSvc.create({ ...req.body, organizationId: req.user!.organizationId })
     sendSuccess(res, coupon, 'Coupon created', 201)
   } catch (err) { next(err) }
 })
@@ -838,7 +860,7 @@ const availabilityUpdateSchema = z.object({
   return true
 }, { message: 'Maximum 3 slots per day of week' })
 
-router.get('/mentors/:id/availability', requireRole('admin', 'instructor'), async (req: Request, res: Response, next: NextFunction) => {
+router.get('/mentors/:id/availability', requireInstructor, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { MentorAvailabilityModel } = await import('@/models/schema.ts')
     const mentorId = String(req.params['id'] ?? '')
@@ -847,7 +869,7 @@ router.get('/mentors/:id/availability', requireRole('admin', 'instructor'), asyn
   } catch (err) { next(err) }
 })
 
-router.put('/mentors/:id/availability', requireRole('admin', 'instructor'), validate(availabilityUpdateSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.put('/mentors/:id/availability', requireInstructor, validate(availabilityUpdateSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { MentorAvailabilityModel } = await import('@/models/schema.ts')
     const mentorId = String(req.params['id'] ?? '')
@@ -868,7 +890,7 @@ router.put('/mentors/:id/availability', requireRole('admin', 'instructor'), vali
 /* Own availability — instructor shortcut (GET/PUT /availability/me) */
 /* These are registered on the instructor sub-router in instructor.routes.ts if it exists,
    but we also expose them here so admin portal can use the same endpoints */
-router.get('/availability/me', requireRole('admin', 'instructor'), async (req: Request, res: Response, next: NextFunction) => {
+router.get('/availability/me', requireInstructor, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { MentorAvailabilityModel } = await import('@/models/schema.ts')
     const mentorId = req.user!.id
@@ -877,7 +899,7 @@ router.get('/availability/me', requireRole('admin', 'instructor'), async (req: R
   } catch (err) { next(err) }
 })
 
-router.put('/availability/me', requireRole('admin', 'instructor'), validate(availabilityUpdateSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.put('/availability/me', requireInstructor, validate(availabilityUpdateSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { MentorAvailabilityModel } = await import('@/models/schema.ts')
     const mentorId = req.user!.id
@@ -917,6 +939,11 @@ router.get('/bookings', requireInstructor, validate(bookingQuerySchema, 'query')
 
     /* ── Step 1: Build live-class filter (instructor scope + date + courseId) ── */
     const lcFilter: Record<string, any> = {}
+
+    // Org isolation — scoped users only see their org's classes
+    if (req.user!.organizationId && Types.ObjectId.isValid(req.user!.organizationId)) {
+      lcFilter['organizationId'] = new Types.ObjectId(req.user!.organizationId)
+    }
 
     // Instructors only see their own classes
     if (req.user!.role === 'instructor') {
@@ -1034,15 +1061,23 @@ router.patch('/bookings/:id/attendance', requireInstructor, validate(attendanceU
    REPORTS
    GET /admin/reports/attendance?from=&to=
 ─────────────────────────────────────────────────────── */
-router.get('/reports/attendance', requireRole('admin', 'instructor'), async (req: Request, res: Response, next: NextFunction) => {
+router.get('/reports/attendance', requireInstructor, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { ClassBookingModel } = await import('@/models/schema.ts')
+    const { ClassBookingModel, LiveClassModel } = await import('@/models/schema.ts')
+    const { Types } = await import('mongoose')
     const { from, to } = req.query as Record<string, string>
     const filter: Record<string, any> = {}
     if (from || to) {
       filter['bookedAt'] = {}
       if (from) filter['bookedAt']['$gte'] = new Date(from)
       if (to)   filter['bookedAt']['$lte'] = new Date(to)
+    }
+    // Org isolation — resolve live-class IDs belonging to this org first
+    if (req.user!.organizationId && Types.ObjectId.isValid(req.user!.organizationId)) {
+      const orgClassIds = await LiveClassModel.find(
+        { organizationId: new Types.ObjectId(req.user!.organizationId) }, '_id',
+      ).lean()
+      filter['liveClassId'] = { $in: orgClassIds.map((l: any) => l._id) }
     }
     const bookings = await ClassBookingModel.find(filter)
       .populate('userId', 'id name email')
@@ -1068,13 +1103,16 @@ router.get('/reports/attendance', requireRole('admin', 'instructor'), async (req
    REPORTS — Mentor Schedule
    GET /admin/reports/mentor-schedule?from=&to=&mentorId=
 ─────────────────────────────────────────────────────── */
-router.get('/reports/mentor-schedule', requireRole('admin', 'instructor'), async (req: Request, res: Response, next: NextFunction) => {
+router.get('/reports/mentor-schedule', requireInstructor, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { LiveClassModel } = await import('@/models/schema.ts')
     const { Types } = await import('mongoose')
     const { from, to, mentorId } = req.query as Record<string, string>
 
     const filter: Record<string, any> = {}
+    if (req.user!.organizationId && Types.ObjectId.isValid(req.user!.organizationId)) {
+      filter['organizationId'] = new Types.ObjectId(req.user!.organizationId)
+    }
     if (from || to) {
       filter['scheduledStart'] = {}
       if (from) filter['scheduledStart']['$gte'] = new Date(from)
@@ -1216,7 +1254,7 @@ router.patch('/homework-submissions/:id/grade', requireRole('admin', 'instructor
 })
 
 /* GET /admin/live-classes/:id/feedback — feedback summary for a session */
-router.get('/live-classes/:id/feedback', authenticateAdmin, requireRole('admin', 'instructor'), async (req: Request, res: Response, next: NextFunction) => {
+router.get('/live-classes/:id/feedback', requireInstructor, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { ClassFeedbackModel } = await import('@/models/schema.ts')
     const { Types } = await import('mongoose')

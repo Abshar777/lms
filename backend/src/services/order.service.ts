@@ -533,12 +533,12 @@ export class OrderService {
   }
 
   /* ─── Admin list + analytics ──────────────────────── */
-  async adminList(page = 1, perPage = 20, status?: string) {
-    return this.orderRepo.listAll(page, perPage, status)
+  async adminList(page = 1, perPage = 20, status?: string, organizationId?: string) {
+    return this.orderRepo.listAll(page, perPage, status, organizationId)
   }
 
-  async revenueTimeseries(days: number) {
-    return this.orderRepo.revenueTimeseries(days)
+  async revenueTimeseries(days: number, organizationId?: string) {
+    return this.orderRepo.revenueTimeseries(days, organizationId)
   }
 
   async totalRevenue(): Promise<number> {

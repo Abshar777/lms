@@ -110,7 +110,7 @@ export class CourseService {
 
   /* ─── Admin ─────────────────────────────────────── */
 
-  async listAdmin(params: CourseListParams & { status?: 'draft' | 'published' | 'archived' | 'all' }) {
+  async listAdmin(params: CourseListParams & { status?: 'draft' | 'published' | 'archived' | 'all'; organizationId?: string }) {
     return this.repo.listAdmin(params)
   }
 
@@ -124,20 +124,21 @@ export class CourseService {
   }
 
   async create(input: {
-    title:         string
-    slug:          string
-    description?:  string
-    thumbnailUrl?: string
-    previewUrl?:   string
-    price:         number
-    isFree:        boolean
-    status:        'draft' | 'published' | 'archived'
-    level?:        'beginner' | 'intermediate' | 'advanced'
-    language:      string
-    tags?:         string[]
-    instructorId:  string
-    categoryId?:   string
-    program?:      '4x-trading' | 'digital-marketing' | 'ai'
+    title:           string
+    slug:            string
+    description?:    string
+    thumbnailUrl?:   string
+    previewUrl?:     string
+    price:           number
+    isFree:          boolean
+    status:          'draft' | 'published' | 'archived'
+    level?:          'beginner' | 'intermediate' | 'advanced'
+    language:        string
+    tags?:           string[]
+    instructorId:    string
+    categoryId?:     string
+    program?:        '4x-trading' | 'digital-marketing' | 'ai'
+    organizationId?: string
   }): Promise<ICourse> {
     if (await this.repo.slugExists(input.slug)) {
       throw new CourseError('SLUG_TAKEN', 'Another course already uses this slug.', 409)
@@ -162,6 +163,9 @@ export class CourseService {
       payload.categoryId = new Types.ObjectId(input.categoryId) as unknown as ICourse['categoryId']
     }
     if (input.program) payload.program = input.program
+    if (input.organizationId && Types.ObjectId.isValid(input.organizationId)) {
+      ;(payload as any).organizationId = new Types.ObjectId(input.organizationId)
+    }
     return this.repo.createOne(payload)
   }
 

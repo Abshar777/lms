@@ -12,16 +12,31 @@ declare global {
 }
 
 export interface AuthUser {
-  id: string
-  email: string
-  role: UserRole
-  categoryScope?: ProgramCategory
+  id:              string
+  email:           string
+  role:            UserRole
+  categoryScope?:  ProgramCategory
+  organizationId?: string    // ObjectId as string — set by authenticateAdmin; undefined for super_admin with no org header
+  program?:        ProgramType  // sub_admin only
 }
 
 /* ─────────────────────────────────────────────────────
    Domain enums
 ───────────────────────────────────────────────────── */
-export type UserRole = 'student' | 'instructor' | 'admin' | 'super_admin' | '4x_admin' | 'digital_marketing_admin' | 'ai_admin'
+export type UserRole =
+  | 'student'
+  | 'instructor'
+  | 'admin'
+  | 'super_admin'
+  | 'sub_admin'   // replaces 4x_admin / digital_marketing_admin / ai_admin
+  | 'support'
+  // legacy — kept until Phase 3 migration removes them from the DB
+  | '4x_admin'
+  | 'digital_marketing_admin'
+  | 'ai_admin'
+
+export type OrgSlug    = 'dubai' | 'bangalore'
+export type ProgramType = 'ai' | 'digital_marketing' | 'forex'
 
 export type EnrollmentStatus = 'active' | 'completed' | 'dropped'
 

@@ -23,6 +23,8 @@ async function proxy(req: NextRequest, ctx: Context): Promise<NextResponse> {
   if (cookie) fwdHeaders.set('cookie', cookie)
   const auth = req.headers.get('authorization')
   if (auth) fwdHeaders.set('authorization', auth)
+  const orgId = req.headers.get('x-organization-id')
+  if (orgId) fwdHeaders.set('x-organization-id', orgId)
 
   const hasBody = req.method !== 'GET' && req.method !== 'HEAD'
   const body    = hasBody ? await req.arrayBuffer() : undefined

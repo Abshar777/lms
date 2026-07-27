@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Document, type Types } from 'mongoose'
-import type { UserRole, CourseStatus, LessonType, EnrollmentStatus, QuestionType, AchievementKind, StudentEnrollmentStatus, ProgramCategory } from '@/types/index.ts'
+import type { UserRole, CourseStatus, LessonType, EnrollmentStatus, QuestionType, AchievementKind, StudentEnrollmentStatus, ProgramCategory, OrgSlug, ProgramType } from '@/types/index.ts'
 
 /* ─────────────────────────────────────────────────────
    Shared schema transform
@@ -20,6 +20,33 @@ const baseSchemaOptions = {
   toJSON:   { virtuals: true, transform: baseTransform },
   toObject: { virtuals: true, transform: baseTransform },
 }
+
+/* ─────────────────────────────────────────────────────
+   ORGANIZATION
+───────────────────────────────────────────────────── */
+export interface IOrganization extends Document {
+  id:             string
+  name:           string
+  slug:           OrgSlug
+  currency:       'AED' | 'INR'
+  paymentGateway: 'abzer' | 'razorpay'
+  countryFilter:  string | null   // null = catch-all (Dubai); 'India' = Bangalore only
+  createdAt:      Date
+  updatedAt:      Date
+}
+
+const OrganizationSchema = new Schema<IOrganization>(
+  {
+    name:           { type: String, required: true, unique: true, trim: true },
+    slug:           { type: String, required: true, unique: true, enum: ['dubai', 'bangalore'] },
+    currency:       { type: String, required: true, enum: ['AED', 'INR'] },
+    paymentGateway: { type: String, required: true, enum: ['abzer', 'razorpay'] },
+    countryFilter:  { type: String, default: null },
+  },
+  baseSchemaOptions,
+)
+
+export const OrganizationModel = mongoose.model<IOrganization>('Organization', OrganizationSchema)
 
 /* ─────────────────────────────────────────────────────
    USER
@@ -75,6 +102,10 @@ export interface IUser extends Document {
   twoFactorSecret?: string   // base32-encoded TOTP secret; select:false
   /* Custom role (fine-grained permissions) */
   customRoleId?: Types.ObjectId
+  /* Multi-org — which academy this user belongs to (omitted for super_admin) */
+  organizationId?: Types.ObjectId
+  /* sub_admin program scope */
+  program?: ProgramType
   /* Student program categories (multi) */
   category?:     ProgramCategory     // legacy single
   categories:    ProgramCategory[]   // multi-category
@@ -108,7 +139,7 @@ const UserSchema = new Schema<IUser>(
     email:        { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, select: false },   // excluded from queries by default
     avatarUrl:    { type: String },
-    role:         { type: String, enum: ['student', 'instructor', 'admin', 'super_admin', '4x_admin', 'digital_marketing_admin', 'ai_admin'], default: 'student' },
+    role:         { type: String, enum: ['student', 'instructor', 'admin', 'super_admin', 'sub_admin', 'support', '4x_admin', 'digital_marketing_admin', 'ai_admin'], default: 'student' },
     isVerified:   { type: Boolean, default: false },
     isActive:     { type: Boolean, default: true },
     provider:     { type: String },
@@ -120,8 +151,10 @@ const UserSchema = new Schema<IUser>(
     lockedUntil:  { type: Date },
     twoFactorEnabled: { type: Boolean, default: false },
     twoFactorSecret:  { type: String, select: false },
-    customRoleId:     { type: Schema.Types.ObjectId, ref: 'Role' },
-    lastLoginAt:  { type: Date },
+    customRoleId:   { type: Schema.Types.ObjectId, ref: 'Role' },
+    organizationId: { type: Schema.Types.ObjectId, ref: 'Organization' },
+    program:        { type: String, enum: ['ai', 'digital_marketing', 'forex'] },
+    lastLoginAt:    { type: Date },
     category:         { type: String, enum: ['4x-trading', 'digital-marketing', 'ai'] },
     categories:       [{ type: String, enum: ['4x-trading', 'digital-marketing', 'ai'] }],
     signupType:       { type: String, enum: ['express', 'full'], default: 'full' },
@@ -349,6 +382,7 @@ export interface ICourse extends Document {
   program?:       string
   instructorId:   Types.ObjectId
   categoryId?:    Types.ObjectId
+  organizationId?: Types.ObjectId
   /* Denormalized stats */
   enrolledCount:  number
   ratingAvg:      number
@@ -372,9 +406,10 @@ const CourseSchema = new Schema<ICourse>(
     language:      { type: String, default: 'English' },
     tags:          [{ type: String }],
     program:       { type: String },
-    instructorId:  { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    categoryId:    { type: Schema.Types.ObjectId, ref: 'Category' },
-    enrolledCount: { type: Number, default: 0 },
+    instructorId:   { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    categoryId:     { type: Schema.Types.ObjectId, ref: 'Category' },
+    organizationId: { type: Schema.Types.ObjectId, ref: 'Organization' },
+    enrolledCount:  { type: Number, default: 0 },
     ratingAvg:     { type: Number, default: 0 },
     ratingCount:   { type: Number, default: 0 },
   },
@@ -384,6 +419,7 @@ const CourseSchema = new Schema<ICourse>(
 CourseSchema.index({ instructorId: 1 })
 CourseSchema.index({ categoryId: 1 })
 CourseSchema.index({ status: 1 })
+CourseSchema.index({ organizationId: 1 })
 CourseSchema.index({ title: 'text', description: 'text', tags: 'text' })  // full-text search
 
 export const CourseModel = mongoose.model<ICourse>('Course', CourseSchema)
@@ -471,6 +507,7 @@ export interface IEnrollment extends Document {
   completedAt?:    Date
   certificateId?:  string   // generated cert UUID
   blockedLessons:  Types.ObjectId[]  // lessons blocked by admin/instructor
+  organizationId?: Types.ObjectId
   createdAt:       Date
   updatedAt:       Date
 }
@@ -486,6 +523,7 @@ const EnrollmentSchema = new Schema<IEnrollment>(
     completedAt:     { type: Date },
     certificateId:   { type: String },
     blockedLessons:  [{ type: Schema.Types.ObjectId, ref: 'Lesson' }],
+    organizationId:  { type: Schema.Types.ObjectId, ref: 'Organization' },
   },
   baseSchemaOptions,
 )
@@ -698,6 +736,9 @@ export interface ILiveClass extends Document {
   /* Instructor reminder tracking */
   reminderInstructor15MinSent: boolean
 
+  /* Multi-org */
+  organizationId?: Types.ObjectId
+
   createdAt:      Date
   updatedAt:      Date
 }
@@ -735,6 +776,7 @@ const LiveClassSchema = new Schema<ILiveClass>(
     room:              { type: String, maxlength: 100 },
     rescheduledReason:           { type: String, maxlength: 2000 },
     reminderInstructor15MinSent: { type: Boolean, default: false },
+    organizationId:              { type: Schema.Types.ObjectId, ref: 'Organization' },
   },
   baseSchemaOptions,
 )
@@ -742,6 +784,7 @@ const LiveClassSchema = new Schema<ILiveClass>(
 LiveClassSchema.index({ courseId: 1, scheduledStart: 1 })
 LiveClassSchema.index({ scheduledStart: 1 })
 LiveClassSchema.index({ muxLiveStreamId: 1 }, { sparse: true })
+LiveClassSchema.index({ organizationId: 1 })
 
 export const LiveClassModel = mongoose.model<ILiveClass>('LiveClass', LiveClassSchema)
 
@@ -1004,17 +1047,18 @@ export const UserStreakModel = mongoose.model<IUserStreak>('UserStreak', UserStr
 export type CouponDiscountType = 'percent' | 'fixed'
 
 export interface ICoupon extends Document {
-  id:           string
-  code:         string          // UPPERCASE, unique
-  discountType: CouponDiscountType
-  discountValue: number
-  maxUses:      number          // 0 = unlimited
-  usedCount:    number
-  expiresAt?:   Date
-  isActive:     boolean
-  appliesTo:    Types.ObjectId[]   // empty = all courses
-  createdAt:    Date
-  updatedAt:    Date
+  id:             string
+  code:           string          // UPPERCASE, unique
+  discountType:   CouponDiscountType
+  discountValue:  number
+  maxUses:        number          // 0 = unlimited
+  usedCount:      number
+  expiresAt?:     Date
+  isActive:       boolean
+  appliesTo:      Types.ObjectId[]   // empty = all courses in org
+  organizationId?: Types.ObjectId   // null = global (all orgs)
+  createdAt:      Date
+  updatedAt:      Date
 }
 
 const CouponSchema = new Schema<ICoupon>(
@@ -1022,17 +1066,19 @@ const CouponSchema = new Schema<ICoupon>(
     code:          { type: String, required: true, unique: true, uppercase: true, trim: true, maxlength: 50 },
     discountType:  { type: String, enum: ['percent', 'fixed'], required: true },
     discountValue: { type: Number, required: true, min: 0 },
-    maxUses:       { type: Number, default: 0, min: 0 },
-    usedCount:     { type: Number, default: 0, min: 0 },
-    expiresAt:     { type: Date },
-    isActive:      { type: Boolean, default: true },
-    appliesTo:     [{ type: Schema.Types.ObjectId, ref: 'Course' }],
+    maxUses:        { type: Number, default: 0, min: 0 },
+    usedCount:      { type: Number, default: 0, min: 0 },
+    expiresAt:      { type: Date },
+    isActive:       { type: Boolean, default: true },
+    appliesTo:      [{ type: Schema.Types.ObjectId, ref: 'Course' }],
+    organizationId: { type: Schema.Types.ObjectId, ref: 'Organization' },
   },
   baseSchemaOptions,
 )
 
 CouponSchema.index({ code: 1 })
 CouponSchema.index({ isActive: 1 })
+CouponSchema.index({ organizationId: 1 })
 
 export const CouponModel = mongoose.model<ICoupon>('Coupon', CouponSchema)
 
@@ -1050,6 +1096,7 @@ export interface IOrder extends Document {
   id:                       string
   userId:                   Types.ObjectId
   courseId:                 Types.ObjectId
+  organizationId?:          Types.ObjectId
   gateway:                  OrderGateway
   stripeCheckoutSessionId?: string
   stripePaymentIntentId?:   string
@@ -1073,8 +1120,9 @@ export interface IOrder extends Document {
 
 const OrderSchema = new Schema<IOrder>(
   {
-    userId:                  { type: Schema.Types.ObjectId, ref: 'User',   required: true },
-    courseId:                { type: Schema.Types.ObjectId, ref: 'Course', required: true },
+    userId:                  { type: Schema.Types.ObjectId, ref: 'User',         required: true },
+    courseId:                { type: Schema.Types.ObjectId, ref: 'Course',       required: true },
+    organizationId:          { type: Schema.Types.ObjectId, ref: 'Organization' },
     gateway:                 { type: String, enum: ['stripe', 'razorpay', 'tabby', 'abzer'], required: true, default: 'stripe' },
     stripeCheckoutSessionId: { type: String },
     stripePaymentIntentId:   { type: String },
@@ -1580,19 +1628,20 @@ export interface ISupportMessage {
 }
 
 export interface ISupportTicket extends Document {
-  id:             string
-  userId:         Types.ObjectId
-  subject:        string
-  category:       SupportCategory
-  program?:       string
-  status:         SupportTicketStatus
-  messages:       ISupportMessage[]
-  lastMessageAt:  Date
-  lastSenderRole: 'student' | 'admin'
-  userUnread:     boolean
-  adminUnread:    boolean
-  createdAt:      Date
-  updatedAt:      Date
+  id:              string
+  userId:          Types.ObjectId
+  subject:         string
+  category:        SupportCategory
+  program?:        string
+  status:          SupportTicketStatus
+  messages:        ISupportMessage[]
+  lastMessageAt:   Date
+  lastSenderRole:  'student' | 'admin'
+  userUnread:      boolean
+  adminUnread:     boolean
+  organizationId?: Types.ObjectId
+  createdAt:       Date
+  updatedAt:       Date
 }
 
 const SupportMessageSchema = new Schema<ISupportMessage>(
@@ -1617,8 +1666,11 @@ const SupportTicketSchema = new Schema<ISupportTicket>(
     lastSenderRole: { type: String, enum: ['student', 'admin'], default: 'student' },
     userUnread:     { type: Boolean, default: false },
     adminUnread:    { type: Boolean, default: true },
+    organizationId: { type: Schema.Types.ObjectId, ref: 'Organization' },
   },
   baseSchemaOptions,
 )
+
+SupportTicketSchema.index({ organizationId: 1 })
 
 export const SupportTicketModel = mongoose.model<ISupportTicket>('SupportTicket', SupportTicketSchema)

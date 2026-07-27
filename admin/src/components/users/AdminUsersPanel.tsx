@@ -21,6 +21,8 @@ import { AddUserModal } from '@/components/users/AddUserModal'
 const ROLE_STYLE: Record<string, { bg: string; color: string; label: string }> = {
   super_admin:              { bg: 'rgba(168,85,247,0.18)',   color: '#A855F7', label: 'Super Admin' },
   admin:                    { bg: 'rgba(251,146,60,0.14)',   color: '#FB923C', label: 'Admin' },
+  sub_admin:                { bg: 'rgba(245,158,11,0.14)',   color: '#F59E0B', label: 'Sub Admin' },
+  support:                  { bg: 'rgba(20,184,166,0.14)',   color: '#14B8A6', label: 'Support' },
   '4x_admin':               { bg: 'rgba(96,165,250,0.14)',  color: '#60A5FA', label: 'FOREX Admin' },
   digital_marketing_admin:  { bg: 'rgba(52,211,153,0.14)',  color: '#34D399', label: 'DM Admin' },
   ai_admin:                 { bg: 'rgba(168,85,247,0.14)',   color: '#C084FC', label: 'AI Admin' },
@@ -45,7 +47,7 @@ function fmtDate(d?: string) {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-type RoleFilter   = 'all' | 'super_admin' | 'admin' | '4x_admin' | 'digital_marketing_admin' | 'instructor'
+type RoleFilter   = 'all' | 'super_admin' | 'admin' | 'sub_admin' | 'support' | '4x_admin' | 'digital_marketing_admin' | 'instructor'
 type StatusFilter = 'all' | 'active' | 'inactive'
 
 function getRoleOptions(myRole: string): { value: string; label: string }[] {
@@ -54,16 +56,25 @@ function getRoleOptions(myRole: string): { value: string; label: string }[] {
       { value: 'all',                     label: 'All Staff' },
       { value: 'super_admin',             label: 'Super Admin' },
       { value: 'admin',                   label: 'Admin' },
+      { value: 'sub_admin',              label: 'Sub Admin' },
+      { value: 'support',                label: 'Support' },
       { value: '4x_admin',               label: 'FOREX Admin' },
       { value: 'digital_marketing_admin', label: 'DM Admin' },
       { value: 'instructor',              label: 'Instructor' },
     ]
     case 'admin': return [
       { value: 'all',                     label: 'All Staff' },
-      { value: 'admin',                   label: 'Admin' },
-      { value: '4x_admin',               label: 'FOREX Admin' },
-      { value: 'digital_marketing_admin', label: 'DM Admin' },
+      { value: 'sub_admin',              label: 'Sub Admin' },
+      { value: 'support',                label: 'Support' },
       { value: 'instructor',              label: 'Instructor' },
+    ]
+    case 'sub_admin': return [
+      { value: 'all',        label: 'All' },
+      { value: 'instructor', label: 'Instructor' },
+    ]
+    case 'support': return [
+      { value: 'all',        label: 'All' },
+      { value: 'instructor', label: 'Instructor' },
     ]
     case '4x_admin': return [
       { value: 'all',       label: 'All (FOREX Trading)' },

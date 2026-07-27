@@ -8,6 +8,7 @@
     "start": "bun src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target bun",
     "seed": "bun src/scripts/seed.ts",
+    "migrate-orgs": "bun src/scripts/migrate-orgs.ts",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {

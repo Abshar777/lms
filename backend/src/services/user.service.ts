@@ -19,7 +19,7 @@ export class UserService {
   private readonly repo         = new UserRepository()
   private readonly refreshRepo  = new RefreshTokenRepository()
 
-  async listByRole(role: UserRole | undefined, params: { page: number; perPage: number; search?: string; category?: string; status?: 'active' | 'inactive'; excludeStudents?: boolean; enrollmentStatus?: 'pending' | 'approved' | 'rejected' | 'cancelled' }) {
+  async listByRole(role: UserRole | undefined, params: { page: number; perPage: number; search?: string; category?: string; status?: 'active' | 'inactive'; excludeStudents?: boolean; enrollmentStatus?: 'pending' | 'approved' | 'rejected' | 'cancelled'; organizationId?: string }) {
     return this.repo.listByRole(role, params)
   }
 
@@ -34,7 +34,7 @@ export class UserService {
      Deactivation also revokes all refresh tokens for that user. */
   async adminUpdate(
     id: string,
-    dto: { role?: UserRole; isActive?: boolean; isVerified?: boolean; name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | 'ai' | null; categories?: ('4x-trading' | 'digital-marketing' | 'ai')[]; avatarUrl?: string; headline?: string; bio?: string },
+    dto: { role?: UserRole; isActive?: boolean; isVerified?: boolean; name?: string; email?: string; category?: '4x-trading' | 'digital-marketing' | 'ai' | null; categories?: ('4x-trading' | 'digital-marketing' | 'ai')[]; avatarUrl?: string; headline?: string; bio?: string; program?: import('@/types/index.ts').ProgramType },
   ): Promise<IUser> {
     if (!Types.ObjectId.isValid(id)) {
       throw new UserError('INVALID_ID', 'Invalid user id', 400)
@@ -47,6 +47,7 @@ export class UserService {
     if (dto.avatarUrl  !== undefined) update.avatarUrl  = dto.avatarUrl || undefined
     if (dto.headline   !== undefined) update.headline   = dto.headline || undefined
     if (dto.bio        !== undefined) update.bio        = dto.bio || undefined
+    if (dto.program    !== undefined) update.program    = dto.program || undefined
     if (dto.categories !== undefined) {
       /* Multi-select path: set categories directly, keep category in sync with first */
       update.categories = dto.categories as any
@@ -85,16 +86,18 @@ export class UserService {
   }
 
   async adminCreateUser(dto: {
-    name:        string
-    email:       string
-    password:    string
-    role:        UserRole
-    bio?:        string
-    headline?:   string
-    category?:   '4x-trading' | 'digital-marketing' | 'ai'
-    categories?: ('4x-trading' | 'digital-marketing' | 'ai')[]
-    avatarUrl?:  string
-    approvedBy?: string
+    name:            string
+    email:           string
+    password:        string
+    role:            UserRole
+    bio?:            string
+    headline?:       string
+    category?:       '4x-trading' | 'digital-marketing' | 'ai'
+    categories?:     ('4x-trading' | 'digital-marketing' | 'ai')[]
+    avatarUrl?:      string
+    approvedBy?:     string
+    organizationId?: string
+    program?:        import('@/types/index.ts').ProgramType
   }): Promise<IUser> {
     const exists = await this.repo.emailExists(dto.email)
     if (exists) {
@@ -107,12 +110,14 @@ export class UserService {
       : dto.category ? [dto.category] : []
     const resolvedCategory = resolvedCategories[0]
     const user = await this.repo.createUser({
-      name:         dto.name.trim(),
-      email:        dto.email,
+      name:           dto.name.trim(),
+      email:          dto.email,
       passwordHash,
-      role:         dto.role,
-      category:     resolvedCategory,
-      categories:   resolvedCategories,
+      role:           dto.role,
+      category:       resolvedCategory,
+      categories:     resolvedCategories,
+      ...(dto.organizationId && { organizationId: dto.organizationId }),
+      ...(dto.program        && { program:         dto.program }),
     })
     /* Patch bio / headline / avatarUrl / enrollment approval if provided */
     const patch: Partial<IUser> = {}

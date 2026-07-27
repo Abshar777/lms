@@ -6,24 +6,25 @@ import {
 } from '@/models/schema.ts'
 
 export interface CourseListParams {
-  page:          number
-  perPage:       number
-  search?:       string
+  page:            number
+  perPage:         number
+  search?:         string
   /** 'text' (default) uses Mongo $text index — whole-word, relevance-ranked.
    *  'prefix' uses $regex — supports partial strings, ideal for typeahead. */
-  searchMode?:   'text' | 'prefix'
-  level?:        'beginner' | 'intermediate' | 'advanced'
-  category?:     string   // category slug
-  program?:      string
-  free?:         boolean
-  instructorId?: string
-  durationMin?:  number
-  durationMax?:  number
-  priceMin?:     number
-  priceMax?:     number
+  searchMode?:     'text' | 'prefix'
+  level?:          'beginner' | 'intermediate' | 'advanced'
+  category?:       string   // category slug
+  program?:        string
+  free?:           boolean
+  instructorId?:   string
+  organizationId?: string
+  durationMin?:    number
+  durationMax?:    number
+  priceMin?:       number
+  priceMax?:       number
   /* Accepts named presets ("popular" / "rating" / "newest" / "price_lo" / "price_hi")
      OR `${field}:${direction}` for column sorts coming from admin tables. */
-  sort?:         string
+  sort?:           string
 }
 
 /* ─── Sort resolver ────────────────────────────────
@@ -108,6 +109,10 @@ export class CourseRepository extends BaseRepository<ICourse> {
 
     if (params.program) filter['program'] = params.program
 
+    if (params.organizationId && Types.ObjectId.isValid(params.organizationId)) {
+      filter['organizationId'] = new Types.ObjectId(params.organizationId)
+    }
+
     /* When using $text and no explicit sort, rank by relevance score.
        For prefix ($regex) searches, fall back to popularity (enrolledCount). */
     const useTextScore = !!params.search && params.searchMode !== 'prefix' && !params.sort
@@ -189,6 +194,10 @@ export class CourseRepository extends BaseRepository<ICourse> {
     }
 
     if (params.program) filter['program'] = params.program
+
+    if (params.organizationId && Types.ObjectId.isValid(params.organizationId)) {
+      filter['organizationId'] = new Types.ObjectId(params.organizationId)
+    }
 
     const sort = resolveSort(params.sort)
 
