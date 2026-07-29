@@ -379,9 +379,9 @@ export interface ICourse extends Document {
   durationMins:   number
   language:       string
   tags?:          string[]
-  program?:       string
-  instructorId:   Types.ObjectId
-  categoryId?:    Types.ObjectId
+  program?:        string
+  instructorId:    Types.ObjectId
+  categoryId?:     Types.ObjectId
   organizationId?: Types.ObjectId
   /* Denormalized stats */
   enrolledCount:  number
@@ -1047,18 +1047,18 @@ export const UserStreakModel = mongoose.model<IUserStreak>('UserStreak', UserStr
 export type CouponDiscountType = 'percent' | 'fixed'
 
 export interface ICoupon extends Document {
-  id:             string
-  code:           string          // UPPERCASE, unique
-  discountType:   CouponDiscountType
-  discountValue:  number
-  maxUses:        number          // 0 = unlimited
-  usedCount:      number
-  expiresAt?:     Date
-  isActive:       boolean
-  appliesTo:      Types.ObjectId[]   // empty = all courses in org
-  organizationId?: Types.ObjectId   // null = global (all orgs)
-  createdAt:      Date
-  updatedAt:      Date
+  id:           string
+  code:         string          // UPPERCASE, unique
+  discountType: CouponDiscountType
+  discountValue: number
+  maxUses:      number          // 0 = unlimited
+  usedCount:    number
+  expiresAt?:   Date
+  isActive:        boolean
+  appliesTo:       Types.ObjectId[]   // empty = all courses in org
+  organizationId?: Types.ObjectId    // null = global (all orgs)
+  createdAt:       Date
+  updatedAt:       Date
 }
 
 const CouponSchema = new Schema<ICoupon>(
@@ -1087,17 +1087,18 @@ export const CouponModel = mongoose.model<ICoupon>('Coupon', CouponSchema)
    ─────────────────────────────────────────────────────
    amount / discountAmount are stored in CENTS.
    status: pending → paid (webhook) → refunded (admin)
+           pending → cancelled (Tamara ORDER_EXPIRED/DECLINED webhook)
 ───────────────────────────────────────────────────── */
-export type OrderStatus = 'pending' | 'paid' | 'refunded'
+export type OrderStatus = 'pending' | 'paid' | 'refunded' | 'cancelled'
 
 export type OrderGateway = 'stripe' | 'razorpay' | 'tabby' | 'abzer' | 'tamara'
 
 export interface IOrder extends Document {
-  id:                       string
-  userId:                   Types.ObjectId
-  courseId:                 Types.ObjectId
-  organizationId?:          Types.ObjectId
-  gateway:                  OrderGateway
+  id:              string
+  userId:          Types.ObjectId
+  courseId:        Types.ObjectId
+  organizationId?: Types.ObjectId
+  gateway:         OrderGateway
   stripeCheckoutSessionId?: string
   stripePaymentIntentId?:   string
   razorpayOrderId?:         string
@@ -1117,6 +1118,7 @@ export interface IOrder extends Document {
   discountAmount:           number    // smallest-unit saving by coupon (0 if none)
   stripeInvoiceUrl?:        string
   refundedAt?:              Date
+  cancelledAt?:             Date
   createdAt:                Date
   updatedAt:                Date
 }
@@ -1141,11 +1143,12 @@ const OrderSchema = new Schema<IOrder>(
     tamaraPaymentId:         { type: String },
     amount:                  { type: Number, required: true, min: 0 },
     currency:                { type: String, required: true, default: 'usd', maxlength: 3 },
-    status:                  { type: String, enum: ['pending', 'paid', 'refunded'], default: 'pending' },
+    status:                  { type: String, enum: ['pending', 'paid', 'refunded', 'cancelled'], default: 'pending' },
     couponId:                { type: Schema.Types.ObjectId, ref: 'Coupon' },
     discountAmount:          { type: Number, default: 0, min: 0 },
     stripeInvoiceUrl:        { type: String, maxlength: 2048 },
     refundedAt:              { type: Date },
+    cancelledAt:             { type: Date },
   },
   baseSchemaOptions,
 )
@@ -1634,15 +1637,15 @@ export interface ISupportMessage {
 }
 
 export interface ISupportTicket extends Document {
-  id:              string
-  userId:          Types.ObjectId
-  subject:         string
-  category:        SupportCategory
-  program?:        string
-  status:          SupportTicketStatus
-  messages:        ISupportMessage[]
-  lastMessageAt:   Date
-  lastSenderRole:  'student' | 'admin'
+  id:             string
+  userId:         Types.ObjectId
+  subject:        string
+  category:       SupportCategory
+  program?:       string
+  status:         SupportTicketStatus
+  messages:       ISupportMessage[]
+  lastMessageAt:  Date
+  lastSenderRole: 'student' | 'admin'
   userUnread:      boolean
   adminUnread:     boolean
   organizationId?: Types.ObjectId

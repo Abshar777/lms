@@ -8,7 +8,7 @@ import { api } from '@/lib/axios'
 import { useQueryClient } from '@tanstack/react-query'
 import Spinner from '@/components/ui/Spinner'
 
-const STATUS_TABS = ['all', 'pending', 'paid', 'refunded'] as const
+const STATUS_TABS = ['all', 'pending', 'paid', 'refunded', 'cancelled'] as const
 type StatusTab = typeof STATUS_TABS[number]
 
 function asUser(o: AdminOrder) {
@@ -19,9 +19,10 @@ function asCourse(o: AdminOrder) {
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  paid:     '#4ADE80',
-  pending:  '#FACC15',
-  refunded: 'rgba(255,255,255,0.35)',
+  paid:      '#4ADE80',
+  pending:   '#FACC15',
+  refunded:  'rgba(255,255,255,0.35)',
+  cancelled: '#F87171',
 }
 
 const GATEWAY_LABEL: Record<string, { label: string; color: string }> = {

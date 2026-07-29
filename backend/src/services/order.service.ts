@@ -695,6 +695,8 @@ export class OrderService {
 
     /* Authorise with Tamara (approved → authorised) then capture (authorised → fully_captured) */
     await this.tamaraSvc.authoriseOrder(tamaraOrderId)
+
+    /* Fetch course details for capture request */
     const course = await CourseModel.findById(order.courseId).select('title priceAED price').lean()
     const amountAED = (order.amount / 100).toFixed(2)
     await this.tamaraSvc.captureOrder({
@@ -703,6 +705,7 @@ export class OrderService {
       courseTitle: (course as any)?.title ?? 'Course',
       courseId:    order.courseId.toString(),
     })
+
     await this.orderRepo.fulfillTamara(order.id, tamaraOrderId)
 
     if (order.couponId) {
@@ -715,6 +718,26 @@ export class OrderService {
     await this._autoApproveViaPayment(order.userId.toString(), order.courseId.toString())
     void this._sendPostPaymentNotifications(order.userId.toString(), order.courseId.toString(), order.id)
     logger.info({ tamaraOrderId, orderId: order.id }, 'Tamara: order fulfilled via webhook')
+  }
+
+  /* ─── Tamara webhook cancellation (ORDER_EXPIRED / ORDER_DECLINED) ───────── */
+  async cancelTamaraFromWebhook(tamaraOrderId: string, ourOrderId?: string): Promise<void> {
+    const order = ourOrderId
+      ? await this.orderRepo.findById(ourOrderId)
+      : await this.orderRepo.findByTamaraOrderId(tamaraOrderId)
+
+    if (!order) {
+      logger.warn({ tamaraOrderId, ourOrderId }, 'Tamara cancel-webhook: no matching order')
+      return
+    }
+    /* Only cancel pending orders — don't touch already-paid ones */
+    if (order.status !== 'pending') {
+      logger.info({ orderId: order.id, status: order.status }, 'Tamara cancel-webhook: order not pending, skipping')
+      return
+    }
+
+    await this.orderRepo.markCancelled(order.id)
+    logger.info({ tamaraOrderId, orderId: order.id }, 'Tamara: order cancelled via webhook')
   }
 
   /* ─── Tamara return-URL verify + fulfill (called by client after redirect) ── */

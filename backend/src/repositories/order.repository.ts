@@ -107,6 +107,14 @@ export class OrderRepository {
     ).exec()
   }
 
+  async markCancelled(id: string): Promise<IOrder | null> {
+    return OrderModel.findByIdAndUpdate(
+      id,
+      { $set: { status: 'cancelled', cancelledAt: new Date() } },
+      { new: true },
+    ).exec()
+  }
+
   async listForUser(userId: string): Promise<IOrder[]> {
     return OrderModel
       .find({ userId })

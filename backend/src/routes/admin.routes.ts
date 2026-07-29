@@ -759,7 +759,7 @@ router.get('/analytics/revenue', requireAdmin, validate(revenueQuerySchema, 'que
 const ordersQuerySchema = z.object({
   page:     z.coerce.number().int().min(1).default(1),
   per_page: z.coerce.number().int().min(1).max(100).default(20),
-  status:   z.enum(['pending', 'paid', 'refunded', 'all']).default('all'),
+  status:   z.enum(['pending', 'paid', 'refunded', 'cancelled', 'all']).default('all'),
 })
 
 router.get('/orders', requireAdmin, validate(ordersQuerySchema, 'query'), async (req: Request, res: Response, next: NextFunction) => {

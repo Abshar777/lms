@@ -306,6 +306,9 @@ router.post('/tamara', async (req: Request, res: Response) => {
     if (eventType === 'ORDER_APPROVED' && tamaraOrderId) {
       await orderSvc.fulfillTamaraFromWebhook(tamaraOrderId, ourOrderId)
       logger.info({ tamaraOrderId, ourOrderId }, 'Tamara: order fulfilled via webhook')
+    } else if ((eventType === 'ORDER_EXPIRED' || eventType === 'ORDER_DECLINED') && tamaraOrderId) {
+      await orderSvc.cancelTamaraFromWebhook(tamaraOrderId, ourOrderId)
+      logger.info({ tamaraOrderId, ourOrderId, eventType }, 'Tamara: order cancelled via webhook')
     } else {
       logger.debug({ eventType, tamaraOrderId }, 'Tamara webhook: ignored event')
     }

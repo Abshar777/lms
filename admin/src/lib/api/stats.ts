@@ -104,7 +104,7 @@ export interface AdminOrder {
   courseId:                string | { id: string; title: string; slug: string }
   amount:                  number   // cents
   currency:                string
-  status:                  'pending' | 'paid' | 'refunded'
+  status:                  'pending' | 'paid' | 'refunded' | 'cancelled'
   gateway:                 'stripe' | 'razorpay' | 'abzer' | 'tamara' | 'tabby'
   discountAmount:          number
   stripePaymentIntentId?:  string

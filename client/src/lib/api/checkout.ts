@@ -285,7 +285,7 @@ export interface MyOrder {
   gateway:             'razorpay' | 'stripe' | 'tabby' | 'abzer' | 'tamara'
   amount:              number
   currency:            string
-  status:              'pending' | 'paid' | 'refunded'
+  status:              'pending' | 'paid' | 'refunded' | 'cancelled'
   discountAmount:      number
   razorpayPaymentId?:  string
   tabbyPaymentId?:     string
