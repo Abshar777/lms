@@ -71,6 +71,13 @@ const envSchema = z.object({
   ABZER_BASE_URL:        z.string().default('https://billxpro.com/as/api/v100'),
   ABZER_CURRENCY:        z.string().length(3).default('AED'),
 
+  /* Tamara — BNPL gateway for UAE/GCC (AED) */
+  TAMARA_API_KEY:           opt(z.string().min(1)),
+  TAMARA_NOTIFICATION_TOKEN: opt(z.string().min(1)),
+  /* Production: https://api.tamara.co  |  Sandbox/QA: https://api-sandbox.tamara.co */
+  TAMARA_BASE_URL:          z.string().default('https://api-sandbox.tamara.co'),
+  TAMARA_CURRENCY:          z.string().length(3).default('AED'),
+
   /* UAE exchange rate — used when priceAED is not set on a course */
   UAE_EXCHANGE_RATE: z.coerce.number().positive().default(3.67),
 })

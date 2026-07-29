@@ -1,4 +1,3 @@
-import { createHmac, timingSafeEqual } from 'crypto'
 import { env } from '@/config/env.ts'
 import { logger } from '@/utils/logger.ts'
 
@@ -33,12 +32,13 @@ interface TabbyCheckoutRequest {
         category:        string
       }>
     }
-    merchant_urls: {
-      success: string
-      cancel:  string
-      failure: string
-      webhook: string
-    }
+  }
+  /* merchant_urls is at ROOT level, not inside payment */
+  merchant_urls: {
+    success: string
+    cancel:  string
+    failure: string
+    webhook: string
   }
   merchant_code: string
   lang:          string
@@ -55,8 +55,9 @@ interface TabbyCheckoutResponse {
   }
   configuration?: {
     available_products?: {
-      installments?: { web_url: string }
-      pay_later?:    { web_url: string }
+      /* installments is an array of products, not a single object */
+      installments?: Array<{ web_url: string; qr_code?: string }>
+      pay_later?:    Array<{ web_url: string }>
     }
   }
 }
@@ -83,14 +84,82 @@ export interface TabbyCheckoutResult {
 /* ─── TabbyService ────────────────────────────────────── */
 
 export class TabbyService {
-  private readonly baseUrl = 'https://api.tabby.ai/api/v2'
+  private readonly baseUrl    = 'https://api.tabby.ai/api/v2'
+  private readonly webhookUrl = 'https://api.tabby.ai/api/v1'  // webhook registration is v1
+
+  /* Register our webhook with Tabby (must be called once per merchant_code + key pair).
+     Safe to call repeatedly — Tabby ignores duplicate registrations (same URL + header). */
+  async registerWebhook(): Promise<void> {
+    if (!env.TABBY_SECRET_KEY || !env.TABBY_WEBHOOK_SECRET || !env.BACKEND_PUBLIC_URL) return
+    const url = `${env.BACKEND_PUBLIC_URL}/api/v1/webhooks/tabby`
+    try {
+      const resp = await fetch(`${this.webhookUrl}/webhooks`, {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${env.TABBY_SECRET_KEY}`,
+        },
+        body: JSON.stringify({
+          url,
+          is_test: !env.TABBY_SECRET_KEY.startsWith('sk_live_'),
+          header: {
+            title: 'Authorization',
+            value: `Bearer ${env.TABBY_WEBHOOK_SECRET}`,
+          },
+        }),
+      })
+      if (resp.ok || resp.status === 409) {
+        logger.info({ url }, 'Tabby webhook registered')
+      } else {
+        const text = await resp.text()
+        logger.warn({ status: resp.status, text }, 'Tabby webhook registration failed (non-fatal)')
+      }
+    } catch (err) {
+      logger.warn({ err }, 'Tabby webhook registration error (non-fatal)')
+    }
+  }
+
+  /* Background pre-scoring: check if customer is eligible before showing Tabby.
+     Uses the same /checkout endpoint but with a minimal payload (no merchant_urls).
+     Returns available=true on API errors (fail-safe per Tabby's best practices). */
+  async checkEligibility(amountAED: number, buyerEmail: string, buyerPhone?: string): Promise<{
+    available:       boolean
+    rejectionReason: string | null
+  }> {
+    if (!env.TABBY_SECRET_KEY || !env.TABBY_MERCHANT_CODE) {
+      return { available: false, rejectionReason: null }
+    }
+    try {
+      const resp = await fetch(`${this.baseUrl}/checkout`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${env.TABBY_SECRET_KEY}` },
+        body: JSON.stringify({
+          payment: {
+            amount:   amountAED.toFixed(2),
+            currency: env.TABBY_CURRENCY,
+            buyer: { email: buyerEmail, phone: buyerPhone ?? '' },
+          },
+          merchant_code: env.TABBY_MERCHANT_CODE,
+        }),
+      })
+      if (!resp.ok) return { available: true, rejectionReason: null }  // fail-safe
+      const data = await resp.json() as { status: string; configuration?: { products?: { installments?: { rejection_reason?: string } } } }
+      if (data.status === 'rejected') {
+        const reason = data.configuration?.products?.installments?.rejection_reason ?? 'not_available'
+        return { available: false, rejectionReason: reason }
+      }
+      return { available: true, rejectionReason: null }
+    } catch {
+      return { available: true, rejectionReason: null }  // fail-safe on network errors
+    }
+  }
 
   async createCheckout(opts: TabbyCreateCheckoutOptions): Promise<TabbyCheckoutResult> {
     if (!env.TABBY_SECRET_KEY || !env.TABBY_MERCHANT_CODE) {
       throw new Error('TABBY_SECRET_KEY and TABBY_MERCHANT_CODE must be configured')
     }
 
-    const amountStr = opts.amountAED.toFixed(2)
+    const amountStr  = opts.amountAED.toFixed(2)
     const webhookUrl = `${env.BACKEND_PUBLIC_URL}/api/v1/webhooks/tabby`
 
     const body: TabbyCheckoutRequest = {
@@ -122,12 +191,13 @@ export class TabbyService {
             category:        'Digital Services',
           }],
         },
-        merchant_urls: {
-          success: opts.successUrl,
-          cancel:  opts.cancelUrl,
-          failure: opts.failureUrl,
-          webhook: webhookUrl,
-        },
+      },
+      /* merchant_urls at ROOT level per Tabby API spec */
+      merchant_urls: {
+        success: opts.successUrl,
+        cancel:  opts.cancelUrl,
+        failure: opts.failureUrl,
+        webhook: webhookUrl,
       },
       merchant_code: env.TABBY_MERCHANT_CODE,
       lang: 'en',
@@ -150,10 +220,10 @@ export class TabbyService {
 
     const data = await resp.json() as TabbyCheckoutResponse
 
-    /* Prefer installments, fall back to pay_later */
+    /* installments is an array — take the first element's web_url */
     const checkoutUrl =
-      data.configuration?.available_products?.installments?.web_url ??
-      data.configuration?.available_products?.pay_later?.web_url
+      data.configuration?.available_products?.installments?.[0]?.web_url ??
+      data.configuration?.available_products?.pay_later?.[0]?.web_url
 
     if (!checkoutUrl) {
       logger.error({ data }, 'Tabby: no checkout URL returned — product may not be available')
@@ -167,8 +237,29 @@ export class TabbyService {
     }
   }
 
-  /* Called after Tabby webhook confirms AUTHORIZED/CLOSED status */
-  async capturePayment(paymentId: string): Promise<void> {
+  /* Verify current payment status via server-to-server call (required before capture) */
+  async getPayment(paymentId: string): Promise<{ id: string; status: string }> {
+    if (!env.TABBY_SECRET_KEY) {
+      throw new Error('TABBY_SECRET_KEY not configured')
+    }
+    const resp = await fetch(`${this.baseUrl}/payments/${paymentId}`, {
+      headers: {
+        'Authorization': `Bearer ${env.TABBY_SECRET_KEY}`,
+      },
+    })
+    if (!resp.ok) {
+      const text = await resp.text()
+      logger.warn({ status: resp.status, paymentId, text }, 'Tabby getPayment failed')
+      throw new Error(`Tabby getPayment ${resp.status}: ${text}`)
+    }
+    const data = await resp.json() as { id: string; status: string }
+    return { id: data.id, status: data.status }
+  }
+
+  /* Capture an AUTHORIZED payment — must be called after webhook verification.
+     amountAED: decimal string e.g. "199.00"
+     ourOrderId: used as idempotency key (reference_id) */
+  async capturePayment(paymentId: string, amountAED: string, ourOrderId: string): Promise<void> {
     if (!env.TABBY_SECRET_KEY) {
       throw new Error('TABBY_SECRET_KEY not configured')
     }
@@ -178,24 +269,14 @@ export class TabbyService {
         'Content-Type':  'application/json',
         'Authorization': `Bearer ${env.TABBY_SECRET_KEY}`,
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify({
+        amount:       amountAED,
+        reference_id: ourOrderId,
+      }),
     })
     if (!resp.ok) {
       const text = await resp.text()
       logger.warn({ status: resp.status, paymentId, text }, 'Tabby capture failed (non-fatal)')
-    }
-  }
-
-  /* Verify Tabby webhook HMAC — returns true when valid */
-  verifyWebhookSignature(rawBody: string, signature: string, secret: string): boolean {
-    try {
-      const computed = createHmac('sha256', secret).update(rawBody).digest('hex')
-      const a = Buffer.from(computed,   'hex')
-      const b = Buffer.from(signature,  'hex')
-      if (a.length !== b.length) return false
-      return timingSafeEqual(a, b)
-    } catch {
-      return false
     }
   }
 }

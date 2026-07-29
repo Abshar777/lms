@@ -128,7 +128,7 @@ export function useRazorpayCheckout(opts: UseRazorpayCheckoutOptions = {}) {
 /* ─── Gateway config — which gateways this user should use ── */
 
 export interface GatewayConfig {
-  gateways: ('tabby' | 'abzer' | 'razorpay')[]
+  gateways: ('tabby' | 'abzer' | 'tamara' | 'razorpay')[]
   currency: 'AED' | 'INR' | 'USD'
 }
 
@@ -138,6 +138,32 @@ export function useGatewayConfig() {
     queryFn:  () => apiGet<GatewayConfig>('/checkout/config'),
     staleTime: 5 * 60_000,
     retry: false,
+  })
+}
+
+/* ─── Tamara pre-checkout eligibility check ─────────── */
+export function useTamaraPrescore(courseId: string) {
+  return useQuery({
+    queryKey: ['checkout', 'tamara-prescore', courseId],
+    queryFn:  () => apiPost<{ available: boolean; rejectionReason: string | null }>(
+      '/checkout/tamara/prescore', { courseId },
+    ),
+    enabled:  !!courseId,
+    staleTime: 5 * 60_000,
+    retry:    false,
+  })
+}
+
+/* ─── Tabby background pre-scoring (eligibility check) ─── */
+export function useTabbyPrescore(courseId: string) {
+  return useQuery({
+    queryKey: ['checkout', 'tabby-prescore', courseId],
+    queryFn:  () => apiPost<{ available: boolean; rejectionReason: string | null }>(
+      '/checkout/tabby/prescore', { courseId },
+    ),
+    enabled:  !!courseId,
+    staleTime: 5 * 60_000,
+    retry:    false,
   })
 }
 
@@ -194,6 +220,32 @@ export function useAbzerCheckout(opts: UseAbzerCheckoutOptions = {}) {
   })
 }
 
+/* ─── Tamara checkout (UAE BNPL redirect-based) ─────── */
+
+interface TamaraCreateOrderResult {
+  checkoutUrl:      string
+  tamaraCheckoutId: string
+}
+
+interface UseTamaraCheckoutOptions {
+  onError?: (msg: string) => void
+}
+
+export function useTamaraCheckout(opts: UseTamaraCheckoutOptions = {}) {
+  return useMutation({
+    mutationFn: async ({ courseId, slug, couponCode }: { courseId: string; slug: string; couponCode?: string }) => {
+      const result = await apiPost<TamaraCreateOrderResult>(
+        '/checkout/tamara/create-order',
+        { courseId, slug, couponCode },
+      )
+      window.location.href = result.checkoutUrl
+    },
+    onError: (err: Error) => {
+      opts.onError?.(err.message)
+    },
+  })
+}
+
 /* ─── Stripe checkout ───────────────────────────────── */
 export interface CheckoutSession {
   url: string
@@ -230,7 +282,7 @@ export function useValidateCoupon(code: string, courseId: string) {
 export interface MyOrder {
   id:                  string
   courseId:            string | { id: string; title: string; slug: string; thumbnailUrl?: string }
-  gateway:             'razorpay' | 'stripe' | 'tabby' | 'abzer'
+  gateway:             'razorpay' | 'stripe' | 'tabby' | 'abzer' | 'tamara'
   amount:              number
   currency:            string
   status:              'pending' | 'paid' | 'refunded'
@@ -238,9 +290,34 @@ export interface MyOrder {
   razorpayPaymentId?:  string
   tabbyPaymentId?:     string
   abzerPaymentId?:     string
+  tamaraPaymentId?:    string
   stripeInvoiceUrl?:   string
   refundedAt?:         string
   createdAt:           string
+}
+
+/* ─── Tabby return-URL verify hook ──────────────────── */
+export function useVerifyTabbyReturn() {
+  return useMutation({
+    mutationFn: async (input: { orderId: string; paymentId?: string }) => {
+      const res = await apiPost<{ needsRegistration: boolean }>(
+        '/checkout/tabby/verify-return', input,
+      )
+      return res
+    },
+  })
+}
+
+/* ─── Tamara return-URL verify hook ─────────────────── */
+export function useVerifyTamaraReturn() {
+  return useMutation({
+    mutationFn: async (input: { orderId: string }) => {
+      const res = await apiPost<{ needsRegistration: boolean }>(
+        '/checkout/tamara/verify-return', input,
+      )
+      return res
+    },
+  })
 }
 
 export const orderKeys = {

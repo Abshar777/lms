@@ -105,6 +105,7 @@ export interface AdminOrder {
   amount:                  number   // cents
   currency:                string
   status:                  'pending' | 'paid' | 'refunded'
+  gateway:                 'stripe' | 'razorpay' | 'abzer' | 'tamara' | 'tabby'
   discountAmount:          number
   stripePaymentIntentId?:  string
   stripeInvoiceUrl?:       string

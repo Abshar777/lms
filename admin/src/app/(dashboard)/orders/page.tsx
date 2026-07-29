@@ -24,6 +24,16 @@ const STATUS_COLOR: Record<string, string> = {
   refunded: 'rgba(255,255,255,0.35)',
 }
 
+const GATEWAY_LABEL: Record<string, { label: string; color: string }> = {
+  stripe:   { label: 'Stripe',   color: '#635BFF' },
+  razorpay: { label: 'Razorpay', color: '#3395FF' },
+  abzer:    { label: 'Abzer',    color: '#FF6B35' },
+  tamara:   { label: 'Tamara',   color: '#1EB59A' },
+  tabby:    { label: 'Tabby',    color: '#3D1D8E' },
+}
+
+const MANUAL_REFUND_GATEWAYS = new Set(['abzer', 'tamara', 'tabby'])
+
 export default function AdminOrdersPage() {
   const [status, setStatus] = useState<StatusTab>('all')
   const [page,   setPage]   = useState(1)
@@ -57,7 +67,7 @@ export default function AdminOrdersPage() {
           Orders
         </h1>
         <p className="mt-1 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
-          All Stripe payment records across the platform.
+          All payment records across the platform.
         </p>
       </div>
 
@@ -81,7 +91,7 @@ export default function AdminOrdersPage() {
           <table className="w-full text-xs">
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                {['Date', 'Student', 'Course', 'Amount', 'Discount', 'Status', ''].map(h => (
+                {['Date', 'Student', 'Course', 'Gateway', 'Amount', 'Discount', 'Status', ''].map(h => (
                   <th key={h} className="px-4 py-3 text-left font-semibold" style={{ color: 'rgba(255,255,255,0.4)' }}>
                     {h}
                   </th>
@@ -91,13 +101,13 @@ export default function AdminOrdersPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center">
+                  <td colSpan={8} className="py-16 text-center">
                     <Spinner size={18} variant="muted" />
                   </td>
                 </tr>
               ) : !data?.orders.length ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  <td colSpan={8} className="py-16 text-center text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>
                     No orders found.
                   </td>
                 </tr>
@@ -120,6 +130,17 @@ export default function AdminOrdersPage() {
                     </td>
                     <td className="px-4 py-3">
                       <p className="max-w-[180px] truncate font-medium text-white">{course?.title ?? '—'}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      {(() => {
+                        const gw = GATEWAY_LABEL[order.gateway] ?? { label: order.gateway ?? '—', color: 'rgba(255,255,255,0.4)' }
+                        return (
+                          <span className="rounded-md px-2 py-0.5 text-[10px] font-semibold"
+                            style={{ background: `${gw.color}22`, color: gw.color }}>
+                            {gw.label}
+                          </span>
+                        )
+                      })()}
                     </td>
                     <td className="px-4 py-3 font-bold text-white tabular-nums">
                       {formatUSD(order.amount, order.currency)}
@@ -146,16 +167,25 @@ export default function AdminOrdersPage() {
                           </a>
                         )}
                         {order.status === 'paid' && (
-                          <button
-                            onClick={() => handleRefund(order.id)}
-                            disabled={refunding === order.id}
-                            className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors hover:bg-white/05 disabled:opacity-40"
-                            style={{ color: '#F87171' }}>
-                            {refunding === order.id
-                              ? <Spinner size={11} />
-                              : <RotateCcw size={11} />}
-                            Refund
-                          </button>
+                          MANUAL_REFUND_GATEWAYS.has(order.gateway) ? (
+                            <span
+                              title={`Refund ${GATEWAY_LABEL[order.gateway]?.label ?? order.gateway} orders via the gateway dashboard`}
+                              className="rounded-lg px-2.5 py-1 text-[11px] font-semibold cursor-help"
+                              style={{ color: 'rgba(255,255,255,0.3)' }}>
+                              Manual refund
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleRefund(order.id)}
+                              disabled={refunding === order.id}
+                              className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors hover:bg-white/05 disabled:opacity-40"
+                              style={{ color: '#F87171' }}>
+                              {refunding === order.id
+                                ? <Spinner size={11} />
+                                : <RotateCcw size={11} />}
+                              Refund
+                            </button>
+                          )
                         )}
                       </div>
                     </td>

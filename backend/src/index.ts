@@ -5,6 +5,7 @@ import { env } from '@/config/env.ts'
 import { connectDatabase, disconnectDatabase } from '@/config/database.ts'
 import { logger } from '@/utils/logger.ts'
 import { startReminderJobs } from '@/jobs/reminders.job.ts'
+import { TabbyService } from '@/services/tabby.service.ts'
 import { seedDefaultRoles } from '@/utils/seedRoles.ts'
 import { seedOrganizations } from '@/utils/seedOrganizations.ts'
 import { UserModel, OrganizationModel, CourseModel, LiveClassModel, EnrollmentModel, OrderModel, CouponModel, SupportTicketModel } from '@/models/schema.ts'
@@ -94,6 +95,9 @@ async function bootstrap() {
   } else {
     logger.info(`⏸️   Reminder cron jobs skipped (instance ${process.env.NODE_APP_INSTANCE})`)
   }
+
+  /* Register Tabby webhook (idempotent — safe to call every boot) */
+  void new TabbyService().registerWebhook()
 
   /* 4. Graceful shutdown */
   const shutdown = (signal: string) => {

@@ -2,8 +2,8 @@ import { Router } from 'express'
 import { OrderService } from '@/services/order.service.ts'
 import { StripeService } from '@/services/stripe.service.ts'
 import { RazorpayService } from '@/services/razorpay.service.ts'
-import { TabbyService } from '@/services/tabby.service.ts'
 import { AbzerService } from '@/services/abzer.service.ts'
+import { TamaraService } from '@/services/tamara.service.ts'
 import { env } from '@/config/env.ts'
 import { logger } from '@/utils/logger.ts'
 import type { Request, Response } from 'express'
@@ -23,8 +23,8 @@ const router      = Router()
 const orderSvc    = new OrderService()
 const stripeSvc   = new StripeService()
 const razorpaySvc = new RazorpayService()
-const tabbySvc    = new TabbyService()
 const abzerSvc    = new AbzerService()
+const tamaraSvc   = new TamaraService()
 
 router.post('/stripe', async (req: Request, res: Response) => {
   const sig = req.headers['stripe-signature']
@@ -150,22 +150,19 @@ router.post('/razorpay', async (req: Request, res: Response) => {
 /* ─────────────────────────────────────────────────────
    Tabby webhook
    Tabby calls this when a payment is AUTHORIZED/CLOSED.
-   Fulfills the order and triggers enrollment.
+   Security: Tabby sends the static Authorization header
+   registered with the webhook (if TABBY_WEBHOOK_SECRET set).
+   The fulfillment itself calls getPayment() server-to-server
+   to verify status before capturing — defence in depth.
    Always responds 200 so Tabby doesn't retry on errors.
 ───────────────────────────────────────────────────── */
 router.post('/tabby', async (req: Request, res: Response) => {
-  /* Verify signature when secret is configured */
+  /* Verify static Authorization header when secret is configured.
+     Register the webhook with: auth_header.value = "Bearer <TABBY_WEBHOOK_SECRET>" */
   if (env.TABBY_WEBHOOK_SECRET) {
-    const sig     = req.headers['x-tabby-signature'] as string | undefined
-    const rawBody = req.body as Buffer
-    if (!sig || !Buffer.isBuffer(rawBody)) {
-      logger.warn('Tabby webhook: missing signature or body')
-      res.status(200).json({ received: true })
-      return
-    }
-    const valid = tabbySvc.verifyWebhookSignature(rawBody.toString('utf8'), sig, env.TABBY_WEBHOOK_SECRET)
-    if (!valid) {
-      logger.warn('Tabby webhook: signature mismatch')
+    const authHeader = req.headers['authorization'] as string | undefined
+    if (authHeader !== `Bearer ${env.TABBY_WEBHOOK_SECRET}`) {
+      logger.warn('Tabby webhook: invalid or missing authorization header')
       res.status(200).json({ received: true })
       return
     }
@@ -181,15 +178,15 @@ router.post('/tabby', async (req: Request, res: Response) => {
   }
 
   try {
-    /* Tabby sends payment status as AUTHORIZED or CLOSED (captured) */
-    const status      = (payload?.status as string | undefined)?.toUpperCase()
-    const paymentId   = payload?.id as string | undefined
-    /* reference_id was set to our orderId in the checkout request */
-    const checkoutId  = payload?.checkout_id ?? payload?.order?.reference_id ?? paymentId
+    /* Tabby sends payment status as lowercase "authorized" or "closed" */
+    const status     = (payload?.status as string | undefined)?.toUpperCase()
+    const paymentId  = payload?.id as string | undefined
+    /* order.reference_id is our LMS order ID (set in checkout request) */
+    const ourOrderId = payload?.order?.reference_id as string | undefined
 
-    if ((status === 'AUTHORIZED' || status === 'CLOSED') && paymentId && checkoutId) {
-      await orderSvc.fulfillTabbyFromWebhook(checkoutId, paymentId)
-      logger.info({ paymentId, checkoutId }, 'Tabby: order fulfilled via webhook')
+    if ((status === 'AUTHORIZED' || status === 'CLOSED') && paymentId) {
+      await orderSvc.fulfillTabbyFromWebhook(paymentId, ourOrderId)
+      logger.info({ paymentId, ourOrderId }, 'Tabby: order fulfilled via webhook')
     } else {
       logger.debug({ status, paymentId }, 'Tabby webhook: ignored event')
     }
@@ -250,6 +247,70 @@ router.post('/abzer', async (req: Request, res: Response) => {
     }
   } catch (err) {
     logger.error({ err, payload }, 'Abzer webhook handler error')
+  }
+
+  res.status(200).json({ received: true })
+})
+
+/* ─────────────────────────────────────────────────────
+   Tamara webhook
+   Tamara fires ORDER_APPROVED when the customer completes
+   the BNPL agreement. Tamara authenticates by attaching a
+   JWT (HS256, signed with TAMARA_NOTIFICATION_TOKEN) as:
+     Authorization: Bearer <tamaraToken>
+     ?tamaraToken=<tamaraToken>
+   Always responds 200 so Tamara doesn't retry on errors.
+───────────────────────────────────────────────────── */
+router.post('/tamara', async (req: Request, res: Response) => {
+  /* Verify JWT when notification token is configured */
+  if (env.TAMARA_NOTIFICATION_TOKEN) {
+    const authHeader = req.headers['authorization'] as string | undefined
+    const queryToken = req.query['tamaraToken']    as string | undefined
+    const tamaraToken = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : queryToken
+
+    if (!tamaraToken) {
+      logger.warn('Tamara webhook: missing tamaraToken in Authorization header or query param')
+      res.status(200).json({ received: true })
+      return
+    }
+    const valid = tamaraSvc.verifyWebhookJwt(tamaraToken, env.TAMARA_NOTIFICATION_TOKEN)
+    if (!valid) {
+      logger.warn('Tamara webhook: JWT verification failed')
+      res.status(200).json({ received: true })
+      return
+    }
+  }
+
+  let payload: any
+  try {
+    const raw = req.body
+    payload = Buffer.isBuffer(raw) ? JSON.parse(raw.toString('utf8')) : (typeof raw === 'string' ? JSON.parse(raw) : raw)
+  } catch {
+    res.status(200).json({ received: true })
+    return
+  }
+
+  try {
+    /*
+     * Tamara ORDER_APPROVED payload:
+     *   event_type:         'ORDER_APPROVED'
+     *   order_id:           Tamara internal order ID
+     *   order_reference_id: our order ID (set in merchant_url notification)
+     */
+    const eventType     = payload?.event_type as string | undefined
+    const tamaraOrderId = payload?.order_id   as string | undefined
+    const ourOrderId    = payload?.order_reference_id as string | undefined
+
+    if (eventType === 'ORDER_APPROVED' && tamaraOrderId) {
+      await orderSvc.fulfillTamaraFromWebhook(tamaraOrderId, ourOrderId)
+      logger.info({ tamaraOrderId, ourOrderId }, 'Tamara: order fulfilled via webhook')
+    } else {
+      logger.debug({ eventType, tamaraOrderId }, 'Tamara webhook: ignored event')
+    }
+  } catch (err) {
+    logger.error({ err, payload }, 'Tamara webhook handler error')
   }
 
   res.status(200).json({ received: true })

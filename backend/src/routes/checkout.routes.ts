@@ -71,6 +71,19 @@ router.get('/config', authenticate, async (req: Request, res: Response, next: Ne
   } catch (err) { next(err) }
 })
 
+/* ── Tabby — background pre-scoring (eligibility check) ─── */
+const tabbyPrescoreSchema = z.object({
+  courseId: z.string().min(1),
+})
+
+router.post('/tabby/prescore', authenticate, validate(tabbyPrescoreSchema), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { courseId } = req.body as { courseId: string }
+    const result = await orderSvc.checkTabbyEligibility(req.user!.id, courseId)
+    sendSuccess(res, result)
+  } catch (err) { next(err) }
+})
+
 /* ── Tabby — create checkout (UAE) ──────────────────────── */
 const tabbyCreateSchema = z.object({
   courseId:   z.string().min(1),
@@ -83,6 +96,20 @@ router.post('/tabby/create-order', authenticate, validate(tabbyCreateSchema), as
     const { courseId, slug, couponCode } = req.body as { courseId: string; slug: string; couponCode?: string }
     const result = await orderSvc.createTabbyOrder(req.user!.id, courseId, slug, couponCode)
     sendSuccess(res, result, 'Tabby checkout created', 201)
+  } catch (err) { next(err) }
+})
+
+/* ── Tabby — verify return URL + fulfill (webhook fallback) ─ */
+const tabbyVerifyReturnSchema = z.object({
+  orderId:   z.string().min(1),
+  paymentId: z.string().optional(),  // Tabby appends payment_id to the redirect URL
+})
+
+router.post('/tabby/verify-return', authenticate, validate(tabbyVerifyReturnSchema), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { orderId, paymentId } = req.body as { orderId: string; paymentId?: string }
+    const result = await orderSvc.verifyTabbyReturn(req.user!.id, orderId, paymentId)
+    sendSuccess(res, result)
   } catch (err) { next(err) }
 })
 
@@ -114,6 +141,49 @@ router.post('/abzer/verify-return', authenticate, validate(abzerVerifyReturnSche
   try {
     const { orderId, transactionId } = req.body as { orderId: string; transactionId?: string }
     const result = await orderSvc.verifyAbzerReturn(req.user!.id, orderId, transactionId ?? '')
+    sendSuccess(res, result)
+  } catch (err) { next(err) }
+})
+
+/* ── Tamara — pre-checkout eligibility check ─────────── */
+const tamaraPrescoreSchema = z.object({ courseId: z.string().min(1) })
+
+router.post('/tamara/prescore', authenticate, validate(tamaraPrescoreSchema), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { courseId } = req.body as { courseId: string }
+    const result = await orderSvc.checkTamaraEligibility(req.user!.id, courseId)
+    sendSuccess(res, result)
+  } catch (err) { next(err) }
+})
+
+/* ── Tamara — create checkout (UAE BNPL) ─────────────── */
+const tamaraCreateSchema = z.object({
+  courseId:   z.string().min(1),
+  slug:       z.string().min(1),
+  couponCode: z.string().trim().optional(),
+})
+
+router.post('/tamara/create-order', authenticate, validate(tamaraCreateSchema), async (req: Request, res: Response, next: NextFunction) => {
+  if (!env.TAMARA_API_KEY) {
+    sendError(res, 'TAMARA_NOT_CONFIGURED', 'Tamara is not configured on this server.', 503)
+    return
+  }
+  try {
+    const { courseId, slug, couponCode } = req.body as { courseId: string; slug: string; couponCode?: string }
+    const result = await orderSvc.createTamaraOrder(req.user!.id, courseId, slug, couponCode)
+    sendSuccess(res, result, 'Tamara checkout created', 201)
+  } catch (err) { next(err) }
+})
+
+/* ── Tamara — verify return + fulfill (webhook fallback) ─ */
+const tamaraVerifyReturnSchema = z.object({
+  orderId: z.string().min(1),
+})
+
+router.post('/tamara/verify-return', authenticate, validate(tamaraVerifyReturnSchema), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { orderId } = req.body as { orderId: string }
+    const result = await orderSvc.verifyTamaraReturn(req.user!.id, orderId)
     sendSuccess(res, result)
   } catch (err) { next(err) }
 })

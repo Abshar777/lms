@@ -1090,7 +1090,7 @@ export const CouponModel = mongoose.model<ICoupon>('Coupon', CouponSchema)
 ───────────────────────────────────────────────────── */
 export type OrderStatus = 'pending' | 'paid' | 'refunded'
 
-export type OrderGateway = 'stripe' | 'razorpay' | 'tabby' | 'abzer'
+export type OrderGateway = 'stripe' | 'razorpay' | 'tabby' | 'abzer' | 'tamara'
 
 export interface IOrder extends Document {
   id:                       string
@@ -1107,6 +1107,9 @@ export interface IOrder extends Document {
   tabbyPaymentId?:          string
   abzerOrderId?:            string
   abzerPaymentId?:          string
+  tamaraCheckoutId?:        string
+  tamaraOrderId?:           string
+  tamaraPaymentId?:         string
   amount:                   number    // charged amount in smallest unit (cents / fils)
   currency:                 string
   status:                   OrderStatus
@@ -1123,7 +1126,7 @@ const OrderSchema = new Schema<IOrder>(
     userId:                  { type: Schema.Types.ObjectId, ref: 'User',         required: true },
     courseId:                { type: Schema.Types.ObjectId, ref: 'Course',       required: true },
     organizationId:          { type: Schema.Types.ObjectId, ref: 'Organization' },
-    gateway:                 { type: String, enum: ['stripe', 'razorpay', 'tabby', 'abzer'], required: true, default: 'stripe' },
+    gateway:                 { type: String, enum: ['stripe', 'razorpay', 'tabby', 'abzer', 'tamara'], required: true, default: 'stripe' },
     stripeCheckoutSessionId: { type: String },
     stripePaymentIntentId:   { type: String },
     razorpayOrderId:         { type: String },
@@ -1133,6 +1136,9 @@ const OrderSchema = new Schema<IOrder>(
     tabbyPaymentId:          { type: String },
     abzerOrderId:            { type: String },
     abzerPaymentId:          { type: String },
+    tamaraCheckoutId:        { type: String },
+    tamaraOrderId:           { type: String },
+    tamaraPaymentId:         { type: String },
     amount:                  { type: Number, required: true, min: 0 },
     currency:                { type: String, required: true, default: 'usd', maxlength: 3 },
     status:                  { type: String, enum: ['pending', 'paid', 'refunded'], default: 'pending' },

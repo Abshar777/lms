@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { useCourse } from '@/lib/api/courses'
 import { useCourseProgress, useEnroll } from '@/lib/api/enrollments'
-import { useRazorpayCheckout, useTabbyCheckout, useAbzerCheckout, useGatewayConfig, useValidateCoupon } from '@/lib/api/checkout'
+import { useRazorpayCheckout, useTabbyCheckout, useAbzerCheckout, useTamaraCheckout, useGatewayConfig, useValidateCoupon } from '@/lib/api/checkout'
 import { formatPrice } from '@/lib/formatPrice'
 import { CertificateButton } from '@/components/learn/CertificateButton'
 import { CourseReviews } from '@/components/courses/CourseReviews'
@@ -59,6 +59,8 @@ function CourseDetailInner({ slug }: { slug: string }) {
   const checkout        = useRazorpayCheckout()
   const tabbyCheckout   = useTabbyCheckout({ onError: msg => setEnrollError(msg) })
   const abzerCheckout   = useAbzerCheckout({ onError: msg => setEnrollError(msg) })
+  const tamaraCheckout  = useTamaraCheckout({ onError: msg => setEnrollError(msg) })
+  const gateways        = gatewayConfig?.gateways ?? []
 
   const [enrollError,   setEnrollError]   = useState<string | null>(null)
   const [couponOpen,    setCouponOpen]     = useState(false)
@@ -133,7 +135,6 @@ function CourseDetailInner({ slug }: { slug: string }) {
   const onCheckout = async () => {
     setEnrollError(null)
     if (isUAE) {
-      /* UAE users — Abzer redirect (primary) */
       abzerCheckout.mutate({ courseId: course.id, slug: course.slug, couponCode: couponCode || undefined })
       return
     }
@@ -456,7 +457,7 @@ function CourseDetailInner({ slug }: { slug: string }) {
                 </Link>
               ) : isPaid ? (
                 <>
-                  {/* Primary payment button — Abzer (UAE) or Razorpay (non-UAE) */}
+                  {/* Primary payment button */}
                   <motion.button
                     onClick={onCheckout}
                     disabled={checkout.isPending || abzerCheckout.isPending}
@@ -471,13 +472,31 @@ function CourseDetailInner({ slug }: { slug: string }) {
                         : <><ShoppingCart size={15} />Buy for {formatPrice(discountedPrice)}</>}
                   </motion.button>
 
-                  {/* Tabby — coming soon for UAE users */}
-                  {isUAE && (
+                  {/* Tamara BNPL */}
+                  {isUAE && gateways.includes('tamara') && (
                     <motion.button
-                      disabled
-                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold transition-all opacity-50 cursor-not-allowed"
-                      style={{ border: '1.5px solid #9CA3AF', color: '#9CA3AF' }}>
-                      <ShoppingCart size={15} />Tabby — Coming Soon
+                      onClick={() => { setEnrollError(null); tamaraCheckout.mutate({ courseId: course.id, slug: course.slug, couponCode: couponCode || undefined }) }}
+                      disabled={tamaraCheckout.isPending || abzerCheckout.isPending}
+                      whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
+                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold transition-all disabled:opacity-70"
+                      style={{ border: '1.5px solid #1EB59A', color: '#1EB59A' }}>
+                      {tamaraCheckout.isPending
+                        ? <><Spinner size={14} />Redirecting…</>
+                        : <><ShoppingCart size={14} />Pay in 3 with Tamara</>}
+                    </motion.button>
+                  )}
+
+                  {/* Tabby BNPL */}
+                  {isUAE && gateways.includes('tabby') && (
+                    <motion.button
+                      onClick={() => { setEnrollError(null); tabbyCheckout.mutate({ courseId: course.id, slug: course.slug, couponCode: couponCode || undefined }) }}
+                      disabled={tabbyCheckout.isPending || abzerCheckout.isPending}
+                      whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }}
+                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold transition-all disabled:opacity-70"
+                      style={{ border: '1.5px solid #3D1D8E', color: '#3D1D8E' }}>
+                      {tabbyCheckout.isPending
+                        ? <><Spinner size={14} />Redirecting…</>
+                        : <><ShoppingCart size={14} />Pay in 4 with Tabby</>}
                     </motion.button>
                   )}
 

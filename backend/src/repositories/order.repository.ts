@@ -15,6 +15,8 @@ export class OrderRepository {
     tabbyCheckoutId?:         string
     tabbyPaymentId?:          string
     abzerOrderId?:            string
+    tamaraCheckoutId?:        string
+    tamaraOrderId?:           string
   }): Promise<IOrder> {
     return OrderModel.create({
       ...data,
@@ -39,8 +41,17 @@ export class OrderRepository {
     return OrderModel.findOne({ tabbyCheckoutId }).exec()
   }
 
+  async findByTabbyPaymentId(tabbyPaymentId: string): Promise<IOrder | null> {
+    if (!tabbyPaymentId) return null
+    return OrderModel.findOne({ tabbyPaymentId }).exec()
+  }
+
   async findByAbzerOrderId(abzerOrderId: string): Promise<IOrder | null> {
     return OrderModel.findOne({ abzerOrderId }).exec()
+  }
+
+  async findByTamaraOrderId(tamaraOrderId: string): Promise<IOrder | null> {
+    return OrderModel.findOne({ tamaraOrderId }).exec()
   }
 
   /* Stripe fulfillment */
@@ -75,6 +86,15 @@ export class OrderRepository {
     return OrderModel.findByIdAndUpdate(
       id,
       { $set: { status: 'paid', abzerPaymentId: paymentId } },
+      { new: true },
+    ).exec()
+  }
+
+  /* Tamara fulfillment */
+  async fulfillTamara(id: string, tamaraOrderId: string): Promise<IOrder | null> {
+    return OrderModel.findByIdAndUpdate(
+      id,
+      { $set: { status: 'paid', tamaraPaymentId: tamaraOrderId } },
       { new: true },
     ).exec()
   }

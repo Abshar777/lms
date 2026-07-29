@@ -9,7 +9,7 @@ import {
   CheckCircle2, GraduationCap,
 } from 'lucide-react'
 import { useCartStore, type CartItem } from '@/store/cart.store'
-import { useRazorpayCheckout, useTabbyCheckout, useAbzerCheckout, useGatewayConfig, useValidateCoupon } from '@/lib/api/checkout'
+import { useRazorpayCheckout, useTabbyCheckout, useAbzerCheckout, useTamaraCheckout, useGatewayConfig, useValidateCoupon } from '@/lib/api/checkout'
 import Spinner from '@/components/ui/Spinner'
 
 /* ── helpers ─────────────────────────────────────────── */
@@ -75,12 +75,14 @@ function CouponRow({
 
 /* ── Single cart item card ───────────────────────────── */
 function CartItemCard({ item, onRemove }: { item: CartItem; onRemove: () => void }) {
-  const checkout      = useRazorpayCheckout()
-  const tabbyCheckout = useTabbyCheckout()
-  const abzerCheckout = useAbzerCheckout()
+  const checkout        = useRazorpayCheckout()
+  const tabbyCheckout   = useTabbyCheckout()
+  const abzerCheckout   = useAbzerCheckout()
+  const tamaraCheckout  = useTamaraCheckout()
   const { data: gatewayConfig } = useGatewayConfig()
-  const isUAE         = gatewayConfig?.currency === 'AED'
-  const isFree        = item.isFree || !item.price || item.price === 0
+  const isUAE           = gatewayConfig?.currency === 'AED'
+  const gateways        = gatewayConfig?.gateways ?? []
+  const isFree          = item.isFree || !item.price || item.price === 0
   const [coupon,  setCoupon]  = useState<string | undefined>(undefined)
   const [buying,  setBuying]  = useState(false)
 
@@ -101,6 +103,16 @@ function CartItemCard({ item, onRemove }: { item: CartItem; onRemove: () => void
   const handleAbzerBuy = () => {
     if (isFree) return
     abzerCheckout.mutate({ courseId: item.id, slug: item.slug, couponCode: coupon })
+  }
+
+  const handleTamaraBuy = () => {
+    if (isFree) return
+    tamaraCheckout.mutate({ courseId: item.id, slug: item.slug, couponCode: coupon })
+  }
+
+  const handleTabbyBuy = () => {
+    if (isFree) return
+    tabbyCheckout.mutate({ courseId: item.id, slug: item.slug, couponCode: coupon })
   }
 
   return (
@@ -182,12 +194,26 @@ function CartItemCard({ item, onRemove }: { item: CartItem; onRemove: () => void
                       ? <><ArrowRight size={11} />Pay · Abzer</>
                       : <><ArrowRight size={11} />Checkout</>}
                 </motion.button>
-                {isUAE && (
+                {isUAE && gateways.includes('tamara') && (
                   <button
-                    disabled
-                    className="flex items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-bold opacity-40 cursor-not-allowed transition-all"
-                    style={{ border: '1.5px solid #9CA3AF', color: '#9CA3AF' }}>
-                    <ArrowRight size={11} />Tabby — Coming Soon
+                    onClick={handleTamaraBuy}
+                    disabled={tamaraCheckout.isPending}
+                    className="flex items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-bold transition-all disabled:opacity-60"
+                    style={{ border: '1.5px solid #1EB59A', color: '#1EB59A' }}>
+                    {tamaraCheckout.isPending
+                      ? <><Spinner size={11} />Processing…</>
+                      : <><ArrowRight size={11} />Pay in 3 · Tamara</>}
+                  </button>
+                )}
+                {isUAE && gateways.includes('tabby') && (
+                  <button
+                    onClick={handleTabbyBuy}
+                    disabled={tabbyCheckout.isPending}
+                    className="flex items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-bold transition-all disabled:opacity-60"
+                    style={{ border: '1.5px solid #3D1D8E', color: '#3D1D8E' }}>
+                    {tabbyCheckout.isPending
+                      ? <><Spinner size={11} />Processing…</>
+                      : <><ArrowRight size={11} />Pay in 4 · Tabby</>}
                   </button>
                 )}
               </div>

@@ -65,7 +65,7 @@ export class AuthService {
 
     /* 4. Determine organization from homeCountry (India → Bangalore, else → Dubai) */
     const { OrganizationModel } = await import('@/models/schema.ts')
-    const orgSlug = dto.enrollmentApplication?.homeCountry === 'IN' ? 'bangalore' : 'dubai'
+    const orgSlug = dto.enrollmentApplication?.homeCountry === 'India' ? 'bangalore' : 'dubai'
     const orgDoc  = await OrganizationModel.findOne({ slug: orgSlug }).select('_id').lean()
     const organizationId = orgDoc?._id
 
@@ -386,6 +386,14 @@ export class AuthService {
 
     for (const field of appFields) {
       if (input[field] !== undefined) $set[`enrollmentApplication.${field}`] = input[field]
+    }
+
+    /* Re-assign organization when homeCountry is provided — India → Bangalore, else → Dubai */
+    if (input['homeCountry'] !== undefined) {
+      const { OrganizationModel } = await import('@/models/schema.ts')
+      const newOrgSlug = input['homeCountry'] === 'India' ? 'bangalore' : 'dubai'
+      const newOrg     = await OrganizationModel.findOne({ slug: newOrgSlug }).select('_id').lean()
+      if (newOrg) $set['organizationId'] = newOrg._id
     }
 
     if (input['avatarUrl'] !== undefined && input['avatarUrl'] !== '') {

@@ -5,6 +5,7 @@ import { StripeService } from '@/services/stripe.service.ts'
 import { RazorpayService } from '@/services/razorpay.service.ts'
 import { TabbyService } from '@/services/tabby.service.ts'
 import { AbzerService } from '@/services/abzer.service.ts'
+import { TamaraService } from '@/services/tamara.service.ts'
 import { EnrollmentService } from '@/services/enrollment.service.ts'
 import { NotificationService } from '@/services/notification.service.ts'
 import { sendEnrollmentConfirmation } from '@/services/email.service.ts'
@@ -13,9 +14,9 @@ import { env } from '@/config/env.ts'
 import { logger } from '@/utils/logger.ts'
 
 export type GatewayConfig =
-  | { gateways: ('tabby' | 'abzer')[]; currency: 'AED' }
-  | { gateways: ['razorpay'];          currency: 'INR' }
-  | { gateways: [];                    currency: 'USD' }
+  | { gateways: ('tabby' | 'abzer' | 'tamara')[]; currency: 'AED' }
+  | { gateways: ['razorpay'];                      currency: 'INR' }
+  | { gateways: [];                                currency: 'USD' }
 
 export class OrderError extends Error {
   constructor(
@@ -35,6 +36,7 @@ export class OrderService {
   private readonly razorpaySvc   = new RazorpayService()
   private readonly tabbySvc      = new TabbyService()
   private readonly abzerSvc      = new AbzerService()
+  private readonly tamaraSvc     = new TamaraService()
   private readonly enrollSvc     = new EnrollmentService()
   private readonly notifications = new NotificationService()
 
@@ -46,9 +48,10 @@ export class OrderService {
     const isUAE = (user as any)?.enrollmentApplication?.homeCountry === 'United Arab Emirates'
 
     if (isUAE) {
-      const gateways: ('tabby' | 'abzer')[] = []
-      if (env.TABBY_SECRET_KEY)  gateways.push('tabby')
+      const gateways: ('tabby' | 'abzer' | 'tamara')[] = []
+      if (env.TAMARA_API_KEY)    gateways.push('tamara')
       if (env.ABZER_ACCESS_KEY)  gateways.push('abzer')
+      if (env.TABBY_SECRET_KEY)  gateways.push('tabby')
       if (gateways.length > 0)   return { gateways, currency: 'AED' }
     }
     if (env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET) {
@@ -295,6 +298,34 @@ export class OrderService {
     void this._sendPostPaymentNotifications(order.userId.toString(), order.courseId.toString(), order.id)
   }
 
+  /* ─── Tamara pre-checkout eligibility check ─────────── */
+  async checkTamaraEligibility(
+    userId:   string,
+    courseId: string,
+  ): Promise<{ available: boolean; rejectionReason: string | null }> {
+    const course = await CourseModel.findById(courseId).select('priceAED price status isFree').exec()
+    if (!course || course.status !== 'published' || course.isFree) {
+      return { available: false, rejectionReason: null }
+    }
+    const priceAED = (course as any).priceAED ?? Math.round(course.price * env.UAE_EXCHANGE_RATE * 100) / 100
+    const user     = await UserModel.findById(userId).select('phone').exec()
+    return this.tamaraSvc.checkEligibility(priceAED, (user as any)?.phone)
+  }
+
+  /* ─── Tabby background pre-scoring ──────────────────── */
+  async checkTabbyEligibility(
+    userId:   string,
+    courseId: string,
+  ): Promise<{ available: boolean; rejectionReason: string | null }> {
+    const course = await CourseModel.findById(courseId).select('priceAED price status isFree').exec()
+    if (!course || course.status !== 'published' || course.isFree) {
+      return { available: false, rejectionReason: null }
+    }
+    const priceAED = (course as any).priceAED ?? Math.round(course.price * env.UAE_EXCHANGE_RATE * 100) / 100
+    const user     = await UserModel.findById(userId).select('email phone').exec()
+    return this.tabbySvc.checkEligibility(priceAED, user?.email ?? '', (user as any)?.phone)
+  }
+
   /* ─── Create Tabby checkout (UAE) ───────────────────── */
   async createTabbyOrder(
     userId:      string,
@@ -351,9 +382,9 @@ export class OrderService {
     })
 
     const user = await UserModel.findById(userId).select('name email phone').exec()
-    const successUrl = `${env.CLIENT_URL}/courses/${slug}?checkout=success`
-    const cancelUrl  = `${env.CLIENT_URL}/courses/${slug}?checkout=cancel`
-    const failureUrl = `${env.CLIENT_URL}/courses/${slug}?checkout=cancel`
+    const successUrl = `${env.CLIENT_URL}/payment-return?gateway=tabby&orderId=${order.id}`
+    const cancelUrl  = `${env.CLIENT_URL}/payment-return?gateway=tabby&status=cancelled`
+    const failureUrl = `${env.CLIENT_URL}/payment-return?gateway=tabby&status=failed&orderId=${order.id}`
 
     const result = await this.tabbySvc.createCheckout({
       amountAED:   finalAED,
@@ -374,10 +405,30 @@ export class OrderService {
   }
 
   /* ─── Tabby webhook fulfillment (idempotent) ─────────── */
-  async fulfillTabbyFromWebhook(tabbyCheckoutId: string, tabbyPaymentId: string): Promise<void> {
-    const order = await this.orderRepo.findByTabbyCheckoutId(tabbyCheckoutId)
+  /* tabbyPaymentId  — from webhook payload.id
+     ourOrderId      — from webhook payload.order.reference_id (our LMS order ID) */
+  async fulfillTabbyFromWebhook(tabbyPaymentId: string, ourOrderId?: string): Promise<void> {
+    /* 1. Server-to-server verification: confirm AUTHORIZED status with Tabby */
+    let verifiedStatus: string | undefined
+    try {
+      const payment = await this.tabbySvc.getPayment(tabbyPaymentId)
+      verifiedStatus = payment.status.toUpperCase()
+    } catch (err) {
+      logger.warn({ err, tabbyPaymentId }, 'Tabby: getPayment failed — proceeding without status check')
+    }
+
+    if (verifiedStatus && verifiedStatus !== 'AUTHORIZED' && verifiedStatus !== 'CLOSED') {
+      logger.warn({ tabbyPaymentId, verifiedStatus }, 'Tabby: payment not capturable')
+      return
+    }
+
+    /* 2. Find order — prefer our orderId (reliable), fallback to tabbyPaymentId field */
+    const order = ourOrderId
+      ? await this.orderRepo.findById(ourOrderId)
+      : await this.orderRepo.findByTabbyPaymentId(tabbyPaymentId)
+
     if (!order) {
-      logger.warn({ tabbyCheckoutId }, 'Tabby webhook: no matching order')
+      logger.warn({ tabbyPaymentId, ourOrderId }, 'Tabby webhook: no matching order')
       return
     }
     if (order.status === 'paid') {
@@ -385,6 +436,11 @@ export class OrderService {
       return
     }
 
+    /* 3. Capture the payment (Tabby requires amount + idempotency key) */
+    const amountAED = (order.amount / 100).toFixed(2)
+    await this.tabbySvc.capturePayment(tabbyPaymentId, amountAED, order.id)
+
+    /* 4. Fulfill order */
     await this.orderRepo.fulfillTabby(order.id, tabbyPaymentId)
 
     if (order.couponId) {
@@ -396,6 +452,31 @@ export class OrderService {
     await this._createEnrollment(order.userId.toString(), order.courseId.toString())
     await this._autoApproveViaPayment(order.userId.toString(), order.courseId.toString())
     void this._sendPostPaymentNotifications(order.userId.toString(), order.courseId.toString(), order.id)
+    logger.info({ tabbyPaymentId, orderId: order.id }, 'Tabby: order fulfilled')
+  }
+
+  /* ─── Tabby return-URL verify + fulfill (webhook fallback) ─── */
+  /* paymentId: Tabby appends ?payment_id=... to the success redirect URL */
+  async verifyTabbyReturn(userId: string, orderId: string, paymentId?: string): Promise<{ needsRegistration: boolean }> {
+    const order = await this.orderRepo.findById(orderId)
+    if (!order) throw new OrderError('ORDER_NOT_FOUND', 'Order not found', 404)
+    if (order.userId.toString() !== userId) {
+      throw new OrderError('FORBIDDEN', 'Order does not belong to you', 403)
+    }
+
+    if (order.status !== 'paid') {
+      /* Prefer payment_id from redirect URL, fall back to what was stored at checkout creation */
+      const tabbyPaymentId = paymentId || ((order as any).tabbyPaymentId as string | undefined)
+      if (tabbyPaymentId) {
+        await this.fulfillTabbyFromWebhook(tabbyPaymentId, orderId)
+      } else {
+        logger.warn({ orderId }, 'Tabby verify-return: no payment_id available — awaiting webhook')
+      }
+    }
+
+    const user = await UserModel.findById(userId).select('signupType').lean()
+    const needsRegistration = (user as any)?.signupType === 'express'
+    return { needsRegistration }
   }
 
   /* ─── Create Abzer checkout (UAE) ───────────────────── */
@@ -521,6 +602,147 @@ export class OrderService {
     return { needsRegistration }
   }
 
+  /* ─── Create Tamara checkout (UAE BNPL) ─────────────── */
+  async createTamaraOrder(
+    userId:      string,
+    courseId:    string,
+    slug:        string,
+    couponCode?: string,
+  ): Promise<{ checkoutUrl: string; tamaraCheckoutId: string }> {
+    if (!env.TAMARA_API_KEY) {
+      throw new OrderError('TAMARA_NOT_CONFIGURED', 'Tamara is not configured on this server.', 503)
+    }
+    if (!Types.ObjectId.isValid(courseId)) {
+      throw new OrderError('INVALID_COURSE_ID', 'Invalid course id', 400)
+    }
+
+    const course = await CourseModel.findById(courseId).exec()
+    if (!course || course.status !== 'published') {
+      throw new OrderError('COURSE_NOT_FOUND', 'Course not found', 404)
+    }
+    if (course.isFree || course.price <= 0) {
+      throw new OrderError('COURSE_IS_FREE', 'This course is free — use the enroll endpoint instead', 400)
+    }
+
+    const { EnrollmentModel } = await import('@/models/schema.ts')
+    const existing = await EnrollmentModel.findOne({ userId, courseId }).exec()
+    if (existing) {
+      throw new OrderError('ALREADY_ENROLLED', 'You are already enrolled in this course', 409)
+    }
+
+    const priceAED     = (course as any).priceAED ?? Math.round(course.price * env.UAE_EXCHANGE_RATE * 100) / 100
+    const originalFils = Math.round(priceAED * 100)
+    let   finalFils    = originalFils
+    let   discountFils = 0
+    let   couponId: string | undefined
+
+    if (couponCode) {
+      const coupon   = await this.couponSvc.validate(couponCode, courseId)
+      const applied  = this.couponSvc.applyDiscount(originalFils, coupon)
+      finalFils      = applied.finalCents
+      discountFils   = applied.discountCents
+      couponId       = coupon.id
+    }
+
+    const order = await this.orderRepo.create({
+      userId,
+      courseId,
+      gateway:  'tamara',
+      amount:   finalFils,
+      currency: env.TAMARA_CURRENCY,
+      ...(couponId     && { couponId }),
+      ...(discountFils && { discountAmount: discountFils }),
+    })
+
+    const user       = await UserModel.findById(userId).select('name email').exec()
+    const successUrl = `${env.CLIENT_URL}/payment-return?gateway=tamara&orderId=${order.id}`
+    const cancelUrl  = `${env.CLIENT_URL}/payment-return?gateway=tamara&status=cancelled`
+    const failureUrl = `${env.CLIENT_URL}/payment-return?gateway=tamara&status=failed&orderId=${order.id}`
+
+    const result = await this.tamaraSvc.createCheckout({
+      amountAED:   finalFils / 100,
+      orderId:     order.id,
+      courseTitle: course.title,
+      courseId:    course.id,
+      buyerEmail:  user?.email ?? '',
+      buyerName:   user?.name  ?? '',
+      buyerPhone:  (user as any)?.phone ?? '',
+      successUrl,
+      cancelUrl,
+      failureUrl,
+    })
+
+    await patchTamaraIds(order.id, result.checkoutId, result.tamaraOrderId)
+
+    return { checkoutUrl: result.checkoutUrl, tamaraCheckoutId: result.checkoutId }
+  }
+
+  /* ─── Tamara webhook fulfillment (idempotent) ────────── */
+  async fulfillTamaraFromWebhook(tamaraOrderId: string, ourOrderId?: string): Promise<void> {
+    /* Tamara sends both order_id (their ID) and order_reference_id (our ID) */
+    const order = ourOrderId
+      ? await this.orderRepo.findById(ourOrderId)
+      : await this.orderRepo.findByTamaraOrderId(tamaraOrderId)
+
+    if (!order) {
+      logger.warn({ tamaraOrderId, ourOrderId }, 'Tamara webhook: no matching order')
+      return
+    }
+    if (order.status === 'paid') {
+      logger.info({ orderId: order.id }, 'Tamara webhook: already fulfilled')
+      return
+    }
+
+    /* Authorise with Tamara (approved → authorised) then capture (authorised → fully_captured) */
+    await this.tamaraSvc.authoriseOrder(tamaraOrderId)
+    const course = await CourseModel.findById(order.courseId).select('title priceAED price').lean()
+    const amountAED = (order.amount / 100).toFixed(2)
+    await this.tamaraSvc.captureOrder({
+      tamaraOrderId,
+      amountAED,
+      courseTitle: (course as any)?.title ?? 'Course',
+      courseId:    order.courseId.toString(),
+    })
+    await this.orderRepo.fulfillTamara(order.id, tamaraOrderId)
+
+    if (order.couponId) {
+      void this.couponSvc.redeem(order.couponId.toString()).catch(err =>
+        logger.warn({ err }, 'Failed to increment coupon usage'),
+      )
+    }
+
+    await this._createEnrollment(order.userId.toString(), order.courseId.toString())
+    await this._autoApproveViaPayment(order.userId.toString(), order.courseId.toString())
+    void this._sendPostPaymentNotifications(order.userId.toString(), order.courseId.toString(), order.id)
+    logger.info({ tamaraOrderId, orderId: order.id }, 'Tamara: order fulfilled via webhook')
+  }
+
+  /* ─── Tamara return-URL verify + fulfill (called by client after redirect) ── */
+  async verifyTamaraReturn(
+    userId:  string,
+    orderId: string,
+  ): Promise<{ needsRegistration: boolean }> {
+    const order = await this.orderRepo.findById(orderId)
+    if (!order) throw new OrderError('ORDER_NOT_FOUND', 'Order not found', 404)
+    if (order.userId.toString() !== userId) {
+      throw new OrderError('FORBIDDEN', 'Order does not belong to you', 403)
+    }
+
+    if (order.status !== 'paid') {
+      const tamaraOrderId = (order as any).tamaraOrderId as string | undefined
+      if (tamaraOrderId) {
+        await this.fulfillTamaraFromWebhook(tamaraOrderId, orderId)
+      } else {
+        logger.warn({ orderId }, 'Tamara verify-return: no tamaraOrderId stored — cannot authorise')
+      }
+    }
+
+    const user = await UserModel.findById(userId).select('signupType').lean()
+    const needsRegistration = (user as any)?.signupType === 'express'
+
+    return { needsRegistration }
+  }
+
   /* ─── Refund (gateway-aware) ────────────────────────── */
   async refund(orderId: string): Promise<void> {
     const order = await this.orderRepo.findById(orderId)
@@ -534,12 +756,11 @@ export class OrderService {
         throw new OrderError('NO_PAYMENT_ID', 'Cannot refund — no Razorpay payment id on record', 400)
       }
       await this.razorpaySvc.refundPayment(order.razorpayPaymentId)
-    } else if (order.gateway === 'tabby' || order.gateway === 'abzer') {
-      /* Tabby and Abzer refunds must be processed manually via their dashboards
-         until API-based refund endpoints are confirmed with the providers. */
+    } else if (order.gateway === 'tabby' || order.gateway === 'abzer' || order.gateway === 'tamara') {
+      const label = order.gateway === 'tabby' ? 'Tabby' : order.gateway === 'tamara' ? 'Tamara' : 'Abzer'
       throw new OrderError(
         'MANUAL_REFUND_REQUIRED',
-        `${order.gateway === 'tabby' ? 'Tabby' : 'Abzer'} refunds must be processed via the gateway dashboard.`,
+        `${label} refunds must be processed via the gateway dashboard.`,
         422,
       )
     } else {
@@ -665,4 +886,9 @@ async function patchTabbyCheckoutId(orderId: string, tabbyCheckoutId: string, ta
 async function patchAbzerOrderId(orderId: string, abzerOrderId: string): Promise<void> {
   const { OrderModel } = await import('@/models/schema.ts')
   await OrderModel.findByIdAndUpdate(orderId, { $set: { abzerOrderId } }).exec()
+}
+
+async function patchTamaraIds(orderId: string, tamaraCheckoutId: string, tamaraOrderId: string): Promise<void> {
+  const { OrderModel } = await import('@/models/schema.ts')
+  await OrderModel.findByIdAndUpdate(orderId, { $set: { tamaraCheckoutId, tamaraOrderId } }).exec()
 }
