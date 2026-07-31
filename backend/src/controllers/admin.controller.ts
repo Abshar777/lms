@@ -27,7 +27,7 @@ export class AdminController {
   /* ─── Dashboard stats ─────────────────────────── */
   stats = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      sendSuccess(res, await this.admin.getStats(req.user!.organizationId))
+      sendSuccess(res, await this.admin.getStats(req.user!.organizationId, req.user!.categoryScope))
     } catch (err) { next(err) }
   }
 
@@ -771,7 +771,7 @@ export class AdminController {
   topCourses = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const limit = Math.min(20, Math.max(1, Number(req.query['limit'] ?? 5)))
-      const data  = await this.admin.topCourses(limit, req.user!.organizationId)
+      const data  = await this.admin.topCourses(limit, req.user!.organizationId, req.user!.categoryScope)
       sendSuccess(res, data)
     } catch (err) { next(err) }
   }

@@ -14,7 +14,9 @@ import {
   PERMISSION_RESOURCES, type Role, type ResourcePermission, type PermissionResource,
 } from '@/lib/api/roles'
 import { useUsers, type AdminUser } from '@/lib/api/users'
+import { useCurrentUser } from '@/lib/api/user'
 import Spinner from '@/components/ui/Spinner'
+import { useRouter } from 'next/navigation'
 
 /* ── Types ─────────────────────────────────────────────────────── */
 type TabKey = 'roles' | 'users'
@@ -466,6 +468,15 @@ function UsersTab({ roles }: { roles: Role[] }) {
 /* ── Main page ──────────────────────────────────────────────────── */
 
 export default function RolesPage() {
+  const router = useRouter()
+  const { data: currentUser, isLoading: userLoading } = useCurrentUser()
+
+  useEffect(() => {
+    if (!userLoading && currentUser && currentUser.role !== 'super_admin') {
+      router.replace('/')
+    }
+  }, [userLoading, currentUser, router])
+
   const { data: roles = [], isLoading } = useRoles()
   const createMutation  = useCreateRole()
   const updateMutation  = useUpdateRole()

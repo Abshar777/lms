@@ -242,6 +242,21 @@ export class RefreshTokenRepository extends BaseRepository<IRefreshToken> {
     ).exec()
   }
 
+  /* ── Atomically claim a token for rotation ───────────
+     Guards against concurrent refresh calls (e.g. two
+     browser tabs racing on the same still-valid refresh
+     token): only the request that actually flips
+     isRevoked false → true "wins" and proceeds to issue
+     new tokens. A losing concurrent request gets back
+     null instead of tripping reuse detection. */
+  async claimForRotation(tokenHash: string): Promise<IRefreshToken | null> {
+    return RefreshTokenModel.findOneAndUpdate(
+      { tokenHash, isRevoked: false },
+      { $set: { isRevoked: true, revokedReason: 'rotation' } },
+      { new: false },
+    ).exec()
+  }
+
   /* ── Revoke all tokens for a user ───────────────── */
   async revokeAllForUser(userId: string, reason: RefreshTokenRevokeReason = 'security'): Promise<void> {
     await RefreshTokenModel.updateMany(

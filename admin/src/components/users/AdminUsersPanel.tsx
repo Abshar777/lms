@@ -42,6 +42,15 @@ const CATEGORY_STYLE: Record<string, { bg: string; color: string }> = {
   'ai':                { bg: 'rgba(192,132,252,0.14)', color: '#C084FC' },
 }
 
+/* Program-scoped roles (sub_admin, *_admin) store their scope in `program`
+   ('ai' | 'digital_marketing' | 'forex') rather than `category` — map it to
+   the same slug space the category badge already renders. */
+const PROGRAM_TO_CATEGORY: Record<string, string> = {
+  forex:              '4x-trading',
+  digital_marketing:  'digital-marketing',
+  ai:                 'ai',
+}
+
 function fmtDate(d?: string) {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -321,8 +330,9 @@ function UserRow({ user, index, canManage, isSuperAdmin, onView, onEdit }: {
   const { token, impersonatedUser, startImpersonation } = useImpersonationStore()
 
   const isImpersonating = !!token && impersonatedUser?.id === user.id
-  const roleStyle = ROLE_STYLE[user.role] ?? ROLE_STYLE['admin']
-  const catStyle  = user.category ? CATEGORY_STYLE[user.category] : null
+  const roleStyle   = ROLE_STYLE[user.role] ?? ROLE_STYLE['admin']
+  const displayCat  = user.category ?? (user.program ? PROGRAM_TO_CATEGORY[user.program] : undefined)
+  const catStyle    = displayCat ? CATEGORY_STYLE[displayCat] : null
 
   const handleImpersonate = async () => {
     try {
@@ -396,7 +406,7 @@ function UserRow({ user, index, canManage, isSuperAdmin, onView, onEdit }: {
         {catStyle
           ? <span className="inline-flex items-center rounded-lg px-2 py-1 text-[11px] font-semibold"
               style={{ background: catStyle.bg, color: catStyle.color }}>
-              {CATEGORY_LABELS[user.category!]}
+              {CATEGORY_LABELS[displayCat!]}
             </span>
           : <span className="text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>—</span>}
       </td>

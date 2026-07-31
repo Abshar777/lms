@@ -227,7 +227,7 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
   }
 
   /* Course access — localBlocked stores SECTION IDs (not lesson IDs) */
-  const { data: enrollments, isLoading: enrollmentsLoading } = useStudentEnrollments(user.id)
+  const { data: enrollments, isLoading: enrollmentsLoading, isError: enrollmentsError, error: enrollmentsErr } = useStudentEnrollments(user.id)
   const [localBlocked, setLocalBlocked] = useState<Record<string, Set<string>>>({})
   const [expandedEnrollments, setExpandedEnrollments] = useState<Set<string>>(new Set())
 
@@ -725,6 +725,11 @@ export function EditStudentModal({ user, onClose, onSuccess }: Props) {
                 <div className="flex items-center gap-2 py-4 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
                   <Spinner size={13} />Loading enrollments…
                 </div>
+              ) : enrollmentsError ? (
+                <p className="flex items-center gap-1.5 py-3 text-xs" style={{ color: '#F87171' }}>
+                  <AlertCircle size={11} />
+                  {(enrollmentsErr as any)?.response?.data?.error?.message ?? 'Could not load enrollments.'}
+                </p>
               ) : !enrollments || enrollments.length === 0 ? (
                 <p className="py-3 text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>
                   Not enrolled in any courses yet. Use the selector above to add one.

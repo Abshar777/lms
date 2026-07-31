@@ -132,6 +132,7 @@ export class LiveClassService {
     location?:        string
     room?:            string
     organizationId?:  string
+    seriesId?:        string
   }): Promise<ILiveClass> {
     if (!Types.ObjectId.isValid(input.courseId)) {
       throw new LiveClassError('INVALID_COURSE_ID', 'Invalid course id', 400)
@@ -178,6 +179,9 @@ export class LiveClassService {
     if (input.room)     (doc as any).room     = input.room.trim()
     if (input.organizationId && Types.ObjectId.isValid(input.organizationId)) {
       ;(doc as any).organizationId = new Types.ObjectId(input.organizationId)
+    }
+    if (input.seriesId && Types.ObjectId.isValid(input.seriesId)) {
+      doc.seriesId = new Types.ObjectId(input.seriesId)
     }
 
     if (input.sectionId && Types.ObjectId.isValid(input.sectionId)) {

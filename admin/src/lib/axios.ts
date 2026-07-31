@@ -67,10 +67,15 @@ api.interceptors.response.use(
       isRefreshing = false
       drainQueue(true)
       return api(original)
-    } catch {
+    } catch (refreshErr: any) {
       isRefreshing = false
       drainQueue(false)
-      window.location.href = '/login'
+      // Only a definitive auth rejection (401) means the session is really
+      // gone. Rate limiting (429), timeouts, or network hiccups are
+      // transient — don't force-logout an active user over those.
+      if (refreshErr?.response?.status === 401) {
+        window.location.href = '/login'
+      }
       return Promise.reject(err)
     }
   },

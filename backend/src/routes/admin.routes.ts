@@ -314,17 +314,53 @@ router.get   ('/express-members',            requireAnyAdmin, validate(expressMe
 router.patch ('/express-members/:userId/block', requireAnyAdmin, ctrl.blockExpressMember)
 router.delete('/express-members/:userId',    requireAdmin,    ctrl.deleteExpressMember)
 
+/* ── Category-scope guards for enrollment management ──────────────
+   Full admins (super_admin/admin) are unrestricted. Category-scoped
+   callers (sub_admin + the legacy 4x_admin/digital_marketing_admin/
+   ai_admin roles) may only touch students and courses within their
+   own program — mirrors the pattern already used by rejectEnrollment
+   (this file) and SectionService.assertCourseEditable. Always compare
+   against req.user.categoryScope (already normalized to the hyphenated
+   '4x-trading'|'digital-marketing'|'ai' form), never req.user.program
+   directly — program uses a different naming scheme. */
+function isFullAdmin(role: string): boolean {
+  return role === 'super_admin' || role === 'admin'
+}
+
+async function courseMatchesScope(courseId: string, scope: string): Promise<boolean> {
+  const { CourseModel } = await import('@/models/schema.ts')
+  const course = await CourseModel.findById(courseId).select('program').lean()
+  return !!course && (course as any).program === scope
+}
+
+async function studentMatchesScope(studentId: string, scope: string): Promise<boolean> {
+  const { UserModel } = await import('@/models/schema.ts')
+  const student = await UserModel.findById(studentId).select('category categories').lean()
+  const cats: string[] = (student as any)?.categories?.length
+    ? (student as any).categories
+    : ((student as any)?.category ? [(student as any).category] : [])
+  return cats.includes(scope)
+}
+
 /* GET /admin/users/:id/enrollments — list a student's course enrollments */
-router.get('/users/:id/enrollments', requireAdmin,
+router.get('/users/:id/enrollments', requireAnyAdmin,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { EnrollmentModel } = await import('@/models/schema.ts')
       const { Types } = await import('mongoose')
-      if (!Types.ObjectId.isValid(req.params['id'] as string)) {
+      const studentId = req.params['id'] as string
+      if (!Types.ObjectId.isValid(studentId)) {
         res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid user ID' } })
         return
       }
-      const enrollments = await EnrollmentModel.find({ userId: new Types.ObjectId(req.params['id'] as string) })
+      if (!isFullAdmin(req.user!.role)) {
+        const scope = req.user!.categoryScope
+        if (!scope || !(await studentMatchesScope(studentId, scope))) {
+          res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You can only view students in your own program.' } })
+          return
+        }
+      }
+      const enrollments = await EnrollmentModel.find({ userId: new Types.ObjectId(studentId) })
         .populate('courseId', 'id title thumbnailUrl')
         .lean({ virtuals: true })
       sendSuccess(res, enrollments)
@@ -332,10 +368,25 @@ router.get('/users/:id/enrollments', requireAdmin,
   },
 )
 
+/* GET /admin/users/:id/orders — list a student's purchase history */
+router.get('/users/:id/orders', requireAdmin,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { Types } = await import('mongoose')
+      if (!Types.ObjectId.isValid(req.params['id'] as string)) {
+        res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid user ID' } })
+        return
+      }
+      const orders = await orderSvc.listForUser(req.params['id'] as string)
+      sendSuccess(res, orders)
+    } catch (err) { next(err) }
+  },
+)
+
 /* POST /admin/users/:id/enrollments — enroll student in a course */
 const enrollCreateSchema = z.object({ courseId: z.string().min(1) })
 
-router.post('/users/:id/enrollments', requireAdmin, validate(enrollCreateSchema),
+router.post('/users/:id/enrollments', requireAnyAdmin, validate(enrollCreateSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { EnrollmentModel } = await import('@/models/schema.ts')
@@ -345,6 +396,14 @@ router.post('/users/:id/enrollments', requireAdmin, validate(enrollCreateSchema)
       if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(courseId)) {
         res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid ID' } })
         return
+      }
+      if (!isFullAdmin(req.user!.role)) {
+        const scope = req.user!.categoryScope
+        const ok = !!scope && await courseMatchesScope(courseId, scope) && await studentMatchesScope(userId, scope)
+        if (!ok) {
+          res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You can only enroll students who are in your own program into courses within your own program.' } })
+          return
+        }
       }
       /* Admin override — bypass published/paid checks; idempotent */
       const existing = await EnrollmentModel.findOne({
@@ -368,15 +427,26 @@ router.post('/users/:id/enrollments', requireAdmin, validate(enrollCreateSchema)
 )
 
 /* DELETE /admin/enrollments/:id — remove an enrollment */
-router.delete('/enrollments/:id', requireAdmin,
+router.delete('/enrollments/:id', requireAnyAdmin,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { EnrollmentModel } = await import('@/models/schema.ts')
-      const deleted = await EnrollmentModel.findByIdAndDelete(req.params['id'])
-      if (!deleted) {
+      const existing = await EnrollmentModel.findById(req.params['id']).select('courseId userId').lean()
+      if (!existing) {
         res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Enrollment not found' } })
         return
       }
+      if (!isFullAdmin(req.user!.role)) {
+        const scope = req.user!.categoryScope
+        const ok = !!scope
+          && await courseMatchesScope(String(existing.courseId), scope)
+          && await studentMatchesScope(String(existing.userId), scope)
+        if (!ok) {
+          res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You can only manage enrollments within your own program.' } })
+          return
+        }
+      }
+      await EnrollmentModel.findByIdAndDelete(req.params['id'])
       sendSuccess(res, null, 'Enrollment removed')
     } catch (err) { next(err) }
   },
@@ -387,11 +457,26 @@ const enrollmentUpdateSchema = z.object({
   blockedLessons: z.array(z.string()),
 })
 
-router.patch('/enrollments/:id', requireAdmin, validate(enrollmentUpdateSchema),
+router.patch('/enrollments/:id', requireAnyAdmin, validate(enrollmentUpdateSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { EnrollmentModel } = await import('@/models/schema.ts')
       const { Types } = await import('mongoose')
+      const existing = await EnrollmentModel.findById(req.params['id']).select('courseId userId').lean()
+      if (!existing) {
+        res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Enrollment not found' } })
+        return
+      }
+      if (!isFullAdmin(req.user!.role)) {
+        const scope = req.user!.categoryScope
+        const ok = !!scope
+          && await courseMatchesScope(String(existing.courseId), scope)
+          && await studentMatchesScope(String(existing.userId), scope)
+        if (!ok) {
+          res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You can only manage enrollments within your own program.' } })
+          return
+        }
+      }
       const { blockedLessons } = req.body as { blockedLessons: string[] }
       const blockedObjectIds = blockedLessons
         .filter((id: string) => Types.ObjectId.isValid(id))
@@ -401,10 +486,6 @@ router.patch('/enrollments/:id', requireAdmin, validate(enrollmentUpdateSchema),
         { blockedLessons: blockedObjectIds },
         { new: true },
       ).populate('courseId', 'id title thumbnailUrl').lean({ virtuals: true })
-      if (!enrollment) {
-        res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Enrollment not found' } })
-        return
-      }
       sendSuccess(res, enrollment)
     } catch (err) { next(err) }
   },
@@ -502,6 +583,8 @@ router.get   ('/courses/:courseId/live-classes',          live.adminListForCours
 router.get   ('/live-classes',                            live.adminListAll)
 router.get   ('/live-classes/:id',                        live.adminGetById)
 router.post  ('/live-classes',                            validate(liveCreateSchema), live.adminCreate)
+const liveRepeatSchema = z.object({ weeks: z.coerce.number().int().min(1).max(52) })
+router.post  ('/live-classes/:id/repeat',                 validate(liveRepeatSchema), live.adminRepeat)
 router.patch ('/live-classes/:id',                        validate(liveUpdateSchema), live.adminUpdate)
 router.delete('/live-classes/:id',                        live.adminDelete)
 router.post  ('/live-classes/:id/start',                  live.adminStart)
@@ -1299,12 +1382,15 @@ const assignRoleSchema = z.object({
   roleId: z.string().nullable(),
 })
 
-router.get   ('/roles',                      requireAdmin, roleCtrl.list)
-router.post  ('/roles',                      requireAdmin, validate(roleCreateSchema), roleCtrl.create)
-router.patch ('/roles/:id',                  requireAdmin, validate(roleUpdateSchema), roleCtrl.update)
-router.patch ('/roles/:id/permissions',      requireAdmin, validate(permissionsBodySchema), roleCtrl.updatePermissions)
-router.delete('/roles/:id',                  requireAdmin, roleCtrl.delete)
-router.patch ('/users/:userId/assign-role',  requireAdmin, validate(assignRoleSchema), roleCtrl.assignRole)
+/* Role/permission management is platform-wide, not org-scoped — an org-scoped
+   Admin editing or deleting a custom role, or reassigning any user's role,
+   would affect every organization. Restrict to super_admin. */
+router.get   ('/roles',                      requireRole('super_admin'), roleCtrl.list)
+router.post  ('/roles',                      requireRole('super_admin'), validate(roleCreateSchema), roleCtrl.create)
+router.patch ('/roles/:id',                  requireRole('super_admin'), validate(roleUpdateSchema), roleCtrl.update)
+router.patch ('/roles/:id/permissions',      requireRole('super_admin'), validate(permissionsBodySchema), roleCtrl.updatePermissions)
+router.delete('/roles/:id',                  requireRole('super_admin'), roleCtrl.delete)
+router.patch ('/users/:userId/assign-role',  requireRole('super_admin'), validate(assignRoleSchema), roleCtrl.assignRole)
 router.post  ('/users/:userId/impersonate',  requireRole('super_admin'), roleCtrl.impersonate)
 
 export default router

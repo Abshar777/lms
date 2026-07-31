@@ -45,6 +45,10 @@ export interface LiveClass {
   room?:              string
   rescheduledReason?: string
 
+  /* Weekly-repeat grouping tag — shared by every class generated from
+     the same "repeat weekly" action. Absent on one-off classes. */
+  seriesId?:      string
+
   createdAt:      string
   updatedAt:      string
 }
@@ -259,6 +263,18 @@ export function useDeleteLiveClass(courseId: string | undefined) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => { await api.delete(`/admin/live-classes/${id}`) },
+    onSuccess: () => {
+      if (courseId) qc.invalidateQueries({ queryKey: liveClassKeys.forCourse(courseId) })
+      qc.invalidateQueries({ queryKey: ['admin', 'live-classes', 'all'] })
+    },
+  })
+}
+
+export function useRepeatLiveClassWeekly(courseId: string | undefined) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, weeks }: { id: string; weeks: number }) =>
+      apiPost<LiveClass[]>(`/admin/live-classes/${id}/repeat`, { weeks }),
     onSuccess: () => {
       if (courseId) qc.invalidateQueries({ queryKey: liveClassKeys.forCourse(courseId) })
       qc.invalidateQueries({ queryKey: ['admin', 'live-classes', 'all'] })

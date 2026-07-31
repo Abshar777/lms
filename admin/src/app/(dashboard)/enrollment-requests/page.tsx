@@ -49,6 +49,14 @@ const CATEGORY_SCOPE: Record<string, ProgramCategory> = {
   ai_admin:                 'ai',
 }
 
+// sub_admin doesn't carry its scope on the role itself — it's on `program`
+// (mirrors backend injectCategoryScope in auth.middleware.ts).
+const PROGRAM_TO_CATEGORY: Record<string, ProgramCategory> = {
+  forex:              '4x-trading',
+  digital_marketing:  'digital-marketing',
+  ai:                 'ai',
+}
+
 /* ── Category badge (plain) ─────────────────────────── */
 function CategoryBadge({ cat }: { cat: ProgramCategory }) {
   const m = CATEGORY_META[cat]
@@ -796,8 +804,13 @@ export default function EnrollmentRequestsPage() {
   const toggleBlock     = useToggleBlock()
   const deleteUser      = useDeleteUser()
 
-  // Category scope: category admins are locked to their program
-  const scopeCategory: ProgramCategory | null = me?.role ? (CATEGORY_SCOPE[me.role] ?? null) : null
+  // Category scope: category admins are locked to their program.
+  // sub_admin has no fixed role-to-category mapping — its scope lives on `program`.
+  const scopeCategory: ProgramCategory | null = me?.role
+    ? (CATEGORY_SCOPE[me.role]
+        ?? (me.role === 'sub_admin' && me.program ? PROGRAM_TO_CATEGORY[me.program] : undefined)
+        ?? null)
+    : null
 
   // Full admins (admin/super_admin) have no scope restriction
   const isFullAdmin = me?.role === 'super_admin' || me?.role === 'admin'

@@ -739,6 +739,11 @@ export interface ILiveClass extends Document {
   /* Multi-org */
   organizationId?: Types.ObjectId
 
+  /* Weekly-repeat grouping — a pure tag shared by every class generated
+     from the same "repeat weekly" action. Not a foreign-key relation;
+     there is no separate series/template document. */
+  seriesId?:      Types.ObjectId
+
   createdAt:      Date
   updatedAt:      Date
 }
@@ -777,6 +782,7 @@ const LiveClassSchema = new Schema<ILiveClass>(
     rescheduledReason:           { type: String, maxlength: 2000 },
     reminderInstructor15MinSent: { type: Boolean, default: false },
     organizationId:              { type: Schema.Types.ObjectId, ref: 'Organization' },
+    seriesId:                    { type: Schema.Types.ObjectId },
   },
   baseSchemaOptions,
 )
@@ -785,6 +791,7 @@ LiveClassSchema.index({ courseId: 1, scheduledStart: 1 })
 LiveClassSchema.index({ scheduledStart: 1 })
 LiveClassSchema.index({ muxLiveStreamId: 1 }, { sparse: true })
 LiveClassSchema.index({ organizationId: 1 })
+LiveClassSchema.index({ seriesId: 1 }, { sparse: true })
 
 export const LiveClassModel = mongoose.model<ILiveClass>('LiveClass', LiveClassSchema)
 

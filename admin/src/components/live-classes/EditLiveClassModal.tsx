@@ -5,10 +5,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, AlertCircle, ExternalLink, Tv2,
   Link as LinkIcon, Trash2, CheckCircle2, Video,
-  MapPin, Building2, Wifi, Info,
+  MapPin, Building2, Wifi, Info, Repeat,
 } from 'lucide-react'
 import {
-  useUpdateLiveClass, useDeleteLiveClass,
+  useUpdateLiveClass, useDeleteLiveClass, useRepeatLiveClassWeekly,
   type LiveClass, type LiveClassType, type LiveClassStatus,
 } from '@/lib/api/liveClasses'
 import { useCourses } from '@/lib/api/courses'
@@ -36,6 +36,7 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
 
   const updateMutation = useUpdateLiveClass(activeCourseId)
   const deleteMutation = useDeleteLiveClass(activeCourseId)
+  const repeatMutation  = useRepeatLiveClassWeekly(activeCourseId)
 
   const { data: coursesData } = useCourses({ per_page: 200 })
   const courses = coursesData?.docs ?? []
@@ -73,6 +74,8 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
   const [recordingUrl, setRecordingUrl] = useState<string>(live.recordingUrl ?? '')
   const [error,        setError]        = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmRepeat, setConfirmRepeat] = useState(false)
+  const [repeatWeeks,   setRepeatWeeks]   = useState(8)
 
   const timeChanged = start !== originalStart
 
@@ -140,6 +143,15 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
     }
   }
 
+  const handleRepeat = async () => {
+    try {
+      await repeatMutation.mutateAsync({ id: live.id, weeks: repeatWeeks })
+      onSuccess()
+    } catch (err: any) {
+      setError(err?.response?.data?.error?.message ?? 'Failed to repeat session.')
+    }
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -171,6 +183,44 @@ export function EditLiveClassModal({ live, onClose, onSuccess }: Props) {
           </div>
 
           <div className="flex flex-shrink-0 items-center gap-2">
+            <AnimatePresence mode="wait">
+              {confirmRepeat ? (
+                <motion.div key="repeat-confirm"
+                  initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+                  className="flex items-center gap-1.5">
+                  <input
+                    type="number" min={1} max={52} value={repeatWeeks}
+                    onChange={e => setRepeatWeeks(Math.max(1, Math.min(52, Number(e.target.value) || 1)))}
+                    className="w-14 rounded-lg px-2 py-1.5 text-center text-xs text-white outline-none"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }} />
+                  <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.4)' }}>weeks</span>
+                  <button type="button"
+                    onClick={handleRepeat}
+                    disabled={repeatMutation.isPending}
+                    className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60"
+                    style={{ background: '#0057b8' }}>
+                    {repeatMutation.isPending ? <Spinner size={11} /> : <CheckCircle2 size={11} />}
+                    Go
+                  </button>
+                  <button type="button"
+                    onClick={() => setConfirmRepeat(false)}
+                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl transition-colors hover:bg-white/10"
+                    style={{ color: 'rgba(255,255,255,0.35)' }}>
+                    <X size={13} />
+                  </button>
+                </motion.div>
+              ) : (
+                <motion.button key="repeat" type="button"
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  onClick={() => setConfirmRepeat(true)}
+                  className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-white/10"
+                  style={{ color: 'rgba(255,255,255,0.35)' }}
+                  title="Repeat this class weekly">
+                  <Repeat size={14} />
+                </motion.button>
+              )}
+            </AnimatePresence>
+
             <AnimatePresence mode="wait">
               {confirmDelete ? (
                 <motion.button key="confirm"

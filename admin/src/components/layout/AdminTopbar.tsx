@@ -37,7 +37,7 @@ export function AdminTopbar() {
   const { impersonatedUser, endImpersonation } = useImpersonationStore()
 
   const isSuperAdmin = user?.role === 'super_admin'
-  const { activeOrgId, activeOrgName, setOrg, clearOrg } = useOrgStore()
+  const { activeOrgId, activeOrgName, setOrg } = useOrgStore()
   const { data: orgs = [] } = useOrganizations(isSuperAdmin)
 
   const handleLogout = async () => {
@@ -119,16 +119,6 @@ export function AdminTopbar() {
                   exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={{ duration: 0.12 }}
                   className="absolute left-0 top-full mt-2 w-48 z-[61] overflow-hidden rounded-xl py-1"
                   style={{ background: '#131525', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 20px 50px rgba(0,0,0,0.7)' }}>
-                  <button
-                    type="button"
-                    onClick={() => { clearOrg(); setOrgOpen(false) }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-white/06"
-                    style={{ color: !activeOrgId ? '#60A5FA' : 'rgba(255,255,255,0.7)' }}>
-                    <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center">
-                      {!activeOrgId && <Check size={12} />}
-                    </span>
-                    All Organizations
-                  </button>
                   {orgs.map(org => (
                     <button
                       key={org.id}

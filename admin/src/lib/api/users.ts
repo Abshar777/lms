@@ -6,15 +6,35 @@ import type { EnrollmentApplication } from './enrollmentRequests'
 
 /* ── Enrollment (student course access) ─────────────── */
 export interface StudentEnrollment {
-  _id:            string
-  id:             string
-  courseId:       { id: string; title: string; thumbnailUrl?: string }
-  blockedLessons: string[]
-  createdAt:      string
+  _id:              string
+  id:               string
+  // Populated via `.lean({virtuals:true})` — the sub-doc virtual `id` isn't
+  // applied to populated refs under lean, so only `_id` is reliably present.
+  courseId:         { _id?: string; id?: string; title: string; thumbnailUrl?: string }
+  blockedLessons:   string[]
+  status?:          'active' | 'completed' | 'dropped'
+  progressPercent?: number
+  enrolledAt?:      string
+  createdAt:        string
 }
 
 const enrollmentKeys = {
   forStudent: (userId: string) => ['admin', 'enrollments', userId] as const,
+}
+
+/* ── Orders (student purchase history) ──────────────── */
+export interface StudentOrder {
+  id:        string
+  courseId:  { _id?: string; id?: string; title: string; thumbnailUrl?: string }
+  amount:    number
+  currency:  string
+  gateway:   string
+  status:    'pending' | 'paid' | 'refunded' | 'cancelled'
+  createdAt: string
+}
+
+const orderKeys = {
+  forStudent: (userId: string) => ['admin', 'orders', 'student', userId] as const,
 }
 
 export type AdminUserRole =
@@ -80,6 +100,21 @@ export function useStudentEnrollments(userId: string | undefined) {
     queryFn: async () => {
       const res = await api.get<{ success: true; data: StudentEnrollment[] }>(
         `/admin/users/${userId}/enrollments`,
+      )
+      return res.data.data
+    },
+    enabled: !!userId,
+    staleTime: 30_000,
+  })
+}
+
+/* ─── Student Orders ─────────────────────────────────── */
+export function useStudentOrders(userId: string | undefined) {
+  return useQuery({
+    queryKey: orderKeys.forStudent(userId ?? ''),
+    queryFn: async () => {
+      const res = await api.get<{ success: true; data: StudentOrder[] }>(
+        `/admin/users/${userId}/orders`,
       )
       return res.data.data
     },

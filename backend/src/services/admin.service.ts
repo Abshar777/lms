@@ -8,7 +8,7 @@ import {
    no PII surfaced.
 ───────────────────────────────────────────────────── */
 export class AdminService {
-  async getStats(organizationId?: string): Promise<{
+  async getStats(organizationId?: string, program?: string): Promise<{
     totalCourses:     number
     publishedCourses: number
     draftCourses:     number
@@ -22,6 +22,11 @@ export class AdminService {
     if (organizationId && Types.ObjectId.isValid(organizationId)) {
       orgMatch['organizationId'] = new Types.ObjectId(organizationId)
     }
+    // Category-scoped sub-admins (forex/digital-marketing/ai) only see counts
+    // for their own program — otherwise their stat cards contradict the
+    // already-scoped course/enrollment lists shown right next to them.
+    const courseMatch: Record<string, unknown> = { ...orgMatch }
+    if (program) courseMatch['program'] = program
 
     const [
       totalCourses, publishedCourses, draftCourses,
@@ -29,9 +34,9 @@ export class AdminService {
       totalEnrollments, totalReviews,
       revenueAgg,
     ] = await Promise.all([
-      CourseModel.countDocuments(orgMatch).exec(),
-      CourseModel.countDocuments({ ...orgMatch, status: 'published' }).exec(),
-      CourseModel.countDocuments({ ...orgMatch, status: 'draft' }).exec(),
+      CourseModel.countDocuments(courseMatch).exec(),
+      CourseModel.countDocuments({ ...courseMatch, status: 'published' }).exec(),
+      CourseModel.countDocuments({ ...courseMatch, status: 'draft' }).exec(),
       UserModel.countDocuments({ ...orgMatch, role: 'student' }).exec(),
       UserModel.countDocuments({ ...orgMatch, role: 'instructor' }).exec(),
       EnrollmentModel.countDocuments(orgMatch).exec(),
@@ -89,7 +94,7 @@ export class AdminService {
     return out
   }
 
-  async topCourses(limit: number, organizationId?: string): Promise<{
+  async topCourses(limit: number, organizationId?: string, program?: string): Promise<{
     id:            string
     title:         string
     slug:          string
@@ -101,6 +106,7 @@ export class AdminService {
     if (organizationId && Types.ObjectId.isValid(organizationId)) {
       filter['organizationId'] = new Types.ObjectId(organizationId)
     }
+    if (program) filter['program'] = program
     const docs = await CourseModel
       .find(filter)
       .sort({ enrolledCount: -1 })

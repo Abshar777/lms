@@ -32,7 +32,6 @@ const adminNavItems = [
   { label: 'Orders',         href: '/orders',            icon: ShoppingBag },
   { label: 'Coupons',        href: '/coupons',           icon: Ticket },
   { label: 'Reports',        href: '/reports',           icon: BarChart3 },
-  { label: 'Roles',          href: '/roles',             icon: ShieldCheck },
   { label: 'Support',        href: '/support',           icon: LifeBuoy },
   { label: 'Audit Logs',     href: '/audit-logs',        icon: ClipboardList },
 ]
@@ -82,7 +81,12 @@ function SidebarContent({ collapsed, onClose }: SidebarContentProps) {
   const { data: pendingData } = useEnrollmentRequests('pending', undefined)
   const pendingCount = canSeeRequests ? (pendingData?.meta?.total_count ?? 0) : 0
   const { data: unreadSupport = 0 } = useUnreadSupportCount()
-  const navItems  = isInstructor ? instructorNavItems : isManager ? scopedAdminNavItems : adminNavItems
+  const baseNavItems = isInstructor ? instructorNavItems : isManager ? scopedAdminNavItems : adminNavItems
+  // Role/permission management is platform-wide (spans every organization) —
+  // only super_admin manages it, so the link is hidden for org-scoped admins.
+  const navItems  = user?.role === 'super_admin'
+    ? [...baseNavItems, { label: 'Roles', href: '/roles', icon: ShieldCheck }]
+    : baseNavItems
   const roleLabel = isInstructor ? 'Instructor' : isManager ? 'Manager' : 'Admin'
 
   const isActive = (href: string) =>

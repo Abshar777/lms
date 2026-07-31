@@ -11,6 +11,7 @@ import Spinner from '@/components/ui/Spinner'
 import { useToast } from '@/store/ui.store'
 import { EditStudentModal } from '@/components/users/EditStudentModal'
 import { EditInstructorModal } from '@/components/instructors/EditInstructorModal'
+import { StudentHistoryModal } from '@/components/users/StudentHistoryModal'
 
 interface Props {
   role:  'student' | 'instructor'
@@ -41,6 +42,7 @@ export function UserTable({ role, label }: Props) {
   const [page,        setPage]        = useState(1)
   const [category,    setCategory]    = useState<CategoryFilter>('')
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
+  const [historyUser, setHistoryUser] = useState<AdminUser | null>(null)
 
   const { data, isLoading } = useUsers(role, {
     search,
@@ -119,7 +121,10 @@ export function UserTable({ role, label }: Props) {
                 No {label.toLowerCase()} found
               </td></tr>
             )}
-            {!isLoading && data?.docs.map((u, i) => <UserRow key={u.id} user={u} index={i} onEdit={setEditingUser} />)}
+            {!isLoading && data?.docs.map((u, i) => (
+              <UserRow key={u.id} user={u} index={i} onEdit={setEditingUser}
+                onViewHistory={role === 'student' ? setHistoryUser : undefined} />
+            ))}
           </tbody>
         </table>
         </div>
@@ -161,11 +166,22 @@ export function UserTable({ role, label }: Props) {
           onSuccess={() => setEditingUser(null)}
         />
       )}
+      {historyUser && (
+        <StudentHistoryModal
+          user={historyUser}
+          onClose={() => setHistoryUser(null)}
+        />
+      )}
     </div>
   )
 }
 
-function UserRow({ user, index, onEdit }: { user: AdminUser; index: number; onEdit: (u: AdminUser) => void }) {
+function UserRow({ user, index, onEdit, onViewHistory }: {
+  user:          AdminUser
+  index:         number
+  onEdit:        (u: AdminUser) => void
+  onViewHistory?: (u: AdminUser) => void
+}) {
   const update    = useUpdateUser()
   const toast     = useToast()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -205,22 +221,45 @@ function UserRow({ user, index, onEdit }: { user: AdminUser; index: number; onEd
       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.025)')}
       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
       <td className="px-4 py-3.5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full"
-            style={{ background: 'rgba(0,87,184,0.15)', border: '1px solid rgba(0,87,184,0.25)' }}>
-            {user.avatarUrl
-              ? <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
-              : <span className="text-xs font-bold" style={{ color: '#0057b8' }}>{user.name[0]?.toUpperCase() ?? '?'}</span>}
+        {onViewHistory ? (
+          <button
+            onClick={() => onViewHistory(user)}
+            title="View student history"
+            className="flex items-center gap-3 rounded-lg text-left transition-colors hover:bg-white/05"
+            style={{ margin: '-4px', padding: '4px' }}>
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full"
+              style={{ background: 'rgba(0,87,184,0.15)', border: '1px solid rgba(0,87,184,0.25)' }}>
+              {user.avatarUrl
+                ? <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
+                : <span className="text-xs font-bold" style={{ color: '#0057b8' }}>{user.name[0]?.toUpperCase() ?? '?'}</span>}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-white">{user.name}</p>
+              {user.headline && (
+                <p className="mt-0.5 truncate text-[11px]" style={{ color: 'rgba(255,255,255,0.35)', maxWidth: 240 }}>
+                  {user.headline}
+                </p>
+              )}
+            </div>
+          </button>
+        ) : (
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full"
+              style={{ background: 'rgba(0,87,184,0.15)', border: '1px solid rgba(0,87,184,0.25)' }}>
+              {user.avatarUrl
+                ? <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
+                : <span className="text-xs font-bold" style={{ color: '#0057b8' }}>{user.name[0]?.toUpperCase() ?? '?'}</span>}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-white">{user.name}</p>
+              {user.headline && (
+                <p className="mt-0.5 truncate text-[11px]" style={{ color: 'rgba(255,255,255,0.35)', maxWidth: 240 }}>
+                  {user.headline}
+                </p>
+              )}
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-white">{user.name}</p>
-            {user.headline && (
-              <p className="mt-0.5 truncate text-[11px]" style={{ color: 'rgba(255,255,255,0.35)', maxWidth: 240 }}>
-                {user.headline}
-              </p>
-            )}
-          </div>
-        </div>
+        )}
       </td>
       <td className="px-4 py-3.5">
         <div className="flex items-center gap-1.5" style={{ color: 'rgba(255,255,255,0.55)' }}>

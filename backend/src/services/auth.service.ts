@@ -13,6 +13,12 @@ import { toSafeUser } from '@/models/types.ts'
    Thrown by service, caught by controller → next(err)
    → mapped to HTTP response by errorMiddleware
 ───────────────────────────────────────────────────── */
+/* Concurrent refresh calls (multi-tab, rapid retries) can legitimately
+   present the same refresh token within milliseconds of each other. The
+   loser of that race sees the token as already "rotated" — within this
+   grace window we treat it as a benign race instead of a replay attack. */
+const ROTATION_RACE_GRACE_MS = 10_000
+
 export class AuthError extends Error {
   constructor(
     public readonly code: string,
@@ -168,7 +174,16 @@ export class AuthService {
 
     /* 2. Look up the token in DB and reason about its state.
        - Not found at all              → invalid / unknown token, 401
-       - Found, revoked by 'rotation'  → reuse attack signal, nuke everything
+       - Found, revoked by 'rotation'  → possible reuse attack OR a benign
+                                          race between concurrent refresh
+                                          calls (e.g. two browser tabs both
+                                          refreshing near the same 15-min
+                                          expiry). Only escalate to a full
+                                          session wipe once the rotation is
+                                          older than a short grace window —
+                                          within the window we treat it as
+                                          the losing side of a race and just
+                                          issue a fresh pair.
        - Found, revoked any other way  → device was kicked legitimately, 401
        - Found, not revoked            → all good, rotate */
     const tokenHash = this.#hashToken(rawRefreshToken)
@@ -179,9 +194,18 @@ export class AuthService {
     }
     if (stored.isRevoked) {
       if (stored.revokedReason === 'rotation') {
-        await this.tokenRepo.revokeAllForUser(payload.sub!, 'security')
-        logger.warn({ userId: payload.sub }, 'Refresh token reuse detected — all sessions revoked')
-        throw new AuthError('TOKEN_REUSE', 'Security alert: session invalidated.', 401)
+        const rotatedAgoMs = Date.now() - stored.updatedAt.getTime()
+        if (rotatedAgoMs > ROTATION_RACE_GRACE_MS) {
+          await this.tokenRepo.revokeAllForUser(payload.sub!, 'security')
+          logger.warn({ userId: payload.sub }, 'Refresh token reuse detected — all sessions revoked')
+          throw new AuthError('TOKEN_REUSE', 'Security alert: session invalidated.', 401)
+        }
+        logger.debug({ userId: payload.sub }, 'Concurrent refresh race detected — issuing fresh tokens instead of nuking sessions')
+        const user = await this.userRepo.findById(payload.sub!)
+        if (!user || !user.isActive) {
+          throw new AuthError('USER_NOT_FOUND', 'Account not found or deactivated.', 401)
+        }
+        return this.#issueTokens(user.id, user.email, user.role, meta)
       }
       /* User-revoked / logged-out / security-revoked — just reject this device. */
       throw new AuthError('INVALID_REFRESH_TOKEN', 'This session has been signed out.', 401)
@@ -190,9 +214,20 @@ export class AuthService {
       throw new AuthError('INVALID_REFRESH_TOKEN', 'Refresh token is invalid or expired.', 401)
     }
 
-    /* 3. Rotate — revoke old token with reason 'rotation' so a replay
-       triggers reuse detection. */
-    await this.tokenRepo.revokeToken(tokenHash, 'rotation')
+    /* 3. Atomically claim this token for rotation. If another concurrent
+       request already claimed it between our read above and now, treat
+       this one as the losing side of the race too (see block above) —
+       fetch the just-updated record and issue fresh tokens rather than
+       failing the request. */
+    const claimed = await this.tokenRepo.claimForRotation(tokenHash)
+    if (!claimed) {
+      logger.debug({ userId: payload.sub }, 'Concurrent refresh race detected — issuing fresh tokens instead of nuking sessions')
+      const user = await this.userRepo.findById(payload.sub!)
+      if (!user || !user.isActive) {
+        throw new AuthError('USER_NOT_FOUND', 'Account not found or deactivated.', 401)
+      }
+      return this.#issueTokens(user.id, user.email, user.role, meta)
+    }
 
     /* 4. Load fresh user */
     const user = await this.userRepo.findById(payload.sub!)

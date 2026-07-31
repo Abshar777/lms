@@ -64,6 +64,8 @@ function toDTO(doc: any) {
     room:              j.room,
     rescheduledReason: j.rescheduledReason,
 
+    seriesId:       j.seriesId ? String(j.seriesId) : undefined,
+
     createdAt:      j.createdAt,
     updatedAt:      j.updatedAt,
   }
@@ -195,106 +197,188 @@ export class LiveClassController {
     } catch (err) { next(err) }
   }
 
+  /* ── Shared create logic — used by both adminCreate (single) and
+     adminRepeat (looped, one call per generated week). Category-scope
+     check, Meet-link/Mux generation, and the instructor notification
+     email all happen here so every code path gets them identically. ── */
+  #createOne = async (
+    dto: {
+      courseId:         string
+      title:            string
+      description?:     string
+      scheduledStart:   string | Date
+      durationMins:     number
+      type?:            'external' | 'internal'
+      instructorId?:    string
+      sectionId?:       string
+      sessionCapacity?: number
+      language?:        string
+      isOnline?:        boolean
+      location?:        string
+      room?:            string
+    },
+    req: Request,
+    seriesId?: string,
+  ): Promise<{ live: Awaited<ReturnType<LiveClassService['create']>>; meetingUrl?: string }> => {
+    /* Category scope check — 4x_admin / digital_marketing_admin can only create for their program */
+    const scope = req.user?.categoryScope as string | undefined
+    if (scope) {
+      const { CourseModel } = await import('@/models/schema.ts')
+      const course = await CourseModel.findById(dto.courseId).select('program').lean()
+      if (!course) {
+        throw Object.assign(new Error('Course not found'), { statusCode: 404, code: 'COURSE_NOT_FOUND' })
+      }
+      if ((course as any).program !== scope) {
+        throw Object.assign(new Error('You can only create sessions for your category courses.'), { statusCode: 403, code: 'FORBIDDEN' })
+      }
+    }
+
+    const sessionType  = dto.type ?? 'external'
+    const isOnline      = dto.isOnline ?? true
+    const instructorId  = dto.instructorId ?? req.user!.id
+
+    /* Auto-generate a Google Meet link for online external sessions */
+    let meetingUrl: string | undefined
+    let googleMeetCode: string | undefined
+    if (sessionType === 'external' && isOnline) {
+      /* Look up instructor email so workspace users become the Meet host */
+      const { UserModel } = await import('@/models/schema.ts')
+      const instructor = await UserModel.findById(instructorId).select('email').lean()
+      const instructorEmail = (instructor as any)?.email as string | undefined
+
+      const meet = await createGoogleMeetLink({
+        title:            dto.title,
+        startISO:         String(dto.scheduledStart),
+        durationMins:     dto.durationMins,
+        instructorEmail,
+      })
+      meetingUrl     = meet.meetingUrl
+      googleMeetCode = meet.meetingCode || undefined
+    }
+
+    const live = await this.service.create({
+      courseId:        dto.courseId,
+      instructorId:    instructorId,
+      title:           dto.title,
+      description:     dto.description,
+      scheduledStart:  new Date(dto.scheduledStart),
+      durationMins:    dto.durationMins,
+      type:            sessionType,
+      meetingUrl,
+      googleMeetCode,
+      sectionId:       dto.sectionId,
+      sessionCapacity: dto.sessionCapacity,
+      language:        dto.language,
+      isOnline,
+      location:        dto.location,
+      room:            dto.room,
+      organizationId:  req.user?.organizationId,
+      seriesId,
+    })
+
+    /* Notify assigned instructor — fire-and-forget, only for Google Meet sessions */
+    if (meetingUrl && live.instructorId) {
+      void (async () => {
+        try {
+          const { UserModel, CourseModel } = await import('@/models/schema.ts')
+          const [instructor, course] = await Promise.all([
+            UserModel.findById(live.instructorId).select('name email').lean(),
+            CourseModel.findById(live.courseId).select('title').lean(),
+          ])
+          if (instructor && (instructor as any).email) {
+            await sendInstructorClassScheduled(
+              (instructor as any).email,
+              (instructor as any).name ?? 'Instructor',
+              (course as any)?.title ?? '',
+              live.title,
+              live.scheduledStart,
+              meetingUrl,
+            )
+          }
+        } catch (err) {
+          const { logger } = await import('@/utils/logger.ts')
+          logger.error({ err }, '[LiveClass] Failed to send instructor scheduled email')
+        }
+      })()
+    }
+
+    return { live, meetingUrl }
+  }
+
   adminCreate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const dto = req.body as {
-        courseId:         string
-        title:            string
-        description?:     string
-        scheduledStart:   string | Date
-        durationMins:     number
-        type?:            'external' | 'internal'
-        instructorId?:    string
-        sectionId?:       string
-        sessionCapacity?: number
-        language?:        string
-        isOnline?:        boolean
-        location?:        string
-        room?:            string
-      }
-
-      /* Category scope check — 4x_admin / digital_marketing_admin can only create for their program */
-      const scope = req.user?.categoryScope as string | undefined
-      if (scope) {
-        const { CourseModel } = await import('@/models/schema.ts')
-        const course = await CourseModel.findById(dto.courseId).select('program').lean()
-        if (!course) {
-          res.status(404).json({ success: false, error: { code: 'COURSE_NOT_FOUND', message: 'Course not found' } }); return
-        }
-        if ((course as any).program !== scope) {
-          res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You can only create sessions for your category courses.' } }); return
-        }
-      }
-
-      const sessionType  = dto.type ?? 'external'
-      const isOnline     = dto.isOnline ?? true
-      const instructorId = dto.instructorId ?? req.user!.id
-
-      /* Auto-generate a Google Meet link for online external sessions */
-      let meetingUrl: string | undefined
-      let googleMeetCode: string | undefined
-      if (sessionType === 'external' && isOnline) {
-        /* Look up instructor email so workspace users become the Meet host */
-        const { UserModel } = await import('@/models/schema.ts')
-        const instructor = await UserModel.findById(instructorId).select('email').lean()
-        const instructorEmail = (instructor as any)?.email as string | undefined
-
-        const meet = await createGoogleMeetLink({
-          title:            dto.title,
-          startISO:         String(dto.scheduledStart),
-          durationMins:     dto.durationMins,
-          instructorEmail,
-        })
-        meetingUrl     = meet.meetingUrl
-        googleMeetCode = meet.meetingCode || undefined
-      }
-
-      const live = await this.service.create({
-        courseId:        dto.courseId,
-        instructorId:    instructorId,
-        title:           dto.title,
-        description:     dto.description,
-        scheduledStart:  new Date(dto.scheduledStart),
-        durationMins:    dto.durationMins,
-        type:            sessionType,
-        meetingUrl,
-        googleMeetCode,
-        sectionId:       dto.sectionId,
-        sessionCapacity: dto.sessionCapacity,
-        language:        dto.language,
-        isOnline,
-        location:        dto.location,
-        room:            dto.room,
-        organizationId:  req.user?.organizationId,
-      })
+      const { live } = await this.#createOne(req.body, req)
       sendSuccess(res, toDTO(live), 'Live class scheduled', 201)
-
-      /* Notify assigned instructor — fire-and-forget, only for Google Meet sessions */
-      if (meetingUrl && live.instructorId) {
-        void (async () => {
-          try {
-            const { UserModel, CourseModel } = await import('@/models/schema.ts')
-            const [instructor, course] = await Promise.all([
-              UserModel.findById(live.instructorId).select('name email').lean(),
-              CourseModel.findById(live.courseId).select('title').lean(),
-            ])
-            if (instructor && (instructor as any).email) {
-              await sendInstructorClassScheduled(
-                (instructor as any).email,
-                (instructor as any).name ?? 'Instructor',
-                (course as any)?.title ?? '',
-                live.title,
-                live.scheduledStart,
-                meetingUrl,
-              )
-            }
-          } catch (err) {
-            const { logger } = await import('@/utils/logger.ts')
-            logger.error({ err }, '[LiveClass] Failed to send instructor scheduled email')
-          }
-        })()
+    } catch (err: any) {
+      if (err?.statusCode) {
+        res.status(err.statusCode).json({ success: false, error: { code: err.code, message: err.message } })
+        return
       }
-    } catch (err) { next(err) }
+      next(err)
+    }
+  }
+
+  /* ── Repeat an existing class weekly ─────────────────
+     Generates `weeks` additional LiveClass documents, one per week,
+     each `7 * i` days after the source class's scheduledStart. All
+     generated classes (and the source, if it didn't have one yet)
+     share a seriesId so they can be identified as one recurring
+     pattern — editing any single generated class afterwards is a
+     normal, independent edit and never affects the others. ── */
+  adminRepeat = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { LiveClassModel } = await import('@/models/schema.ts')
+      const { Types } = await import('mongoose')
+      const sourceId = req.params['id'] as string
+      const { weeks } = req.body as { weeks: number }
+
+      if (!Types.ObjectId.isValid(sourceId)) {
+        res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid live class id' } })
+        return
+      }
+      const source = await LiveClassModel.findById(sourceId).lean()
+      if (!source) {
+        res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Live class not found' } })
+        return
+      }
+
+      let seriesId = (source as any).seriesId ? String((source as any).seriesId) : undefined
+      if (!seriesId) {
+        seriesId = new Types.ObjectId().toString()
+        await LiveClassModel.findByIdAndUpdate(sourceId, { seriesId: new Types.ObjectId(seriesId) })
+      }
+
+      const created: unknown[] = []
+      for (let i = 1; i <= weeks; i++) {
+        const scheduledStart = new Date(source.scheduledStart)
+        scheduledStart.setDate(scheduledStart.getDate() + 7 * i)
+
+        const { live } = await this.#createOne({
+          courseId:        String(source.courseId),
+          title:           source.title,
+          description:     source.description,
+          scheduledStart,
+          durationMins:    source.durationMins,
+          type:            source.type,
+          instructorId:    String(source.instructorId),
+          sectionId:       source.sectionId ? String(source.sectionId) : undefined,
+          sessionCapacity: source.sessionCapacity,
+          language:        source.language,
+          isOnline:        source.isOnline,
+          location:        source.location,
+          room:            source.room,
+        }, req, seriesId)
+        created.push(toDTO(live))
+      }
+
+      sendSuccess(res, created, `${weeks} session${weeks === 1 ? '' : 's'} created`, 201)
+    } catch (err: any) {
+      if (err?.statusCode) {
+        res.status(err.statusCode).json({ success: false, error: { code: err.code, message: err.message } })
+        return
+      }
+      next(err)
+    }
   }
 
   adminUpdate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
