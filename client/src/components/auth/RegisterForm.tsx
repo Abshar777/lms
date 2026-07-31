@@ -6,6 +6,7 @@ import {
   User, Mail, Lock, Phone, AlertCircle, Eye, EyeOff,
   Upload, ChevronRight, ChevronLeft, Check, FileText, X,
   ChevronDown, Search, MapPin, Calendar, Globe, Briefcase, CreditCard, Camera, Zap,
+  Building2,
 } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { cn } from '@/lib/utils'
@@ -21,6 +22,7 @@ interface FormData {
   passportFile: File | null; idDocFile: File | null; photoFile: File | null
   experienceLevel: string; preferredStartDate: string; hearAboutUs: string
   referralName: string; programs: string[]
+  organizationSlug: '' | 'dubai' | 'bangalore'
   paymentMethod: string; password: string; confirmPassword: string; termsAccepted: boolean
 }
 
@@ -30,8 +32,8 @@ const INITIAL: FormData = {
   occupation: '', idType: '', idNumber: '', countryAttendance: '', villa: '',
   city: '', addressCountry: '', passportFile: null, idDocFile: null, photoFile: null,
   experienceLevel: '', preferredStartDate: '', hearAboutUs: '',
-  referralName: '', programs: [], paymentMethod: '',
-  password: '', confirmPassword: '', termsAccepted: false,
+  referralName: '', programs: [], organizationSlug: '',
+  paymentMethod: '', password: '', confirmPassword: '', termsAccepted: false,
 }
 
 const PROGRAMS = [
@@ -966,10 +968,10 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
 
   // ── Express account form state ───────────────────────
   const [expressData, setExpressData] = useState({
-    name: '', email: '', homeCountry: '', password: '', termsAccepted: false,
+    name: '', email: '', organizationSlug: '' as '' | 'dubai' | 'bangalore', homeCountry: '', password: '', termsAccepted: false,
   })
   const [expressErrors, setExpressErrors] = useState<{
-    name?: string; email?: string; homeCountry?: string;
+    name?: string; email?: string; organizationSlug?: string; homeCountry?: string;
     password?: string; termsAccepted?: string
   }>({})
   const [expressLoading, setExpressLoading] = useState(false)
@@ -1099,6 +1101,7 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
     }
 
     if (s === 3) {
+      if (!data.organizationSlug) errs.organizationSlug = 'Please select your preferred learning center'
       if (!data.paymentMethod) errs.paymentMethod = 'Please select payment method'
       if (!data.password)      errs.password      = 'Password is required'
       else if (data.password.length < 8)          errs.password = 'At least 8 characters required'
@@ -1148,9 +1151,10 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
     setLoading(true); setApiErr(null)
     try {
       await api.post('/auth/register', {
-        name:     data.name.trim(),
-        email:    data.email.trim().toLowerCase(),
-        password: data.password,
+        name:             data.name.trim(),
+        email:            data.email.trim().toLowerCase(),
+        password:         data.password,
+        organizationSlug: data.organizationSlug,
         enrollmentApplication: {
           phone: data.phone, emergencyContact: data.emergencyContact,
           gender: data.gender, dateOfBirth: data.dateOfBirth,
@@ -1219,6 +1223,9 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
     if (!expressData.email.trim()) errs.email = 'Email is required'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(expressData.email)) errs.email = 'Enter a valid email address'
 
+    /* Preferred learning center */
+    if (!expressData.organizationSlug) errs.organizationSlug = 'Please select your preferred learning center'
+
     /* Country */
     if (!expressData.homeCountry) errs.homeCountry = 'Please select your country'
 
@@ -1239,9 +1246,10 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
     try {
       await api.post('/auth/register', {
         name,
-        email:      expressData.email.trim().toLowerCase(),
-        password:   expressData.password,
-        signupType: 'express',
+        email:            expressData.email.trim().toLowerCase(),
+        password:         expressData.password,
+        signupType:       'express',
+        organizationSlug: expressData.organizationSlug,
         enrollmentApplication: {
           homeCountry: expressData.homeCountry,
         },
@@ -1564,6 +1572,20 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
 
     return (
       <div className="flex flex-col gap-4">
+        <Field label="Preferred Learning Center *" error={errors.organizationSlug}>
+          <CustomSelect
+            options={[
+              { value: 'dubai',     label: 'Dubai, UAE' },
+              { value: 'bangalore', label: 'Bangalore, India' },
+            ]}
+            value={data.organizationSlug}
+            onChange={v => set('organizationSlug', v)}
+            error={errors.organizationSlug}
+            placeholder="Select your preferred learning center…"
+            icon={Building2}
+          />
+        </Field>
+
         <Field label="Payment Method *" error={errors.paymentMethod}>
           <CustomSelect
             options={PAYMENT_OPTIONS}
@@ -1717,6 +1739,21 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
                   type="email" placeholder="you@example.com" className="pl-9"
                   onChange={e => setEx('email', e.target.value)} />
               </div>
+            </Field>
+
+            {/* Preferred Learning Center — decides which office/organization the student joins */}
+            <Field label="Preferred Learning Center *" error={expressErrors.organizationSlug}>
+              <CustomSelect
+                options={[
+                  { value: 'dubai',     label: 'Dubai, UAE' },
+                  { value: 'bangalore', label: 'Bangalore, India' },
+                ]}
+                value={expressData.organizationSlug}
+                onChange={v => setEx('organizationSlug', v)}
+                error={expressErrors.organizationSlug}
+                placeholder="Select your preferred learning center…"
+                icon={Building2}
+              />
             </Field>
 
             {/* Country of Residence */}

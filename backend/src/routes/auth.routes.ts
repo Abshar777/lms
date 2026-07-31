@@ -44,7 +44,8 @@ const registerSchema = z.object({
     .min(8, 'Password must be at least 8 characters')
     .regex(/[A-Z]/, 'Must contain an uppercase letter')
     .regex(/[0-9]/, 'Must contain a number'),
-  signupType: z.enum(['express', 'full']).optional(),
+  signupType:       z.enum(['express', 'full']).optional(),
+  organizationSlug: z.enum(['dubai', 'bangalore']).optional(),
   enrollmentApplication: enrollmentAppSchema,
 })
 

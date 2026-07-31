@@ -69,9 +69,13 @@ export class AuthService {
     const appFields = dto.enrollmentApplication ? Object.keys(dto.enrollmentApplication).filter(k => (dto.enrollmentApplication as Record<string, unknown>)[k] != null) : []
     const signupType: 'express' | 'full' = dto.signupType ?? (appFields.length <= 1 ? 'express' : 'full')
 
-    /* 4. Determine organization from homeCountry (India → Bangalore, else → Dubai) */
+    /* 4. Determine organization — explicit selection (express signup) takes
+       priority; fall back to the legacy homeCountry guess (India → Bangalore,
+       else → Dubai) only for callers that don't send organizationSlug, e.g.
+       the one-shot full-registration form. */
     const { OrganizationModel } = await import('@/models/schema.ts')
-    const orgSlug = dto.enrollmentApplication?.homeCountry === 'India' ? 'bangalore' : 'dubai'
+    const orgSlug = dto.organizationSlug
+      ?? (dto.enrollmentApplication?.homeCountry === 'India' ? 'bangalore' : 'dubai')
     const orgDoc  = await OrganizationModel.findOne({ slug: orgSlug }).select('_id').lean()
     const organizationId = orgDoc?._id
 
@@ -423,13 +427,10 @@ export class AuthService {
       if (input[field] !== undefined) $set[`enrollmentApplication.${field}`] = input[field]
     }
 
-    /* Re-assign organization when homeCountry is provided — India → Bangalore, else → Dubai */
-    if (input['homeCountry'] !== undefined) {
-      const { OrganizationModel } = await import('@/models/schema.ts')
-      const newOrgSlug = input['homeCountry'] === 'India' ? 'bangalore' : 'dubai'
-      const newOrg     = await OrganizationModel.findOne({ slug: newOrgSlug }).select('_id').lean()
-      if (newOrg) $set['organizationId'] = newOrg._id
-    }
+    /* organizationId is intentionally left untouched here — it was already
+       fixed at signup (explicit selection, or the homeCountry fallback for
+       one-shot full registrations) and must not silently change just because
+       the student is filling in the rest of their profile. */
 
     if (input['avatarUrl'] !== undefined && input['avatarUrl'] !== '') {
       $set['avatarUrl'] = input['avatarUrl']
