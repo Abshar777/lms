@@ -11,7 +11,7 @@ import { UserModel } from '@/models/schema.ts'
 import { comparePassword } from '@/utils/hash.ts'
 import { logger } from '@/utils/logger.ts'
 
-const ISSUER  = 'LearnOS'
+const ISSUER  = 'Delta'
 const PERIOD  = 30   // seconds per step
 const DIGITS  = 6
 const WINDOW  = 1    // allow ±1 step for clock skew

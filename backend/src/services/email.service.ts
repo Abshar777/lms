@@ -130,10 +130,7 @@ function wrap(title: string, body: string): string {
         <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #E5E7EB">
           <tr>
             <td style="padding:28px 32px 0">
-              <div style="display:inline-flex;align-items:center;gap:8px">
-                <div style="width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#FF6B1A,#FF8C42);display:inline-block"></div>
-                <span style="font-weight:700;font-size:18px">LearnOS</span>
-              </div>
+              <img src="${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/logo-email.png" alt="Delta International" width="72" height="34" style="display:block;height:34px;width:72px">
             </td>
           </tr>
           <tr>
@@ -143,7 +140,7 @@ function wrap(title: string, body: string): string {
           </tr>
           <tr>
             <td style="padding:16px 32px 28px;border-top:1px solid #F3F4F6;font-size:11px;color:#9CA3AF">
-              You're receiving this because you signed up at LearnOS.
+              You're receiving this because you signed up at Delta.
               If this wasn't you, you can safely ignore this email.
             </td>
           </tr>
@@ -158,7 +155,7 @@ function wrap(title: string, body: string): string {
 /* ─── Typed helpers ─────────────────────────────────── */
 
 export async function sendPasswordReset(to: string, name: string, resetUrl: string): Promise<void> {
-  const subject = 'Reset your LearnOS password'
+  const subject = 'Reset your Delta password'
   const html = wrap(subject, `
     <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">Reset your password</h2>
     <p>Hi ${escapeHtml(name)},</p>
@@ -175,14 +172,14 @@ export async function sendPasswordReset(to: string, name: string, resetUrl: stri
     to,
     subject,
     html,
-    text: `Reset your LearnOS password by visiting: ${resetUrl}\n\nThe link expires in 60 minutes. If you didn't request this, ignore this email.`,
+    text: `Reset your Delta password by visiting: ${resetUrl}\n\nThe link expires in 60 minutes. If you didn't request this, ignore this email.`,
   })
 }
 
 export async function sendVerifyEmail(to: string, name: string, verifyUrl: string): Promise<void> {
-  const subject = 'Verify your LearnOS email'
+  const subject = 'Verify your Delta email'
   const html = wrap(subject, `
-    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">Welcome to LearnOS, ${escapeHtml(name)}</h2>
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#0D0F1A">Welcome to Delta, ${escapeHtml(name)}</h2>
     <p>Confirm your email address to unlock notifications, certificates, and account recovery.</p>
     <p style="margin:24px 0">
       <a href="${verifyUrl}" style="display:inline-block;background:linear-gradient(135deg,#FF6B1A,#FF8C42);color:#fff;font-weight:600;padding:12px 24px;border-radius:12px;text-decoration:none">
@@ -196,7 +193,7 @@ export async function sendVerifyEmail(to: string, name: string, verifyUrl: strin
     to,
     subject,
     html,
-    text: `Verify your LearnOS email: ${verifyUrl}\nThis link expires in 24 hours.`,
+    text: `Verify your Delta email: ${verifyUrl}\nThis link expires in 24 hours.`,
   })
 }
 
